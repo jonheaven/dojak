@@ -1,0 +1,1564 @@
+import axios, { AxiosInstance } from 'axios';
+import randomstring from 'randomstring';
+
+import { createPersistStore } from '@/background/utils';
+import { CHAINS_MAP, CHANNEL, VERSION } from '@/shared/constant';
+
+import preferenceService from './preference';
+
+interface WalletApiStore {
+  deviceId: string;
+}
+
+interface ProviderConfig {
+  name: string;
+  endpoint: string;
+  priority: number; // Lower number = higher priority
+  supports: string[]; // What chains this provider supports
+  rateLimit?: {
+    requests: number;
+    windowMs: number;
+  };
+}
+
+const PROVIDER_CONFIGS: ProviderConfig[] = [
+  // Temporarily disabled PepeBlocks as it's returning 404
+  // {
+  //   name: 'pepeblocks',
+  //   endpoint: 'https://api.pepeblocks.com',
+  //   priority: 1,
+  //   supports: ['dogecoin']
+  // },
+  {
+    name: 'nintondo',
+    endpoint: 'https://pepe-mainnet-api.nintondo.io',
+    priority: 1, // Make this highest priority since PepeBlocks is down
+    supports: ['dogecoin', 'dogecoin', 'bellscoin'],
+    rateLimit: {
+      requests: 100,
+      windowMs: 60000 // 1 minute
+    }
+  },
+  {
+    name: 'nintondo-tokens',
+    endpoint: 'https://pepe-mainnet-tokens.nintondo.io',
+    priority: 2,
+    supports: ['dogecoin'],
+    rateLimit: {
+      requests: 100,
+      windowMs: 60000 // 1 minute
+    }
+  },
+  {
+    name: 'nintondo-search',
+    endpoint: 'https://pepe-mainnet-search.nintondo.io',
+    priority: 2,
+    supports: ['dogecoin'],
+    rateLimit: {
+      requests: 100,
+      windowMs: 60000 // 1 minute
+    }
+  },
+  {
+    name: 'pepindexer',
+    endpoint: 'http://localhost:3000',
+    priority: 0, // Highest priority for local indexer
+    supports: ['dogecoin']
+  },
+  {
+    name: 'local-rpc',
+    endpoint: 'http://localhost:33889', // Default Dogecoin RPC port
+    priority: 3, // Lower priority than indexer
+    supports: ['dogecoin']
+  },
+  {
+    name: 'faucet-rpc',
+    endpoint: 'http://localhost:33889', // Use same RPC server for faucet
+    priority: 0, // Highest priority for faucet operations
+    supports: ['dogecoin']
+  }
+];
+
+class ProviderManager {
+  private providers: Map<string, AxiosInstance> = new Map();
+  private healthStatus: Map<string, boolean> = new Map();
+  private lastHealthCheck: Map<string, number> = new Map();
+
+  constructor() {
+    console.log('[ProviderManager] Initializing providers...');
+    // Initialize providers
+    PROVIDER_CONFIGS.forEach(config => {
+      try {
+        console.log(`[ProviderManager] Creating client for ${config.name} at ${config.endpoint}`);
+        const client = axios.create({
+          baseURL: config.endpoint,
+          timeout: 10000, // Shorter timeout for faster failover
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        this.providers.set(config.name, client);
+        this.healthStatus.set(config.name, true); // Assume healthy initially
+        console.log(`[ProviderManager] Successfully initialized provider ${config.name}`);
+      } catch (error) {
+        console.warn(`[ProviderManager] Failed to initialize provider ${config.name}:`, error);
+        this.healthStatus.set(config.name, false);
+      }
+    });
+    console.log('[ProviderManager] Provider initialization complete');
+  }
+
+  private async checkHealth(providerName: string): Promise<boolean> {
+    const lastCheck = this.lastHealthCheck.get(providerName) || 0;
+    const now = Date.now();
+
+    // Only check health every 30 seconds
+    if (now - lastCheck < 30000) {
+      return this.healthStatus.get(providerName) || false;
+    }
+
+    try {
+      const client = this.providers.get(providerName);
+      if (!client) {
+        console.warn(`[WalletAPI] Provider ${providerName} client not found`);
+        return false;
+      }
+
+      console.log(`[WalletAPI] Checking health for ${providerName} at ${client.defaults.baseURL}`);
+
+      // Try a simple health check based on provider type
+      if (providerName === 'local-rpc') {
+        // For local RPC, try a basic RPC call
+        await client.post('/', {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getblockcount',
+          params: []
+        });
+      } else if (providerName === 'nintondo') {
+        // For Nintondo, try a known working endpoint
+        console.log(`[WalletAPI] Trying ${providerName} /blocks/tip/height endpoint`);
+        await client.get('/blocks/tip/height').catch(async (blocksError) => {
+          console.log(`[WalletAPI] /blocks/tip/height failed, trying /address/test/stats for ${providerName}`, blocksError.message);
+          await client.get('/address/test/stats');
+        });
+      } else if (providerName === 'pepeblocks') {
+        // PepeBlocks might not have a working root endpoint, try a known working endpoint
+        console.log(`[WalletAPI] Trying PepeBlocks specific endpoint`);
+        await client.get('/api/v1/addresses/test').catch(async () => {
+          // If that fails, try the root anyway
+          console.log(`[WalletAPI] PepeBlocks specific endpoint failed, trying root /`);
+          await client.get('/');
+        });
+      } else if (providerName === 'pepindexer' || providerName === 'local-rpc') {
+        // For local services, assume they're not running and mark as unhealthy
+        console.log(`[WalletAPI] Skipping health check for local provider ${providerName}`);
+        return false;
+      } else if (providerName === 'nintondo-tokens' || providerName === 'nintondo-search') {
+        // For Nintondo sub-services, try a simple endpoint
+        console.log(`[WalletAPI] Trying root / endpoint for ${providerName}`);
+        await client.get('/');
+      } else {
+        // For other API providers, try the root endpoint
+        console.log(`[WalletAPI] Trying root / endpoint for ${providerName}`);
+        await client.get('/');
+      }
+
+      console.log(`[WalletAPI] Provider ${providerName} health check passed`);
+      this.healthStatus.set(providerName, true);
+      this.lastHealthCheck.set(providerName, now);
+      return true;
+    } catch (error) {
+      console.warn(`[WalletAPI] Provider ${providerName} health check failed:`, error.message || error);
+      this.healthStatus.set(providerName, false);
+      this.lastHealthCheck.set(providerName, now);
+      return false;
+    }
+  }
+
+  async executeWithFailover<T>(
+    operation: (client: AxiosInstance) => Promise<T>,
+    supportedChains: string[] = ['dogecoin']
+  ): Promise<T> {
+    const sortedProviders = PROVIDER_CONFIGS
+      .filter(config => config.supports.some(chain => supportedChains.includes(chain)))
+      .sort((a, b) => a.priority - b.priority);
+
+    console.log(`[ProviderManager] Trying providers in order:`, sortedProviders.map(p => p.name));
+
+    for (const config of sortedProviders) {
+      console.log(`[ProviderManager] Checking health for ${config.name}...`);
+      const isHealthy = await this.checkHealth(config.name);
+      console.log(`[ProviderManager] Provider ${config.name} health status:`, isHealthy);
+
+      if (isHealthy) {
+        try {
+          const client = this.providers.get(config.name);
+          if (client) {
+            console.log(`[ProviderManager] Executing operation with ${config.name}`);
+            return await operation(client);
+          } else {
+            console.warn(`[ProviderManager] No client found for ${config.name}`);
+          }
+        } catch (error) {
+          console.warn(`[ProviderManager] Provider ${config.name} operation failed:`, error);
+          this.healthStatus.set(config.name, false);
+        }
+      } else {
+        console.log(`[ProviderManager] Skipping unhealthy provider ${config.name}`);
+      }
+    }
+
+    console.error(`[WalletAPI] All providers are currently unavailable`);
+    throw new Error('All providers are currently unavailable');
+  }
+}
+
+export class WalletApiService {
+  store!: WalletApiStore;
+  private client: AxiosInstance;
+  private clientAddress = '';
+  private addressFlag = 0;
+  private currentEndpoint = '';
+  private providerManager: ProviderManager;
+
+  constructor() {
+    // Initialize with fallback configuration
+    this.client = axios.create({
+      baseURL: 'https://api.pepeblocks.com',
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    this.currentEndpoint = 'https://api.pepeblocks.com';
+    this.providerManager = new ProviderManager();
+  }
+
+  setEndpoints = async (endpoints: string[]) => {
+    // Use the first endpoint from the list
+    if (endpoints.length > 0) {
+      this.currentEndpoint = endpoints[0];
+      this.client.defaults.baseURL = this.currentEndpoint;
+      this.updateHeaders();
+    }
+  };
+
+  init = async () => {
+    this.store = await createPersistStore({
+      name: 'openapi', // migrated from openapi
+      template: {
+        deviceId: this.generateDeviceId()
+      }
+    });
+
+    const chainType = preferenceService.getChainType();
+    const chain = CHAINS_MAP[chainType];
+    this.currentEndpoint = chain.endpoints[0];
+
+    // Update client configuration
+    this.client.defaults.baseURL = this.currentEndpoint;
+
+    // Set common headers
+    this.updateHeaders();
+
+    if (!this.store.deviceId) {
+      this.store.deviceId = this.generateDeviceId();
+    }
+  };
+
+  setClientAddress = async (address: string, flag: number) => {
+    this.clientAddress = address;
+    this.addressFlag = flag;
+    this.updateHeaders();
+  };
+
+  updateHeaders = () => {
+    const headers: Record<string, string> = {
+      'x-client': 'Dojak Wallet',
+      'x-version': VERSION,
+      'x-channel': CHANNEL
+    };
+
+    if (this.store?.deviceId) {
+      headers['x-udid'] = this.store.deviceId;
+    }
+
+    if (this.clientAddress) {
+      headers['x-address'] = this.clientAddress;
+    }
+
+    Object.assign(this.client.defaults.headers, headers);
+  };
+
+  private generateDeviceId = (): string => {
+    return randomstring.generate(12);
+  };
+
+  // Expose the client for direct access to all API methods
+  getClient = (): AxiosInstance => {
+    return this.client;
+  };
+
+  // Proxy common methods for convenience with provider failover
+  get bitcoin() {
+    return {
+      getAddressBalance: (address: string) =>
+        this.providerManager.executeWithFailover(async (client) => {
+          if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+            // Nintondo address stats endpoint
+            const res = await client.get(`/address/${address}/stats`);
+            return {
+              confirmed: (res.data?.balance || 0) / 100000000, // Convert satoshis to DOGE
+              unconfirmed: 0
+            };
+          }
+          // Fallback for other providers
+          const res = await client.get(`/api/v1/address/${address}/balance`);
+          return res.data;
+        }),
+      getAddressBalanceV2: (address: string) =>
+        this.providerManager.executeWithFailover(async (client) => {
+          if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+            // Nintondo address stats endpoint
+            const res = await client.get(`/address/${address}/stats`);
+            const confirmedBalance = (res.data?.balance || 0) / 100000000; // Convert satoshis to DOGE
+            return {
+              availableBalance: confirmedBalance,
+              unavailableBalance: 0,
+              totalBalance: confirmedBalance
+            };
+          }
+          // Fallback for other providers
+          const res = await client.get(`/api/v1/address/${address}/balance`);
+          const confirmedBalance = res.data?.confirmed || 0;
+          const unconfirmedBalance = res.data?.unconfirmed || 0;
+          return {
+            availableBalance: confirmedBalance,
+            unavailableBalance: unconfirmedBalance,
+            totalBalance: confirmedBalance + unconfirmedBalance
+          };
+        }),
+      getAddressUtxo: (address: string) =>
+        this.providerManager.executeWithFailover(client => {
+          if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+            return client.get(`/api/v1/addresses/${address}/utxos`).then(res => res.data || []);
+          }
+          return client.get(`/api/v1/address/${address}/utxo`);
+        }),
+      getTx: (txid: string) =>
+        this.providerManager.executeWithFailover(client => {
+          if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+            return client.get(`/api/v1/transactions/${txid}`);
+          }
+          return client.get(`/api/v1/tx/${txid}`);
+        }),
+      pushTx: (rawtx: string) =>
+        this.providerManager.executeWithFailover(client => {
+          if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+            return client.post('/api/v1/transactions', { rawtx });
+          }
+          return client.post('/api/v1/tx', { rawtx });
+        }),
+    };
+  }
+
+  get inscriptions() {
+    return {
+      getAddressInscriptions: async (address: string, cursor?: string, size = 20) => {
+        return this.providerManager.executeWithFailover(async (client) => {
+          if (client.defaults.baseURL?.includes('pepe-mainnet-search.nintondo.io')) {
+            const res = await client.get(`/pub/collections/${address}`);
+            return {
+              list: (res.data?.inscriptions || []).slice(0, size),
+              total: res.data?.total || 0
+            };
+          } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+            const res = await client.get('/inscriptions/__data.json');
+            const allInscriptions = res.data?.inscriptions || [];
+            return {
+              list: allInscriptions.filter((insc: any) =>
+                insc.owner?.toLowerCase() === address.toLowerCase()
+              ).slice(0, size),
+              total: allInscriptions.length
+            };
+          }
+          const res = await client.get(`/api/v1/address/${address}/inscriptions?cursor=${cursor || 0}&size=${size}`);
+          return res.data;
+        });
+      },
+      getInscriptionInfo: async (inscriptionId: string) => {
+        return this.providerManager.executeWithFailover(async (client) => {
+          if (client.defaults.baseURL?.includes('pepe-mainnet-search.nintondo.io')) {
+            const res = await client.get(`/pub/${inscriptionId}/info`);
+            return res.data;
+          } else if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+            const res = await client.get(`/location/${inscriptionId}`);
+            return res.data;
+          }
+          const res = await client.get(`/api/v1/inscription/${inscriptionId}`);
+          return res.data;
+        });
+      },
+    };
+  }
+
+  get drc20() {
+    return {
+      getAddressTokenSummary: (address: string, cursor?: string, size = 20) =>
+        this.providerManager.executeWithFailover(async (client) => {
+          if (client.defaults.baseURL?.includes('pepe-mainnet-tokens.nintondo.io')) {
+            const res = await client.get(`/address/${address}/tokens?limit=${size || 20}`);
+            return {
+              list: res.data || [],
+              total: res.data?.length || 0
+            };
+          } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+            const res = await client.get(`/api/v1/addresses/${address}/drc20-tokens?limit=${size || 20}&offset=${cursor || 0}`);
+            return res.data;
+          }
+          const res = await client.get(`/api/v1/address/${address}/drc20?cursor=${cursor || 0}&size=${size || 20}`);
+          return res.data;
+        }),
+      getTokenInfo: (ticker: string) =>
+        this.providerManager.executeWithFailover(client => {
+          if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+            return client.get(`/api/v1/drc20-tokens/${ticker}`);
+          }
+          return client.get(`/api/v1/drc20/${ticker}`);
+        }),
+    };
+  }
+  get Charms() {
+    return {
+      getAddressCharms: async (address: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer Charms API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  // Get charms stats and collections for this address
+                  const [stats, collections] = await Promise.all([
+                    client.get('/charms/stats'),
+                    client.get(`/charms/collections/${address}`)
+                  ]);
+                  return {
+                    list: collections.collections || [],
+                    total: collections.total || 0,
+                    stats: stats
+                  };
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer Charms API failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback - charms not available
+              console.log('[WalletAPI] Charms not available in fallback provider');
+              return { list: [], total: 0 };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Charms API error:', error);
+          return { list: [], total: 0 };
+        }
+      },
+
+      getCharmInfo: async (charmsId: string) => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer Charms API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/charms/${charmsId}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer Charm info API failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback - charm info not available
+              console.log('[WalletAPI] Charm info not available in fallback provider');
+              return null;
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Charm info API error:', error);
+          return null;
+        }
+      },
+
+      getCharmCollectionList: async (address: string) => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer Charms API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/charms/collections/${address}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer Charm collections API failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback - charm collections not available
+              console.log('[WalletAPI] Charm collections not available in fallback provider');
+              return { list: [], total: 0 };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Charm collections API error:', error);
+          return { list: [], total: 0 };
+        }
+      },
+
+      getCharmCollectionItems: async (address: string, collectionId: string) => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer Charms API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/charms/collection/${collectionId}/items/${address}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer Charm collection items API failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback - charm collection items not available
+              console.log('[WalletAPI] Charm collection items not available in fallback provider');
+              return { list: [], total: 0 };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Charm collection items API error:', error);
+          return { list: [], total: 0 };
+        }
+      },
+
+      getCharmsByUtxo: async (utxo: string) => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer Charms API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/charms/utxo/${utxo}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer Charms by UTXO API failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback - charms by UTXO not available
+              console.log('[WalletAPI] Charms by UTXO not available in fallback provider');
+              return { list: [], total: 0 };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Charms by UTXO API error:', error);
+          return { list: [], total: 0 };
+        }
+      },
+
+      getCharmsByApp: async (app: string, limit = 100) => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer Charms API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/charms/app/${app}?limit=${limit}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer Charms by app API failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback - charms by app not available
+              console.log('[WalletAPI] Charms by app not available in fallback provider');
+              return { list: [], total: 0 };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Charms by app API error:', error);
+          return { list: [], total: 0 };
+        }
+      },
+
+      getCharmsStats: async () => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer Charms API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get('/charms/stats');
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer Charms stats API failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback - charms stats not available
+              console.log('[WalletAPI] Charms stats not available in fallback provider');
+              return { total_charms: 0, charms_by_app: {}, charms_by_collection: {} };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Charms stats API error:', error);
+          return { total_charms: 0, charms_by_app: {}, charms_by_collection: {} };
+        }
+      }
+    };
+  }
+  get cat() {
+    // TODO: Implement Dogecoin CAT service
+    throw new Error('CAT service not implemented for Dogecoin');
+  }
+  get market() {
+    // TODO: Implement Dogecoin marketplace service
+    return {
+      getBalance: async (address: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Use Nintondo for balance queries
+              if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+                const res = await client.get(`/address/${address}/stats`);
+                const balance = (res.data?.balance || 0) / 100000000;
+                return {
+                  confirmed: balance,
+                  unconfirmed: 0
+                };
+              } else {
+                // Fallback for other providers
+                const res = await client.get(`/api/v1/address/${address}/balance`);
+                return res.data;
+              }
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Market getBalance error:', error);
+          // Note: Toast notifications are handled at the UI level
+          return {
+            confirmed: 0,
+            unconfirmed: 0
+          };
+        }
+      },
+      getRecentListings: async () => {
+        return this.providerManager.executeWithFailover(client =>
+          client.get('/api/v1/marketplace/listings?limit=10').then(res => res.data?.list || [])
+        );
+      }
+    };
+  }
+  get domain() {
+    // TODO: Implement Dogecoin domain service
+    throw new Error('Domain service not implemented for Dogecoin');
+  }
+
+  get dns() {
+    return {
+      resolve: async (name: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/dns/resolve/${name}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer DNS resolve failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback to other providers - this might not be implemented
+              console.log('[WalletAPI] DNS resolve - using fallback provider');
+              return null;
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] DNS resolve error:', error);
+          return null;
+        }
+      },
+
+      reverseResolve: async (address: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/dns/reverse/${address}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer DNS reverse resolve failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback to other providers - this might not be implemented
+              console.log('[WalletAPI] DNS reverse resolve - using fallback provider');
+              return { domains: [] };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] DNS reverse resolve error:', error);
+          return { domains: [] };
+        }
+      },
+
+      getAvatar: async (name: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/dns/avatar/${name}`);
+                  return response.avatar;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer DNS avatar failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback to other providers
+              console.log('[WalletAPI] DNS avatar - using fallback provider');
+              return null;
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] DNS avatar error:', error);
+          return null;
+        }
+      },
+
+      getConfig: async (name: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/dns/config/${name}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer DNS config failed, falling back:', indexerError);
+                  throw indexerError;
+                }
+              }
+
+              // Fallback to other providers
+              console.log('[WalletAPI] DNS config - using fallback provider');
+              return null;
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] DNS config error:', error);
+          return null;
+        }
+      }
+    };
+  }
+  get utility() {
+    // TODO: Implement Dogecoin utility service
+    throw new Error('Utility service not implemented for Dogecoin');
+  }
+  get config() {
+    // TODO: Implement Dogecoin config service
+    return {
+      getWalletConfig: async () => {
+        // Return basic wallet config for Dogecoin
+        return {
+          network: 'dogecoin',
+          version: '1.0.0'
+        };
+      }
+    };
+  }
+
+  // Charms beaming functionality for cross-chain Charms token movement
+  get beam() {
+    return {
+      prepareBeam: async (params: {
+        asset: string; // Charms token identifier
+        fromChain: 'dogecoin';
+        toChain: 'bitcoin' | 'dogecoin' | 'litecoin';
+        amount: string;
+        sourceAddress: string;
+        destAddress: string;
+      }) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // For now, return a placeholder implementation
+              // In production, this would integrate with Charms libraries
+              console.log('[WalletAPI] Charms beam preparation requested:', params);
+
+              // Placeholder response structure - would be replaced with actual Charms integration
+              return {
+                beamId: `beam_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                status: 'prepared',
+                sourceChain: params.fromChain,
+                destChain: params.toChain,
+                asset: params.asset, // Charms token ID
+                amount: params.amount,
+                sourceAddress: params.sourceAddress,
+                destAddress: params.destAddress,
+                lockTxHex: null, // Would contain the transaction to lock Charms token on Dogecoin
+                proofBundle: null, // Would contain zkVM proof for verification
+                estimatedCompletion: Date.now() + 300000, // 5 minutes
+                canRetry: true
+              };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Charms beam preparation error:', error);
+          return {
+            error: 'Beam preparation failed',
+            details: error instanceof Error ? error.message : String(error)
+          };
+        }
+      },
+
+      executeBeam: async (beamId: string, signedTxHex: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              console.log('[WalletAPI] Beam execution requested:', { beamId, signedTxHex });
+
+              // Placeholder response - would broadcast the beam transaction
+              return {
+                beamId,
+                status: 'executing',
+                txid: `beam_tx_${beamId}`,
+                estimatedCompletion: Date.now() + 600000 // 10 minutes
+              };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Beam execution error:', error);
+          return {
+            error: 'Beam execution failed',
+            details: error instanceof Error ? error.message : String(error)
+          };
+        }
+      },
+
+      getBeamStatus: async (beamId: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              console.log('[WalletAPI] Beam status requested:', beamId);
+
+              // Placeholder response - would check beam status
+              return {
+                beamId,
+                status: 'completed',
+                lockTxid: `lock_${beamId}`,
+                beamTxid: `beam_${beamId}`,
+                completedAt: Date.now()
+              };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Beam status error:', error);
+          return {
+            error: 'Beam status check failed',
+            details: error instanceof Error ? error.message : String(error)
+          };
+        }
+      }
+    };
+  }
+
+  // Custom Dojak methods for pepindexer integration
+  get doginals() {
+    return {
+      getAddressDoginals: async (address: string, cursor?: string, size = 20) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer API first (highest priority)
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/address/${address}/inscriptions?limit=${size}${cursor ? `&cursor=${cursor}` : ''}`);
+                  // Transform indexer response to expected format with rich Doginal data
+                  const doginals = (response.inscriptions || []).map((inscription: any) => ({
+                    id: inscription.id,
+                    inscriptionId: inscription.id,
+                    content: inscription.content || '',
+                    contentType: inscription.content_type,
+                    timestamp: inscription.timestamp,
+                    block: inscription.block,
+                    rarity: this.calculateRarity(inscription.block),
+                    rarityScore: this.calculateRarityScore(inscription.block),
+                    owner: address,
+                    mediaType: inscription.media_type,
+                    contentLength: inscription.content_length,
+                    genesisTx: inscription.genesis_tx,
+                    output: inscription.output,
+                    offset: inscription.offset,
+                    collection: 'doginals'
+                  }));
+
+                  return {
+                    list: doginals,
+                    total: response.count || 0,
+                    cursor: response.cursor || null
+                  };
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer Doginals API failed, falling back:', indexerError);
+                  throw indexerError; // Let provider manager try next provider
+                }
+              }
+
+              // Fallback to other providers - use existing inscriptions API
+              const result = await client.inscriptions.getAddressInscriptions(address, cursor, size);
+              console.log('[WalletAPI] Doginals API - using fallback provider');
+              return result;
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Doginals API error:', error);
+          return { list: [], total: 0 };
+        }
+      },
+
+      getDoginal: async (id: string) => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/pepinal/${id}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer Doginal API failed, falling back:', indexerError);
+                  throw indexerError; // Let provider manager try next provider
+                }
+              }
+
+              // Fallback to other providers
+              return await client.inscriptions.getInscriptionInfo(id);
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Doginal info API error:', error);
+          return null;
+        }
+      },
+
+      createDoginalInscription: async (content: string, feeRate: number) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            client => client.inscriptions.createInscription({
+              content,
+              feeRate
+            }),
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Create pepinal API error:', error);
+          throw error;
+        }
+      }
+    };
+  }
+
+  get dunes() {
+    return {
+      getAddressDunes: async (address: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // For Dogecoin, dunes (runes) may not be implemented yet
+              // Try the DRC-20 API first as dunes might be implemented there
+              try {
+                let endpoint: string;
+                if (client.defaults.baseURL?.includes('pepe-mainnet-tokens.nintondo.io')) {
+                  endpoint = `/address/${address}/tokens`;
+                } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+                  endpoint = `/api/v1/addresses/${address}/drc20-tokens`;
+                } else {
+                  endpoint = `/api/v1/address/${address}/drc20`;
+                }
+                const response = await client.get(endpoint);
+                return response.data;
+              } catch (error) {
+                // DRC20 not supported by this provider
+                return { list: [], total: 0 };
+              }
+              console.log('[WalletAPI] Dunes not yet implemented for Dogecoin');
+              return { list: [], total: 0 };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Dunes API error:', error);
+          return { list: [], total: 0 };
+        }
+      },
+
+      getDuneInfo: async (duneId: string) => {
+        try {
+          // For Dogecoin, dune info may not be implemented yet
+          console.log('[WalletAPI] Dune info not yet implemented for Dogecoin');
+          return null;
+        } catch (error) {
+          console.error('[WalletAPI] Dune info API error:', error);
+          return null;
+        }
+      },
+
+      createDuneEtching: async (params: any) => {
+        throw new Error('Dune etching not yet implemented for Dogecoin');
+      }
+    };
+  }
+
+  get faucet() {
+    return {
+      claim: async (address: string, amount?: number) => {
+        try {
+          console.log(`[WalletAPI] Claiming ${amount || 0.01} testnet DOGE for ${address}`);
+
+          // Call the Dojak API backend server
+          const apiUrl = process.env.NODE_ENV === 'production'
+            ? 'https://api.dojak.io'
+            : 'http://localhost:3001';
+
+          const response = await axios.post(`${apiUrl}/api/v1/faucet/claim`, {
+            address: address,
+            amount: amount || 0.01
+          }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Client': 'Dojak Wallet'
+            },
+            timeout: 30000
+          });
+
+          if (response.data && response.data.success) {
+            console.log(`[WalletAPI] Faucet claim successful, txid: ${response.data.txid}`);
+
+            return {
+              success: true,
+              txid: response.data.txid,
+              amount: response.data.amount,
+              address: response.data.address,
+              message: response.data.message
+            };
+          } else {
+            throw new Error(response.data?.error || 'Faucet claim failed');
+          }
+        } catch (error: any) {
+          console.error('[WalletAPI] Faucet claim error:', error);
+
+          // Handle different error types
+          if (error.code === 'ECONNREFUSED') {
+            return {
+              success: false,
+              error: 'Cannot connect to Dojak API server. Make sure the backend is running.',
+              details: 'Backend server not available'
+            };
+          }
+
+          if (error.response?.data?.error) {
+            return {
+              success: false,
+              error: error.response.data.error,
+              details: error.response.data.error
+            };
+          }
+
+          return {
+            success: false,
+            error: error.message || 'Faucet claim failed',
+            details: error instanceof Error ? error.message : String(error)
+          };
+        }
+      }
+    };
+  }
+
+  get marketplace() {
+    return {
+      getListings: async (cursor?: string, size = 20, filters?: any) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer marketplace API first
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  let url = `/listings?limit=${size}`;
+                  if (cursor) url += `&cursor=${cursor}`;
+                  if (filters?.collection) url += `&collection=${filters.collection}`;
+                  if (filters?.rarity) url += `&rarity=${filters.rarity}`;
+
+                  const response = await client.get(url);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer marketplace listings API failed:', indexerError);
+                  // Don't throw here, let provider manager try next provider
+                }
+              }
+
+              // Fallback - no marketplace listings available
+              console.log('[WalletAPI] Marketplace listings - using fallback (empty)');
+              return {
+                list: [],
+                total: 0,
+                cursor: null
+              };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Marketplace listings API error:', error);
+          return {
+            list: [],
+            total: 0,
+            cursor: null
+          };
+        }
+      },
+
+      getListing: async (listingId: string) => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                const response = await client.get(`/listings/${listingId}`);
+                return response;
+              }
+              throw new Error('Listing details not available');
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Get listing API error:', error);
+          return null;
+        }
+      },
+
+      createListing: async (pepinalId: string, price: number, sellerAddress: string) => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                const response = await client.post('/list', {
+                  pepinal_id: pepinalId,
+                  price_pep: price,
+                  seller_addr: sellerAddress
+                });
+                return response;
+              }
+              throw new Error('Marketplace listing creation not available');
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Create listing API error:', error);
+          throw error;
+        }
+      },
+
+      buyListing: async (listingId: string, buyerAddress: string) => {
+        try {
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                const response = await client.post('/buy', {
+                  listing_id: listingId,
+                  buyer_addr: buyerAddress
+                });
+                return response;
+              }
+              throw new Error('Marketplace purchase not available');
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Buy listing API error:', error);
+          throw error;
+        }
+      },
+
+      getBalance: async (address: string) => {
+        try {
+          // Use provider manager for failover support
+          return await this.providerManager.executeWithFailover(
+            async (client) => {
+              // Try the pepindexer API first (highest priority)
+              if (this.currentEndpoint === 'http://localhost:3000') {
+                try {
+                  const response = await client.get(`/balance/${address}`);
+                  return response;
+                } catch (indexerError) {
+                  console.warn('[WalletAPI] Pepindexer balance API failed, falling back:', indexerError);
+                  throw indexerError; // Let provider manager try next provider
+                }
+              }
+
+              // Use Nintondo for balance queries
+              const [pepBalance, drc20Balance, dnsBalance] = await Promise.all([
+                (async () => {
+                  if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+                    const res = await client.get(`/address/${address}/stats`);
+                    const balance = (res.data?.balance || 0) / 100000000;
+                    return {
+                      confirmed: balance,
+                      unconfirmed: 0
+                    };
+                  } else {
+                    // Fallback for other providers
+                    const res = await client.get(`/api/v1/address/${address}/balance`);
+                    return res.data;
+                  }
+                })().catch((error) => {
+                  console.warn('[WalletAPI] Provider balance fetch failed:', client.defaults.baseURL, error.message);
+                  return { confirmed: 0, unconfirmed: 0 };
+                }),
+                (async () => {
+                  if (client.defaults.baseURL?.includes('pepe-mainnet-tokens.nintondo.io')) {
+                    const res = await client.get(`/address/${address}/tokens`);
+                    return { list: res.data || [], total: res.data?.length || 0 };
+                  } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+                    const res = await client.get(`/api/v1/addresses/${address}/drc20-tokens`);
+                    return res.data;
+                  } else {
+                    const res = await client.get(`/api/v1/address/${address}/drc20`);
+                    return res.data;
+                  }
+                })().catch(() => ({ list: [], total: 0 })),
+                // DNS domains not available in fallback providers
+                Promise.resolve([])
+              ]);
+
+              return {
+                pep: pepBalance.confirmed / 100000000, // Convert satoshis to DOGE
+                drc20: drc20Balance.list?.reduce((acc: any, token: any) => {
+                  acc[token.ticker] = token.amount;
+                  return acc;
+                }, {}) || {},
+                pepemaps: [],
+                dns: { legacy_domains: [], protocol_domains: [] },
+                dunes: {},
+                charms: { rarity: [], royalty: [] },
+                totals: {
+                  pepemaps: 0,
+                  dns_legacy: 0,
+                  dns_protocol: 0,
+                  dunes: 0
+                }
+              };
+            },
+            ['dogecoin']
+          );
+        } catch (error) {
+          console.error('[WalletAPI] Balance API error:', error);
+          // Note: Toast notifications are handled at the UI level
+          return {
+            pep: 0,
+            drc20: {},
+            pepemaps: [],
+            dns: { legacy_domains: [], protocol_domains: [] },
+            dunes: {},
+            charms: { rarity: [], royalty: [] },
+            totals: {
+              pepemaps: 0,
+              dns_legacy: 0,
+              dns_protocol: 0,
+              dunes: 0
+            }
+          };
+        }
+      }
+    };
+  }
+
+  // Helper methods for Doginal rarity calculation
+  private calculateRarity(block: number): 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' {
+    // Doginal Theory rarity based on block height and halving periods
+    if (block <= 791886 + 5040) return 'legendary'; // First ~1 week
+    if (block <= 791886 + 21000) return 'epic'; // First ~1 month
+    if (block <= 791886 + 210000) return 'rare'; // First ~1 year
+    if (block <= 791886 + 2100000) return 'uncommon'; // First ~10 years
+    return 'common';
+  }
+
+  private calculateRarityScore(block: number): number {
+    // Higher score for rarer Doginals (lower block numbers)
+    const baseBlock = 791886; // First Doginal block
+    const blocksSinceGenesis = block - baseBlock;
+
+    // Exponential decay for rarity score
+    return Math.max(0, Math.floor(10000 * Math.pow(0.999, blocksSinceGenesis)));
+  }
+
+  // Real-time updates using indexer's event streaming
+  get realtime() {
+    return {
+      subscribeToAddressEvents: (
+        address: string,
+        onEvent: (event: any) => void,
+        onError?: (error: any) => void
+      ) => {
+        // For now, implement polling-based updates
+        // In production, this would connect to WebSocket/SSE
+        const pollInterval = 30000; // 30 seconds
+        let isSubscribed = true;
+
+        const pollForUpdates = async () => {
+          if (!isSubscribed) return;
+
+          try {
+            // Poll for new balance data
+            const balance = await this.providerManager.executeWithFailover(async (client) => {
+              if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+                const res = await client.get(`/address/${address}/stats`);
+                return {
+                  pep: (res.data?.balance || 0) / 100000000, // Convert satoshis to DOGE
+                  drc20: {},
+                  pepemaps: [],
+                  dns: { legacy_domains: [], protocol_domains: [] },
+                  dunes: {},
+                  charms: { rarity: [], royalty: [] },
+                  totals: { pepemaps: 0, dns_legacy: 0, dns_protocol: 0, dunes: 0 }
+                };
+              } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+                const res = await client.get(`/api/v1/addresses/${address}`);
+                return {
+                  pep: (res.data?.balance || 0) / 100000000, // Convert satoshis to DOGE
+                  drc20: {},
+                  pepemaps: [],
+                  dns: { legacy_domains: [], protocol_domains: [] },
+                  dunes: {},
+                  charms: { rarity: [], royalty: [] },
+                  totals: { pepemaps: 0, dns_legacy: 0, dns_protocol: 0, dunes: 0 }
+                };
+              }
+              const res = await client.get(`/api/v1/address/${address}/balance`);
+              return res.data;
+            }).catch(() => ({ pep: 0, drc20: {}, pepemaps: [], dns: { legacy_domains: [], protocol_domains: [] }, dunes: {}, charms: { rarity: [], royalty: [] }, totals: { pepemaps: 0, dns_legacy: 0, dns_protocol: 0, dunes: 0 } }));
+
+            // Poll for new inscriptions
+            const inscriptions = await this.providerManager.executeWithFailover(client => {
+              if (client.defaults.baseURL?.includes('pepe-mainnet-search.nintondo.io')) {
+                // Nintondo search API for collections (inscriptions owned by address)
+                return client.get(`/pub/collections/${address}`).then(res => ({
+                  list: (res.data?.inscriptions || []).slice(0, 20)
+                }));
+              } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+                // Use PepeBlocks inscriptions API
+                return client.get('/inscriptions/__data.json').then(res => {
+                  // Filter inscriptions by address if the API doesn't support address filtering
+                  const allInscriptions = res.data?.inscriptions || [];
+                  return {
+                    list: allInscriptions.filter((insc: any) =>
+                      insc.owner?.toLowerCase() === address.toLowerCase()
+                    ).slice(0, 20) // Limit to recent 20
+                  };
+                });
+              }
+              return client.get(`/api/v1/address/${address}/doginals`).then(res => res.data);
+            }).catch(() => ({ list: [] }));
+
+            // Create a synthetic event
+            const event = {
+              type: 'address_update',
+              address,
+              balance,
+              inscriptions: inscriptions.list,
+              timestamp: Date.now()
+            };
+
+            if (onEvent) onEvent(event);
+          } catch (error) {
+            console.error('[WalletAPI] Real-time poll error:', error);
+            if (onError) onError(error);
+          }
+
+          // Schedule next poll
+          if (isSubscribed) {
+            setTimeout(pollForUpdates, pollInterval);
+          }
+        };
+
+        // Start polling
+        setTimeout(pollForUpdates, 1000); // Start after 1 second
+
+        // Return unsubscribe function
+        return () => {
+          isSubscribed = false;
+        };
+      },
+
+      subscribeToMarketplaceEvents: (
+        onEvent: (event: any) => void,
+        onError?: (error: any) => void
+      ) => {
+        // Marketplace event polling
+        const pollInterval = 60000; // 1 minute
+        let isSubscribed = true;
+
+        const pollForMarketplaceUpdates = async () => {
+          if (!isSubscribed) return;
+
+          try {
+            // Poll for new marketplace listings
+            const listings = await this.providerManager.executeWithFailover(client => {
+              if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+                // PepeBlocks might not have marketplace yet, return empty
+                return Promise.resolve([]);
+              }
+              return client.get('/api/v1/marketplace/listings?limit=10').then(res => res.data?.list || []);
+            }).catch(() => []);
+
+            if (listings && listings.length > 0) {
+              const event = {
+                type: 'marketplace_update',
+                listings,
+                timestamp: Date.now()
+              };
+
+              if (onEvent) onEvent(event);
+            }
+          } catch (error) {
+            console.error('[WalletAPI] Marketplace polling error:', error);
+            if (onError) onError(error);
+          }
+
+          // Schedule next poll
+          if (isSubscribed) {
+            setTimeout(pollForMarketplaceUpdates, pollInterval);
+          }
+        };
+
+        // Start polling
+        setTimeout(pollForMarketplaceUpdates, 2000); // Start after 2 seconds
+
+        // Return unsubscribe function
+        return () => {
+          isSubscribed = false;
+        };
+      },
+
+      subscribeToNewBlocks: (
+        onEvent: (event: any) => void,
+        onError?: (error: any) => void
+      ) => {
+        // New blocks polling
+        const pollInterval = 60000; // 1 minute
+        let isSubscribed = true;
+        let lastBlockHeight = 0;
+
+        const pollForNewBlocks = async () => {
+          if (!isSubscribed) return;
+
+          try {
+            // Poll for new block height
+            const blockInfo = await this.providerManager.executeWithFailover(client => {
+              if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+                // Nintondo API for block info
+                return client.get('/blocks/tip/height').then(res => ({
+                  height: res.data?.height || res.data || 0,
+                  hash: res.data?.hash || ''
+                }));
+              } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
+                // PepeBlocks might not have block height API, return empty
+                return Promise.resolve({ height: 0, hash: '' });
+              }
+              return client.get('/api/v1/blocks/tip').then(res => res.data);
+            }).catch(() => ({ height: 0, hash: '' }));
+
+            if (blockInfo.height > lastBlockHeight && lastBlockHeight > 0) {
+              const event = {
+                type: 'new_block',
+                blockHeight: blockInfo.height,
+                blockHash: blockInfo.hash,
+                timestamp: Date.now()
+              };
+
+              if (onEvent) onEvent(event);
+            }
+
+            lastBlockHeight = Math.max(lastBlockHeight, blockInfo.height);
+          } catch (error) {
+            console.error('[WalletAPI] New blocks polling error:', error);
+            if (onError) onError(error);
+          }
+
+          // Schedule next poll
+          if (isSubscribed) {
+            setTimeout(pollForNewBlocks, pollInterval);
+          }
+        };
+
+        // Start polling
+        setTimeout(pollForNewBlocks, 3000); // Start after 3 seconds
+
+        // Return unsubscribe function
+        return () => {
+          isSubscribed = false;
+        };
+      }
+    };
+  }
+}
+
+// Create and export singleton instance
+const walletApiService = new WalletApiService();
+
+export { walletApiService };
+export default walletApiService;
+
+

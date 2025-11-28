@@ -1,0 +1,297 @@
+@import url('./font.css');
+.popover-container {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+iframe {
+  overflow-clip-margin: content-box !important;
+  border-width: 0px;
+  border-style: inset;
+  border-color: initial;
+  border-image: initial;
+  overflow: clip !important;
+}
+
+.ant-checkbox-inner {
+  width: 15px !important;
+  height: 15px !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+  border-width: 1px !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.ant-checkbox {
+  width: 15px !important;
+  height: 15px !important;
+
+  background-color: #383535 !important;
+}
+
+.ant-checkbox-checked {
+  background-color: #ffd700 !important;
+}
+
+.ant-switch {
+  background-color: #6a6868 !important;
+}
+
+.ant-switch {
+  &.ant-switch-checked {
+    background-color: #ffd700 !important;
+  }
+}
+
+.custom-switch {
+  &.ant-switch-checked {
+    background-color: #ffd700 !important;
+  }
+  
+  .ant-switch-handle::before {
+    background-color: #FFFFFF !important;
+  }
+}
+
+div {
+  border: 0px solid;
+}
+
+::-webkit-scrollbar {
+  width: 0px;
+  height: 2px;
+}
+
+// For scrollbar
+::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0);
+}
+
+::-webkit-scrollbar-track {
+  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.1) inset;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.rc-virtual-list-scrollbar {
+  width: 6px !important;
+}
+.rc-virtual-list-scrollbar-thumb {
+  border-radius: 3px;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+  background: #4f4d4d !important;
+}
+
+.ant-tooltip {
+  max-width: 300px !important;
+}
+
+// SidePanelExpand tooltip arrow position
+.side-panel-expand-tooltip .ant-tooltip-arrow {
+  left: auto !important;
+  right: 12px !important;
+}
+
+.ant-tag {
+  background-clip: unset !important;
+
+  &.ant-tag-orange {
+    -webkit-text-fill-color: orange !important;
+  }
+}
+
+// MergeCAT20Screen
+.ant-slider-rail {
+  background-color: #6a6868 !important;
+  height: 10px !important;
+}
+
+.ant-slider-track {
+  background: linear-gradient(103.92deg, #ffd700 0%, #ffed4e 100%) !important;
+  height: 10px !important;
+}
+
+.ant-slider-step {
+  height: 10px !important;
+}
+
+.ant-slider-handle {
+  margin-top: -3px !important;
+}
+
+/* === DOJAK FROG GOD THEME 2025 - 100% STABLE === */
+
+/* Extension popup layout - exact 345x600 dimensions */
+.app, .popup-container, .main-container {
+  width: 345px !important;
+  height: 600px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: transparent !important;
+}
+
+/* Main app background - layered so it never breaks */
+.app-background,
+body,
+html,
+#root {
+  background: #0A1F15 !important; /* Deep swamp base */
+}
+
+/* The actual gradient - applied only to the dedicated gradient div (UniSat already has one) */
+.wallet-gradient-bg,
+.app-gradient,
+.background-gradient,
+.gradient-bg {
+  background: linear-gradient(103.92deg, #FFD700 0%, #DAA520 100%) !important;
+  background-size: cover !important;
+  position: fixed !important;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -1;
+  opacity: 0.94;
+}
+
+/* Dark overlay cards - swamp fog feel */
+.card,
+.modal-content,
+.wallet-card,
+.tab-content {
+  background: rgba(47, 27, 20, 0.88) !important;
+  border: 1px solid #FFD700 !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Primary buttons - glowing Pepe green */
+.primary-btn,
+.confirm-btn,
+.stake-button,
+.send-button,
+.buy-button {
+  background: linear-gradient(90deg, #FFD700, #F4A460) !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5) !important;
+  border: none !important;
+}
+
+/* Selected buttons stay readable on neon backgrounds */
+.ant-btn-primary,
+.ant-btn-primary:focus,
+.ant-btn-primary:hover {
+  color: #000 !important;
+}
+
+.ant-radio-button-wrapper-checked,
+.ant-segmented-item-selected,
+.ant-switch-checked {
+  background: linear-gradient(90deg, #FFD700, #F4A460) !important;
+  color: #000 !important;
+  border-color: #F4A460 !important;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4) inset;
+}
+
+.primary-btn:hover,
+.confirm-btn:hover {
+  background: linear-gradient(90deg, #FFE55C, #FFA500) !important;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.8) !important;
+}
+
+/* Active tab indicator */
+.tab-active,
+.active-tab-indicator {
+  border-bottom: 3px solid #FFD700 !important;
+  color: #FFD700 !important;
+}
+
+/* Accent text (balances, prices, etc.) */
+.text-success,
+.balance-positive,
+.price-up {
+  color: #FFD700 !important;
+}
+
+/* Headers & titles */
+h1, h2, h3, .title {
+  color: #FFE55C !important;
+}
+
+/* Thinner header styling */
+.header-container, .header {
+  height: 48px !important;
+  min-height: 48px !important;
+}
+
+/* Breathing room for onboarding steps */
+.ant-steps {
+  padding: 8px 4px 14px !important;
+}
+
+.ant-steps-item-title {
+  color: #FFF8DC !important;
+  letter-spacing: 0.2px;
+}
+
+/* Back button centering in thinner header */
+.back-button, .header .back-button {
+  position: relative !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* Onboarding / Welcome screen full bleed */
+.onboarding-container, .welcome-screen, .create-wallet-screen {
+  width: 345px !important;
+  height: 600px !important;
+  padding: 60px 24px 40px !important;
+  background: transparent !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.dojak-logo {
+  width: 140px !important;
+  margin-bottom: 32px !important;
+  filter: drop-shadow(0 0 20px #FFD700);
+}
+
+.create-wallet-btn {
+  width: 280px !important;
+  background: linear-gradient(90deg, #FFD700, #F4A460) !important;
+  color: black !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  border-radius: 20px !important;
+  height: 56px !important;
+  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.5) !important;
+}
+
+.welcome-title {
+  font-size: 28px !important;
+  color: #FFE55C !important;
+  text-shadow: 0 0 15px #FFD700;
+}
+
+/* Welcome screen logo - intrinsic size */
+.welcome-screen img[src*="dojak-logo"],
+.dojak-logo img,
+img[alt*="dojak"] {
+  width: auto !important;
+  height: auto !important;
+  max-width: 200px !important; /* Reasonable max size for popup */
+}
