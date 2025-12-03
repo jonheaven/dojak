@@ -47,7 +47,7 @@ export function FeeRateIcon() {
   } else if (feeRate > 20) {
     color = 'yellow';
   } else if (feeRate > 0) {
-    color = 'green';
+    color = 'yellow';
   }
   return (
     <Card

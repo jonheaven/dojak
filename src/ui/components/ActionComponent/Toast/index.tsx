@@ -28,7 +28,7 @@ const $viewPresets = {
   }) as CSSProperties,
 
   success: Object.assign({}, $baseViewStyle, {
-    backgroundColor: colors.green
+    backgroundColor: colors.primary
   }) as CSSProperties,
 
   error: Object.assign({}, $baseViewStyle, {

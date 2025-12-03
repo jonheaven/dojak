@@ -549,12 +549,6 @@
   "address": {
     "message": "Adresse"
   },
-  "send_cat20_is_not_supported_for_keystone_yet": {
-    "message": "L'envoi de CAT20 n'est pas encore pris en charge pour Keystone"
-  },
-  "send_cat20": {
-    "message": "Envoyer CAT20"
-  },
   "to_send_a_larger_amount_please_merge_your_utxos_to_increase_the_available_balance": {
     "message": "Pour envoyer un montant plus important, veuillez fusionner vos UTXOs pour augmenter le solde disponible."
   },
@@ -569,9 +563,6 @@
   },
   "retry_in_10s": {
     "message": "Réessayer dans 10s"
-  },
-  "merge_utxos_for_cat20_asset": {
-    "message": "Fusionner les UTXOs pour l'Actif CAT20"
   },
   "you_need_at_least_2_utxos_to_merge": {
     "message": "Vous avez besoin d'au moins 2 UTXOs pour fusionner"
@@ -1900,10 +1891,10 @@
     "message": "Personnalisé"
   },
   "legacy_address_warning": {
-    "message": "Il n'est pas recommandé d'utiliser des adresses héritées, car elles peuvent entraîner des frais de transaction plus élevés ou un verrouillage non intentionnel de CAT20."
+    "message": "Il n'est pas recommandé d'utiliser des adresses héritées, car elles peuvent entraîner des frais de transaction plus élevés "
   },
   "legacy_address_warning_2": {
-    "message": "Il n'est pas recommandé d'envoyer des transactions à des adresses héritées, car cela peut entraîner le dépensin non intentionnel de CAT20."
+    "message": "Il n'est pas recommandé d'envoyer des transactions à des adresses héritées, car cela peut entraîner "
   },
   "slow": {
     "message": "Lent"
@@ -2053,10 +2044,10 @@
     "message": "environ 30 secondes"
   },
   "legacy_address_warning_3": {
-    "message": "Il n'est pas recommandé d'utiliser des adresses héritées, car elles peuvent entraîner des frais de transaction plus élevés ou un verrouillage non intentionnel de CAT20."
+    "message": "Il n'est pas recommandé d'utiliser des adresses héritées, car elles peuvent entraîner des frais de transaction plus élevés "
   },
   "legacy_address_warning_4": {
-    "message": "Il n'est pas recommandé d'envoyer des transactions à des adresses héritées, car cela peut entraîner le dépensin non intentionnel de CAT20."
+    "message": "Il n'est pas recommandé d'envoyer des transactions à des adresses héritées, car cela peut entraîner "
   },
   "unavailable_tooltip": {
     "message": "Si votre solde affiche comme non disponible, cela peut être dû au fait que vos UTXOs sont verrouillés en raison de l'inscription, du rune, des actifs drc-20 ou d'être non confirmés. Dans la plupart des cas, vous pouvez utiliser notre outil de gestion des UTXOs pour déverrouiller ces UTXOs et les rendre dépensables à nouveau."

@@ -58,6 +58,15 @@ export const getSettingsList = (): SettingsItemType[] => [
     icon: 'advance'
   },
   {
+    label: t('theme'),
+    value: '',
+    desc: '',
+    action: SettingsAction.THEME,
+    route: '',
+    right: false,
+    icon: 'theme'
+  },
+  {
     label: '',
     value: '',
     desc: '',

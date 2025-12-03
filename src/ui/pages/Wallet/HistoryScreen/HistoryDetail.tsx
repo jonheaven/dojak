@@ -31,7 +31,7 @@ export function HistoryDetail({ detail, close }: HistoryDetailProps) {
             {detail.confirmations > 0 ? (
               <>
                 <Icon icon={'success'} size={40} />
-                <Text text={t('transaction_success')} color={'green'} />
+                <Text text={t('transaction_success')} color={'text'} />
               </>
             ) : (
               <>

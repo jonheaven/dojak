@@ -6,6 +6,7 @@ export enum SettingsAction {
   CONTACTS = 'contacts',
   CONNECTED_SITES = 'connected-sites',
   NETWORK_TYPE = 'networkType',
+  THEME = 'theme',
   EXPAND_VIEW = 'expand-view',
   LOCK_WALLET = 'lock-wallet',
   MANAGE_WALLET = 'manage-wallet',

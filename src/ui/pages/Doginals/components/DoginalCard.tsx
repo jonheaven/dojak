@@ -58,7 +58,7 @@ export const DoginalCard: React.FC<DoginalCardProps> = ({ pepinal, onRefresh }) 
               <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-60 text-white p-2 rounded">
                 <div className="font-semibold">{insights.vepe.caption}</div>
                 {insights.vepe.hashtags && insights.vepe.hashtags.length > 0 && (
-                  <div className="text-xs text-green-300">#{insights.vepe.hashtags.join(' #')}</div>
+                  <div className="text-xs text-yellow-300">#{insights.vepe.hashtags.join(' #')}</div>
                 )}
                 {insights.vepe.location && <div className="text-xs text-gray-200">📍 {insights.vepe.location}</div>}
               </div>
@@ -82,7 +82,7 @@ export const DoginalCard: React.FC<DoginalCardProps> = ({ pepinal, onRefresh }) 
         );
       case 'text':
         return (
-          <pre className="text-xs text-green-200 whitespace-pre-wrap max-h-48 overflow-auto w-full text-left">
+          <pre className="text-xs text-yellow-200 whitespace-pre-wrap max-h-48 overflow-auto w-full text-left">
             {displaySource.content}
           </pre>
         );

@@ -6,8 +6,6 @@ import { ConnectedSite } from '@/background/service/permission';
 import { AddressFlagType, ChainType } from '@/shared/constant';
 import {
   Account,
-  AddressCAT20TokenSummary,
-  AddressCAT20UtxoSummary,
   AddressCAT721CollectionSummary,
   AddressCharmsTokenSummary,
   AddressDunesTokenSummary,
@@ -17,8 +15,6 @@ import {
   AppSummary,
   BitcoinBalance,
   BitcoinBalanceV2,
-  CAT20Balance,
-  CAT20MergeOrder,
   CAT721Balance,
   CharmsBalance,
   CharmsCollection,
@@ -273,7 +269,6 @@ export interface WalletController {
   getCoinPrice(): Promise<CoinPrice>;
   getDrc20sPrice(ticks: string[]): Promise<{ [tick: string]: TickPriceItem }>;
   getDunesPrice(ticks: string[]): Promise<{ [tick: string]: TickPriceItem }>;
-  getCAT20sPrice(tokenIds: string[]): Promise<{ [tokenId: string]: TickPriceItem }>;
   getCharmsPrice(charmsid: string[]): Promise<{ [tick: string]: TickPriceItem }>;
 
   setEditingKeyring(keyringIndex: number): Promise<void>;
@@ -426,52 +421,13 @@ export interface WalletController {
   getDeveloperMode(): Promise<boolean>;
   setDeveloperMode(developerMode: boolean): Promise<void>;
 
-  getCAT20List(
-    version: 'v1' | 'v2',
-    address: string,
-    currentPage: number,
-    pageSize: number
-  ): Promise<{ currentPage: number; pageSize: number; total: number; list: CAT20Balance[] }>;
+  getTheme(): Promise<'light' | 'dark'>;
+  setTheme(theme: 'light' | 'dark'): Promise<void>;
 
-  getAddressCAT20TokenSummary(
-    version: 'v1' | 'v2',
-    address: string,
-    tokenId: string
-  ): Promise<AddressCAT20TokenSummary>;
 
-  getAddressCAT20UtxoSummary(version: 'v1' | 'v2', address: string, tokenId: string): Promise<AddressCAT20UtxoSummary>;
 
-  transferCAT20Step1(
-    version: 'v1' | 'v2',
-    to: string,
-    tokenId: string,
-    tokenAmount: string,
-    feeRate: number
-  ): Promise<{ id: string; commitTx: string; toSignInputs: UserToSignInput[]; feeRate: number }>;
-  transferCAT20Step2(
-    version: 'v1' | 'v2',
-    transferId: string,
-    commitTx: string,
-    toSignInputs: UserToSignInput[]
-  ): Promise<{ revealTx: string; toSignInputs: UserToSignInput[] }>;
-  transferCAT20Step3(
-    version: 'v1' | 'v2',
-    transferId: string,
-    revealTx: string,
-    toSignInputs: UserToSignInput[]
-  ): Promise<{ txid: string }>;
 
-  mergeCAT20Prepare(
-    version: 'v1' | 'v2',
-    tokenId: string,
-    utxoCount: number,
-    feeRate: number
-  ): Promise<CAT20MergeOrder>;
-  transferCAT20Step1ByMerge(
-    version: 'v1' | 'v2',
-    mergeId: string
-  ): Promise<{ id: string; commitTx: string; toSignInputs: UserToSignInput[]; feeRate: number }>;
-  getMergeCAT20Status(version: 'v1' | 'v2', mergeId: string): Promise<any>;
+
 
   getAppList(): Promise<{ tab: string; items: AppInfo[] }[]>;
   getBannerList(): Promise<{ id: string; img: string; link: string }[]>;

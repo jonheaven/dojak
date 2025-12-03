@@ -110,7 +110,6 @@ div {
   }
 }
 
-// MergeCAT20Screen
 .ant-slider-rail {
   background-color: #6a6868 !important;
   height: 10px !important;
@@ -143,12 +142,79 @@ div {
   background: transparent !important;
 }
 
-/* Main app background - layered so it never breaks */
+/* Theme-aware CSS custom properties */
+:root {
+  --theme-background: #ffffff;
+  --theme-surface: #f8f9fa;
+  --theme-card: rgba(255, 255, 255, 0.95);
+  --theme-text: #000000;
+  --theme-text-secondary: #495361;
+  --theme-text-dim: #A2A4AA;
+  --theme-border: rgba(0, 0, 0, 0.1);
+  --theme-border2: rgba(0, 0, 0, 0.05);
+  --theme-line: rgba(0, 0, 0, 0.1);
+  --theme-line2: rgba(0, 0, 0, 0.05);
+  --theme-primary: #ffd700;
+  --theme-primary-hover: #ffed4e;
+  --theme-success: #ffd700;
+  --theme-success-light: #ffed4e;
+  --theme-error: #ED334B;
+  --theme-danger: rgba(237, 51, 75, 0.9);
+  --theme-warning: #FF7B21;
+  --theme-value-up: #ffd700;
+  --theme-value-down: #BF3F4D;
+  --theme-ticker: #ffd700;
+  --theme-ticker2: rgba(255, 215, 0, 0.85);
+  --theme-drc20-deploy: #fff8dc;
+  --theme-drc20-transfer: #ffed4e;
+  --theme-drc20-transfer-selected: #ffd700;
+  --theme-drc20-other: #f5f5dc;
+  --theme-bg2: #f8f9fa;
+  --theme-bg3: #e9ecef;
+  --theme-bg4: #dee2e6;
+  --theme-search-bar-bg: #f8f9fa;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --theme-background: #000000;
+  --theme-surface: #1a1a1a;
+  --theme-card: rgba(47, 27, 20, 0.88);
+  --theme-text: #ffffff;
+  --theme-text-secondary: #ffd700;
+  --theme-text-dim: #ffd700;
+  --theme-border: rgba(255,255,255,0.04);
+  --theme-border2: rgba(255, 255, 255, 0.1);
+  --theme-line: rgba(255,255,255,0.15);
+  --theme-line2: rgba(255,255,255,0.3);
+  --theme-primary: #ffd700;
+  --theme-primary-hover: #ffed4e;
+  --theme-success: #ffd700;
+  --theme-success-light: #ffed4e;
+  --theme-error: #ED334B;
+  --theme-danger: rgba(237, 51, 75, 0.9);
+  --theme-warning: #FF7B21;
+  --theme-value-up: #ffd700;
+  --theme-value-down: #BF3F4D;
+  --theme-ticker: #ffd700;
+  --theme-ticker2: rgba(255, 215, 0, 0.85);
+  --theme-drc20-deploy: #2a2626;
+  --theme-drc20-transfer: #3a3526;
+  --theme-drc20-transfer-selected: #ffd700;
+  --theme-drc20-other: #2a2626;
+  --theme-bg2: #1a1a1a;
+  --theme-bg3: #2a2626;
+  --theme-bg4: #383535;
+  --theme-search-bar-bg: #1E1F24;
+}
+
+/* Main app background - theme-aware */
 .app-background,
 body,
 html,
 #root {
-  background: #0A1F15 !important; /* Deep swamp base */
+  background: var(--theme-background) !important;
+  color: var(--theme-text) !important;
 }
 
 /* The actual gradient - applied only to the dedicated gradient div (UniSat already has one) */
@@ -164,24 +230,24 @@ html,
   opacity: 0.94;
 }
 
-/* Dark overlay cards - swamp fog feel */
+/* Theme-aware overlay cards */
 .card,
 .modal-content,
 .wallet-card,
 .tab-content {
-  background: rgba(47, 27, 20, 0.88) !important;
-  border: 1px solid #FFD700 !important;
+  background: var(--theme-card) !important;
+  border: 1px solid var(--theme-primary) !important;
   backdrop-filter: blur(10px);
 }
 
-/* Primary buttons - glowing Pepe green */
+/* Primary buttons - theme-aware yellow-gold */
 .primary-btn,
 .confirm-btn,
 .stake-button,
 .send-button,
 .buy-button {
-  background: linear-gradient(90deg, #FFD700, #F4A460) !important;
-  color: #000 !important;
+  background: linear-gradient(90deg, var(--theme-primary), #F4A460) !important;
+  color: var(--theme-background) !important;
   font-weight: 700 !important;
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.5) !important;
   border: none !important;
@@ -191,14 +257,14 @@ html,
 .ant-btn-primary,
 .ant-btn-primary:focus,
 .ant-btn-primary:hover {
-  color: #000 !important;
+  color: var(--theme-background) !important;
 }
 
 .ant-radio-button-wrapper-checked,
 .ant-segmented-item-selected,
 .ant-switch-checked {
-  background: linear-gradient(90deg, #FFD700, #F4A460) !important;
-  color: #000 !important;
+  background: linear-gradient(90deg, var(--theme-primary), #F4A460) !important;
+  color: var(--theme-background) !important;
   border-color: #F4A460 !important;
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.4) inset;
 }
@@ -220,7 +286,7 @@ html,
 .text-success,
 .balance-positive,
 .price-up {
-  color: #FFD700 !important;
+  color: var(--theme-success) !important;
 }
 
 /* Headers & titles */
@@ -267,13 +333,13 @@ h1, h2, h3, .title {
 .dojak-logo {
   width: 140px !important;
   margin-bottom: 32px !important;
-  filter: drop-shadow(0 0 20px #FFD700);
+  filter: drop-shadow(0 0 20px var(--theme-primary));
 }
 
 .create-wallet-btn {
   width: 280px !important;
-  background: linear-gradient(90deg, #FFD700, #F4A460) !important;
-  color: black !important;
+  background: linear-gradient(90deg, var(--theme-primary), #F4A460) !important;
+  color: var(--theme-background) !important;
   font-size: 18px !important;
   font-weight: bold !important;
   border-radius: 20px !important;
@@ -284,7 +350,7 @@ h1, h2, h3, .title {
 .welcome-title {
   font-size: 28px !important;
   color: #FFE55C !important;
-  text-shadow: 0 0 15px #FFD700;
+  text-shadow: 0 0 15px var(--theme-primary);
 }
 
 /* Welcome screen logo - intrinsic size */

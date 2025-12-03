@@ -443,6 +443,15 @@
   "settings": {
     "message": "Settings"
   },
+  "theme": {
+    "message": "Theme"
+  },
+  "light": {
+    "message": "Light"
+  },
+  "dark": {
+    "message": "Dark"
+  },
   "the_wallet_currently_uses_a_custom_hd_path_and_does_not_support_switching_address_types": {
     "message": "The wallet currently uses a custom HD path and does not support switching address types."
   },
@@ -551,12 +560,6 @@
   "address": {
     "message": "Address"
   },
-  "send_cat20_is_not_supported_for_keystone_yet": {
-    "message": "Send CAT20 is not supported for Keystone yet"
-  },
-  "send_cat20": {
-    "message": "Send CAT20"
-  },
   "to_send_a_larger_amount_please_merge_your_utxos_to_increase_the_available_balance": {
     "message": "To send a larger amount, please merge your UTXOs to increase the available balance."
   },
@@ -571,9 +574,6 @@
   },
   "retry_in_10s": {
     "message": "Retry in 10s"
-  },
-  "merge_utxos_for_cat20_asset": {
-    "message": "Merge UTXOs for CAT20 Asset"
   },
   "you_need_at_least_2_utxos_to_merge": {
     "message": "You need at least 2 UTXOs to merge"
@@ -1911,10 +1911,10 @@
     "message": "Custom"
   },
   "legacy_address_warning": {
-    "message": "It is not recommended to use legacy addresses, as they may lead to higher transaction fees or the unintended lock-up of CAT20 balances."
+    "message": "It is not recommended to use legacy addresses, as they may lead to higher transaction fees."
   },
   "legacy_address_warning_2": {
-    "message": "It is not recommended to send transactions to legacy addresses, as this may result in the unintended spending of CAT20 balances."
+    "message": "It is not recommended to send transactions to legacy addresses."
   },
   "slow": {
     "message": "Slow"
@@ -2064,10 +2064,10 @@
     "message": "about 30 seconds"
   },
   "legacy_address_warning_3": {
-    "message": "It is not recommended to use legacy addresses, as they may lead to higher transaction fees or the unintended lock-up of CAT20 balances."
+    "message": "It is not recommended to use legacy addresses, as they may lead to higher transaction fees "
   },
   "legacy_address_warning_4": {
-    "message": "It is not recommended to send transactions to legacy addresses, as this may result in the unintended spending of CAT20 balances."
+    "message": "It is not recommended to send transactions to legacy addresses, as this may result in "
   },
   "unavailable_tooltip": {
     "message": "If your balance shows as unavailable, it may be because your UTXOs are locked due to containing inscriptions, dunes, drc-20 assets, or being unconfirmed. In most cases, you can use our UTXO Management Tool to unlock these UTXOs and make them spendable again."

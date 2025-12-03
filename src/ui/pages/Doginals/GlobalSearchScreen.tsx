@@ -157,7 +157,7 @@ export const GlobalSearchScreen = () => {
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
       case 'common': return 'default';
-      case 'uncommon': return 'green';
+      case 'uncommon': return 'yellow';
       case 'rare': return 'blue';
       case 'epic': return 'purple';
       case 'legendary': return 'orange';

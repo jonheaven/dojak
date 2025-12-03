@@ -1551,9 +1551,6 @@ export class WalletController extends BaseController {
     return walletApiService.market.getDunesPrice(ticks);
   };
 
-  getCAT20sPrice = async (tokenIds: string[]) => {
-    return walletApiService.market.getCAT20sPrice(tokenIds);
-  };
 
   getCharmsPrice = async (charmsids: string[]) => {
     return walletApiService.market.getCharmsPrice(charmsids);
@@ -2061,6 +2058,10 @@ export class WalletController extends BaseController {
     preferenceService.setDeveloperMode(developerMode);
   };
 
+  setTheme = (theme: 'light' | 'dark') => {
+    preferenceService.setTheme(theme);
+  };
+
   setOpenInSidePanel = (openInSidePanel: boolean) => {
     preferenceService.setOpenInSidePanel(openInSidePanel);
 
@@ -2090,106 +2091,14 @@ export class WalletController extends BaseController {
     }, timeConfig.time);
   };
 
-  getCAT20List = async (version: CAT_VERSION, address: string, currentPage: number, pageSize: number) => {
-    const cursor = (currentPage - 1) * pageSize;
-    const size = pageSize;
-    const { total, list } = await walletApiService.cat.getCAT20List(version, address, cursor, size);
 
-    return {
-      currentPage,
-      pageSize,
-      total,
-      list
-    };
-  };
 
-  getAddressCAT20TokenSummary = async (version: CAT_VERSION, address: string, tokenId: string) => {
-    const tokenSummary = await walletApiService.cat.getAddressCAT20TokenSummary(version, address, tokenId);
-    return tokenSummary;
-  };
 
-  getAddressCAT20UtxoSummary = async (version: CAT_VERSION, address: string, tokenId: string) => {
-    const tokenSummary = await walletApiService.cat.getAddressCAT20UtxoSummary(version, address, tokenId);
-    return tokenSummary;
-  };
 
-  transferCAT20Step1ByMerge = async (version: CAT_VERSION, mergeId: string) => {
-    return await walletApiService.cat.transferCAT20Step1ByMerge(version, mergeId);
-  };
 
-  transferCAT20Step1 = async (
-    version: CAT_VERSION,
-    to: string,
-    tokenId: string,
-    tokenAmount: string,
-    feeRate: number
-  ) => {
-    const currentAccount = await this.getCurrentAccount();
-    if (!currentAccount) {
-      return;
-    }
 
-    const _res = await walletApiService.cat.transferCAT20Step1(
-      version,
-      currentAccount.address,
-      currentAccount.pubkey,
-      to,
-      tokenId,
-      tokenAmount,
-      feeRate
-    );
-    return _res;
-  };
 
-  transferCAT20Step2 = async (
-    version: CAT_VERSION,
-    transferId: string,
-    commitTx: string,
-    toSignInputs: ToSignInput[]
-  ) => {
-    const chainType = this.getChainType();
-    const psbtNetwork = getDogecoinNetwork(chainType);
-    const psbt = bitcoin.Psbt.fromBase64(commitTx, { network: psbtNetwork });
-    await this.signPsbt(psbt, toSignInputs, true);
-    const _res = await walletApiService.cat.transferCAT20Step2(version, transferId, psbt.toBase64());
-    return _res;
-  };
 
-  transferCAT20Step3 = async (
-    version: CAT_VERSION,
-    transferId: string,
-    revealTx: string,
-    toSignInputs: ToSignInput[]
-  ) => {
-    const chainType = this.getChainType();
-    const psbtNetwork = getDogecoinNetwork(chainType);
-    const psbt = bitcoin.Psbt.fromBase64(revealTx, { network: psbtNetwork });
-    await this.signPsbt(psbt, toSignInputs, false);
-    const _res = await walletApiService.cat.transferCAT20Step3(version, transferId, psbt.toBase64());
-    return _res;
-  };
-
-  mergeCAT20Prepare = async (version: CAT_VERSION, tokenId: string, utxoCount: number, feeRate: number) => {
-    const currentAccount = await this.getCurrentAccount();
-    if (!currentAccount) {
-      return;
-    }
-
-    const _res = await walletApiService.cat.mergeCAT20Prepare(
-      version,
-      currentAccount.address,
-      currentAccount.pubkey,
-      tokenId,
-      utxoCount,
-      feeRate
-    );
-    return _res;
-  };
-
-  getMergeCAT20Status = async (version: CAT_VERSION, mergeId: string) => {
-    const _res = await walletApiService.cat.getMergeCAT20Status(version, mergeId);
-    return _res;
-  };
 
   getAppList = async () => {
     const data = await walletApiService.utility.getAppList();

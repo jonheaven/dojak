@@ -62,7 +62,6 @@ export function TickUsd(
 
 export enum TokenType {
   DRC20 = 'drc20',
-  CAT20 = 'CAT20',
   RUNES = 'runes',
   Charms = 'Charms'
 }
@@ -102,18 +101,6 @@ export function TickUsdWithoutPrice(
       } else if (type === TokenType.RUNES) {
         wallet
           .getDunesPrice([tick])
-          .then((priceMap) => {
-            setPrice(priceMap[tick]);
-            if (priceMap[tick].curPrice > 0) {
-              setShown(true);
-            }
-          })
-          .catch(() => {
-            setShown(false);
-          });
-      } else if (type === TokenType.CAT20) {
-        wallet
-          .getCAT20sPrice([tick])
           .then((priceMap) => {
             setPrice(priceMap[tick]);
             if (priceMap[tick].curPrice > 0) {

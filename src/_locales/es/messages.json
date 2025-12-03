@@ -545,12 +545,6 @@
   "address": {
     "message": "Dirección"
   },
-  "send_cat20_is_not_supported_for_keystone_yet": {
-    "message": "El envío de CAT20 aún no es compatible con Keystone"
-  },
-  "send_cat20": {
-    "message": "Enviar CAT20"
-  },
   "to_send_a_larger_amount_please_merge_your_utxos_to_increase_the_available_balance": {
     "message": "Para enviar una cantidad mayor, por favor fusiona tus UTXOs para aumentar el saldo disponible."
   },
@@ -565,9 +559,6 @@
   },
   "retry_in_10s": {
     "message": "Reintentar en 10s"
-  },
-  "merge_utxos_for_cat20_asset": {
-    "message": "Fusionar UTXOs para Activo CAT20"
   },
   "you_need_at_least_2_utxos_to_merge": {
     "message": "Necesitas al menos 2 UTXOs para fusionar"
@@ -1884,10 +1875,10 @@
     "message": "Personalizado"
   },
   "legacy_address_warning": {
-    "message": "No se recomienda usar direcciones heredadas, ya que pueden provocar tarifas de transacción más altas o el bloqueo no intencionado de saldos CAT20."
+    "message": "No se recomienda usar direcciones heredadas, ya que pueden provocar tarifas de transacción más altas."
   },
   "legacy_address_warning_2": {
-    "message": "No se recomienda enviar transacciones a direcciones heredadas, ya que esto puede resultar en el gasto no intencionado de saldos CAT20."
+    "message": "No se recomienda enviar transacciones a direcciones heredadas, ya que esto puede resultar en "
   },
   "slow": {
     "message": "Lento"
@@ -2037,10 +2028,10 @@
     "message": "aproximadamente 30 segundos"
   },
   "legacy_address_warning_3": {
-    "message": "No se recomienda usar direcciones heredadas, ya que pueden provocar tarifas de transacción más altas o el bloqueo no intencionado de saldos CAT20."
+    "message": "No se recomienda usar direcciones heredadas, ya que pueden provocar tarifas de transacción más altas "
   },
   "legacy_address_warning_4": {
-    "message": "No se recomienda enviar transacciones a direcciones heredadas, ya que esto puede resultar en el gasto no intencionado de saldos CAT20."
+    "message": "No se recomienda enviar transacciones a direcciones heredadas, ya que esto puede resultar en "
   },
   "unavailable_tooltip": {
     "message": "Si tu saldo muestra como no disponible, es posible que tus UTXOs estén bloqueados debido a contener inscripciones, runas, activos drc-20 o no confirmados. En la mayoría de los casos, puedes usar nuestra herramienta de gestión de UTXOs para desbloquear estos UTXOs y hacerlos gastables de nuevo."

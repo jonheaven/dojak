@@ -5,6 +5,7 @@ import { ADDRESS_TYPES, FEEDBACK_URL, REVIEW_URL } from '@/shared/constant';
 import { Button, Card, Column, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { Icon } from '@/ui/components/Icon';
+import { ThemeToggle } from '@/ui/components/ThemeToggle';
 import { getCurrentTab, useExtensionIsInTab, useOpenExtensionInTab } from '@/ui/features/browser/tabs';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { SwitchChainModal } from '@/ui/pages/Settings/SwitchChainModal';
@@ -141,62 +142,107 @@ export function SettingsList() {
     navigate(item.route);
   };
 
-  const renderSettingsItem = (item: SettingsItemType, groupTop: boolean, groupBottom: boolean) => (
-    <Card
-      onClick={() => onClick(item)}
-      style={{
-        height: '64px',
-        flexShrink: 0,
-        borderRadius:
-          groupTop && groupBottom
-            ? '12px 12px 12px 12px'
-            : groupTop
-            ? '12px 12px 0 0'
-            : groupBottom
-            ? '0 0 12px 12px'
-            : '0',
-        background: 'rgba(255, 255, 255, 0.06)',
-        padding: '0 16px',
-        margin: 0
-      }}>
-      <Row full justifyBetween style={{ height: '100%', alignItems: 'center' }}>
-        <Row style={{ minWidth: 0, alignItems: 'center' }}>
-          <Icon icon={item.icon} size={fontSizes.logo} color="textDim" />
-          <Column style={{ gap: spacing.tiny, minWidth: 0, flex: 1, marginLeft: spacing.tiny }}>
-            <Row justifyBetween>
-              <Text text={item.label || item.desc} preset="regular" size="sm" style={{ color: 'white' }} />
-              {item.badge && (
-                <Text
-                  text={item.badge}
-                  preset="badge"
+  const renderSettingsItem = (item: SettingsItemType, groupTop: boolean, groupBottom: boolean) => {
+    // Special handling for theme toggle
+    if (item.action === SettingsAction.THEME) {
+      return (
+        <Card
+          style={{
+            height: '64px',
+            flexShrink: 0,
+            borderRadius:
+              groupTop && groupBottom
+                ? '12px 12px 12px 12px'
+                : groupTop
+                ? '12px 12px 0 0'
+                : groupBottom
+                ? '0 0 12px 12px'
+                : '0',
+            background: 'rgba(255, 255, 255, 0.06)',
+            padding: '0 16px',
+            margin: 0
+          }}>
+          <Row full justifyBetween style={{ height: '100%', alignItems: 'center' }}>
+            <Row style={{ minWidth: 0, alignItems: 'center' }}>
+              <Icon icon={item.icon || 'theme'} size={fontSizes.logo} color="textDim" />
+              <Column style={{ gap: spacing.tiny, minWidth: 0, flex: 1, marginLeft: spacing.tiny }}>
+                <Row justifyBetween>
+                  <Text text={item.label || item.desc} preset="regular" size="sm" style={{ color: 'white' }} />
+                  {item.badge && (
+                    <Text
+                      text={item.badge}
+                      preset="badge"
+                      style={{
+                        marginLeft: '6px'
+                      }}
+                    />
+                  )}
+                </Row>
+              </Column>
+            </Row>
+            <ThemeToggle />
+          </Row>
+        </Card>
+      );
+    }
+
+    return (
+      <Card
+        onClick={() => onClick(item)}
+        style={{
+          height: '64px',
+          flexShrink: 0,
+          borderRadius:
+            groupTop && groupBottom
+              ? '12px 12px 12px 12px'
+              : groupTop
+              ? '12px 12px 0 0'
+              : groupBottom
+              ? '0 0 12px 12px'
+              : '0',
+          background: 'rgba(255, 255, 255, 0.06)',
+          padding: '0 16px',
+          margin: 0
+        }}>
+        <Row full justifyBetween style={{ height: '100%', alignItems: 'center' }}>
+          <Row style={{ minWidth: 0, alignItems: 'center' }}>
+            <Icon icon={item.icon} size={fontSizes.logo} color="textDim" />
+            <Column style={{ gap: spacing.tiny, minWidth: 0, flex: 1, marginLeft: spacing.tiny }}>
+              <Row justifyBetween>
+                <Text text={item.label || item.desc} preset="regular" size="sm" style={{ color: 'white' }} />
+                {item.badge && (
+                  <Text
+                    text={item.badge}
+                    preset="badge"
+                    style={{
+                      marginLeft: '6px'
+                    }}
+                  />
+                )}
+              </Row>
+              {item.action !== SettingsAction.CONNECTED_SITES && <Text text={item.value} preset="sub" wrap size="xxs" />}
+            </Column>
+          </Row>
+          <Row style={{ alignItems: 'center', gap: spacing.small }}>
+            {item.action === SettingsAction.CONNECTED_SITES && (
+              <Row style={{ alignItems: 'center', gap: spacing.tiny }}>
+                <div
                   style={{
-                    marginLeft: '6px'
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: connected ? '#ffd700' : 'rgba(255, 255, 255, 0.3)'
                   }}
                 />
-              )}
-            </Row>
-            {item.action !== SettingsAction.CONNECTED_SITES && <Text text={item.value} preset="sub" wrap size="xxs" />}
-          </Column>
+                <Text text={connected ? t('connected') : t('not_connected')} preset="sub" size="xs" />
+              </Row>
+            )}
+            {item.right && <Icon icon="right" size={fontSizes.lg} color="textDim" />}
+          </Row>
         </Row>
-        <Row style={{ alignItems: 'center', gap: spacing.small }}>
-          {item.action === SettingsAction.CONNECTED_SITES && (
-            <Row style={{ alignItems: 'center', gap: spacing.tiny }}>
-              <div
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: connected ? '#4CD9AC' : 'rgba(255, 255, 255, 0.3)'
-                }}
-              />
-              <Text text={connected ? t('connected') : t('not_connected')} preset="sub" size="xs" />
-            </Row>
-          )}
-          {item.right && <Icon icon="right" size={fontSizes.lg} color="textDim" />}
-        </Row>
-      </Row>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   const renderDivider = () => (
     <div
@@ -223,7 +269,7 @@ export function SettingsList() {
   const connectedSitesGroup = toRenderSettings.filter((item) => item.action === SettingsAction.CONNECTED_SITES);
   const addressBookGroup = toRenderSettings.filter((item) => item.action === SettingsAction.CONTACTS);
   const addressTypeSettingsGroup = toRenderSettings.filter(
-    (item) => item.action === SettingsAction.ADDRESS_TYPE || item.action === SettingsAction.ADVANCED
+    (item) => item.action === SettingsAction.ADDRESS_TYPE || item.action === SettingsAction.ADVANCED || item.action === SettingsAction.THEME
   );
   const feedbackGroup = toRenderSettings.filter((item) =>
     [SettingsAction.FEEDBACK, SettingsAction.RATE_US, SettingsAction.ABOUT_US].includes(item.action)

@@ -147,14 +147,6 @@ export function useAddressExplorerUrl(address: string) {
   }
 }
 
-export function useCAT20TokenInfoExplorerUrl(version: CAT_VERSION, tokenId: string) {
-  const chain = useChain();
-  if (version === CAT_VERSION.V1) {
-    return `${chain.dojakExplorerUrl}/cat20/${tokenId}`;
-  } else {
-    return `${chain.dojakExplorerUrl}/cat20-v2/${tokenId}`;
-  }
-}
 
 export function usedojakWebsite() {
   const chainType = useChainType();
@@ -272,10 +264,6 @@ export function useDunesMarketPlaceWebsite(ticker: string) {
   return `${CHAINS_MAP[chainType].dojakUrl}/dunes/market?tick=${ticker}`;
 }
 
-export function useCAT20MarketPlaceWebsite(tokenId: string) {
-  const chainType = useChainType();
-  return `${CHAINS_MAP[chainType].dojakUrl}/dex/cat20/${tokenId}`;
-}
 
 
 export function useIsMainnetChain() {
@@ -297,6 +285,27 @@ export function useSetDeveloperModeCallback() {
       dispatch(
         settingsActions.updateSettings({
           developerMode
+        })
+      );
+    },
+    [dispatch, wallet]
+  );
+}
+
+export function useTheme() {
+  const settings = useSettingsState();
+  return settings.theme;
+}
+
+export function useSetThemeCallback() {
+  const dispatch = useAppDispatch();
+  const wallet = useWallet();
+  return useCallback(
+    async (theme: 'light' | 'dark') => {
+      await wallet.setTheme(theme);
+      dispatch(
+        settingsActions.updateSettings({
+          theme
         })
       );
     },

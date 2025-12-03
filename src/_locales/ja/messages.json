@@ -546,12 +546,6 @@
   "address": {
     "message": "アドレス"
   },
-  "send_cat20_is_not_supported_for_keystone_yet": {
-    "message": "CAT20の送信はまだKeystoneでサポートされていません"
-  },
-  "send_cat20": {
-    "message": "CAT20を送信"
-  },
   "to_send_a_larger_amount_please_merge_your_utxos_to_increase_the_available_balance": {
     "message": "より大きな金額を送信するには、UTXOをマージして利用可能な残高を増やしてください。"
   },
@@ -566,9 +560,6 @@
   },
   "retry_in_10s": {
     "message": "10秒後に再試行"
-  },
-  "merge_utxos_for_cat20_asset": {
-    "message": "CAT20アセットのUTXOをマージ"
   },
   "you_need_at_least_2_utxos_to_merge": {
     "message": "マージするには少なくとも2つのUTXOが必要です"
@@ -1894,10 +1885,10 @@
     "message": "カスタム"
   },
   "legacy_address_warning": {
-    "message": "レガシーアドレスを使用することは、高いトランザクション手数料や意図しないCAT20バランスのロックアップを招く可能性があります。"
+    "message": "レガシーアドレスを使用することは、高いトランザクション手数料"
   },
   "legacy_address_warning_2": {
-    "message": "レガシーアドレスへのトランザクションは、意図しないCAT20バランスの支出を招く可能性があります。"
+    "message": "レガシーアドレスへのトランザクションは、"
   },
   "slow": {
     "message": "遅い"
@@ -2047,10 +2038,10 @@
     "message": "約30秒"
   },
   "legacy_address_warning_3": {
-    "message": "レガシーアドレスを使用することは、高いトランザクション手数料や意図しないCAT20バランスのロックアップを招く可能性があります。"
+    "message": "レガシーアドレスを使用することは、高いトランザクション手数料"
   },
   "legacy_address_warning_4": {
-    "message": "レガシーアドレスへのトランザクションは、意図しないCAT20バランスの支出を招く可能性があります。"
+    "message": "レガシーアドレスへのトランザクションは、"
   },
   "unavailable_tooltip": {
     "message": "もし残高が利用不可に表示されている場合、それはあなたのUTXOsがインスクリプション、符文、drc-20資産、または未確認であるためにロックされている可能性があります。多くの場合、私たちのUTXO管理ツールを使用してこれらのUTXOsをロック解除し、再び使用可能にすることができます。"

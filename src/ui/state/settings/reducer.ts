@@ -12,6 +12,7 @@ export interface SettingsState {
   skippedVersion: string;
   autoLockTimeId: number;
   developerMode: boolean;
+  theme: 'light' | 'dark';
 }
 
 export const initialState: SettingsState = {
@@ -28,7 +29,8 @@ export const initialState: SettingsState = {
   },
   skippedVersion: '',
   autoLockTimeId: DEFAULT_LOCKTIME_ID,
-  developerMode: false
+  developerMode: false,
+  theme: 'light'
 };
 
 const slice = createSlice({
@@ -49,6 +51,7 @@ const slice = createSlice({
           chainType?: ChainType;
           autoLockTimeId?: number;
           developerMode?: boolean;
+          theme?: 'light' | 'dark';
         };
       }
     ) {

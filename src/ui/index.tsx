@@ -14,6 +14,7 @@ import AccountUpdater from '@/ui/state/accounts/updater';
 import '@/ui/styles/global.less';
 
 import { I18nProvider } from './app/contexts/I18nContext';
+import { ThemeProvider } from './app/contexts/ThemeContext';
 import { ActionComponentProvider } from './components/ActionComponent';
 import { AppDimensions } from './components/Responsive';
 import AsyncMainRoute from './pages/MainRoute';
@@ -147,13 +148,15 @@ root.render(
         <AppDimensions>
           <PriceProvider>
             <I18nProvider>
-              <IdleTimerProvider
-                onAction={() => {
-                  wallet.setLastActiveTime();
-                }}>
-                <Updaters />
-                <AsyncMainRoute />
-              </IdleTimerProvider>
+              <ThemeProvider>
+                <IdleTimerProvider
+                  onAction={() => {
+                    wallet.setLastActiveTime();
+                  }}>
+                  <Updaters />
+                  <AsyncMainRoute />
+                </IdleTimerProvider>
+              </ThemeProvider>
             </I18nProvider>
           </PriceProvider>
         </AppDimensions>

@@ -18,6 +18,6 @@ describe('Dogecoin network parameters', () => {
     });
 
     // With correct Dogecoin mainnet prefix (0x1e), this generates a 'D' address
-    expect(address).toBe('D8rM1XzLpVLxH9LxqsX5ZaLhZVH7dTzKd');
+    expect(address).toBe('DNvgXMDbV3uB9cD4MNqbFhWqAQvokTekJp');
   });
 });

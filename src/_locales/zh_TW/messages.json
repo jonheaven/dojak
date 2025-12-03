@@ -545,12 +545,6 @@
   "address": {
     "message": "地址"
   },
-  "send_cat20_is_not_supported_for_keystone_yet": {
-    "message": "Keystone 尚不支援發送 CAT20"
-  },
-  "send_cat20": {
-    "message": "發送 CAT20"
-  },
   "to_send_a_larger_amount_please_merge_your_utxos_to_increase_the_available_balance": {
     "message": "若要發送更大金額，請合併您的 UTXO 以增加可用餘額。"
   },
@@ -565,9 +559,6 @@
   },
   "retry_in_10s": {
     "message": "10 秒後重試"
-  },
-  "merge_utxos_for_cat20_asset": {
-    "message": "合併 CAT20 資產的 UTXO"
   },
   "you_need_at_least_2_utxos_to_merge": {
     "message": "您至少需要 2 個 UTXO 才能合併"
@@ -1905,10 +1896,10 @@
     "message": "自定義"
   },
   "legacy_address_warning": {
-    "message": "不建議使用Legacy地址，因為它們可能會導致更高的交易費用或意外鎖定CAT20餘額。"
+    "message": "不建議使用Legacy地址，因為它們可能會導致更高的交易費用"
   },
   "legacy_address_warning_2": {
-    "message": "不建議將交易發送到Legacy地址，因為這可能導致CAT20被意外花費"
+    "message": "不建議將交易發送到Legacy地址，因為這可能導致"
   },
   "slow": {
     "message": "慢"
@@ -2058,10 +2049,10 @@
     "message": "約30秒"
   },
   "legacy_address_warning_3": {
-    "message": "不建議使用Legacy地址，因為它們可能會導致更高的交易費用或意外鎖定CAT20餘額"
+    "message": "不建議使用Legacy地址，因為它們可能會導致更高的交易費用"
   },
   "legacy_address_warning_4": {
-    "message": "不建議將交易發送到Legacy地址，因為這可能導致CAT20被意外花費"
+    "message": "不建議將交易發送到Legacy地址，因為這可能導致"
   },
   "unavailable_tooltip": {
     "message": "如果您的餘額顯示為不可用，可能是因為您的UTXOs被鎖定，因為它們包含銘文、符文、drc-20資產或未確認。在大多數情況下，您可以使用我們的UTXO管理工具解鎖這些UTXOs，並使它們再次可花費。"
