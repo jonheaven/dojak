@@ -26,6 +26,8 @@
     "build:chrome:mv3": "gulp build --env=pro --browser=chrome --manifest=mv3 --channel=dojak-store",
     "lint": "eslint src --fix --ext .js,.ts,.tsx,.json  && npm run format",
     "lint:fix": "eslint --fix src/**/*.{js,jsx,ts,tsx,json}",
+    "analyze:deps": "npx depcheck --skip-missing --json",
+    "analyze:exports": "npx ts-prune -p tsconfig.json --noExitCode",
     "_prettier": "prettier --write .",
     "fix:modules": "node scripts/fix-modules.js",
     "format": "prettier --write \"src/**/*.{js,jsx,md,ts,tsx}\" --plugin-search-dir=./node_modules/ --plugin=./node_modules/@trivago/prettier-plugin-sort-imports/ ",
