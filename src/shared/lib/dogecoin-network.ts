@@ -3,17 +3,24 @@ import * as bitcoin from 'bitcoinjs-lib';
 /**
  * Dogecoin Mainnet Network Configuration
  * Based on Dogecoin Core specifications
+ * 
+ * IMPORTANT: These values must match bitcore-lib-doge and MyDoge wallet
+ * for compatibility with the Dogecoin ecosystem.
  */
 export const dogecoinMainnet: bitcoin.Network = {
-  messagePrefix: '\x18Dogecoin Signed Message:\n',
-  bech32: 'doge', // Bech32 HRP for native SegWit addresses (doge1...)
+  // Message prefix: \x19 = 25 = length of "Dogecoin Signed Message:\n"
+  // This is the CORRECT value (not \x18 which was incorrect)
+  messagePrefix: '\x19Dogecoin Signed Message:\n',
+  // Bech32 HRP - using 'dc' for compatibility with MyDoge wallet
+  // Note: Dogecoin doesn't actually use bech32/SegWit addresses in practice
+  bech32: 'dc',
   bip32: {
     public: 0x02facafd, // Dogecoin mainnet public key: [0x02, 0xfa, 0xca, 0xfd]
     private: 0x02fac398, // Dogecoin mainnet private key: [0x02, 0xfa, 0xc3, 0x98]
   },
   pubKeyHash: 0x1e, // Dogecoin mainnet P2PKH addresses starting with 'D' (30 decimal)
   scriptHash: 0x16, // Dogecoin mainnet P2SH addresses (22 decimal)
-  wif: 0x9e, // Dogecoin WIF private key prefix (158 decimal)
+  wif: 0x9e, // Dogecoin WIF private key prefix (158 decimal) - results in 'Q' prefix
 };
 
 /**
@@ -21,16 +28,23 @@ export const dogecoinMainnet: bitcoin.Network = {
  * Based on Dogecoin Core specifications
  */
 export const dogecoinTestnet: bitcoin.Network = {
-  messagePrefix: '\x18Dogecoin Signed Message:\n',
+  // Message prefix: \x19 = 25 = length of "Dogecoin Signed Message:\n"
+  messagePrefix: '\x19Dogecoin Signed Message:\n',
   bech32: 'tdoge', // Testnet Bech32 HRP
   bip32: {
     public: 0x043587cf, // Dogecoin testnet public key (standard testnet values)
     private: 0x04358394, // Dogecoin testnet private key (standard testnet values)
   },
-  pubKeyHash: 0x71, // Dogecoin testnet P2PKH addresses starting with 'n' or 'm'
-  scriptHash: 0xc4, // Dogecoin testnet P2SH addresses
-  wif: 0xf1, // Dogecoin testnet WIF private key prefix
+  pubKeyHash: 0x71, // Dogecoin testnet P2PKH addresses starting with 'n' or 'm' (113 decimal)
+  scriptHash: 0xc4, // Dogecoin testnet P2SH addresses (196 decimal)
+  wif: 0xf1, // Dogecoin testnet WIF private key prefix (241 decimal) - results in 'c' prefix
 };
+
+/**
+ * BIP44 Coin Type for Dogecoin
+ * https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+ */
+export const DOGECOIN_COIN_TYPE = 3;
 
 /**
  * Dogecoin network constants (not part of bitcoinjs-lib Network interface)

@@ -1,115 +1,144 @@
-import { eccManager } from '@unisat/wallet-bitcoin';
+/**
+ * Dojak Wallet - Keyring Service
+ * 
+ * This is the main keyring service export. It uses our native Dogecoin
+ * keyring implementation instead of the patched @unisat/keyring-service.
+ * 
+ * Why native Dogecoin keyrings?
+ * - The @unisat/keyring-service hardcodes Bitcoin network parameters
+ * - It ignores the network config we pass to it
+ * - This causes incorrect address derivation and WIF encoding
+ * - Our native implementation uses bitcore-lib-doge for correct Dogecoin support
+ */
+
 import logger from 'loglevel';
 
-import { dogecoinMainnet, getDogecoinNetwork } from '@/shared/lib/dogecoin-network';
 import { t } from '@unisat/i18n';
-import { KeyringService, MemoryStorageAdapter } from '@unisat/keyring-service';
-import { KeyringServiceConfig } from '@unisat/keyring-service/types';
-import preferenceService from './preference';
+import {
+  DogecoinKeyringService,
+  MemoryStorageAdapter,
+  StorageAdapter,
+} from './dogecoin-keyrings/dogecoin-keyring-service';
+
+// Re-export types for compatibility
+export { DogecoinKeyringService, MemoryStorageAdapter, StorageAdapter };
+export type { DisplayedKeyring } from './dogecoin-keyrings/dogecoin-keyring-service';
 
 /**
- * KeyringService wrapper - similar to the extension but for testing
- * Extends the base KeyringService with extension-like functionality
+ * Chrome Extension Storage Adapter
+ * Persists keyring data to Chrome's extension storage
  */
-export class KeyringServiceWrapper extends KeyringService {
-  constructor() {
-    const storage = new MemoryStorageAdapter();
+export class ExtensionStorageAdapter implements StorageAdapter {
+  private cache: Map<string, any> = new Map();
+  private initialized = false;
 
-    const config: KeyringServiceConfig = {
-      storage,
-      logger,
-      t: t,
-      network: dogecoinMainnet
-    };
-
-    super(config);
-  }
-
-  // Override init to ensure storage adapter is properly initialized
   async init(): Promise<void> {
-    console.log('[KeyringService] Starting initialization...');
+    if (this.initialized) return;
 
-    // Call parent init
-    console.log('[KeyringService] Calling parent init...');
-    await super.init();
-
-    console.log('[KeyringService] Initialization complete');
+    // Load existing data from Chrome storage
+    try {
+      const result = await chrome.storage.local.get(['keyring']);
+      if (result.keyring) {
+        this.cache.set('keyring', result.keyring);
+      }
+      this.initialized = true;
+    } catch (error) {
+      // Fallback to memory storage if chrome.storage is not available
+      logger.warn('[ExtensionStorageAdapter] Chrome storage not available, using memory');
+      this.initialized = true;
+    }
   }
 
-  // Override createTmpKeyring to handle Dogecoin private keys correctly
-  createTmpKeyring(type: string, privateKeys: string[]) {
-    if (type === 'SimpleKeyring' && privateKeys && privateKeys.length > 0) {
-      return this._createDogecoinSimpleKeyring(privateKeys[0]);
+  async get(key: string): Promise<any> {
+    // Check cache first
+    if (this.cache.has(key)) {
+      return this.cache.get(key);
     }
 
-    // For non-Dogecoin networks or other keyring types, use the default behavior
-    return super.createTmpKeyring(type, privateKeys);
-  }
-
-  // Override importPrivateKey to handle Dogecoin private keys correctly
-  async importPrivateKey(privateKey: string, addressType: string) {
-    const chainType = preferenceService.getChainType();
-
-    // Determine if this is a Dogecoin network
-    const isDogecoin = chainType === 'BITCOIN_MAINNET' || chainType === 'BITCOIN_TESTNET' ||
-                      chainType === 'BITCOIN_TESTNET4';
-
-    if (isDogecoin) {
-      return this._createDogecoinSimpleKeyring(privateKey);
+    // Try to get from Chrome storage
+    try {
+      const result = await chrome.storage.local.get([key]);
+      const value = result[key];
+      if (value !== undefined) {
+        this.cache.set(key, value);
+      }
+      return value;
+    } catch {
+      return undefined;
     }
-
-    // For non-Dogecoin networks, use the default behavior
-    return super.importPrivateKey(privateKey, addressType);
   }
 
-  // Helper method to create Dogecoin SimpleKeyring
-  private _createDogecoinSimpleKeyring(privateKey: string) {
-    const chainType = preferenceService.getChainType();
+  async set(key: string, value: any): Promise<void> {
+    this.cache.set(key, value);
 
     try {
-      const network = getDogecoinNetwork(chainType);
-
-          let keyPair;
-          // Check if it's a WIF (base58 encoded with version byte)
-          // Accept any valid base58 string of typical WIF lengths
-          const isWIF = /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{51,52}$/.test(privateKey);
-
-          if (isWIF) {
-            try {
-              // It's WIF — try to decode with Dogecoin network
-              keyPair = eccManager.eccPair.fromWIF(privateKey, network);
-            } catch (wifError) {
-              // If Dogecoin network fails, the WIF might be from Bitcoin network
-              // Try with Bitcoin network and re-encode for Dogecoin
-              try {
-                const bitcoinNetwork = { wif: 0x80, bip32: { public: 0x0488b21e, private: 0x0488ade4 } };
-                const tempKeyPair = eccManager.eccPair.fromWIF(privateKey, bitcoinNetwork);
-                // Convert the raw private key to Dogecoin WIF
-                keyPair = eccManager.eccPair.fromPrivateKey(tempKeyPair.privateKey, { network });
-              } catch (bitcoinError) {
-                throw new Error('Invalid WIF format. Please ensure it\'s a valid Bitcoin or Dogecoin WIF.');
-              }
-            }
-          } else if (/^[0-9a-fA-F]{64}$/.test(privateKey)) {
-            // It's raw hex private key
-            const privateKeyBuffer = Buffer.from(privateKey, 'hex');
-            keyPair = eccManager.eccPair.fromPrivateKey(privateKeyBuffer, { network });
-          } else {
-            throw new Error('Invalid private key format. Please provide a WIF (starts with specific characters) or 64-character hex string.');
-          }
-
-      // Create a custom SimpleKeyring with the correct key
-      const { SimpleKeyring } = require('@unisat/keyring-service');
-      const keyring = new SimpleKeyring([keyPair.privateKey!.toString('hex')]);
-      return keyring;
-    } catch (e) {
-      throw new Error('Invalid private key for Dogecoin network. Make sure you\'re using a valid Dogecoin private key (WIF starting with 7 on mainnet, c/d on test networks, or raw hex).');
+      await chrome.storage.local.set({ [key]: value });
+    } catch (error) {
+      logger.warn('[ExtensionStorageAdapter] Failed to persist to Chrome storage:', error);
     }
   }
 
+  async remove(key: string): Promise<void> {
+    this.cache.delete(key);
+
+    try {
+      await chrome.storage.local.remove(key);
+    } catch {
+      // Ignore errors
+    }
+  }
+
+  async clear(): Promise<void> {
+    this.cache.clear();
+
+    try {
+      await chrome.storage.local.clear();
+    } catch {
+      // Ignore errors
+    }
+  }
 }
 
+/**
+ * KeyringServiceWrapper
+ * 
+ * Main keyring service instance for the Dojak wallet.
+ * Uses native Dogecoin keyring implementation.
+ */
+export class KeyringServiceWrapper extends DogecoinKeyringService {
+  constructor() {
+    // Determine storage adapter based on environment
+    let storage: StorageAdapter;
+    
+    try {
+      // Check if we're in a Chrome extension environment
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        storage = new ExtensionStorageAdapter();
+      } else {
+        storage = new MemoryStorageAdapter();
+      }
+    } catch {
+      storage = new MemoryStorageAdapter();
+    }
+
+    super({
+      storage,
+      logger,
+      t,
+      network: 'mainnet', // Default to Dogecoin mainnet
+    });
+  }
+
+  /**
+   * Override init for extension-specific initialization
+   */
+  async init(): Promise<void> {
+    console.log('[DogecoinKeyringService] Starting initialization...');
+    await super.init();
+    console.log('[DogecoinKeyringService] Initialization complete');
+  }
+}
+
+// Export singleton instance
 export const keyringService = new KeyringServiceWrapper();
 export default keyringService;
-
-
