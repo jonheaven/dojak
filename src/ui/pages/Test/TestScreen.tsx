@@ -605,8 +605,8 @@ function TestCharmsSign() {
           options: { autoFinalized: false }
         },
         session: {
-          origin: 'https://dojak.io',
-          icon: 'https://dojak.io/favicon.ico',
+          origin: 'https://dojak.dog',
+          icon: 'https://dojak.dog/favicon.ico',
           name: 'Dojak Wallet'
         }
       }}

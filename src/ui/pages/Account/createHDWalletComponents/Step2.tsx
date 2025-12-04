@@ -85,35 +85,52 @@ export function Step2({
 
   const generateAddress = async () => {
     const addresses: string[] = [];
-    for (let i = 0; i < hdPathOptions.length; i++) {
-      const options = hdPathOptions[i];
-      try {
-        const keyring = await wallet.createTmpKeyringWithMnemonics(
-          contextData.mnemonics,
-          contextData.customHdPath || options.hdPath,
-          contextData.passphrase,
-          options.addressType
-        );
-        // const address = keyring.accounts[0].address;
-        // addresses.push(address);
-        keyring.accounts.forEach((v) => {
-          addresses.push(v.address);
-        });
-      } catch (e) {
-        console.log(e);
-        setError((e as any).message);
-        return;
+    try {
+      for (let i = 0; i < hdPathOptions.length; i++) {
+        const options = hdPathOptions[i];
+        try {
+          const keyring = await wallet.createTmpKeyringWithMnemonics(
+            contextData.mnemonics,
+            contextData.customHdPath || options.hdPath,
+            contextData.passphrase,
+            options.addressType
+          );
+          // Check if keyring and accounts exist
+          if (!keyring || !keyring.accounts || keyring.accounts.length === 0) {
+            console.error('Keyring or accounts not found:', keyring);
+            setError('Failed to generate address: No accounts found in keyring');
+            return;
+          }
+          // Get the first address from the keyring
+          const address = keyring.accounts[0]?.address;
+          if (!address) {
+            console.error('Address not found in account');
+            setError('Failed to generate address: No address found');
+            return;
+          }
+          addresses.push(address);
+        } catch (e) {
+          console.error('Error generating address:', e);
+          setError((e as any).message || 'Failed to generate address');
+          return;
+        }
       }
+      setError(''); // Clear error on success
+      setPreviewAddresses(addresses);
+    } catch (e) {
+      console.error('Unexpected error in generateAddress:', e);
+      setError((e as any).message || 'An unexpected error occurred');
     }
-    setPreviewAddresses(addresses);
   };
 
   const [scanned, setScanned] = useState(false);
 
   useEffect(() => {
-    generateAddress();
-    setScanned(false);
-  }, [contextData.passphrase, contextData.customHdPath]);
+    if (contextData.mnemonics) {
+      generateAddress();
+      setScanned(false);
+    }
+  }, [contextData.passphrase, contextData.customHdPath, contextData.mnemonics]);
 
   const fetchAddressesBalance = async () => {
     if (!contextData.isRestore) {
@@ -175,12 +192,15 @@ export function Step2({
   };
 
   const disabled = useMemo(() => {
-    if (!error && !pathError) {
-      return false;
-    } else {
+    if (error || pathError) {
       return true;
     }
-  }, [error, pathError]);
+    // Also check if we have addresses generated
+    if (!previewAddresses || previewAddresses.length === 0 || !previewAddresses[0]) {
+      return true;
+    }
+    return false;
+  }, [error, pathError, previewAddresses]);
 
   const onNext = async () => {
     try {
@@ -269,6 +289,17 @@ export function Step2({
         };
 
         const hdPath = (contextData.customHdPath || item.hdPath) + '/0';
+        
+        // Only render the card if we have a valid address
+        if (!address) {
+          return (
+            <Column key={index}>
+              <Text text={`${item.label}`} preset="bold" />
+              <Text text="Generating address..." preset="sub" />
+            </Column>
+          );
+        }
+        
         return (
           <AddressTypeCard2
             key={index}

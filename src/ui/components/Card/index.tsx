@@ -13,7 +13,7 @@ const $baseViewStyle = {
   display: 'flex',
   flexDirection: 'row',
   gap: spacingGap.md,
-  backgroundColor: colors.black_dark,
+  backgroundColor: 'var(--theme-bg3)',
   alignItems: 'center',
   justifyContent: 'center',
   borderRadius: 5

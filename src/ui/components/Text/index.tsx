@@ -24,7 +24,7 @@ export const $sizeStyles = {
 
 const $baseStyle: CSSProperties = Object.assign({}, $sizeStyles.sm, {
   fontFamily: typography.primary.regular,
-  color: colors.white_muted3,
+  color: 'var(--theme-text)',
   textAlign: 'left',
   userSelect: 'none'
 } as CSSProperties);
@@ -47,11 +47,11 @@ const $presets = {
   }),
 
   sub: Object.assign({}, $baseStyle, $sizeStyles.xs, {
-    color: colors.white_muted
+    color: 'var(--theme-text-secondary)'
   }),
   'sub-bold': Object.assign({}, $baseStyle, $sizeStyles.xs, {
     fontFamily: typography.primary.bold,
-    color: colors.white_muted
+    color: 'var(--theme-text-secondary)'
   }),
 
   badge: Object.assign({}, $baseStyle, $sizeStyles.xs, {

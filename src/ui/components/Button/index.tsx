@@ -79,13 +79,14 @@ const $viewPresets = {
   default: Object.assign({}, $baseViewStyle, {
     borderWidth: 1,
     minHeight: 50,
-    borderColor: colors.white_muted,
-    borderRadius: 12
+    borderColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)'
   }) as CSSProperties,
 
   primary: Object.assign({}, $baseViewStyle, {
-    backgroundColor: colors.yellow,
-    backgroundImage: 'linear-gradient(90deg, #00FF88, #00CC55)',
+    backgroundColor: colors.gold,
+    backgroundImage: 'linear-gradient(90deg, #ffd700, #ffed4e)',
     height: '48px'
   } as CSSProperties),
 
@@ -212,10 +213,10 @@ const $viewPresets = {
 
 const $hoverViewPresets: Record<Presets, CSSProperties> = {
   default: {
-    backgroundColor: '#383535'
+    backgroundColor: 'rgba(0, 0, 0, 0.08)'
   },
   primary: {
-    backgroundColor: colors.yellow_dark
+    backgroundColor: colors.gold_dark
   },
   approval: {
     backgroundColor: colors.orange_dark
@@ -268,7 +269,7 @@ const $baseTextStyle: CSSProperties = {
 };
 
 const $textPresets: Record<Presets, CSSProperties> = {
-  default: $baseTextStyle,
+  default: Object.assign({}, $baseTextStyle, { color: colors.black }),
   primary: Object.assign({}, $baseTextStyle, { color: colors.black }),
   approval: Object.assign({}, $baseTextStyle, { color: colors.black }),
   danger: Object.assign({}, $baseTextStyle, { color: colors.white }),

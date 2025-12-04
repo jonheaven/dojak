@@ -63,7 +63,7 @@ const $baseContainerStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'row',
   alignItems: 'center',
-  backgroundColor: colors.black,
+  backgroundColor: '#f8f9fa',
   paddingLeft: 15.2,
   paddingRight: 15.2,
   paddingTop: 11,
@@ -72,7 +72,7 @@ const $baseContainerStyle: CSSProperties = {
   minHeight: '56.5px',
   alignSelf: 'stretch',
   borderWidth: 1,
-  borderColor: colors.line2
+  borderColor: 'rgba(0, 0, 0, 0.2)'
 };
 
 const $baseInputStyle: CSSProperties = Object.assign({}, $textPresets.regular, {
@@ -81,7 +81,8 @@ const $baseInputStyle: CSSProperties = Object.assign({}, $textPresets.regular, {
   borderWidth: 0,
   outlineWidth: 0,
   backgroundColor: 'rgba(0,0,0,0)',
-  alignSelf: 'stretch'
+  alignSelf: 'stretch',
+  color: '#000000'
 });
 
 const $baseTextareaStyle: CSSProperties = Object.assign({}, $baseInputStyle, {
@@ -384,7 +385,7 @@ export const AddressInput = (props: InputProps) => {
             color="yellow"
             text={t('more_details')}
             onClick={() => {
-              window.open('https://docs.dojak.io/dojak-wallet/name-recognized-and-resolved');
+              window.open('https://docs.dojak.dog/dojak-wallet/name-recognized-and-resolved');
             }}
           />
           <Text preset="sub" size="sm" text={')'} />

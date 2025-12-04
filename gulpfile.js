@@ -51,7 +51,14 @@ function task_clean() {
 }
 
 function task_prepare() {
-  return gulp.src('build/_raw/**/*').pipe(gulp.dest(`dist/${options.browser}`));
+  // Copy all static assets and manifest sources from build/_raw to dist/browser
+  const raw = gulp.src('build/_raw/**/*').pipe(gulp.dest(`dist/${options.browser}`));
+  // Copy _locales if present
+  const locales = gulp.src('src/_locales/**/*').pipe(gulp.dest(`dist/${options.browser}/_locales`));
+  // Copy manifest sources from build/_raw/manifest
+  const manifestBase = gulp.src('build/_raw/manifest/_base_v3.json').pipe(gulp.dest(`dist/${options.browser}/manifest`));
+  const manifestChrome = gulp.src(`build/_raw/manifest/${options.browser}.json`).pipe(gulp.dest(`dist/${options.browser}/manifest`));
+  return require('merge-stream')(raw, locales, manifestBase, manifestChrome);
 }
 
 function task_merge_manifest() {
@@ -87,7 +94,18 @@ function task_webpack(cb) {
       manifest: options.manifest,
       channel: options.channel
     }),
-    cb
+    (err, stats) => {
+      if (err) {
+        console.error(err);
+        return cb(err);
+      }
+      if (stats.hasErrors()) {
+        console.error(stats.toString({ colors: true, errors: true }));
+        return cb(new Error('Webpack compilation errors'));
+      }
+      console.log(stats.toString({ colors: true }));
+      cb();
+    }
   );
 }
 
@@ -126,4 +144,48 @@ exports.build = gulp.series(
   task_webpack,
   task_uglify,
   task_package
+);
+
+// Fast watch mode for development - skips clean and enables webpack watch
+function task_webpack_watch(cb) {
+  webpack(
+    webpackConfigFunc({
+      version: validVersion,
+      config: options.env,
+      browser: options.browser,
+      manifest: options.manifest,
+      channel: options.channel,
+      watch: true // Enable watch mode
+    }),
+    (err, stats) => {
+      if (err) {
+        console.error(err);
+        return cb(err);
+      }
+      if (stats.hasErrors()) {
+        console.error(stats.toString({ colors: true, errors: true }));
+        // Don't exit on errors in watch mode
+        return;
+      }
+      console.log(stats.toString({ colors: true }));
+    }
+  ).watch({}, (err, stats) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+    if (stats.hasErrors()) {
+      console.error(stats.toString({ colors: true, errors: true }));
+      return;
+    }
+    console.log('✨ Rebuilt:', new Date().toLocaleTimeString());
+    console.log(stats.toString({ colors: true, chunks: false, modules: false }));
+  });
+}
+
+exports.watch = gulp.series(
+  task_prepare,
+  task_merge_manifest,
+  task_clean_tmps,
+  task_webpack_watch
 );

@@ -2,7 +2,7 @@
 
 Dojak Wallet - the best browser extension wallet for Doginals on Dogecoin.
 
-- Website: https://dojak.io/
+- Website: https://dojak.dog/
 - Twitter: https://x.com/dojak_wallet
 
 ## How to build

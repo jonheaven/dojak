@@ -235,6 +235,17 @@ export class DogecoinKeyringService extends EventEmitter {
   }
 
   /**
+   * Load keyring state from storage
+   */
+  loadStore(keyringState: any): void {
+    if (!this.store) {
+      this.store = new ObservableStore(keyringState || {});
+    } else if (keyringState) {
+      this.store.putState(keyringState);
+    }
+  }
+
+  /**
    * Get the Dogecoin network configuration
    */
   getNetwork(): bitcoin.Network {

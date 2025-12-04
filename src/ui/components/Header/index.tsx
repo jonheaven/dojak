@@ -22,7 +22,7 @@ interface HeaderProps {
 
 function HeaderContainer(props: { children: React.ReactNode; shotHeight?: boolean }) {
   return (
-    <div style={{ display: 'block', backgroundColor: '#070606', borderBottom: '1px solid #004422' }}>
+    <div style={{ display: 'block', backgroundColor: 'var(--theme-bg2)', borderBottom: '1px solid var(--theme-border)' }}>
       <Row
         justifyBetween
         itemsCenter

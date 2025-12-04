@@ -63,7 +63,7 @@ export const UpgradePopover = ({ onClose }: { onClose: () => void }) => {
             full
             preset="primary"
             onClick={(e) => {
-              window.open('https://dojak.io/extension/update');
+              window.open('https://dojak.dog/extension/update');
             }}
           />
         </Row>

@@ -236,7 +236,7 @@ export default function DRC20TokenScreen() {
       inscriptionId: '',
       holdersCount: 0,
       historyCount: 0,
-      logo: 'https://static.dojak.io/icon/drc20/unknown'
+      logo: 'https://static.dojak.dog/icon/drc20/unknown'
     },
     historyList: [],
     transferableList: []
@@ -497,7 +497,7 @@ export default function DRC20TokenScreen() {
                     preset="swap"
                     icon="swap_wrap"
                     onClick={(e) => {
-                      window.open(`https://dojak.io/wrap?tick=${encodeURIComponent(ticker)}`);
+                      window.open(`https://dojak.dog/wrap?tick=${encodeURIComponent(ticker)}`);
                     }}
                     iconSize={{
                       width: 12,
@@ -510,7 +510,7 @@ export default function DRC20TokenScreen() {
                     preset="swap"
                     icon="swap_unwrap"
                     onClick={(e) => {
-                      window.open(`https://dojak.io/wrap?action=unwrap&tick=${encodeURIComponent(ticker)}`);
+                      window.open(`https://dojak.dog/wrap?action=unwrap&tick=${encodeURIComponent(ticker)}`);
                     }}
                     iconSize={{
                       width: 12,

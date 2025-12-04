@@ -182,7 +182,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
       'https://doge.getblock.io/mainnet/' // GetBlock.io (alternative)
     ],
     mempoolSpaceUrl: 'https://dogecoin.network', // Dogecoin explorer
-    dojakUrl: 'https://dojak.io',
+    dojakUrl: 'https://dojak.dog',
     doginalsUrl: 'https://doginals.com',
     dojakExplorerUrl: 'https://dogecoin.network', // Dogecoin explorer
     okxExplorerUrl: '',
@@ -199,7 +199,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
     networkType: NetworkType.TESTNET,
     endpoints: ['https://dogecoin-testnet-rpc.allthatnode.com'], // Dogecoin testnet RPC (AllThatNode)
     mempoolSpaceUrl: 'https://testnet.dogecoin.network', // Dogecoin testnet explorer
-    dojakUrl: 'https://testnet.dojak.io',
+    dojakUrl: 'https://testnet.dojak.dog',
     doginalsUrl: 'https://testnet.doginals.com',
     dojakExplorerUrl: '',
     okxExplorerUrl: '',
@@ -215,7 +215,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
     networkType: NetworkType.TESTNET,
     endpoints: ['https://dogecoin-testnet4-rpc.allthatnode.com'], // Dogecoin testnet4 RPC
     mempoolSpaceUrl: 'https://testnet4.dogecoin.network', // Dogecoin testnet4 explorer
-    dojakUrl: 'https://testnet4.dojak.io',
+    dojakUrl: 'https://testnet4.dojak.dog',
     doginalsUrl: 'https://testnet4.doginals.com',
     dojakExplorerUrl: '',
     okxExplorerUrl: '',
@@ -265,7 +265,7 @@ export const WALLETCONNECT_STATUS_MAP = {
   FAILD: 6
 };
 
-export const INTERNAL_REQUEST_ORIGIN = 'https://dojak.io';
+export const INTERNAL_REQUEST_ORIGIN = 'https://dojak.dog';
 
 export const INTERNAL_REQUEST_SESSION = {
   name: 'Dojak Wallet',
@@ -299,16 +299,16 @@ export const GITHUB_URL = 'https://github.com/dojak-wallet/extension';
 export const DISCORD_URL = 'https://discord.com/invite/dojak-wallet';
 export const TWITTER_URL = 'https://twitter.com/dojak_wallet';
 export const TELEGRAM_URL = 'https://t.me/dojak_wallet';
-export const WEBSITE_URL = 'https://dojak.io';
-export const FEEDBACK_URL = 'https://feedback.dojak.io';
-export const EMAIL_URL = 'contact@dojak.io';
-export const DOCS_URL = ' https://docs.dojak.io/dev/dojak-developer-center ';
+export const WEBSITE_URL = 'https://dojak.dog';
+export const FEEDBACK_URL = 'https://feedback.dojak.dog';
+export const EMAIL_URL = 'contact@dojak.dog';
+export const DOCS_URL = ' https://docs.dojak.dog/dev/dojak-developer-center ';
 export const MEDIUM_URL = 'https://dojak-wallet.medium.com/';
 export const UPDATE_URL = 'https://chromewebstore.google.com/detail/dojak-wallet/dojak-wallet-id';
 export const REVIEW_URL =
   'https://chromewebstore.google.com/detail/dojak-wallet/dojak-wallet-id/reviews';
-export const TERMS_OF_SERVICE_URL = 'https://dojak.io/terms-of-service.html';
-export const PRIVACY_POLICY_URL = 'https://dojak.io/privacy-policy.html';
+export const TERMS_OF_SERVICE_URL = 'https://dojak.dog/terms-of-service.html';
+export const PRIVACY_POLICY_URL = 'https://dojak.dog/privacy-policy.html';
 
 export const CHANNEL = process.env.channel!;
 export const VERSION = process.env.release!;

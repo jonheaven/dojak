@@ -1071,7 +1071,7 @@ export class WalletApiService {
 
           // Call the Dojak API backend server
           const apiUrl = process.env.NODE_ENV === 'production'
-            ? 'https://api.dojak.io'
+            ? 'https://api.dojak.dog'
             : 'http://localhost:3001';
 
           const response = await axios.post(`${apiUrl}/api/v1/faucet/claim`, {

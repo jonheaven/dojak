@@ -86,7 +86,7 @@ export default function AboutUsScreen() {
                   whiteSpace: 'nowrap',
                   gap: 0
                 }}
-                onClick={() => window.open('https://dojak.io/extension/update')}>
+                onClick={() => window.open('https://dojak.dog/extension/update')}>
                 <Icon icon="arrowUp" size={14} />
                 <Text
                   text={t('new_update_available')}

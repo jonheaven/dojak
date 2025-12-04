@@ -14,7 +14,7 @@ const app = new Hono();
 
 // Global middleware
 app.use('*', cors({
-  origin: ['chrome-extension://*', 'http://localhost:*', 'https://dojak.io'],
+  origin: ['chrome-extension://*', 'http://localhost:*', 'https://dojak.dog'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));

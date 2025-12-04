@@ -84,14 +84,14 @@ export function AddressTypeCard2(props: AddressTypeCardProp2) {
 
         {items.map((v) => (
           <Row px="md" pb="sm" key={v.address} itemsCenter>
-            <Row style={{ width: '120px' }}>
+            <Row style={{ width: '120px' }} key={`${v.address}-copy`}>
               <CopyableAddress address={v.address} />
             </Row>
 
             <Text text={`(${v.path})`} size="xs" color="textDim" disableTranslate />
 
             {v.satoshis > 0 && (
-              <Row justifyCenter gap="zero" itemsCenter>
+              <Row justifyCenter gap="zero" itemsCenter key={`${v.address}-balance`}>
                 <Icon icon="btc" size={fontSizes.iconMiddle} />
                 <Text text={`${satoshisToPEP(v.satoshis)} ${btcUnit}`} color="yellow" size="xxxs" />
               </Row>
