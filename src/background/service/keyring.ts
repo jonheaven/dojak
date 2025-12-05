@@ -17,12 +17,12 @@ import { t } from '@unisat/i18n';
 import {
   DogecoinKeyringService,
   MemoryStorageAdapter,
-  StorageAdapter,
 } from './dogecoin-keyrings/dogecoin-keyring-service';
+import type { StorageAdapter, DisplayedKeyring } from './dogecoin-keyrings/dogecoin-keyring-service';
 
 // Re-export types for compatibility
-export { DogecoinKeyringService, MemoryStorageAdapter, StorageAdapter };
-export type { DisplayedKeyring } from './dogecoin-keyrings/dogecoin-keyring-service';
+export { DogecoinKeyringService, MemoryStorageAdapter };
+export type { StorageAdapter, DisplayedKeyring };
 
 /**
  * Chrome Extension Storage Adapter
