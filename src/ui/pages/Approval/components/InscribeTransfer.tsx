@@ -3,22 +3,22 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { InscribeOrder, RawTxInfo, TokenBalance, TokenInfo, TxType } from '@/shared/types';
 import {
-    Button,
-    Card,
-    Column,
-    Content,
-    Footer,
-    Header,
-    Icon,
-    Input,
-    Layout,
-    Row,
-    Text,
-    Tooltip
+  Button,
+  Card,
+  Column,
+  Content,
+  Footer,
+  Header,
+  Icon,
+  Input,
+  Layout,
+  Row,
+  Text,
+  Tooltip
 } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { Loading } from '@/ui/components/ActionComponent/Loading';
-import { BtcUsd } from '@/ui/components/BtcUsd';
+import { DOGEUSD } from '@/ui/components/DOGEUSD';
 import { DRC20Ticker } from '@/ui/components/DRC20Ticker';
 import { Empty } from '@/ui/components/Empty';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
@@ -29,11 +29,11 @@ import { TickUsdWithoutPrice, TokenType } from '@/ui/components/TickUsd';
 import WebsiteBar from '@/ui/components/WebsiteBar';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { useNetworkType, usePEPUnit } from '@/ui/state/settings/hooks';
+import { useNetworkType, useDOGEUnit } from '@/ui/state/settings/hooks';
 import {
-    useFetchUtxosCallback,
-    usePrepareSendBypassHeadOffsetsCallback,
-    usePushBitcoinTxCallback
+  useFetchUtxosCallback,
+  usePrepareSendBypassHeadOffsetsCallback,
+  usePushBitcoinTxCallback
 } from '@/ui/state/transactions/hooks';
 import { fontSizes } from '@/ui/theme/font';
 import { spacing } from '@/ui/theme/spacing';
@@ -323,7 +323,8 @@ function InscribeTransferStep({ contextData, updateContextData }: StepProps) {
                           )} `}
                           overlayStyle={{
                             fontSize: fontSizes.xs
-                          }}>
+                          }}
+                        >
                           <div>
                             <Row>
                               <Text
@@ -345,7 +346,8 @@ function InscribeTransferStep({ contextData, updateContextData }: StepProps) {
                         itemsCenter
                         onClick={() => {
                           setInputAmount(tokenBalance.availableBalanceSafe);
-                        }}>
+                        }}
+                      >
                         <Text text={`${tokenBalance.availableBalanceSafe}`} digital textCenter size="xs" />
 
                         <DRC20Ticker tick={tokenBalance.ticker} displayName={tokenBalance.displayName} preset="sm" />
@@ -424,7 +426,7 @@ function InscribeTransferStep({ contextData, updateContextData }: StepProps) {
 
 function InscribeConfirmStep({ contextData, updateContextData }: StepProps) {
   const { order, tokenBalance, amount, rawTxInfo, session } = contextData;
-  const btcUnit = usePEPUnit();
+  const btcUnit = useDOGEUnit();
   const { t } = useI18n();
 
   if (!order || !tokenBalance || !rawTxInfo) {
@@ -517,7 +519,7 @@ function InscribeConfirmStep({ contextData, updateContextData }: StepProps) {
               </Row>
               <Row justifyBetween>
                 <div></div>
-                <BtcUsd sats={amountToSatoshis(totalFee)} />
+                <DOGEUSD sats={amountToSatoshis(totalFee)} />
               </Row>
             </Column>
           </Column>
@@ -765,5 +767,3 @@ function InscribeResultStep({
     </Layout>
   );
 }
-
-

@@ -43,7 +43,6 @@ export const FaucetModal = ({ address, chain, onClose }: FaucetModalProps) => {
       } else {
         throw new Error(result.error || 'Claim failed');
       }
-
     } catch (error: any) {
       console.error('Faucet claim failed:', error);
       setClaimStatus('error');
@@ -67,17 +66,26 @@ export const FaucetModal = ({ address, chain, onClose }: FaucetModalProps) => {
 
         <Column gap="zero" mt="sm" mb="lg">
           <Text size="sm" color="textDim" text={`Get testnet ${chain.unit} for development`} textCenter />
-          <Text size="xs" color="textDim" text={`Address: ${address.slice(0, 8)}...${address.slice(-8)}`} textCenter mt="sm" />
+          <Text
+            size="xs"
+            color="textDim"
+            text={`Address: ${address.slice(0, 8)}...${address.slice(-8)}`}
+            textCenter
+            mt="sm"
+          />
 
           <Card
             style={{
-              backgroundColor: claimStatus === 'success' ? 'rgba(34, 197, 94, 0.1)' :
-                              claimStatus === 'error' ? 'rgba(239, 68, 68, 0.1)' :
-                              'rgba(244, 182, 44, 0.1)',
+              backgroundColor:
+                claimStatus === 'success'
+                  ? 'rgba(34, 197, 94, 0.1)'
+                  : claimStatus === 'error'
+                  ? 'rgba(239, 68, 68, 0.1)'
+                  : 'rgba(244, 182, 44, 0.1)',
               borderRadius: 10,
-              border: `1px solid ${claimStatus === 'success' ? '#22c55e' :
-                                   claimStatus === 'error' ? '#ef4444' :
-                                   'rgba(244, 182, 44, 0.25)'}`,
+              border: `1px solid ${
+                claimStatus === 'success' ? '#22c55e' : claimStatus === 'error' ? '#ef4444' : 'rgba(244, 182, 44, 0.25)'
+              }`,
               cursor: !isClaiming && claimStatus !== 'success' ? 'pointer' : 'default'
             }}
             mt="lg"
@@ -86,10 +94,13 @@ export const FaucetModal = ({ address, chain, onClose }: FaucetModalProps) => {
             <Column fullX gap={'md'} itemsCenter>
               <Text
                 text={
-                  isClaiming ? 'Claiming...' :
-                  claimStatus === 'success' ? '✅ Claim Successful!' :
-                  claimStatus === 'error' ? '❌ Claim Failed' :
-                  '🚰 Claim Testnet DOGE'
+                  isClaiming
+                    ? 'Claiming...'
+                    : claimStatus === 'success'
+                    ? '✅ Claim Successful!'
+                    : claimStatus === 'error'
+                    ? '❌ Claim Failed'
+                    : '🚰 Claim Testnet DOGE'
                 }
                 textCenter
                 style={{ fontWeight: 'bold' }}
@@ -100,17 +111,22 @@ export const FaucetModal = ({ address, chain, onClose }: FaucetModalProps) => {
               {claimStatus === 'error' && (
                 <Column gap="sm" itemsCenter>
                   <Text size="sm" color="red" text="❌ Claim Failed" textCenter />
-                  <Text size="xs" color="red" text={
-                    errorMessage.includes('Backend server not available')
-                      ? "Make sure the Dojak API server is running (cd backend && npm run dev)"
-                      : errorMessage.includes('Cannot connect to Dogecoin Core')
-                      ? "Check that dogecoind is running with RPC enabled"
-                      : errorMessage || "Please try again later"
-                  } textCenter />
+                  <Text
+                    size="xs"
+                    color="red"
+                    text={
+                      errorMessage.includes('Backend server not available')
+                        ? 'Make sure the Dojak API server is running (cd backend && npm run dev)'
+                        : errorMessage.includes('Cannot connect to Dogecoin Core')
+                        ? 'Check that dogecoind is running with RPC enabled'
+                        : errorMessage || 'Please try again later'
+                    }
+                    textCenter
+                  />
                 </Column>
               )}
               {!isClaiming && claimStatus === 'idle' && (
-                <Text size="sm" color="textDim" text="Get 0.01 tPEP for testing" textCenter />
+                <Text size="sm" color="textDim" text="Get 0.01 tDOGE for testing" textCenter />
               )}
             </Column>
           </Card>

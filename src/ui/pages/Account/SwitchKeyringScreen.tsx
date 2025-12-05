@@ -68,7 +68,8 @@ export function MyItem({ keyring, autoNav }: MyItemProps, ref) {
         backgroundColor: selected ? 'rgba(244,182,44,0.1)' : colors.black_dark,
         marginLeft: 10,
         marginRight: 10
-      }}>
+      }}
+    >
       <Row
         full
         onClick={async (e) => {
@@ -83,7 +84,8 @@ export function MyItem({ keyring, autoNav }: MyItemProps, ref) {
             dispatch(accountActions.setCurrent(_currentAccount));
           }
           if (autoNav) navigate('MainScreen');
-        }}>
+        }}
+      >
         <Column style={{ width: 20 }} selfItemsCenter>
           {selected ? <Icon icon="circle-check" color="gold" /> : <Icon icon="circle-check" color="white_muted2" />}
         </Column>
@@ -117,7 +119,8 @@ export function MyItem({ keyring, autoNav }: MyItemProps, ref) {
                   height: 20,
                   display: 'flex',
                   alignItems: 'center'
-                }}>
+                }}
+              >
                 {t('linked_to_dojak_cold_wallet')}
               </div>
             )}
@@ -141,13 +144,15 @@ export function MyItem({ keyring, autoNav }: MyItemProps, ref) {
             }}
             onMouseDown={(e) => {
               setOptionsVisible(false);
-            }}></div>
+            }}
+          ></div>
         )}
 
         <Icon
           onClick={async (e) => {
             setOptionsVisible(!optionsVisible);
-          }}>
+          }}
+        >
           <SettingOutlined />
         </Icon>
 
@@ -160,12 +165,14 @@ export function MyItem({ keyring, autoNav }: MyItemProps, ref) {
               right: 0,
               padding: 5,
               zIndex: 10
-            }}>
+            }}
+          >
             <Column>
               <Row
                 onClick={() => {
                   navigate('EditWalletNameScreen', { keyring });
-                }}>
+                }}
+              >
                 <EditOutlined />
                 <Text text={t('edit_name')} size="sm" />
               </Row>
@@ -174,7 +181,8 @@ export function MyItem({ keyring, autoNav }: MyItemProps, ref) {
                 <Row
                   onClick={() => {
                     navigate('ExportMnemonicsScreen', { keyring });
-                  }}>
+                  }}
+                >
                   <KeyOutlined />
                   <Text text={t('show_secret_recovery_phrase')} size="sm" />
                 </Row>
@@ -185,7 +193,8 @@ export function MyItem({ keyring, autoNav }: MyItemProps, ref) {
                   <Row
                     onClick={() => {
                       navigate('ExportPrivateKeyScreen', { account: keyring.accounts[0] });
-                    }}>
+                    }}
+                  >
                     <KeyOutlined />
                     <Text text={t('export_private_key')} size="sm" />
                   </Row>
@@ -198,7 +207,8 @@ export function MyItem({ keyring, autoNav }: MyItemProps, ref) {
                   }
                   setRemoveVisible(true);
                   setOptionsVisible(false);
-                }}>
+                }}
+              >
                 <Icon color="danger">
                   <DeleteOutlined />
                 </Icon>
@@ -274,7 +284,8 @@ export default function SwitchKeyringScreen() {
           <Icon
             onClick={() => {
               navigate('AddKeyringScreen');
-            }}>
+            }}
+          >
             <PlusCircleOutlined />
           </Icon>
         }
@@ -289,12 +300,11 @@ export default function SwitchKeyringScreen() {
           itemKey={(item) => item.key}
           style={{
             boxSizing: 'border-box'
-          }}>
+          }}
+        >
           {(item, index) => <ForwardMyItem keyring={item.keyring} autoNav={true} />}
         </VirtualList>
       </Content>
     </Layout>
   );
 }
-
-

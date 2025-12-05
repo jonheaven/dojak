@@ -1,16 +1,17 @@
 import * as bip39 from 'bip39';
+import * as bitcoin from 'bitcoinjs-lib';
 
 import { getDogecoinNetwork } from '@/shared/lib/dogecoin-network';
 import { AddressType, NetworkType } from '@unisat/wallet-types';
-import * as bitcoin from 'bitcoinjs-lib';
 
 export function getAddressType(address: string, networkType?: NetworkType) {
   // Use bitcoinjs-lib to properly validate addresses with Dogecoin networks
   try {
     // Get the appropriate Dogecoin network based on networkType
-    const dogecoinNetwork = networkType === NetworkType.TESTNET ?
-      getDogecoinNetwork(1) : // testnet
-      getDogecoinNetwork(0);  // mainnet
+    const dogecoinNetwork =
+      networkType === NetworkType.TESTNET
+        ? getDogecoinNetwork(1) // testnet
+        : getDogecoinNetwork(0); // mainnet
 
     // Try to decode the address
     bitcoin.address.toOutputScript(address, dogecoinNetwork);
@@ -23,9 +24,10 @@ export function getAddressType(address: string, networkType?: NetworkType) {
 export function isValidAddress(address: string, networkType?: NetworkType) {
   try {
     // Get the appropriate Dogecoin network
-    const dogecoinNetwork = networkType === NetworkType.TESTNET ?
-      getDogecoinNetwork(1) : // testnet
-      getDogecoinNetwork(0);  // mainnet
+    const dogecoinNetwork =
+      networkType === NetworkType.TESTNET
+        ? getDogecoinNetwork(1) // testnet
+        : getDogecoinNetwork(0); // mainnet
 
     // Validate address using bitcoinjs-lib
     bitcoin.address.toOutputScript(address, dogecoinNetwork);
@@ -47,9 +49,10 @@ export function getAddressUtxoDust(address: string) {
 
 export function dogecoinPublicKeyToAddress(publicKey: string, addressType: AddressType, networkType?: NetworkType) {
   // Get the appropriate Dogecoin network
-  const dogecoinNetwork = networkType === NetworkType.TESTNET ?
-    getDogecoinNetwork(1) : // testnet
-    getDogecoinNetwork(0);  // mainnet
+  const dogecoinNetwork =
+    networkType === NetworkType.TESTNET
+      ? getDogecoinNetwork(1) // testnet
+      : getDogecoinNetwork(0); // mainnet
 
   // Dogecoin only supports P2PKH addresses
   if (addressType === AddressType.P2PKH) {
@@ -91,7 +94,7 @@ export function isValidHdPath(path: string): boolean {
     }
 
     // Check if it's a hardened path (ends with ')
-    const isHardened = component.endsWith('\'');
+    const isHardened = component.endsWith("'");
     const numberPart = isHardened ? component.slice(0, -1) : component;
 
     // Check if the number part is a valid integer
@@ -118,5 +121,3 @@ export function validateMnemonic(mnemonic: string): boolean {
 
   return bip39.validateMnemonic(mnemonic);
 }
-
-

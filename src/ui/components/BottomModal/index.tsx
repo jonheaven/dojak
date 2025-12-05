@@ -23,6 +23,7 @@ export const BottomModal = ({ children, onClose }: { children: React.ReactNode; 
     <div
       className="popover-container"
       style={{
+        // Backdrop overlay can stay dark in both themes for focus
         backgroundColor: 'rgba(0,0,0,0.7)',
         position: 'fixed',
         top: 0,
@@ -40,10 +41,12 @@ export const BottomModal = ({ children, onClose }: { children: React.ReactNode; 
         if (e.target === e.currentTarget && onClose) {
           handleClose();
         }
-      }}>
+      }}
+    >
       <div
         style={{
-          backgroundColor: '#24282F',
+          // Theme-aware surface for the sliding panel
+          backgroundColor: 'var(--theme-card)',
           width: '100%',
           padding: 20,
           borderRadius: '15px 15px 0 0',
@@ -51,11 +54,10 @@ export const BottomModal = ({ children, onClose }: { children: React.ReactNode; 
           bottom: 0,
           transform: isVisible ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 0.3s ease-out'
-        }}>
+        }}
+      >
         {children}
       </div>
     </div>
   );
 };
-
-

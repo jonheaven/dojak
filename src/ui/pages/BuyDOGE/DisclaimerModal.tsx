@@ -24,8 +24,7 @@ export default function DisclaimerModal({ channelType, onClose }: { channelType:
   const channelInfo = PAYMENT_CHANNELS[channelType];
   const tools = useTools();
 
-  const isFractal =
-    false; // BuyPEP not available on Dogecoin networks
+  const isFractal = false; // BuyDOGE not available on Dogecoin networks
 
   return (
     <BottomModal onClose={onClose}>
@@ -36,7 +35,8 @@ export default function DisclaimerModal({ channelType, onClose }: { channelType:
           <Row
             onClick={() => {
               onClose();
-            }}>
+            }}
+          >
             <CloseOutlined />
           </Row>
         </Row>
@@ -49,7 +49,8 @@ export default function DisclaimerModal({ channelType, onClose }: { channelType:
             overflow: 'auto',
             padding: '0 0 10px 0',
             marginBottom: 16
-          }}>
+          }}
+        >
           <Text
             style={{ fontSize: fontSizes.sm, lineHeight: 2 }}
             text={!isFractal ? t('disclaimStr') : t('disclaimStrFb')}
@@ -59,7 +60,8 @@ export default function DisclaimerModal({ channelType, onClose }: { channelType:
           <Text
             mt="lg"
             style={{ fontSize: fontSizes.sm, lineHeight: 2 }}
-            text={t('additional_transaction_fees')}></Text>
+            text={t('additional_transaction_fees')}
+          ></Text>
           <Text mt="lg" style={{ fontSize: fontSizes.sm, lineHeight: 2 }} text={t('before_proceeding')}></Text>
         </div>
 
@@ -69,7 +71,8 @@ export default function DisclaimerModal({ channelType, onClose }: { channelType:
               setUnderstand(!understand);
             }}
             checked={understand}
-            style={{ fontSize: fontSizes.sm }}>
+            style={{ fontSize: fontSizes.sm }}
+          >
             <Text text={t('i_have_read_and_agree_to_the_above_disclaimer')} />
           </Checkbox>
         </Row>
@@ -97,5 +100,3 @@ export default function DisclaimerModal({ channelType, onClose }: { channelType:
     </BottomModal>
   );
 }
-
-

@@ -1,24 +1,25 @@
-import { DollarOutlined, FilterOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Button, Card, Empty, Form, InputNumber, message, Modal, Select, Spin } from 'antd';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 
 import { useWallet } from '@/ui/utils';
-import { useTranslation } from 'react-i18next';
+import { DollarOutlined, FilterOutlined, ShoppingOutlined } from '@ant-design/icons';
+
 import { Doginal } from './types';
 
 const { Option } = Select;
 
 interface MarketplaceListing {
   id: string;
-  pepinal_id: string;
+  doginal_id: string;
   collection?: string;
   rarity: string;
-  price_pep: number;
+  price_doge: number;
   seller_addr: string;
   status: string;
   created_at: number;
-  pepinal?: Doginal; // Populated from API
+  doginal?: Doginal; // Populated from API
 }
 
 export const MarketplaceScreen = () => {
@@ -91,19 +92,25 @@ export const MarketplaceScreen = () => {
       setSelectedDoginal(null);
       loadListings();
     } catch (error) {
-      console.error('Failed to list pepinal:', error);
+      console.error('Failed to list doginal:', error);
       message.error('Failed to list Doginal');
     }
   };
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
-      case 'common': return '#8B8B8B';
-      case 'uncommon': return '#4CAF50';
-      case 'rare': return '#2196F3';
-      case 'epic': return '#9C27B0';
-      case 'legendary': return '#FF9800';
-      default: return '#8B8B8B';
+      case 'common':
+        return '#8B8B8B';
+      case 'uncommon':
+        return '#4CAF50';
+      case 'rare':
+        return '#2196F3';
+      case 'epic':
+        return '#9C27B0';
+      case 'legendary':
+        return '#FF9800';
+      default:
+        return '#8B8B8B';
     }
   };
 
@@ -136,19 +143,19 @@ export const MarketplaceScreen = () => {
           <Select
             placeholder="Filter by collection"
             value={filters.collection || undefined}
-            onChange={(value) => setFilters(prev => ({ ...prev, collection: value }))}
+            onChange={(value) => setFilters((prev) => ({ ...prev, collection: value }))}
             className="w-48"
             allowClear
           >
             <Option value="doginals">Doginals</Option>
             <Option value="drc20">DRC-20</Option>
-            <Option value="pepemaps">PepeMaps</Option>
+            <Option value="dogemaps">DogeMaps</Option>
           </Select>
 
           <Select
             placeholder="Filter by rarity"
             value={filters.rarity || undefined}
-            onChange={(value) => setFilters(prev => ({ ...prev, rarity: value }))}
+            onChange={(value) => setFilters((prev) => ({ ...prev, rarity: value }))}
             className="w-48"
             allowClear
           >
@@ -163,10 +170,7 @@ export const MarketplaceScreen = () => {
 
       {/* Listings */}
       {listings.length === 0 ? (
-        <Empty
-          description="No listings found. Be the first to list a Doginal!"
-          className="text-gray-400"
-        />
+        <Empty description="No listings found. Be the first to list a Doginal!" className="text-gray-400" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {listings.map((listing) => (
@@ -177,7 +181,7 @@ export const MarketplaceScreen = () => {
                 <div className="aspect-square bg-[#1a1a1a] flex items-center justify-center p-4">
                   <div className="text-center text-gray-400">
                     <div className="text-4xl mb-2">🐸</div>
-                    <div className="text-sm">Doginal #{listing.pepinal_id.slice(-4)}</div>
+                    <div className="text-sm">Doginal #{listing.doginal_id.slice(-4)}</div>
                   </div>
                 </div>
               }
@@ -189,13 +193,13 @@ export const MarketplaceScreen = () => {
                   onClick={() => handleBuy(listing)}
                   className="bg-[#069420] border-[#069420] hover:bg-[#07a521]"
                 >
-                  Buy {listing.price_pep} DOGE
+                  Buy {listing.price_doge} DOGE
                 </Button>
               ]}
             >
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-white font-medium">#{listing.pepinal_id.slice(-8)}</span>
+                  <span className="text-white font-medium">#{listing.doginal_id.slice(-8)}</span>
                   <span
                     className="px-2 py-1 text-xs rounded"
                     style={{ backgroundColor: getRarityColor(listing.rarity) }}
@@ -204,9 +208,7 @@ export const MarketplaceScreen = () => {
                   </span>
                 </div>
 
-                <div className="text-xs text-gray-400">
-                  Seller: {listing.seller_addr.slice(0, 8)}...
-                </div>
+                <div className="text-xs text-gray-400">Seller: {listing.seller_addr.slice(0, 8)}...</div>
 
                 <div className="text-xs text-gray-400">
                   Listed: {new Date(listing.created_at * 1000).toLocaleDateString()}
@@ -232,16 +234,16 @@ export const MarketplaceScreen = () => {
           <div>
             <h3 className="text-white mb-4">Select a Doginal to list:</h3>
             <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-              {userDoginals.map((pepinal) => (
+              {userDoginals.map((doginal) => (
                 <Card
-                  key={pepinal.id}
+                  key={doginal.id}
                   size="small"
                   className="bg-[#1a1a1a] border-[#333] cursor-pointer hover:border-[#069420]"
-                  onClick={() => setSelectedDoginal(pepinal)}
+                  onClick={() => setSelectedDoginal(doginal)}
                 >
                   <div className="text-center">
                     <div className="text-2xl mb-1">🐸</div>
-                    <div className="text-xs text-gray-300">#{pepinal.id}</div>
+                    <div className="text-xs text-gray-300">#{doginal.id}</div>
                   </div>
                 </Card>
               ))}
@@ -260,19 +262,11 @@ export const MarketplaceScreen = () => {
               name="price"
               rules={[{ required: true, message: 'Please enter a price' }]}
             >
-              <InputNumber
-                min={0.00000001}
-                step={0.01}
-                className="w-full"
-                placeholder="Enter price in DOGE"
-              />
+              <InputNumber min={0.00000001} step={0.01} className="w-full" placeholder="Enter price in DOGE" />
             </Form.Item>
 
             <div className="flex gap-2 mt-4">
-              <Button
-                onClick={() => setSelectedDoginal(null)}
-                className="flex-1"
-              >
+              <Button onClick={() => setSelectedDoginal(null)} className="flex-1">
                 Back
               </Button>
               <Button

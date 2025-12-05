@@ -5,10 +5,10 @@ import { useI18n } from '@/ui/hooks/useI18n';
 import { colors } from '@/ui/theme/colors';
 import { CameraOutlined } from '@ant-design/icons';
 import {
-    createUniversalDecoder,
-    type ColdWalletData,
-    type MsgSignResult,
-    type TransactionSignResult
+  createUniversalDecoder,
+  type ColdWalletData,
+  type MsgSignResult,
+  type TransactionSignResult
 } from '@unisat/animated-qr';
 import { AddressType } from '@unisat/wallet-types';
 import { BrowserQRCodeReader } from '@zxing/browser';
@@ -291,7 +291,8 @@ export default function ColdWalletScan({ onSucceed, size = 300 }: Props) {
           background: colors.bg4,
           borderRadius: '8px',
           overflow: 'hidden'
-        }}>
+        }}
+      >
         {/* Camera permission status display */}
         {cameraState === 'requesting' && (
           <div
@@ -303,7 +304,8 @@ export default function ColdWalletScan({ onSucceed, size = 300 }: Props) {
               textAlign: 'center',
               color: colors.textDim,
               zIndex: 1
-            }}>
+            }}
+          >
             <CameraOutlined style={{ fontSize: 32, marginBottom: 8 }} />
             <div style={{ fontSize: 12 }}>{t('Requesting camera permission...')}</div>
           </div>
@@ -319,7 +321,8 @@ export default function ColdWalletScan({ onSucceed, size = 300 }: Props) {
               textAlign: 'center',
               color: colors.red,
               zIndex: 1
-            }}>
+            }}
+          >
             <CameraOutlined style={{ fontSize: 32, marginBottom: 8 }} />
             <div style={{ fontSize: 12 }}>{t('Camera permission denied')}</div>
           </div>
@@ -382,7 +385,8 @@ export default function ColdWalletScan({ onSucceed, size = 300 }: Props) {
                   border: 'none',
                   borderRadius: '4px',
                   cursor: 'pointer'
-                }}>
+                }}
+              >
                 {t('Reload and Try Again')}
               </button>
             </>
@@ -403,7 +407,8 @@ export default function ColdWalletScan({ onSucceed, size = 300 }: Props) {
                   border: 'none',
                   borderRadius: '4px',
                   cursor: 'pointer'
-                }}>
+                }}
+              >
                 {t('Try Again')}
               </button>
             </>
@@ -422,7 +427,8 @@ export default function ColdWalletScan({ onSucceed, size = 300 }: Props) {
             backgroundColor: '#e6f3ff',
             borderRadius: '6px',
             border: '1px solid #2196F3'
-          }}>
+          }}
+        >
           <Text text={t('Multi-part QR Code Detected')} size="sm" color="primary" preset="bold" />
           <Text text={t('Keep scanning to collect all parts')} size="xs" style={{ textAlign: 'center' }} />
         </Column>
@@ -430,5 +436,3 @@ export default function ColdWalletScan({ onSucceed, size = 300 }: Props) {
     </Column>
   );
 }
-
-

@@ -89,5 +89,3 @@ export default function KeystoneSignBase(props: KeystoneSignBaseProps) {
       return null;
   }
 }
-
-

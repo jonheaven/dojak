@@ -56,7 +56,7 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps> {
 
     if (this.state.hasError) {
       return (
-        <Layout style={{ backgroundColor: '#000000' }}>
+        <Layout style={{ backgroundColor: 'var(--theme-background)' }}>
           <Content>
             <Column justifyCenter itemsCenter full gap="lg" style={{ padding: '20px' }}>
               <div style={{ marginTop: '40px' }}>
@@ -73,13 +73,11 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps> {
                   preset="primary"
                   text={t('go_back')}
                   style={{
-                    fill: 'var(--1, linear-gradient(90deg, #00FF88, #00CC55))',
                     width: '280px',
                     height: '48px',
                     flexShrink: 0,
                     borderRadius: '12px',
-                    marginBottom: '10px',
-                    background: 'var(--1, linear-gradient(90deg, #00FF88, #00CC55))'
+                    marginBottom: '10px'
                   }}
                   onClick={this.back}
                 />
@@ -90,7 +88,7 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps> {
                     borderRadius: '12px',
                     height: '48px',
                     width: '280px',
-                    backgroundColor: '#262222',
+                    backgroundColor: 'var(--theme-bg3)',
                     borderColor: 'transparent'
                   }}
                   onClick={this.refresh}
@@ -107,5 +105,3 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps> {
 }
 
 export const ErrorBoundary = withI18n(ErrorBoundaryComponent);
-
-

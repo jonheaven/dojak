@@ -9,5 +9,3 @@ export interface AddressTextProps {
   color?: ColorTypes;
   inputInfo?: InputInfo;
 }
-
-

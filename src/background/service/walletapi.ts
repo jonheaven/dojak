@@ -22,45 +22,9 @@ interface ProviderConfig {
 }
 
 const PROVIDER_CONFIGS: ProviderConfig[] = [
-  // Temporarily disabled PepeBlocks as it's returning 404
-  // {
-  //   name: 'pepeblocks',
-  //   endpoint: 'https://api.pepeblocks.com',
-  //   priority: 1,
-  //   supports: ['dogecoin']
-  // },
+  // Local development providers (highest priority when available)
   {
-    name: 'nintondo',
-    endpoint: 'https://pepe-mainnet-api.nintondo.io',
-    priority: 1, // Make this highest priority since PepeBlocks is down
-    supports: ['dogecoin', 'dogecoin', 'bellscoin'],
-    rateLimit: {
-      requests: 100,
-      windowMs: 60000 // 1 minute
-    }
-  },
-  {
-    name: 'nintondo-tokens',
-    endpoint: 'https://pepe-mainnet-tokens.nintondo.io',
-    priority: 2,
-    supports: ['dogecoin'],
-    rateLimit: {
-      requests: 100,
-      windowMs: 60000 // 1 minute
-    }
-  },
-  {
-    name: 'nintondo-search',
-    endpoint: 'https://pepe-mainnet-search.nintondo.io',
-    priority: 2,
-    supports: ['dogecoin'],
-    rateLimit: {
-      requests: 100,
-      windowMs: 60000 // 1 minute
-    }
-  },
-  {
-    name: 'pepindexer',
+    name: 'dojaker',
     endpoint: 'http://localhost:3000',
     priority: 0, // Highest priority for local indexer
     supports: ['dogecoin']
@@ -76,7 +40,56 @@ const PROVIDER_CONFIGS: ProviderConfig[] = [
     endpoint: 'http://localhost:33889', // Use same RPC server for faucet
     priority: 0, // Highest priority for faucet operations
     supports: ['dogecoin']
+  },
+  // MyDoge API - Primary public provider for balance, UTXOs, inscriptions, DRC20
+  {
+    name: 'mydoge',
+    endpoint: 'https://api.mydoge.com',
+    priority: 1, // High priority public API
+    supports: ['dogecoin'],
+    rateLimit: {
+      requests: 60,
+      windowMs: 60000 // 1 minute
+    }
+  },
+  // Nintondo APIs - Secondary providers
+  {
+    name: 'nintondo',
+    endpoint: 'https://doge-mainnet-api.nintondo.io',
+    priority: 2,
+    supports: ['dogecoin', 'bellscoin'],
+    rateLimit: {
+      requests: 100,
+      windowMs: 60000 // 1 minute
+    }
+  },
+  {
+    name: 'nintondo-tokens',
+    endpoint: 'https://doge-mainnet-tokens.nintondo.io',
+    priority: 3,
+    supports: ['dogecoin'],
+    rateLimit: {
+      requests: 100,
+      windowMs: 60000 // 1 minute
+    }
+  },
+  {
+    name: 'nintondo-search',
+    endpoint: 'https://doge-mainnet-search.nintondo.io',
+    priority: 3,
+    supports: ['dogecoin'],
+    rateLimit: {
+      requests: 100,
+      windowMs: 60000 // 1 minute
+    }
   }
+  // Future: Dojak API will be added here with priority 1
+  // {
+  //   name: 'dojak',
+  //   endpoint: 'https://api.dojak.dog',
+  //   priority: 1,
+  //   supports: ['dogecoin']
+  // }
 ];
 
 class ProviderManager {
@@ -87,14 +100,14 @@ class ProviderManager {
   constructor() {
     console.log('[ProviderManager] Initializing providers...');
     // Initialize providers
-    PROVIDER_CONFIGS.forEach(config => {
+    PROVIDER_CONFIGS.forEach((config) => {
       try {
         console.log(`[ProviderManager] Creating client for ${config.name} at ${config.endpoint}`);
         const client = axios.create({
           baseURL: config.endpoint,
           timeout: 10000, // Shorter timeout for faster failover
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json'
           }
         });
         this.providers.set(config.name, client);
@@ -117,6 +130,17 @@ class ProviderManager {
       return this.healthStatus.get(providerName) || false;
     }
 
+    // For some public providers (like MyDoge), we don't want health checks to
+    // aggressively mark them as unhealthy due to transient/network issues.
+    // Instead, we optimistically treat them as healthy and let the actual
+    // operation failure drive any fallback logic.
+    if (providerName === 'mydoge') {
+      console.log('[WalletAPI] Skipping network health check for public provider mydoge; assuming healthy');
+      this.healthStatus.set(providerName, true);
+      this.lastHealthCheck.set(providerName, now);
+      return true;
+    }
+
     try {
       const client = this.providers.get(providerName);
       if (!client) {
@@ -135,22 +159,32 @@ class ProviderManager {
           method: 'getblockcount',
           params: []
         });
+      } else if (providerName === 'mydoge') {
+        // For MyDoge, try a simple wallet info endpoint
+        console.log(`[WalletAPI] Trying ${providerName} health check`);
+        // MyDoge uses /wallet/info?route=... format, but we can check if the API responds
+        await client.get('/').catch(async () => {
+          // If root fails, the API might still work for specific endpoints
+          console.log(`[WalletAPI] MyDoge root check failed, assuming healthy for now`);
+        });
       } else if (providerName === 'nintondo') {
         // For Nintondo, try a known working endpoint
         console.log(`[WalletAPI] Trying ${providerName} /blocks/tip/height endpoint`);
         await client.get('/blocks/tip/height').catch(async (blocksError) => {
-          console.log(`[WalletAPI] /blocks/tip/height failed, trying /address/test/stats for ${providerName}`, blocksError.message);
+          console.log(
+            `[WalletAPI] /blocks/tip/height failed, trying /address/test/stats for ${providerName}`,
+            blocksError.message
+          );
           await client.get('/address/test/stats');
         });
-      } else if (providerName === 'pepeblocks') {
-        // PepeBlocks might not have a working root endpoint, try a known working endpoint
-        console.log(`[WalletAPI] Trying PepeBlocks specific endpoint`);
-        await client.get('/api/v1/addresses/test').catch(async () => {
-          // If that fails, try the root anyway
-          console.log(`[WalletAPI] PepeBlocks specific endpoint failed, trying root /`);
+      } else if (providerName === 'dojak') {
+        // For future Dojak API, try the health endpoint
+        console.log(`[WalletAPI] Trying ${providerName} /health endpoint`);
+        await client.get('/health').catch(async () => {
+          console.log(`[WalletAPI] Dojak health check failed, trying root /`);
           await client.get('/');
         });
-      } else if (providerName === 'pepindexer' || providerName === 'local-rpc') {
+      } else if (providerName === 'dojaker' || providerName === 'local-rpc') {
         // For local services, assume they're not running and mark as unhealthy
         console.log(`[WalletAPI] Skipping health check for local provider ${providerName}`);
         return false;
@@ -168,8 +202,8 @@ class ProviderManager {
       this.healthStatus.set(providerName, true);
       this.lastHealthCheck.set(providerName, now);
       return true;
-    } catch (error) {
-      console.warn(`[WalletAPI] Provider ${providerName} health check failed:`, error.message || error);
+    } catch (error: any) {
+      console.warn(`[WalletAPI] Provider ${providerName} health check failed:`, error?.message || error);
       this.healthStatus.set(providerName, false);
       this.lastHealthCheck.set(providerName, now);
       return false;
@@ -180,11 +214,14 @@ class ProviderManager {
     operation: (client: AxiosInstance) => Promise<T>,
     supportedChains: string[] = ['dogecoin']
   ): Promise<T> {
-    const sortedProviders = PROVIDER_CONFIGS
-      .filter(config => config.supports.some(chain => supportedChains.includes(chain)))
-      .sort((a, b) => a.priority - b.priority);
+    const sortedProviders = PROVIDER_CONFIGS.filter((config) =>
+      config.supports.some((chain) => supportedChains.includes(chain))
+    ).sort((a, b) => a.priority - b.priority);
 
-    console.log(`[ProviderManager] Trying providers in order:`, sortedProviders.map(p => p.name));
+    console.log(
+      `[ProviderManager] Trying providers in order:`,
+      sortedProviders.map((p) => p.name)
+    );
 
     for (const config of sortedProviders) {
       console.log(`[ProviderManager] Checking health for ${config.name}...`);
@@ -222,16 +259,29 @@ export class WalletApiService {
   private currentEndpoint = '';
   private providerManager: ProviderManager;
 
+  // Add getVersionDetail stub for extension update/version checking
+  async getVersionDetail(
+    version: string
+  ): Promise<{ latestVersion: string; isUpdateAvailable: boolean; detail?: string }> {
+    // TODO: Replace with real version check (API, Google extension site, etc.)
+    // For now, always return current version as latest
+    return {
+      latestVersion: version,
+      isUpdateAvailable: false,
+      detail: 'You are running the latest version.'
+    };
+  }
+
   constructor() {
-    // Initialize with fallback configuration
+    // Initialize with MyDoge as default public API
     this.client = axios.create({
-      baseURL: 'https://api.pepeblocks.com',
+      baseURL: 'https://api.mydoge.com',
       timeout: 30000,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       }
     });
-    this.currentEndpoint = 'https://api.pepeblocks.com';
+    this.currentEndpoint = 'https://api.mydoge.com';
     this.providerManager = new ProviderManager();
   }
 
@@ -305,7 +355,7 @@ export class WalletApiService {
     return {
       getAddressBalance: (address: string) =>
         this.providerManager.executeWithFailover(async (client) => {
-          if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+          if (client.defaults.baseURL?.includes('doge-mainnet-api.nintondo.io')) {
             // Nintondo address stats endpoint
             const res = await client.get(`/address/${address}/stats`);
             return {
@@ -319,7 +369,7 @@ export class WalletApiService {
         }),
       getAddressBalanceV2: (address: string) =>
         this.providerManager.executeWithFailover(async (client) => {
-          if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+          if (client.defaults.baseURL?.includes('doge-mainnet-api.nintondo.io')) {
             // Nintondo address stats endpoint
             const res = await client.get(`/address/${address}/stats`);
             const confirmedBalance = (res.data?.balance || 0) / 100000000; // Convert satoshis to DOGE
@@ -340,26 +390,96 @@ export class WalletApiService {
           };
         }),
       getAddressUtxo: (address: string) =>
-        this.providerManager.executeWithFailover(client => {
-          if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-            return client.get(`/api/v1/addresses/${address}/utxos`).then(res => res.data || []);
+        this.providerManager.executeWithFailover(async (client) => {
+          const baseURL = client.defaults.baseURL || '';
+
+          // MyDoge API - GET /UTXOS/{address}
+          if (baseURL.includes('api.mydoge.com')) {
+            const res = await client.get(`/UTXOS/${address}`);
+            // Transform MyDoge response to standard format
+            const utxos = res.data || [];
+            return utxos.map((utxo: any) => ({
+              txid: utxo.txid,
+              vout: utxo.vout,
+              value: utxo.value,
+              confirmations: utxo.confirmations,
+              scriptPubKey: utxo.scriptPubKey,
+              inscriptions: utxo.inscriptions || []
+            }));
           }
-          return client.get(`/api/v1/address/${address}/utxo`);
+
+          // Nintondo API
+          if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
+            const res = await client.get(`/address/${address}/utxo`);
+            return res.data || [];
+          }
+
+          // Future: Dojak API
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/address/${address}/utxos`);
+            return res.data || [];
+          }
+
+          // Generic fallback
+          const res = await client.get(`/api/v1/address/${address}/utxo`);
+          return res.data || [];
         }),
       getTx: (txid: string) =>
-        this.providerManager.executeWithFailover(client => {
-          if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-            return client.get(`/api/v1/transactions/${txid}`);
+        this.providerManager.executeWithFailover(async (client) => {
+          const baseURL = client.defaults.baseURL || '';
+
+          // MyDoge - may need to use wallet/info route
+          if (baseURL.includes('api.mydoge.com')) {
+            const encodedRoute = encodeURIComponent(`/tx/${txid}`);
+            const res = await client.get(`/wallet/info?route=${encodedRoute}`);
+            return res.data;
           }
-          return client.get(`/api/v1/tx/${txid}`);
+
+          // Nintondo API
+          if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
+            const res = await client.get(`/tx/${txid}`);
+            return res.data;
+          }
+
+          // Future: Dojak API
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/tx/${txid}`);
+            return res.data;
+          }
+
+          // Generic fallback
+          const res = await client.get(`/api/v1/tx/${txid}`);
+          return res.data;
         }),
       pushTx: (rawtx: string) =>
-        this.providerManager.executeWithFailover(client => {
-          if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-            return client.post('/api/v1/transactions', { rawtx });
+        this.providerManager.executeWithFailover(async (client) => {
+          const baseURL = client.defaults.baseURL || '';
+
+          // MyDoge - may need different endpoint for pushing tx
+          if (baseURL.includes('api.mydoge.com')) {
+            // MyDoge might use a broadcast endpoint
+            const res = await client.post('/broadcast', { rawtx });
+            return res.data;
           }
-          return client.post('/api/v1/tx', { rawtx });
-        }),
+
+          // Nintondo API
+          if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
+            const res = await client.post('/tx', rawtx, {
+              headers: { 'Content-Type': 'text/plain' }
+            });
+            return res.data;
+          }
+
+          // Future: Dojak API
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.post('/api/v1/tx', { rawtx });
+            return res.data;
+          }
+
+          // Generic fallback
+          const res = await client.post('/api/v1/tx', { rawtx });
+          return res.data;
+        })
     };
   }
 
@@ -367,39 +487,83 @@ export class WalletApiService {
     return {
       getAddressInscriptions: async (address: string, cursor?: string, size = 20) => {
         return this.providerManager.executeWithFailover(async (client) => {
-          if (client.defaults.baseURL?.includes('pepe-mainnet-search.nintondo.io')) {
+          const baseURL = client.defaults.baseURL || '';
+
+          // MyDoge API - GET /inscriptions/{address}
+          if (baseURL.includes('api.mydoge.com')) {
+            const res = await client.get(`/inscriptions/${address}`);
+            // Transform MyDoge response to standard format
+            const inscriptions = res.data || [];
+            return {
+              list: inscriptions
+                .map((insc: any) => ({
+                  inscriptionId: insc.inscriptionId || insc.id,
+                  inscriptionNumber: insc.inscriptionNumber || insc.number,
+                  contentType: insc.contentType,
+                  contentBody: insc.contentBody || insc.body,
+                  genesisTxid: insc.genesisTxid || insc.genesisTransaction,
+                  location: insc.location,
+                  outputValue: insc.outputValue,
+                  timestamp: insc.timestamp,
+                  blockHeight: insc.blockHeight
+                }))
+                .slice(0, size),
+              total: inscriptions.length
+            };
+          }
+
+          // Nintondo Search API
+          if (baseURL.includes('doge-mainnet-search.nintondo.io')) {
             const res = await client.get(`/pub/collections/${address}`);
             return {
               list: (res.data?.inscriptions || []).slice(0, size),
               total: res.data?.total || 0
             };
-          } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-            const res = await client.get('/inscriptions/__data.json');
-            const allInscriptions = res.data?.inscriptions || [];
-            return {
-              list: allInscriptions.filter((insc: any) =>
-                insc.owner?.toLowerCase() === address.toLowerCase()
-              ).slice(0, size),
-              total: allInscriptions.length
-            };
           }
+
+          // Future: Dojak API
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/address/${address}/inscriptions?cursor=${cursor || 0}&size=${size}`);
+            return res.data;
+          }
+
+          // Generic fallback
           const res = await client.get(`/api/v1/address/${address}/inscriptions?cursor=${cursor || 0}&size=${size}`);
           return res.data;
         });
       },
       getInscriptionInfo: async (inscriptionId: string) => {
         return this.providerManager.executeWithFailover(async (client) => {
-          if (client.defaults.baseURL?.includes('pepe-mainnet-search.nintondo.io')) {
+          const baseURL = client.defaults.baseURL || '';
+
+          // MyDoge doesn't have a direct inscription info endpoint, skip to fallback
+          if (baseURL.includes('api.mydoge.com')) {
+            throw new Error('MyDoge: Use alternate provider for inscription info');
+          }
+
+          // Nintondo Search API
+          if (baseURL.includes('doge-mainnet-search.nintondo.io')) {
             const res = await client.get(`/pub/${inscriptionId}/info`);
             return res.data;
-          } else if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+          }
+
+          // Nintondo API
+          if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
             const res = await client.get(`/location/${inscriptionId}`);
             return res.data;
           }
+
+          // Future: Dojak API
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/inscription/${inscriptionId}`);
+            return res.data;
+          }
+
+          // Generic fallback
           const res = await client.get(`/api/v1/inscription/${inscriptionId}`);
           return res.data;
         });
-      },
+      }
     };
   }
 
@@ -407,26 +571,63 @@ export class WalletApiService {
     return {
       getAddressTokenSummary: (address: string, cursor?: string, size = 20) =>
         this.providerManager.executeWithFailover(async (client) => {
-          if (client.defaults.baseURL?.includes('pepe-mainnet-tokens.nintondo.io')) {
+          const baseURL = client.defaults.baseURL || '';
+
+          // MyDoge API - GET /DRC20/{address}
+          if (baseURL.includes('api.mydoge.com')) {
+            const res = await client.get(`/DRC20/${address}`);
+            // Transform MyDoge response to standard format
+            const tokens = res.data || [];
+            return {
+              list: tokens.map((token: any) => ({
+                ticker: token.ticker,
+                available: token.available || token.availableBalance || 0,
+                transferable: token.transferable || token.transferableBalance || 0,
+                balance: token.balance || token.overallBalance || 0
+              })),
+              total: tokens.length
+            };
+          }
+
+          // Nintondo Tokens API
+          if (baseURL.includes('doge-mainnet-tokens.nintondo.io')) {
             const res = await client.get(`/address/${address}/tokens?limit=${size || 20}`);
             return {
               list: res.data || [],
               total: res.data?.length || 0
             };
-          } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-            const res = await client.get(`/api/v1/addresses/${address}/drc20-tokens?limit=${size || 20}&offset=${cursor || 0}`);
+          }
+
+          // Future: Dojak API
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/address/${address}/drc20?cursor=${cursor || 0}&size=${size || 20}`);
             return res.data;
           }
+
+          // Generic fallback
           const res = await client.get(`/api/v1/address/${address}/drc20?cursor=${cursor || 0}&size=${size || 20}`);
           return res.data;
         }),
       getTokenInfo: (ticker: string) =>
-        this.providerManager.executeWithFailover(client => {
-          if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-            return client.get(`/api/v1/drc20-tokens/${ticker}`);
+        this.providerManager.executeWithFailover(async (client) => {
+          const baseURL = client.defaults.baseURL || '';
+
+          // MyDoge doesn't have a token info endpoint, use fallback
+          if (baseURL.includes('doge-mainnet-tokens.nintondo.io')) {
+            const res = await client.get(`/token/${ticker}`);
+            return res.data;
           }
-          return client.get(`/api/v1/drc20/${ticker}`);
-        }),
+
+          // Future: Dojak API
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/drc20/${ticker}`);
+            return res.data;
+          }
+
+          // Generic fallback
+          const res = await client.get(`/api/v1/drc20/${ticker}`);
+          return res.data;
+        })
     };
   }
   get Charms() {
@@ -436,21 +637,21 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer Charms API first
+              // Try the dojaker Charms API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   // Get charms stats and collections for this address
-                  const [stats, collections] = await Promise.all([
+                  const [statsRes, collectionsRes] = await Promise.all([
                     client.get('/charms/stats'),
                     client.get(`/charms/collections/${address}`)
                   ]);
                   return {
-                    list: collections.collections || [],
-                    total: collections.total || 0,
-                    stats: stats
+                    list: collectionsRes.data?.collections || [],
+                    total: collectionsRes.data?.total || 0,
+                    stats: statsRes.data
                   };
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer Charms API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker Charms API failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -471,13 +672,13 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer Charms API first
+              // Try the dojaker Charms API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get(`/charms/${charmsId}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer Charm info API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker Charm info API failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -498,13 +699,13 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer Charms API first
+              // Try the dojaker Charms API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get(`/charms/collections/${address}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer Charm collections API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker Charm collections API failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -525,13 +726,13 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer Charms API first
+              // Try the dojaker Charms API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get(`/charms/collection/${collectionId}/items/${address}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer Charm collection items API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker Charm collection items API failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -552,13 +753,13 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer Charms API first
+              // Try the dojaker Charms API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get(`/charms/utxo/${utxo}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer Charms by UTXO API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker Charms by UTXO API failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -579,13 +780,13 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer Charms API first
+              // Try the dojaker Charms API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get(`/charms/app/${app}?limit=${limit}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer Charms by app API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker Charms by app API failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -606,13 +807,13 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer Charms API first
+              // Try the dojaker Charms API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get('/charms/stats');
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer Charms stats API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker Charms stats API failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -642,19 +843,38 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Use Nintondo for balance queries
-              if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+              const baseURL = client.defaults.baseURL || '';
+
+              // MyDoge API - Primary public provider
+              if (baseURL.includes('api.mydoge.com')) {
+                const encodedRoute = encodeURIComponent(`/address/${address}?page=1&pageSize=10`);
+                const res = await client.get(`/wallet/info?route=${encodedRoute}`);
+                const balanceSatoshis = res.data?.balance || 0;
+                return {
+                  confirmed: balanceSatoshis / 100000000,
+                  unconfirmed: 0
+                };
+              }
+
+              // Nintondo API
+              if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
                 const res = await client.get(`/address/${address}/stats`);
                 const balance = (res.data?.balance || 0) / 100000000;
                 return {
                   confirmed: balance,
                   unconfirmed: 0
                 };
-              } else {
-                // Fallback for other providers
+              }
+
+              // Future: Dojak API
+              if (baseURL.includes('api.dojak.dog')) {
                 const res = await client.get(`/api/v1/address/${address}/balance`);
                 return res.data;
               }
+
+              // Generic fallback
+              const res = await client.get(`/api/v1/address/${address}/balance`);
+              return res.data;
             },
             ['dogecoin']
           );
@@ -668,8 +888,8 @@ export class WalletApiService {
         }
       },
       getRecentListings: async () => {
-        return this.providerManager.executeWithFailover(client =>
-          client.get('/api/v1/marketplace/listings?limit=10').then(res => res.data?.list || [])
+        return this.providerManager.executeWithFailover((client) =>
+          client.get('/api/v1/marketplace/listings?limit=10').then((res) => res.data?.list || [])
         );
       }
     };
@@ -686,13 +906,13 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer API first
+              // Try the dojaker API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get(`/dns/resolve/${name}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer DNS resolve failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker DNS resolve failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -714,13 +934,13 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer API first
+              // Try the dojaker API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get(`/dns/reverse/${address}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer DNS reverse resolve failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker DNS reverse resolve failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -742,13 +962,13 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer API first
+              // Try the dojaker API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get(`/dns/avatar/${name}`);
-                  return response.avatar;
+                  return response.data?.avatar;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer DNS avatar failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker DNS avatar failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -770,13 +990,13 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer API first
+              // Try the dojaker API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   const response = await client.get(`/dns/config/${name}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer DNS config failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker DNS config failed, falling back:', indexerError);
                   throw indexerError;
                 }
               }
@@ -912,7 +1132,7 @@ export class WalletApiService {
     };
   }
 
-  // Custom Dojak methods for pepindexer integration
+  // Custom Dojak methods for dojaker integration
   get doginals() {
     return {
       getAddressDoginals: async (address: string, cursor?: string, size = 20) => {
@@ -920,12 +1140,14 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer API first (highest priority)
+              // Try the dojaker API first (highest priority)
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
-                  const response = await client.get(`/address/${address}/inscriptions?limit=${size}${cursor ? `&cursor=${cursor}` : ''}`);
+                  const response = await client.get(
+                    `/address/${address}/inscriptions?limit=${size}${cursor ? `&cursor=${cursor}` : ''}`
+                  );
                   // Transform indexer response to expected format with rich Doginal data
-                  const doginals = (response.inscriptions || []).map((inscription: any) => ({
+                  const doginals = (response.data?.inscriptions || []).map((inscription: any) => ({
                     id: inscription.id,
                     inscriptionId: inscription.id,
                     content: inscription.content || '',
@@ -945,17 +1167,17 @@ export class WalletApiService {
 
                   return {
                     list: doginals,
-                    total: response.count || 0,
-                    cursor: response.cursor || null
+                    total: response.data?.count || 0,
+                    cursor: response.data?.cursor || null
                   };
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer Doginals API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker Doginals API failed, falling back:', indexerError);
                   throw indexerError; // Let provider manager try next provider
                 }
               }
 
-              // Fallback to other providers - use existing inscriptions API
-              const result = await client.inscriptions.getAddressInscriptions(address, cursor, size);
+              // Fallback to other providers - use inscriptions method on this object
+              const result = await this.inscriptions.getAddressInscriptions(address, cursor, size);
               console.log('[WalletAPI] Doginals API - using fallback provider');
               return result;
             },
@@ -971,19 +1193,19 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer API first
+              // Try the dojaker API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
-                  const response = await client.get(`/pepinal/${id}`);
+                  const response = await client.get(`/doginal/${id}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer Doginal API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker Doginal API failed, falling back:', indexerError);
                   throw indexerError; // Let provider manager try next provider
                 }
               }
 
-              // Fallback to other providers
-              return await client.inscriptions.getInscriptionInfo(id);
+              // Fallback to other providers - use inscriptions method on this object
+              return await this.inscriptions.getInscriptionInfo(id);
             },
             ['dogecoin']
           );
@@ -997,14 +1219,27 @@ export class WalletApiService {
         try {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
-            client => client.inscriptions.createInscription({
-              content,
-              feeRate
-            }),
+            async (client) => {
+              const baseURL = client.defaults.baseURL || '';
+
+              // Only dojaker supports inscription creation
+              if (baseURL.includes('localhost:3000')) {
+                const res = await client.post('/inscriptions/create', { content, feeRate });
+                return res.data;
+              }
+
+              // Future: Dojak API
+              if (baseURL.includes('api.dojak.dog')) {
+                const res = await client.post('/api/v1/inscriptions/create', { content, feeRate });
+                return res.data;
+              }
+
+              throw new Error('Inscription creation not available on this provider');
+            },
             ['dogecoin']
           );
         } catch (error) {
-          console.error('[WalletAPI] Create pepinal API error:', error);
+          console.error('[WalletAPI] Create doginal API error:', error);
           throw error;
         }
       }
@@ -1018,14 +1253,23 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // For Dogecoin, dunes (runes) may not be implemented yet
+              const baseURL = client.defaults.baseURL || '';
+
+              // For Dogecoin, dunes (dunes) may not be implemented yet
               // Try the DRC-20 API first as dunes might be implemented there
               try {
                 let endpoint: string;
-                if (client.defaults.baseURL?.includes('pepe-mainnet-tokens.nintondo.io')) {
+
+                // MyDoge API - use DRC20 endpoint as fallback for dunes
+                if (baseURL.includes('api.mydoge.com')) {
+                  const res = await client.get(`/DRC20/${address}`);
+                  return { list: res.data || [], total: (res.data || []).length };
+                }
+
+                if (baseURL.includes('doge-mainnet-tokens.nintondo.io')) {
                   endpoint = `/address/${address}/tokens`;
-                } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-                  endpoint = `/api/v1/addresses/${address}/drc20-tokens`;
+                } else if (baseURL.includes('api.dojak.dog')) {
+                  endpoint = `/api/v1/address/${address}/drc20`;
                 } else {
                   endpoint = `/api/v1/address/${address}/drc20`;
                 }
@@ -1070,20 +1314,22 @@ export class WalletApiService {
           console.log(`[WalletAPI] Claiming ${amount || 0.01} testnet DOGE for ${address}`);
 
           // Call the Dojak API backend server
-          const apiUrl = process.env.NODE_ENV === 'production'
-            ? 'https://api.dojak.dog'
-            : 'http://localhost:3001';
+          const apiUrl = process.env.NODE_ENV === 'production' ? 'https://api.dojak.dog' : 'http://localhost:3001';
 
-          const response = await axios.post(`${apiUrl}/api/v1/faucet/claim`, {
-            address: address,
-            amount: amount || 0.01
-          }, {
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Client': 'Dojak Wallet'
+          const response = await axios.post(
+            `${apiUrl}/api/v1/faucet/claim`,
+            {
+              address: address,
+              amount: amount || 0.01
             },
-            timeout: 30000
-          });
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Client': 'Dojak Wallet'
+              },
+              timeout: 30000
+            }
+          );
 
           if (response.data && response.data.success) {
             console.log(`[WalletAPI] Faucet claim successful, txid: ${response.data.txid}`);
@@ -1135,7 +1381,7 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer marketplace API first
+              // Try the dojaker marketplace API first
               if (this.currentEndpoint === 'http://localhost:3000') {
                 try {
                   let url = `/listings?limit=${size}`;
@@ -1146,7 +1392,7 @@ export class WalletApiService {
                   const response = await client.get(url);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer marketplace listings API failed:', indexerError);
+                  console.warn('[WalletAPI] Dojaker marketplace listings API failed:', indexerError);
                   // Don't throw here, let provider manager try next provider
                 }
               }
@@ -1189,14 +1435,14 @@ export class WalletApiService {
         }
       },
 
-      createListing: async (pepinalId: string, price: number, sellerAddress: string) => {
+      createListing: async (doginalId: string, price: number, sellerAddress: string) => {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               if (this.currentEndpoint === 'http://localhost:3000') {
                 const response = await client.post('/list', {
-                  pepinal_id: pepinalId,
-                  price_pep: price,
+                  doginal_id: doginalId,
+                  price_doge: price,
                   seller_addr: sellerAddress
                 });
                 return response;
@@ -1237,69 +1483,57 @@ export class WalletApiService {
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              // Try the pepindexer API first (highest priority)
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              const baseURL = client.defaults.baseURL || '';
+
+              // Try the dojaker API first (highest priority)
+              if (baseURL.includes('localhost:3000')) {
                 try {
                   const response = await client.get(`/balance/${address}`);
                   return response;
                 } catch (indexerError) {
-                  console.warn('[WalletAPI] Pepindexer balance API failed, falling back:', indexerError);
+                  console.warn('[WalletAPI] Dojaker balance API failed, falling back:', indexerError);
                   throw indexerError; // Let provider manager try next provider
                 }
               }
 
-              // Use Nintondo for balance queries
-              const [pepBalance, drc20Balance, dnsBalance] = await Promise.all([
-                (async () => {
-                  if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
-                    const res = await client.get(`/address/${address}/stats`);
-                    const balance = (res.data?.balance || 0) / 100000000;
-                    return {
-                      confirmed: balance,
-                      unconfirmed: 0
-                    };
-                  } else {
-                    // Fallback for other providers
-                    const res = await client.get(`/api/v1/address/${address}/balance`);
-                    return res.data;
-                  }
-                })().catch((error) => {
-                  console.warn('[WalletAPI] Provider balance fetch failed:', client.defaults.baseURL, error.message);
-                  return { confirmed: 0, unconfirmed: 0 };
-                }),
-                (async () => {
-                  if (client.defaults.baseURL?.includes('pepe-mainnet-tokens.nintondo.io')) {
-                    const res = await client.get(`/address/${address}/tokens`);
-                    return { list: res.data || [], total: res.data?.length || 0 };
-                  } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-                    const res = await client.get(`/api/v1/addresses/${address}/drc20-tokens`);
-                    return res.data;
-                  } else {
-                    const res = await client.get(`/api/v1/address/${address}/drc20`);
-                    return res.data;
-                  }
-                })().catch(() => ({ list: [], total: 0 })),
-                // DNS domains not available in fallback providers
-                Promise.resolve([])
-              ]);
-
-              return {
-                pep: pepBalance.confirmed / 100000000, // Convert satoshis to DOGE
-                drc20: drc20Balance.list?.reduce((acc: any, token: any) => {
-                  acc[token.ticker] = token.amount;
-                  return acc;
-                }, {}) || {},
-                pepemaps: [],
-                dns: { legacy_domains: [], protocol_domains: [] },
-                dunes: {},
-                charms: { rarity: [], royalty: [] },
-                totals: {
-                  pepemaps: 0,
-                  dns_legacy: 0,
-                  dns_protocol: 0,
-                  dunes: 0
+              // MyDoge API - Primary public provider
+              if (baseURL.includes('api.mydoge.com')) {
+                try {
+                  // MyDoge uses /wallet/info?route={encodedRoute} format
+                  const encodedRoute = encodeURIComponent(`/address/${address}?page=1&pageSize=10`);
+                  const res = await client.get(`/wallet/info?route=${encodedRoute}`);
+                  const balanceSatoshis = res.data?.balance || 0;
+                  return {
+                    confirmed: balanceSatoshis / 100000000, // Convert satoshis to DOGE
+                    unconfirmed: 0,
+                    total: balanceSatoshis / 100000000
+                  };
+                } catch (mydogeError: any) {
+                  console.warn('[WalletAPI] MyDoge balance API failed:', mydogeError.message);
+                  throw mydogeError;
                 }
-              };
+              }
+
+              // Nintondo API
+              if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
+                const res = await client.get(`/address/${address}/stats`);
+                const balance = (res.data?.balance || 0) / 100000000;
+                return {
+                  confirmed: balance,
+                  unconfirmed: 0,
+                  total: balance
+                };
+              }
+
+              // Future: Dojak API
+              if (baseURL.includes('api.dojak.dog')) {
+                const res = await client.get(`/api/v1/address/${address}/balance`);
+                return res.data;
+              }
+
+              // Generic fallback
+              const res = await client.get(`/api/v1/address/${address}/balance`);
+              return res.data;
             },
             ['dogecoin']
           );
@@ -1307,14 +1541,14 @@ export class WalletApiService {
           console.error('[WalletAPI] Balance API error:', error);
           // Note: Toast notifications are handled at the UI level
           return {
-            pep: 0,
+            doge: 0,
             drc20: {},
-            pepemaps: [],
+            dogemaps: [],
             dns: { legacy_domains: [], protocol_domains: [] },
             dunes: {},
             charms: { rarity: [], royalty: [] },
             totals: {
-              pepemaps: 0,
+              dogemaps: 0,
               dns_legacy: 0,
               dns_protocol: 0,
               dunes: 0
@@ -1347,11 +1581,7 @@ export class WalletApiService {
   // Real-time updates using indexer's event streaming
   get realtime() {
     return {
-      subscribeToAddressEvents: (
-        address: string,
-        onEvent: (event: any) => void,
-        onError?: (error: any) => void
-      ) => {
+      subscribeToAddressEvents: (address: string, onEvent: (event: any) => void, onError?: (error: any) => void) => {
         // For now, implement polling-based updates
         // In production, this would connect to WebSocket/SSE
         const pollInterval = 30000; // 30 seconds
@@ -1362,55 +1592,86 @@ export class WalletApiService {
 
           try {
             // Poll for new balance data
-            const balance = await this.providerManager.executeWithFailover(async (client) => {
-              if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
-                const res = await client.get(`/address/${address}/stats`);
-                return {
-                  pep: (res.data?.balance || 0) / 100000000, // Convert satoshis to DOGE
+            const balance = await this.providerManager
+              .executeWithFailover(async (client) => {
+                const baseURL = client.defaults.baseURL || '';
+                const defaultResponse = {
+                  doge: 0,
                   drc20: {},
-                  pepemaps: [],
+                  dogemaps: [],
                   dns: { legacy_domains: [], protocol_domains: [] },
                   dunes: {},
                   charms: { rarity: [], royalty: [] },
-                  totals: { pepemaps: 0, dns_legacy: 0, dns_protocol: 0, dunes: 0 }
+                  totals: { dogemaps: 0, dns_legacy: 0, dns_protocol: 0, dunes: 0 }
                 };
-              } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-                const res = await client.get(`/api/v1/addresses/${address}`);
-                return {
-                  pep: (res.data?.balance || 0) / 100000000, // Convert satoshis to DOGE
-                  drc20: {},
-                  pepemaps: [],
-                  dns: { legacy_domains: [], protocol_domains: [] },
-                  dunes: {},
-                  charms: { rarity: [], royalty: [] },
-                  totals: { pepemaps: 0, dns_legacy: 0, dns_protocol: 0, dunes: 0 }
-                };
-              }
-              const res = await client.get(`/api/v1/address/${address}/balance`);
-              return res.data;
-            }).catch(() => ({ pep: 0, drc20: {}, pepemaps: [], dns: { legacy_domains: [], protocol_domains: [] }, dunes: {}, charms: { rarity: [], royalty: [] }, totals: { pepemaps: 0, dns_legacy: 0, dns_protocol: 0, dunes: 0 } }));
+
+                // MyDoge API
+                if (baseURL.includes('api.mydoge.com')) {
+                  const encodedRoute = encodeURIComponent(`/address/${address}?page=1&pageSize=10`);
+                  const res = await client.get(`/wallet/info?route=${encodedRoute}`);
+                  return {
+                    ...defaultResponse,
+                    doge: (res.data?.balance || 0) / 100000000
+                  };
+                }
+
+                // Nintondo API
+                if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
+                  const res = await client.get(`/address/${address}/stats`);
+                  return {
+                    ...defaultResponse,
+                    doge: (res.data?.balance || 0) / 100000000
+                  };
+                }
+
+                // Future: Dojak API
+                if (baseURL.includes('api.dojak.dog')) {
+                  const res = await client.get(`/api/v1/address/${address}/balance`);
+                  return res.data;
+                }
+
+                // Generic fallback
+                const res = await client.get(`/api/v1/address/${address}/balance`);
+                return res.data;
+              })
+              .catch(() => ({
+                doge: 0,
+                drc20: {},
+                dogemaps: [],
+                dns: { legacy_domains: [], protocol_domains: [] },
+                dunes: {},
+                charms: { rarity: [], royalty: [] },
+                totals: { dogemaps: 0, dns_legacy: 0, dns_protocol: 0, dunes: 0 }
+              }));
 
             // Poll for new inscriptions
-            const inscriptions = await this.providerManager.executeWithFailover(client => {
-              if (client.defaults.baseURL?.includes('pepe-mainnet-search.nintondo.io')) {
-                // Nintondo search API for collections (inscriptions owned by address)
-                return client.get(`/pub/collections/${address}`).then(res => ({
-                  list: (res.data?.inscriptions || []).slice(0, 20)
-                }));
-              } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-                // Use PepeBlocks inscriptions API
-                return client.get('/inscriptions/__data.json').then(res => {
-                  // Filter inscriptions by address if the API doesn't support address filtering
-                  const allInscriptions = res.data?.inscriptions || [];
-                  return {
-                    list: allInscriptions.filter((insc: any) =>
-                      insc.owner?.toLowerCase() === address.toLowerCase()
-                    ).slice(0, 20) // Limit to recent 20
-                  };
-                });
-              }
-              return client.get(`/api/v1/address/${address}/doginals`).then(res => res.data);
-            }).catch(() => ({ list: [] }));
+            const inscriptions = await this.providerManager
+              .executeWithFailover(async (client) => {
+                const baseURL = client.defaults.baseURL || '';
+
+                // MyDoge API
+                if (baseURL.includes('api.mydoge.com')) {
+                  const res = await client.get(`/inscriptions/${address}`);
+                  return { list: (res.data || []).slice(0, 20) };
+                }
+
+                // Nintondo search API
+                if (baseURL.includes('doge-mainnet-search.nintondo.io')) {
+                  const res = await client.get(`/pub/collections/${address}`);
+                  return { list: (res.data?.inscriptions || []).slice(0, 20) };
+                }
+
+                // Future: Dojak API
+                if (baseURL.includes('api.dojak.dog')) {
+                  const res = await client.get(`/api/v1/address/${address}/doginals`);
+                  return res.data;
+                }
+
+                // Generic fallback
+                const res = await client.get(`/api/v1/address/${address}/doginals`);
+                return res.data;
+              })
+              .catch(() => ({ list: [] }));
 
             // Create a synthetic event
             const event = {
@@ -1442,10 +1703,7 @@ export class WalletApiService {
         };
       },
 
-      subscribeToMarketplaceEvents: (
-        onEvent: (event: any) => void,
-        onError?: (error: any) => void
-      ) => {
+      subscribeToMarketplaceEvents: (onEvent: (event: any) => void, onError?: (error: any) => void) => {
         // Marketplace event polling
         const pollInterval = 60000; // 1 minute
         let isSubscribed = true;
@@ -1455,13 +1713,32 @@ export class WalletApiService {
 
           try {
             // Poll for new marketplace listings
-            const listings = await this.providerManager.executeWithFailover(client => {
-              if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-                // PepeBlocks might not have marketplace yet, return empty
-                return Promise.resolve([]);
-              }
-              return client.get('/api/v1/marketplace/listings?limit=10').then(res => res.data?.list || []);
-            }).catch(() => []);
+            const listings = await this.providerManager
+              .executeWithFailover(async (client) => {
+                const baseURL = client.defaults.baseURL || '';
+
+                // MyDoge doesn't have marketplace API
+                if (baseURL.includes('api.mydoge.com')) {
+                  return [];
+                }
+
+                // Nintondo or dojaker might have marketplace
+                if (baseURL.includes('localhost:3000')) {
+                  const res = await client.get('/marketplace/listings?limit=10');
+                  return res.data?.list || [];
+                }
+
+                // Future: Dojak API
+                if (baseURL.includes('api.dojak.dog')) {
+                  const res = await client.get('/api/v1/marketplace/listings?limit=10');
+                  return res.data?.list || [];
+                }
+
+                // Generic fallback
+                const res = await client.get('/api/v1/marketplace/listings?limit=10');
+                return res.data?.list || [];
+              })
+              .catch(() => []);
 
             if (listings && listings.length > 0) {
               const event = {
@@ -1492,10 +1769,7 @@ export class WalletApiService {
         };
       },
 
-      subscribeToNewBlocks: (
-        onEvent: (event: any) => void,
-        onError?: (error: any) => void
-      ) => {
+      subscribeToNewBlocks: (onEvent: (event: any) => void, onError?: (error: any) => void) => {
         // New blocks polling
         const pollInterval = 60000; // 1 minute
         let isSubscribed = true;
@@ -1506,19 +1780,36 @@ export class WalletApiService {
 
           try {
             // Poll for new block height
-            const blockInfo = await this.providerManager.executeWithFailover(client => {
-              if (client.defaults.baseURL?.includes('pepe-mainnet-api.nintondo.io')) {
+            const blockInfo = await this.providerManager
+              .executeWithFailover(async (client) => {
+                const baseURL = client.defaults.baseURL || '';
+
+                // MyDoge - may not have block height API directly
+                if (baseURL.includes('api.mydoge.com')) {
+                  // MyDoge doesn't expose block height, skip to fallback
+                  throw new Error('MyDoge: Use alternate provider for block height');
+                }
+
                 // Nintondo API for block info
-                return client.get('/blocks/tip/height').then(res => ({
-                  height: res.data?.height || res.data || 0,
-                  hash: res.data?.hash || ''
-                }));
-              } else if (client.defaults.baseURL?.includes('pepeblocks.com')) {
-                // PepeBlocks might not have block height API, return empty
-                return Promise.resolve({ height: 0, hash: '' });
-              }
-              return client.get('/api/v1/blocks/tip').then(res => res.data);
-            }).catch(() => ({ height: 0, hash: '' }));
+                if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
+                  const res = await client.get('/blocks/tip/height');
+                  return {
+                    height: res.data?.height || res.data || 0,
+                    hash: res.data?.hash || ''
+                  };
+                }
+
+                // Future: Dojak API
+                if (baseURL.includes('api.dojak.dog')) {
+                  const res = await client.get('/api/v1/blocks/tip');
+                  return res.data;
+                }
+
+                // Generic fallback
+                const res = await client.get('/api/v1/blocks/tip');
+                return res.data;
+              })
+              .catch(() => ({ height: 0, hash: '' }));
 
             if (blockInfo.height > lastBlockHeight && lastBlockHeight > 0) {
               const event = {
@@ -1560,5 +1851,3 @@ const walletApiService = new WalletApiService();
 
 export { walletApiService };
 export default walletApiService;
-
-

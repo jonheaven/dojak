@@ -21,7 +21,8 @@ export function RBFBar({ defaultValue, onChange }: { defaultValue?: boolean; onC
         title={t('a_feature_allows_the_transaction_to_be_replaced')}
         overlayStyle={{
           fontSize: fontSizes.xs
-        }}>
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Row itemsCenter>
             <Text text="RBF" />
@@ -33,9 +34,8 @@ export function RBFBar({ defaultValue, onChange }: { defaultValue?: boolean; onC
         onChange={() => {
           setEnableRBF(!enableRBF);
         }}
-        checked={enableRBF}></Checkbox>
+        checked={enableRBF}
+      ></Checkbox>
     </Row>
   );
 }
-
-

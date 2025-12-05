@@ -4,13 +4,13 @@ import { DuneBalance, Inscription, RawTxInfo, TickPriceItem, TxType } from '@/sh
 import { Card, Column, Image, Row, Text } from '@/ui/components';
 import { AddressText } from '@/ui/components/AddressText';
 import AssetTag from '@/ui/components/AssetTag';
-import { BtcUsd } from '@/ui/components/BtcUsd';
+import { DOGEUSD } from '@/ui/components/DOGEUSD';
 import DRC20Preview from '@/ui/components/DRC20Preview';
 import DunesPreviewCard from '@/ui/components/DunesPreviewCard';
 import InscriptionPreview from '@/ui/components/InscriptionPreview';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { useAccountAddress } from '@/ui/state/accounts/hooks';
-import { useChain, usePEPUnit } from '@/ui/state/settings/hooks';
+import { useChain, useDOGEUnit } from '@/ui/state/settings/hooks';
 import { colors } from '@/ui/theme/colors';
 import { satoshisToAmount } from '@/ui/utils';
 
@@ -31,7 +31,7 @@ export default function SignTxDetails({
 }) {
   const address = useAccountAddress();
   const chain = useChain();
-  const btcUnit = usePEPUnit();
+  const btcUnit = useDOGEUnit();
   const { t } = useI18n();
 
   const sendingInscriptions = useMemo(() => {
@@ -148,7 +148,8 @@ export default function SignTxDetails({
                 borderRadius: 10,
                 borderWidth: 1,
                 borderColor: colors.border
-              }}>
+              }}
+            >
               <Row>
                 <AssetTag type="Inscription" />
               </Row>
@@ -184,7 +185,8 @@ export default function SignTxDetails({
                 borderRadius: 10,
                 borderWidth: 1,
                 borderColor: colors.border
-              }}>
+              }}
+            >
               <Row>
                 <AssetTag type="DRC20" />
               </Row>
@@ -222,14 +224,15 @@ export default function SignTxDetails({
                 borderRadius: 10,
                 borderWidth: 1,
                 borderColor: colors.border
-              }}>
+              }}
+            >
               <Row>
                 <AssetTag type="DUNES" />
               </Row>
 
               <Row overflowX>
                 {dunesArray.map((w, index) => {
-                  return <DunesPreviewCard key={'runes_' + index} balance={w} price={dunesPriceMap?.[w.spacedDune]} />;
+                  return <DunesPreviewCard key={'dunes_' + index} balance={w} price={dunesPriceMap?.[w.spacedDune]} />;
                 })}
               </Row>
             </Column>
@@ -268,7 +271,7 @@ export default function SignTxDetails({
                   <Text text={btcUnit} color="textDim" />
                 </Row>
                 <Row justifyCenter>
-                  <BtcUsd sats={Math.abs(receivingSatoshis - sendingSatoshis)} bracket />
+                  <DOGEUSD sats={Math.abs(receivingSatoshis - sendingSatoshis)} bracket />
                 </Row>
               </Column>
             </Column>
@@ -341,7 +344,7 @@ export default function SignTxDetails({
                 <Row itemsCenter>
                   <Text text={spendAmount + ' ' + btcUnit} color="white" preset="bold" textCenter size="xxl" />
                 </Row>
-                <BtcUsd sats={spendSatoshis} textCenter bracket style={{ marginTop: -8 }} />
+                <DOGEUSD sats={spendSatoshis} textCenter bracket style={{ marginTop: -8 }} />
 
                 {sendingInscriptionSaotoshis > 0 && (
                   <Text text={`${sendingInscriptionAmount} (${t('in_inscriptions')})`} preset="sub" textCenter />
@@ -358,5 +361,3 @@ export default function SignTxDetails({
     </Column>
   );
 }
-
-

@@ -2,22 +2,26 @@ import { ethErrors } from 'eth-rpc-errors';
 
 import ReadyPromise from '@/content-script/pageProvider/readyPromise';
 import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMessage';
+
 import { dojakProvider } from './index';
 
 class PushEventHandlers {
   provider: dojakProvider;
-  _dojakProviderPrivate:any;
+  _dojakProviderPrivate: any;
 
-  constructor(provider, _dojakProviderPrivate: {
-    _selectedAddress: string | null;
-    _network: string | null;
-    _isConnected: boolean;
-    _initialized: boolean;
-    _isUnlocked: boolean;
-    _pushEventHandlers: PushEventHandlers | null;
-    _requestPromise: ReadyPromise;
-    _bcm: BroadcastChannelMessage
-  }) {
+  constructor(
+    provider,
+    _dojakProviderPrivate: {
+      _selectedAddress: string | null;
+      _network: string | null;
+      _isConnected: boolean;
+      _initialized: boolean;
+      _isUnlocked: boolean;
+      _pushEventHandlers: PushEventHandlers | null;
+      _requestPromise: ReadyPromise;
+      _bcm: BroadcastChannelMessage;
+    }
+  ) {
     this.provider = provider;
     this._dojakProviderPrivate = _dojakProviderPrivate;
   }
@@ -78,5 +82,3 @@ class PushEventHandlers {
 }
 
 export default PushEventHandlers;
-
-

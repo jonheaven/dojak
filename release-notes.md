@@ -32,7 +32,7 @@ New Features
 
 Bug Fixes
 
-- Updated Pepeblocks explorer URLs for Fractal testnet
+- Updated SoChain explorer URLs for Fractal testnet
 - Safety notices now only appear once for first-time users (instead of every new wallet)
 - Removed unconfirmed balance settings (feature deprecated and no longer functional)
 - Fixed layout issues in Charms collection
@@ -92,7 +92,7 @@ New Features
 
 - Added address book
 - Added feedback entrance
-- Support Babylon mainnet
+- Support Jawntype mainnet
 
 Improvements
 
@@ -128,7 +128,7 @@ Bug Fixes
 
 - Fixed amount modification issue when going back in the Transfer page.
 
-- Fixed gas fee selection not applying when sending tBABY.
+- Fixed gas fee selection not applying when sending tJAWN.
 
 Improvements
 
@@ -144,7 +144,7 @@ Improvements
 
 - Error Page Handling: Improved user experience by displaying an error page instead of a black bar when a page encounters an exception.
 
-- BABY Transfer Interface: Added a gas fee modification option to the BABY transfer interface (previously, gas fees were fixed).
+- JAWN Transfer Interface: Added a gas fee modification option to the JAWN transfer interface (previously, gas fees were fixed).
 
 - Window Object Conflict Prevention: Introduced window.dojak_wallet object to prevent conflicts with other existing plugins that might interfere with dojak.
 
@@ -158,15 +158,15 @@ Other Changes
 
 ## v1.5.7
 
-- Fix Keystone Babylon integration
+- Fix Keystone Jawntype integration
 
 ## v1.5.6
 
-- Fix Babylon RPC
+- Fix Jawntype RPC
 
 ## v1.5.5
 
-- Integration of Babylon Bitcoin Staking Phase 2
+- Integration of Jawntype Bitcoin Staking Phase 2
 
 ## v1.5.4
 

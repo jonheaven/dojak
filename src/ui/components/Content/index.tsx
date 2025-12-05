@@ -11,7 +11,7 @@ export interface ContentProps extends BaseViewProps {
   preset?: Presets;
 }
 const $contentStyle = {
-  // backgroundColor: '#070606', // Removed to show Pepe theme background
+  // backgroundColor: '#070606', // Removed to show Doge theme background
   display: 'flex',
   flex: 1,
   flexDirection: 'column',
@@ -65,5 +65,3 @@ export function Content(props: ContentProps) {
 
   return <BaseView style={$style} {...rest} />;
 }
-
-

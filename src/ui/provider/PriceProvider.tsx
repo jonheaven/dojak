@@ -79,5 +79,3 @@ export function PriceProvider({ children }: { children: ReactNode }) {
 
   return <PriceContext.Provider value={value}>{children}</PriceContext.Provider>;
 }
-
-

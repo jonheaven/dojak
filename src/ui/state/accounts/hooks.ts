@@ -248,5 +248,3 @@ export function useIsKeystoneWallet() {
   const currentKeyring = useCurrentKeyring();
   return currentKeyring.type === KeyringType.KeystoneKeyring;
 }
-
-

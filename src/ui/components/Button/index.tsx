@@ -79,14 +79,15 @@ const $viewPresets = {
   default: Object.assign({}, $baseViewStyle, {
     borderWidth: 1,
     minHeight: 50,
-    borderColor: 'rgba(0, 0, 0, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)'
+    backgroundColor: 'rgba(30, 30, 30, 0.6)',
+    transition: 'all 0.2s ease'
   }) as CSSProperties,
 
   primary: Object.assign({}, $baseViewStyle, {
     backgroundColor: colors.gold,
-    backgroundImage: 'linear-gradient(90deg, #ffd700, #ffed4e)',
+    backgroundImage: 'linear-gradient(90deg, #C9822A, #E5A03A)',
     height: '48px'
   } as CSSProperties),
 
@@ -213,7 +214,10 @@ const $viewPresets = {
 
 const $hoverViewPresets: Record<Presets, CSSProperties> = {
   default: {
-    backgroundColor: 'rgba(0, 0, 0, 0.08)'
+    backgroundColor: 'rgba(20, 20, 20, 0.9)',
+    borderColor: '#C9822A',
+    borderWidth: 3,
+    boxShadow: '0 0 8px rgba(201, 130, 42, 0.3)'
   },
   primary: {
     backgroundColor: colors.gold_dark
@@ -269,7 +273,7 @@ const $baseTextStyle: CSSProperties = {
 };
 
 const $textPresets: Record<Presets, CSSProperties> = {
-  default: Object.assign({}, $baseTextStyle, { color: colors.black }),
+  default: Object.assign({}, $baseTextStyle, { color: colors.white }),
   primary: Object.assign({}, $baseTextStyle, { color: colors.black }),
   approval: Object.assign({}, $baseTextStyle, { color: colors.black }),
   danger: Object.assign({}, $baseTextStyle, { color: colors.white }),
@@ -349,7 +353,8 @@ export function Button(props: ButtonProps) {
         style={$viewStyle}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
-        onClick={disabled ? undefined : onClick}>
+        onClick={disabled ? undefined : onClick}
+      >
         <Row>
           {LeftAccessory && <div style={$leftAccessoryStyle}>{LeftAccessory}</div>}
           {icon && <Icon icon={icon} color={'white'} style={{ marginRight: spacing.tiny }} />}
@@ -376,14 +381,9 @@ export function Button(props: ButtonProps) {
         style={$viewStyle}
         onClick={disabled ? undefined : onClick}
         onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}>
-        {icon && (
-          <Icon
-            icon={icon}
-            style={iconSize ? iconSize : {}}
-            containerStyle={iconSize ? iconSize : {}}
-          />
-        )}
+        onMouseLeave={() => setHover(false)}
+      >
+        {icon && <Icon icon={icon} style={iconSize ? iconSize : {}} containerStyle={iconSize ? iconSize : {}} />}
         {text && <Text style={$textStyle} text={text} preset="regular" mt="sm" />}
       </div>
     );
@@ -399,14 +399,9 @@ export function Button(props: ButtonProps) {
         style={$viewStyle}
         onClick={disabled ? undefined : onClick}
         onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}>
-        {icon && (
-          <Icon
-            icon={icon}
-            style={iconSize ? iconSize : {}}
-            containerStyle={iconSize ? iconSize : {}}
-          />
-        )}
+        onMouseLeave={() => setHover(false)}
+      >
+        {icon && <Icon icon={icon} style={iconSize ? iconSize : {}} containerStyle={iconSize ? iconSize : {}} />}
         {text && <Text style={$textStyle} text={text} preset="regular" />}
       </div>
     );
@@ -418,7 +413,8 @@ export function Button(props: ButtonProps) {
         style={$viewStyle}
         onClick={disabled ? undefined : onClick}
         onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}>
+        onMouseLeave={() => setHover(false)}
+      >
         {text && <Text style={$textStyle} text={text} preset="regular" />}
       </div>
     );
@@ -434,14 +430,9 @@ export function Button(props: ButtonProps) {
         style={$viewStyle}
         onClick={disabled ? undefined : onClick}
         onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}>
-        {icon && (
-          <Icon
-            icon={icon}
-            style={iconSize ? iconSize : {}}
-            containerStyle={iconSize ? iconSize : {}}
-          />
-        )}
+        onMouseLeave={() => setHover(false)}
+      >
+        {icon && <Icon icon={icon} style={iconSize ? iconSize : {}} containerStyle={iconSize ? iconSize : {}} />}
         {text && <Text style={$textStyle} text={text} preset="regular" />}
       </div>
     );
@@ -452,7 +443,8 @@ export function Button(props: ButtonProps) {
       style={$viewStyle}
       onClick={disabled ? undefined : onClick}
       onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}>
+      onMouseLeave={() => setHover(false)}
+    >
       {LeftAccessory && <div style={$leftAccessoryStyle}>{LeftAccessory}</div>}
       {icon && <Icon icon={icon} style={{ marginRight: spacing.tiny }} />}
       {text && <Text style={$textStyle} text={text} preset="regular-bold" />}
@@ -461,5 +453,3 @@ export function Button(props: ButtonProps) {
     </div>
   );
 }
-
-

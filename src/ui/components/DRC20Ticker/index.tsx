@@ -59,5 +59,3 @@ export function DRC20Ticker({
     return <Text text={displayName || tick} size={style.textSize} wrap color={color || 'ticker_color'} />;
   }, [tick, displayName]);
 }
-
-

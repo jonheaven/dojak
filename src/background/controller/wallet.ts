@@ -110,7 +110,12 @@ export class WalletController extends BaseController {
   }
 
   /* wallet */
-  boot = (password: string) => keyringService.boot(password);
+  boot = async (password: string) => {
+    console.log('[WalletController] boot() called');
+    const result = await keyringService.boot(password);
+    console.log('[WalletController] boot() completed, isBooted:', keyringService.isBooted());
+    return result;
+  };
   isBooted = () => keyringService.isBooted();
 
   getApproval = notificationService.getApproval;
@@ -285,7 +290,14 @@ export class WalletController extends BaseController {
   };
 
   getPreMnemonics = () => keyringService.getPreMnemonics();
-  generatePreMnemonic = () => keyringService.generatePreMnemonic();
+  generatePreMnemonic = async () => {
+    console.log('[WalletController] generatePreMnemonic() called');
+    console.log('[WalletController] isBooted:', keyringService.isBooted());
+    console.log('[WalletController] password set:', !!(keyringService as any).password);
+    const result = await keyringService.generatePreMnemonic();
+    console.log('[WalletController] generatePreMnemonic() completed, length:', result.length);
+    return result;
+  };
   removePreMnemonics = () => keyringService.removePreMnemonics();
   createKeyringWithMnemonics = async (
     mnemonic: string,
@@ -971,12 +983,12 @@ export class WalletController extends BaseController {
     return preferenceService.getChainType();
   };
 
-  getPEPUtxos = async () => {
-    // getPEPAccount
+  getDOGEUtxos = async () => {
+    // getDOGEAccount
     const account = preferenceService.getCurrentAccount();
     if (!account) throw new Error('no current account');
 
-    const utxos = await walletApiService.bitcoin.getPEPUtxos(account.address);
+    const utxos = await walletApiService.bitcoin.getDOGEUtxos(account.address);
 
     const btcUtxos = utxos.map((v) => {
       return {
@@ -993,7 +1005,7 @@ export class WalletController extends BaseController {
     return btcUtxos;
   };
 
-  sendPEP = async ({
+  sendDOGE = async ({
     to,
     amount,
     feeRate,
@@ -1016,7 +1028,7 @@ export class WalletController extends BaseController {
     const networkType = this.getNetworkType();
 
     if (!btcUtxos) {
-      btcUtxos = await this.getPEPUtxos();
+      btcUtxos = await this.getDOGEUtxos();
     }
 
     if (btcUtxos.length == 0) {
@@ -1027,14 +1039,16 @@ export class WalletController extends BaseController {
       throw new Error('Invalid address.');
     }
 
-    // Stub implementation for sendPEP - needs proper implementation
-    const psbt = bitcoin.Psbt.fromHex('020000000100000000000000000000000000000000000000000000000000000000000000000000000000ffffffff01000000000000000000000000');
+    // Stub implementation for sendDOGE - needs proper implementation
+    const psbt = bitcoin.Psbt.fromHex(
+      '020000000100000000000000000000000000000000000000000000000000000000000000000000000000ffffffff01000000000000000000000000'
+    );
     const toSignInputs: ToSignInput[] = [];
 
     return this.getSignedResult(psbt, toSignInputs);
   };
 
-  sendAllPEP = async ({
+  sendAllDOGE = async ({
     to,
     feeRate,
     enableRBF,
@@ -1051,15 +1065,17 @@ export class WalletController extends BaseController {
     const networkType = this.getNetworkType();
 
     if (!btcUtxos) {
-      btcUtxos = await this.getPEPUtxos();
+      btcUtxos = await this.getDOGEUtxos();
     }
 
     if (btcUtxos.length == 0) {
       throw new Error('Insufficient balance.');
     }
 
-    // Stub implementation for sendAllPEP - needs proper implementation
-    const psbt = bitcoin.Psbt.fromHex('020000000100000000000000000000000000000000000000000000000000000000000000000000000000ffffffff01000000000000000000000000');
+    // Stub implementation for sendAllDOGE - needs proper implementation
+    const psbt = bitcoin.Psbt.fromHex(
+      '020000000100000000000000000000000000000000000000000000000000000000000000000000000000ffffffff01000000000000000000000000'
+    );
     const toSignInputs: ToSignInput[] = [];
     return this.getSignedResult(psbt, toSignInputs);
   };
@@ -1092,7 +1108,7 @@ export class WalletController extends BaseController {
     const assetUtxo = Object.assign(utxo, { pubkey: account.pubkey });
 
     if (!btcUtxos) {
-      btcUtxos = await this.getPEPUtxos();
+      btcUtxos = await this.getDOGEUtxos();
     }
 
     if (btcUtxos.length == 0) {
@@ -1159,7 +1175,7 @@ export class WalletController extends BaseController {
     });
 
     if (!btcUtxos) {
-      btcUtxos = await this.getPEPUtxos();
+      btcUtxos = await this.getDOGEUtxos();
     }
 
     if (btcUtxos.length == 0) {
@@ -1206,7 +1222,7 @@ export class WalletController extends BaseController {
     const assetUtxo = Object.assign(utxo, { pubkey: account.pubkey });
 
     if (!btcUtxos) {
-      btcUtxos = await this.getPEPUtxos();
+      btcUtxos = await this.getDOGEUtxos();
     }
 
     const { psbt, toSignInputs, splitedCount } = await txHelpers.splitInscriptionUtxo({
@@ -1268,9 +1284,11 @@ export class WalletController extends BaseController {
           address = account.address || this.dogecoinAwarePublicKeyToAddress(pubkey, addressType, networkType);
         }
       } else {
-        const { pubkey: accountPubkey } = displayedKeyring.accounts[j];
-        pubkey = accountPubkey;
-        address = this.dogecoinAwarePublicKeyToAddress(pubkey, addressType, networkType);
+        // Use the address already calculated in displayForKeyring
+        // This avoids re-initializing ECC and ensures correct Dogecoin addresses
+        const account = displayedKeyring.accounts[j] as any;
+        pubkey = account.pubkey;
+        address = account.address || this.dogecoinAwarePublicKeyToAddress(pubkey, addressType, networkType);
       }
 
       const accountKey = key + '#' + j;
@@ -1445,7 +1463,7 @@ export class WalletController extends BaseController {
   };
 
   getAddressUtxo = async (address: string) => {
-    const data = await walletApiService.bitcoin.getPEPUtxos(address);
+    const data = await walletApiService.bitcoin.getDOGEUtxos(address);
     return data;
   };
 
@@ -1550,7 +1568,6 @@ export class WalletController extends BaseController {
   getDunesPrice = async (ticks: string[]) => {
     return walletApiService.market.getDunesPrice(ticks);
   };
-
 
   getCharmsPrice = async (charmsids: string[]) => {
     return walletApiService.market.getCharmsPrice(charmsids);
@@ -1773,8 +1790,8 @@ export class WalletController extends BaseController {
     return await walletApiService.marketplace.getListing(listingId);
   };
 
-  createMarketplaceListing = async (pepinalId: string, price: number, sellerAddress: string) => {
-    return await walletApiService.marketplace.createListing(pepinalId, price, sellerAddress);
+  createMarketplaceListing = async (doginalId: string, price: number, sellerAddress: string) => {
+    return await walletApiService.marketplace.createListing(doginalId, price, sellerAddress);
   };
 
   buyMarketplaceListing = async (listingId: string, buyerAddress: string) => {
@@ -1811,7 +1828,7 @@ export class WalletController extends BaseController {
   };
 
   getVersionDetail = (version: string) => {
-    return walletApiService.config.getVersionDetail(version);
+    return walletApiService.getVersionDetail(version);
   };
 
   checkKeyringMethod = async (method: string) => {
@@ -2005,11 +2022,13 @@ export class WalletController extends BaseController {
     assetUtxos = _assetUtxos;
 
     if (!btcUtxos) {
-      btcUtxos = await this.getPEPUtxos();
+      btcUtxos = await this.getDOGEUtxos();
     }
 
     // Stub implementation for sendDunes - needs proper implementation
-    const psbt = bitcoin.Psbt.fromHex('020000000100000000000000000000000000000000000000000000000000000000000000000000000000ffffffff01000000000000000000000000');
+    const psbt = bitcoin.Psbt.fromHex(
+      '020000000100000000000000000000000000000000000000000000000000000000000000000000000000ffffffff01000000000000000000000000'
+    );
     const toSignInputs: ToSignInput[] = [];
 
     return this.getSignedResult(psbt, toSignInputs);
@@ -2090,15 +2109,6 @@ export class WalletController extends BaseController {
       this.lockWallet();
     }, timeConfig.time);
   };
-
-
-
-
-
-
-
-
-
 
   getAppList = async () => {
     const data = await walletApiService.utility.getAppList();
@@ -2202,14 +2212,6 @@ export class WalletController extends BaseController {
 
   //  ----------- cosmos support --------
 
-
-
-
-
-
-
-
-
   singleStepTransferDRC20Step1 = async (params: {
     userAddress: string;
     userPubkey: string;
@@ -2254,7 +2256,7 @@ export class WalletController extends BaseController {
     const psbt = bitcoin.Psbt.fromBase64(psbtBase64);
     return this.getSignedResult(psbt, toSignInputs);
   };
-  // createPepStakeDeposit = async (amount: string) => {};
+  // createSteakDeposit = async (amount: string) => {};
 
   getCharmsList = async (address: string, currentPage: number, pageSize: number) => {
     const cursor = (currentPage - 1) * pageSize;
@@ -2361,12 +2363,7 @@ export class WalletController extends BaseController {
   getCharmsCollectionItems = async (address: string, collectionId: string, currentPage: number, pageSize: number) => {
     const cursor = (currentPage - 1) * pageSize;
     const size = pageSize;
-    const { total, list } = await walletApiService.Charms.getCharmsCollectionItems(
-      address,
-      collectionId,
-      cursor,
-      size
-    );
+    const { total, list } = await walletApiService.Charms.getCharmsCollectionItems(address, collectionId, cursor, size);
 
     return {
       currentPage,
@@ -2433,5 +2430,3 @@ export class WalletController extends BaseController {
   };
 }
 export default new WalletController();
-
-

@@ -13,11 +13,11 @@ import { TickUsdWithoutPrice, TokenType } from '@/ui/components/TickUsd';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import {
-    useChain,
-    useChainType,
-    usedojakWebsite,
-    useDRC20MarketPlaceWebsite,
-    useGetTxExplorerUrlCallback
+  useChain,
+  useChainType,
+  usedojakWebsite,
+  useDRC20MarketPlaceWebsite,
+  useGetTxExplorerUrlCallback
 } from '@/ui/state/settings/hooks';
 import { colors } from '@/ui/theme/colors';
 import { shortAddress, showLongNumber, useLocationState, useWallet } from '@/ui/utils';
@@ -172,12 +172,14 @@ function DRC20TokenHistory(props: { ticker: string; displayName?: string }) {
                 justifyBetween
                 justifyCenter
                 py="md"
-                style={{ borderBottomWidth: 1, borderColor: colors.border2 }}>
+                style={{ borderBottomWidth: 1, borderColor: colors.border2 }}
+              >
                 <Row itemsCenter>
                   <Row
                     onClick={() => {
                       window.open(getTxExplorerUrl(item.txid));
-                    }}>
+                    }}
+                  >
                     <Icon icon={item.icon as any} size={32} />
                   </Row>
 
@@ -372,7 +374,8 @@ export default function DRC20TokenScreen() {
               borderRadius: 15,
               borderWidth: 1,
               borderColor: 'rgba(255,255,255,0.08)'
-            }}>
+            }}
+          >
             <Section title={t('ticker')} value={ticker} />
             <Line />
 
@@ -625,7 +628,8 @@ export default function DRC20TokenScreen() {
         style={{
           borderTopWidth: 1,
           borderColor: colors.border2
-        }}>
+        }}
+      >
         <Column gap="sm" fullX>
           <Row gap="sm" mt="sm" mb="md">
             <Button
@@ -702,5 +706,3 @@ export default function DRC20TokenScreen() {
     </Layout>
   );
 }
-
-

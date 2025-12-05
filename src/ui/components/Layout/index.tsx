@@ -14,7 +14,16 @@ export function Layout(props: LayoutProps) {
   const isUnlocked = useIsUnlocked();
 
   useEffect(() => {
-    if (isBooted && !isUnlocked && location.href.includes(routes.UnlockScreen.path) === false) {
+    // Don't redirect to unlock screen if we're on welcome/setup screens
+    // (user might have set password but not completed wallet creation)
+    const isOnWelcomeScreen = location.href.includes(routes.WelcomeScreen.path);
+    const isOnCreatePasswordScreen = location.href.includes(routes.CreatePasswordScreen.path);
+    const isOnCreateHDWalletScreen = location.href.includes(routes.CreateHDWalletScreen.path);
+    const isOnUnlockScreen = location.href.includes(routes.UnlockScreen.path);
+
+    const isOnSetupFlow = isOnWelcomeScreen || isOnCreatePasswordScreen || isOnCreateHDWalletScreen;
+
+    if (isBooted && !isUnlocked && !isOnUnlockScreen && !isOnSetupFlow) {
       const basePath = location.href.split('#')[0];
       location.href = `${basePath}#${routes.UnlockScreen.path}`;
       return;
@@ -35,10 +44,9 @@ export function Layout(props: LayoutProps) {
           overflowX: 'hidden'
         },
         $styleBase
-      )}>
+      )}
+    >
       {children}
     </div>
   );
 }
-
-

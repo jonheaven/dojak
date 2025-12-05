@@ -65,5 +65,3 @@ export function psbtFromString(psbtStr: string) {
   }
   return bitcoin.Psbt.fromHex(psbtStr);
 }
-
-

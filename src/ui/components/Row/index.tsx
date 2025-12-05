@@ -18,5 +18,3 @@ export function Row(props: RowProps) {
   const $style = Object.assign({}, $rowStyle, $styleOverride);
   return <BaseView style={$style} {...rest} classname={`row-container ${clickable ? 'clickable' : ''}`} />;
 }
-
-

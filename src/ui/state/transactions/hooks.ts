@@ -3,8 +3,8 @@ import { useCallback, useMemo } from 'react';
 import { RawTxInfo, ToAddressInfo } from '@/shared/types';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useI18n } from '@/ui/hooks/useI18n';
-import { usePEPUnit } from '@/ui/state/settings/hooks';
-import { satoshisToPEP, sleep, useWallet } from '@/ui/utils';
+import { useDOGEUnit } from '@/ui/state/settings/hooks';
+import { satoshisToDOGE, sleep, useWallet } from '@/ui/utils';
 import { UnspentOutput } from '@unisat/tx-helpers/types';
 
 import { AppState } from '..';
@@ -22,14 +22,14 @@ export function useBitcoinTx() {
   return transactionsState.bitcoinTx;
 }
 
-export function usePrepareSendPEPCallback() {
+export function usePrepareSendDOGECallback() {
   const dispatch = useAppDispatch();
   const wallet = useWallet();
   const fromAddress = useAccountAddress();
   const utxos = useUtxos();
   const fetchUtxos = useFetchUtxosCallback();
   const account = useCurrentAccount();
-  const btcUnit = usePEPUnit();
+  const btcUnit = useDOGEUnit();
   const { t } = useI18n();
   return useCallback(
     async ({
@@ -69,14 +69,14 @@ export function usePrepareSendPEPCallback() {
       };
 
       if (safeBalance === toAmount && !disableAutoAdjust) {
-        res = await wallet.sendAllPEP({
+        res = await wallet.sendAllDOGE({
           to: toAddressInfo.address,
           btcUtxos: _utxos,
           enableRBF,
           feeRate
         });
       } else {
-        res = await wallet.sendPEP({
+        res = await wallet.sendDOGE({
           to: toAddressInfo.address,
           amount: toAmount,
           btcUtxos: _utxos,
@@ -113,7 +113,7 @@ export function usePrepareSendBypassHeadOffsetsCallback() {
   const wallet = useWallet();
   const fromAddress = useAccountAddress();
   const account = useCurrentAccount();
-  const btcUnit = usePEPUnit();
+  const btcUnit = useDOGEUnit();
   return useCallback(
     async ({
       toAddressInfo,
@@ -418,7 +418,7 @@ export function useFetchUtxosCallback() {
   const wallet = useWallet();
   const account = useCurrentAccount();
   return useCallback(async () => {
-    const data = await wallet.getPEPUtxos();
+    const data = await wallet.getDOGEUtxos();
     dispatch(transactionsActions.setUtxos(data));
     return data;
   }, [wallet, account]);
@@ -443,7 +443,7 @@ export function useSafeBalance() {
   const utxos = useUtxos();
   return useMemo(() => {
     const satoshis = utxos.filter((v) => v.inscriptions.length === 0).reduce((pre, cur) => pre + cur.satoshis, 0);
-    return satoshisToPEP(satoshis);
+    return satoshisToDOGE(satoshis);
   }, [utxos]);
 }
 
@@ -562,5 +562,3 @@ export function usePrepareSendCharmsCallback() {
   );
   return callback;
 }
-
-

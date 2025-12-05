@@ -35,9 +35,16 @@ export default function BoostScreen() {
       approval = undefined;
     }
 
-    const isBooted = await wallet.isBooted();
     const hasVault = await wallet.hasVault();
+    const isBooted = await wallet.isBooted();
     const isUnlocked = await wallet.isUnlocked();
+
+    // No wallet created yet - go to welcome screen (no password needed)
+    // This handles the case where user set password but never finished wallet creation
+    if (!hasVault) {
+      navigate('WelcomeScreen');
+      return;
+    }
 
     if (!isBooted) {
       navigate('WelcomeScreen');
@@ -46,11 +53,6 @@ export default function BoostScreen() {
 
     if (!isUnlocked) {
       navigate('UnlockScreen');
-      return;
-    }
-
-    if (!hasVault) {
-      navigate('WelcomeScreen');
       return;
     }
 
@@ -90,5 +92,3 @@ export default function BoostScreen() {
 
   return <div></div>;
 }
-
-

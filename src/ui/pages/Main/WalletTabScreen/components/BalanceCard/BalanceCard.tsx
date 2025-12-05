@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ChainType } from '@/shared/constant';
 import { Icon, Row, Tooltip } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { BtcUsd } from '@/ui/components/BtcUsd';
+import { DOGEUSD } from '@/ui/components/DOGEUSD';
 import { RefreshButton } from '@/ui/components/RefreshButton';
 import { getSpecialLocale, useI18n } from '@/ui/hooks/useI18n';
 import { useRealtimeUpdates } from '@/ui/hooks/useRealtimeUpdates';
@@ -13,7 +13,7 @@ import { useUtxoTools } from '@/ui/hooks/useUtxoTools';
 import { AppState } from '@/ui/state';
 import { useFetchBalanceCallback } from '@/ui/state/accounts/hooks';
 import { accountActions } from '@/ui/state/accounts/reducer';
-import { useChain, usePEPUnit } from '@/ui/state/settings/hooks';
+import { useChain, useDOGEUnit } from '@/ui/state/settings/hooks';
 import { uiActions } from '@/ui/state/ui/reducer';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 
@@ -36,9 +36,14 @@ const tooltipStyle = {
   marginLeft: '-50px'
 };
 
-export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRefresh = false, address }: BalanceCardProps) {
+export function BalanceCard({
+  accountBalance,
+  disableUtxoTools = true,
+  enableRefresh = false,
+  address
+}: BalanceCardProps) {
   const { t } = useI18n();
-  const btcUnit = usePEPUnit();
+  const btcUnit = useDOGEUnit();
   const chain = useChain();
   const [isExpanded, setIsExpanded] = useState(true);
   const dispatch = useDispatch();
@@ -195,7 +200,8 @@ export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRef
         showMultiAsset ? styles.multiAssetExpanded : ''
       )}
       onClick={handleExpandToggle}
-      style={{ margin: '0 auto' }}>
+      style={{ margin: '0 auto' }}
+    >
       <div className={styles.decorativeLineOne} />
       <div className={styles.decorativeLineTwo} />
       <img className={styles.decorativeImage} src={backgroundImage} alt="Balance background" />
@@ -204,10 +210,7 @@ export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRef
         {t('total_balance')}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
           {/* Real-time indicator */}
-          <div
-            className={styles.realtimeIndicator}
-            title="Real-time updates active"
-          >
+          <div className={styles.realtimeIndicator} title="Real-time updates active">
             <div className={styles.realtimeDot}></div>
           </div>
           <EyeIcon onClick={toggleBalanceVisibility} />
@@ -220,27 +223,19 @@ export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRef
           <span className={styles.balanceNumber}>{isBalanceHidden ? '*****' : totalAmount.split('.')[0]}</span>
           {!isBalanceHidden && (
             <>
-              <span
-                className={styles.decimal}
-                style={{ color: isBtcMainnet ? '#000' : 'rgba(0, 0, 0, 0.45)' }}>
+              <span className={styles.decimal} style={{ color: isBtcMainnet ? '#000' : 'rgba(0, 0, 0, 0.45)' }}>
                 .{totalAmount.split('.')[1]}
               </span>
-              <span className={styles.unit}>
-                {btcUnit}
-              </span>
+              <span className={styles.unit}>{btcUnit}</span>
             </>
           )}
-          {isBalanceHidden && (
-            <span className={styles.unit}>
-              {btcUnit}
-            </span>
-          )}
+          {isBalanceHidden && <span className={styles.unit}>{btcUnit}</span>}
         </div>
         <Icon icon="balance-right" size={10} containerStyle={{ transform: `rotate(${isExpanded ? 270 : 90}deg)` }} />
       </div>
 
       <div className={styles.usdValue}>
-        <BtcUsd sats={accountBalance.totalBalance} color="black_muted" size="sm" isHidden={isBalanceHidden} />
+        <DOGEUSD sats={accountBalance.totalBalance} color="black_muted" size="sm" isHidden={isBalanceHidden} />
       </div>
 
       {/* Expandable details */}
@@ -278,7 +273,8 @@ export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRef
                 overlayInnerStyle={tooltipStyle}
                 title={t('unavailable_tooltip')}
                 placement="top"
-                destroyTooltipOnHide={true}>
+                destroyTooltipOnHide={true}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={(e) => e.stopPropagation()}>
                   <span className={styles.label}>{t('unavailable')}</span>
 
@@ -302,7 +298,8 @@ export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRef
                       style={{
                         marginRight: isSpecialLocale ? '0' : '2px',
                         fontSize: isSpecialLocale ? '8px' : '12px'
-                      }}>
+                      }}
+                    >
                       {t('unlock')}
                     </span>
                     {!isSpecialLocale && <Icon icon="balance-unlock-right" size={14} />}
@@ -317,7 +314,11 @@ export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRef
         {multiAssetBalance && (
           <div className={styles.multiAssetToggle} onClick={() => setShowMultiAsset(!showMultiAsset)}>
             <span className={styles.label}>Multi-Asset Portfolio</span>
-            <Icon icon="balance-right" size={10} containerStyle={{ transform: `rotate(${showMultiAsset ? 270 : 90}deg)` }} />
+            <Icon
+              icon="balance-right"
+              size={10}
+              containerStyle={{ transform: `rotate(${showMultiAsset ? 270 : 90}deg)` }}
+            />
           </div>
         )}
 
@@ -339,19 +340,19 @@ export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRef
               </div>
             )}
 
-            {/* PepeMaps */}
-            {(multiAssetBalance.pepemaps || []).length > 0 && (
+            {/* DogeMaps */}
+            {(multiAssetBalance.dogemaps || []).length > 0 && (
               <div className={styles.assetSection}>
-                <span className={styles.assetSectionTitle}>PepeMaps ({multiAssetBalance.totals?.pepemaps || 0})</span>
+                <span className={styles.assetSectionTitle}>DogeMaps ({multiAssetBalance.totals?.dogemaps || 0})</span>
                 <div className={styles.assetList}>
-                  {multiAssetBalance.pepemaps.slice(0, 5).map((parcel: number) => (
+                  {multiAssetBalance.dogemaps.slice(0, 5).map((parcel: number) => (
                     <div key={parcel} className={styles.assetItem}>
                       <span className={styles.assetName}>Parcel #{parcel}</span>
                     </div>
                   ))}
-                  {multiAssetBalance.pepemaps.length > 5 && (
+                  {multiAssetBalance.dogemaps.length > 5 && (
                     <div className={styles.assetItem}>
-                      <span className={styles.assetName}>+{multiAssetBalance.pepemaps.length - 5} more</span>
+                      <span className={styles.assetName}>+{multiAssetBalance.dogemaps.length - 5} more</span>
                     </div>
                   )}
                 </div>
@@ -359,17 +360,26 @@ export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRef
             )}
 
             {/* DNS Domains */}
-            {((multiAssetBalance.dns?.protocol_domains || []).length > 0 || (multiAssetBalance.dns?.legacy_domains || []).length > 0) && (
+            {((multiAssetBalance.dns?.protocol_domains || []).length > 0 ||
+              (multiAssetBalance.dns?.legacy_domains || []).length > 0) && (
               <div className={styles.assetSection}>
                 <span className={styles.assetSectionTitle}>
-                  DNS Domains ({(multiAssetBalance.dns?.protocol_domains?.length || 0) + (multiAssetBalance.dns?.legacy_domains?.length || 0)})
+                  DNS Domains (
+                  {(multiAssetBalance.dns?.protocol_domains?.length || 0) +
+                    (multiAssetBalance.dns?.legacy_domains?.length || 0)}
+                  )
                 </span>
                 <div className={styles.assetList}>
-                  {[...(multiAssetBalance.dns?.protocol_domains || []), ...(multiAssetBalance.dns?.legacy_domains || [])].slice(0, 5).map((domain: string) => (
-                    <div key={domain} className={styles.assetItem}>
-                      <span className={styles.assetName}>{domain}.pepe</span>
-                    </div>
-                  ))}
+                  {[
+                    ...(multiAssetBalance.dns?.protocol_domains || []),
+                    ...(multiAssetBalance.dns?.legacy_domains || [])
+                  ]
+                    .slice(0, 5)
+                    .map((domain: string) => (
+                      <div key={domain} className={styles.assetItem}>
+                        <span className={styles.assetName}>{domain}.doge</span>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
@@ -413,5 +423,3 @@ export function BalanceCard({ accountBalance, disableUtxoTools = true, enableRef
     </div>
   );
 }
-
-

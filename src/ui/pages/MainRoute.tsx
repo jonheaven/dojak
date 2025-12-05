@@ -29,17 +29,10 @@ import CharmsNFTScreen from './Charms/CharmsNFTScreen';
 import CharmsTokenScreen from './Charms/CharmsTokenScreen';
 import SendCharmsNFTScreen from './Charms/SendCharmsNFTScreen';
 import SendCharmsScreen from './Charms/SendCharmsScreen';
-
-import AppTabScrren from './Main/AppTabScreen';
-import BoostScreen from './Main/BoostScreen';
-import DiscoverTabScreen from './Main/DiscoverTabScreen';
-import SettingsTabScreen from './Main/SettingsTabScreen';
-import WalletTabScreen from './Main/WalletTabScreen';
-import WelcomeScreen from './Main/WelcomeScreen';
 // Commenting out missing DRC20 components for development
 // import DRC20SendScreen from './DRC20/DRC20SendScreen';
 // import DRC20SingleStepScreen from './DRC20/DRC20SingleStepScreen';
-// import DRC20TokenScreen from './DRC20/DRC20TokenScreen';
+import DRC20TokenScreen from './DRC20/DRC20TokenScreen';
 import { DoginalsGalleryScreen } from './Doginals/DoginalsGalleryScreen';
 // Commenting out missing Doginals components for development
 // import DoginalsInscriptionScreen from './Doginals/DoginalsInscriptionScreen';
@@ -48,6 +41,12 @@ import { DoginalsGalleryScreen } from './Doginals/DoginalsGalleryScreen';
 // import SplitDoginalsInscriptionScreen from './Doginals/SplitDoginalsInscriptionScreen';
 import DunesTokenScreen from './Dunes/DunesTokenScreen';
 import SendDunesScreen from './Dunes/SendDunesScreen';
+import AppTabScrren from './Main/AppTabScreen';
+import BoostScreen from './Main/BoostScreen';
+import DiscoverTabScreen from './Main/DiscoverTabScreen';
+import SettingsTabScreen from './Main/SettingsTabScreen';
+import WalletTabScreen from './Main/WalletTabScreen';
+import WelcomeScreen from './Main/WelcomeScreen';
 import PhishingScreen from './Phishing/PhishingScreen';
 import AboutUsScreen from './Settings/AboutUsScreen';
 import AddressTypeScreen from './Settings/AddressTypeScreen';
@@ -256,10 +255,10 @@ export const routes = {
   //   path: '/drc20/send',
   //   element: <DRC20SendScreen />
   // },
-  // DRC20TokenScreen: {
-  //   path: '/drc20/token',
-  //   element: <DRC20TokenScreen />
-  // },
+  DRC20TokenScreen: {
+    path: '/drc20/token',
+    element: <DRC20TokenScreen />
+  },
   DoginalsGalleryScreen: {
     path: '/doginals/gallery',
     element: <DoginalsGalleryScreen />
@@ -270,7 +269,7 @@ export const routes = {
   // },
 
   SendDunesScreen: {
-    path: '/dunes/send-runes',
+    path: '/dunes/send-dunes',
     element: <SendDunesScreen />
   },
 
@@ -278,7 +277,6 @@ export const routes = {
     path: '/dunes/token',
     element: <DunesTokenScreen />
   },
-
 
   phishing: {
     path: '/phishing',
@@ -488,7 +486,8 @@ const Main = () => {
           height: '100vh',
           overflowY: 'auto',
           overflowX: 'hidden'
-        }}>
+        }}
+      >
         <Content justifyCenter itemsCenter>
           <Icon>
             <LoadingOutlined />
@@ -512,5 +511,3 @@ const Main = () => {
 };
 
 export default Main;
-
-

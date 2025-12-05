@@ -3,5 +3,3 @@ const create = (url: string | undefined, title: string, message: string, priorit
 };
 
 export default { create };
-
-

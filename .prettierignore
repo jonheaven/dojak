@@ -1,2 +1,4 @@
 src/_locales/**/*.json
 dist/**/*.json
+# Files with decorators that prettier can't parse
+src/background/controller/provider/controller.ts

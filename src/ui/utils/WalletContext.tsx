@@ -179,7 +179,7 @@ export interface WalletController {
 
   signPsbtWithHex(psbtHex: string, toSignInputs: ToSignInput[], autoFinalized: boolean): Promise<string>;
 
-  sendPEP(data: {
+  sendDOGE(data: {
     to: string;
     amount: number;
     btcUtxos: UnspentOutput[];
@@ -193,7 +193,7 @@ export interface WalletController {
     fee: number;
   }>;
 
-  sendAllPEP(data: { to: string; btcUtxos: UnspentOutput[]; feeRate: number; enableRBF: boolean }): Promise<{
+  sendAllDOGE(data: { to: string; btcUtxos: UnspentOutput[]; feeRate: number; enableRBF: boolean }): Promise<{
     psbtHex: string;
     rawtx: string;
     fee: number;
@@ -243,7 +243,7 @@ export interface WalletController {
 
   getInscriptionSummary(): Promise<InscriptionSummary>;
   getAppSummary(): Promise<AppSummary>;
-  getPEPUtxos(): Promise<UnspentOutput[]>;
+  getDOGEUtxos(): Promise<UnspentOutput[]>;
   getAssetUtxosInscriptions(inscriptionId: string): Promise<UnspentOutput[]>;
 
   getNetworkType(): Promise<NetworkType>;
@@ -286,10 +286,7 @@ export interface WalletController {
   ): Promise<InscribeOrder>;
   getInscribeResult(orderId: string): Promise<TokenTransfer>;
 
-  createDoginalInscription(
-    content: string,
-    feeRate: number
-  ): Promise<InscribeOrder>;
+  createDoginalInscription(content: string, feeRate: number): Promise<InscribeOrder>;
 
   decodePsbt(psbtHex: string, website: string): Promise<DecodedPsbt>;
 
@@ -326,11 +323,7 @@ export interface WalletController {
     pageSize: number
   ): Promise<{ currentPage: number; pageSize: number; total: number; list: Inscription[] }>;
 
-  getDoginals(
-    address: string,
-    cursor?: string,
-    size?: number
-  ): Promise<{ list: any[]; total: number }>;
+  getDoginals(address: string, cursor?: string, size?: number): Promise<{ list: any[]; total: number }>;
 
   getDRC20Summary(address: string, ticker: string): Promise<AddressTokenSummary>;
 
@@ -424,11 +417,6 @@ export interface WalletController {
   getTheme(): Promise<'light' | 'dark'>;
   setTheme(theme: 'light' | 'dark'): Promise<void>;
 
-
-
-
-
-
   getAppList(): Promise<{ tab: string; items: AppInfo[] }[]>;
   getBannerList(): Promise<{ id: string; img: string; link: string }[]>;
   getBlockActiveInfo(): Promise<{ allTransactions: number; allAddrs: number }>;
@@ -468,7 +456,6 @@ export interface WalletController {
 
   getBuyCoinChannelList(coin: string): Promise<DogeChannelItem[]>;
   createBuyCoinPaymentUrl(coin: string, address: string, channel: string): Promise<string>;
-
 
   getContactByAddress(address: string): Promise<ContactBookItem | undefined>;
   getContactByAddressAndChain(address: string, chain: ChainType): Promise<ContactBookItem | undefined>;
@@ -590,7 +577,7 @@ export interface WalletController {
 
   getMarketplaceListings(cursor?: string, size?: number, filters?: any): Promise<any>;
   getMarketplaceListing(listingId: string): Promise<any>;
-  createMarketplaceListing(pepinalId: string, price: number, sellerAddress: string): Promise<any>;
+  createMarketplaceListing(doginalId: string, price: number, sellerAddress: string): Promise<any>;
   buyMarketplaceListing(listingId: string, buyerAddress: string): Promise<any>;
 }
 
@@ -611,6 +598,3 @@ const useWallet = () => {
 };
 
 export { useWallet, WalletProvider };
-
-
-

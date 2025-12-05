@@ -1,27 +1,21 @@
 /**
  * Dojak Wallet - Dogecoin Native Keyring Service
- * 
+ *
  * A complete keyring service built for Dogecoin, not patched Bitcoin code.
  * Provides the same interface as @unisat/keyring-service but with native
  * Dogecoin support using bitcore-lib-doge.
  */
-
-import { EventEmitter } from 'events';
 import * as bip39 from 'bip39';
-import { ObservableStore } from '@metamask/obs-store';
 import * as bitcoin from 'bitcoinjs-lib';
+import { EventEmitter } from 'events';
+
+import { dogecoinMainnet, dogecoinTestnet } from '@/shared/lib/dogecoin-network';
+import { ObservableStore } from '@metamask/obs-store';
 import { AddressType } from '@unisat/wallet-types';
 
 import { DogecoinHdKeyring } from './dogecoin-hd-keyring';
 import { DogecoinSimpleKeyring } from './dogecoin-simple-keyring';
-import {
-  KeyringInterface,
-  SerializedKeyring,
-  ToSignInput,
-  DogecoinNetworkType,
-  KEYRING_TYPE,
-} from './types';
-import { dogecoinMainnet, dogecoinTestnet } from '@/shared/lib/dogecoin-network';
+import { KeyringInterface, SerializedKeyring, ToSignInput, DogecoinNetworkType, KEYRING_TYPE } from './types';
 
 // Storage adapter interface
 export interface StorageAdapter {
@@ -92,13 +86,10 @@ class BrowserEncryptor implements Encryptor {
     const dataStr = JSON.stringify(data);
     const dataBuffer = encoder.encode(dataStr);
 
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(password),
-      { name: 'PBKDF2' },
-      false,
-      ['deriveBits', 'deriveKey']
-    );
+    const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(password), { name: 'PBKDF2' }, false, [
+      'deriveBits',
+      'deriveKey'
+    ]);
 
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const key = await crypto.subtle.deriveKey(
@@ -110,11 +101,7 @@ class BrowserEncryptor implements Encryptor {
     );
 
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      dataBuffer
-    );
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, dataBuffer);
 
     // Combine salt + iv + encrypted data
     const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
@@ -127,19 +114,16 @@ class BrowserEncryptor implements Encryptor {
 
   async decrypt(password: string, encryptedData: string): Promise<any> {
     const encoder = new TextEncoder();
-    const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+    const combined = Uint8Array.from(atob(encryptedData), (c) => c.charCodeAt(0));
 
     const salt = combined.slice(0, 16);
     const iv = combined.slice(16, 28);
     const encrypted = combined.slice(28);
 
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(password),
-      { name: 'PBKDF2' },
-      false,
-      ['deriveBits', 'deriveKey']
-    );
+    const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(password), { name: 'PBKDF2' }, false, [
+      'deriveBits',
+      'deriveKey'
+    ]);
 
     const key = await crypto.subtle.deriveKey(
       { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
@@ -149,11 +133,7 @@ class BrowserEncryptor implements Encryptor {
       ['decrypt']
     );
 
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      encrypted
-    );
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, encrypted);
 
     const decoder = new TextDecoder();
     return JSON.parse(decoder.decode(decrypted));
@@ -172,7 +152,7 @@ export interface DogecoinKeyringServiceConfig {
 
 /**
  * DogecoinKeyringService - Native Dogecoin keyring management
- * 
+ *
  * Provides complete wallet management for Dogecoin with proper
  * address derivation, WIF encoding, and message signing.
  */
@@ -213,7 +193,7 @@ export class DogecoinKeyringService extends EventEmitter {
       keyringTypes: [KEYRING_TYPE.HdKeyring, KEYRING_TYPE.SimpleKeyring],
       keyrings: [],
       preMnemonics: '',
-      addressTypes: [],
+      addressTypes: []
     });
 
     this.keyrings = [];
@@ -227,7 +207,7 @@ export class DogecoinKeyringService extends EventEmitter {
     await this.storage.init();
 
     if (!this.store) {
-      const persistedState = await this.storage.get('keyring') || {};
+      const persistedState = (await this.storage.get('keyring')) || {};
       this.store = new ObservableStore(persistedState);
     }
 
@@ -267,7 +247,9 @@ export class DogecoinKeyringService extends EventEmitter {
    * Boot the wallet with a password
    */
   async boot(password: string): Promise<void> {
+    console.log('[DogecoinKeyringService] boot() called');
     this.password = password;
+    console.log('[DogecoinKeyringService] password set, length:', password.length);
     const encryptBooted = await this.encryptor.encrypt(password, 'true');
 
     if (!this.store) {
@@ -276,7 +258,7 @@ export class DogecoinKeyringService extends EventEmitter {
         keyrings: [],
         keyringTypes: [],
         preMnemonics: '',
-        addressTypes: [],
+        addressTypes: []
       });
     }
 
@@ -284,6 +266,7 @@ export class DogecoinKeyringService extends EventEmitter {
     await this.storage.set('keyring', this.store.getState());
     this.setUnlocked();
     this.fullUpdate();
+    console.log('[DogecoinKeyringService] boot() completed');
   }
 
   isBooted(): boolean {
@@ -359,10 +342,7 @@ export class DogecoinKeyringService extends EventEmitter {
 
       // Re-encrypt pre-mnemonics if present
       if (this.memStore.getState().preMnemonics) {
-        const mnemonic = await this.encryptor.decrypt(
-          oldPassword,
-          this.memStore.getState().preMnemonics
-        );
+        const mnemonic = await this.encryptor.decrypt(oldPassword, this.memStore.getState().preMnemonics);
         const preMnemonics = await this.encryptor.encrypt(newPassword, mnemonic);
         this.memStore.updateState({ preMnemonics });
       }
@@ -402,11 +382,16 @@ export class DogecoinKeyringService extends EventEmitter {
    * Generate and encrypt pre-mnemonic for wallet creation flow
    */
   async generatePreMnemonic(): Promise<string> {
+    console.log('[DogecoinKeyringService] generatePreMnemonic() called');
+    console.log('[DogecoinKeyringService] password:', this.password ? 'SET' : 'NOT SET');
     if (!this.password) {
-      throw new Error(this.t('you_need_to_unlock_wallet_first'));
+      const error = new Error(this.t('you_need_to_unlock_wallet_first'));
+      console.error('[DogecoinKeyringService] generatePreMnemonic() error - no password');
+      throw error;
     }
 
     const mnemonic = this.generateMnemonic();
+    console.log('[DogecoinKeyringService] generated mnemonic, words:', mnemonic.split(' ').length);
     const preMnemonics = await this.encryptor.encrypt(this.password, mnemonic);
     this.memStore.updateState({ preMnemonics });
 
@@ -457,34 +442,40 @@ export class DogecoinKeyringService extends EventEmitter {
       activeIndexes.push(i);
     }
 
-    const keyring = new DogecoinHdKeyring({
+    // Create keyring and explicitly await deserialization (async operation)
+    const keyring = new DogecoinHdKeyring();
+    keyring.setNetwork(this.networkType);
+    await keyring.deserialize({
       type: KEYRING_TYPE.HdKeyring,
       mnemonic,
       hdPath,
       passphrase,
-      activeIndexes,
+      activeIndexes
     });
-    keyring.setNetwork(this.networkType);
 
     return this.addKeyring(keyring, addressType);
   }
 
   /**
    * Create a temporary keyring (not persisted)
+   * Note: This is async because HD keyring deserialization is async
    */
-  createTmpKeyring(type: string, opts: any): KeyringInterface {
+  async createTmpKeyring(type: string, opts: any): Promise<KeyringInterface> {
     let keyring: KeyringInterface;
 
     if (type === KEYRING_TYPE.HdKeyring || type === 'HD Key Tree') {
-      keyring = new DogecoinHdKeyring(opts);
+      keyring = new DogecoinHdKeyring();
+      keyring.setNetwork(this.networkType);
+      await keyring.deserialize(opts);
     } else if (type === KEYRING_TYPE.SimpleKeyring || type === 'Simple Key Pair') {
       const privateKeys = Array.isArray(opts) ? opts : opts?.privateKeys || [];
-      keyring = new DogecoinSimpleKeyring(privateKeys);
+      keyring = new DogecoinSimpleKeyring();
+      keyring.setNetwork(this.networkType);
+      await keyring.deserialize({ type: KEYRING_TYPE.SimpleKeyring, privateKeys });
     } else {
       throw new Error(`Unknown keyring type: ${type}`);
     }
 
-    keyring.setNetwork(this.networkType);
     return keyring;
   }
 
@@ -492,8 +483,9 @@ export class DogecoinKeyringService extends EventEmitter {
    * Import a private key
    */
   async importPrivateKey(privateKey: string, addressType: AddressType): Promise<KeyringInterface> {
-    const keyring = new DogecoinSimpleKeyring([privateKey]);
+    const keyring = new DogecoinSimpleKeyring();
     keyring.setNetwork(this.networkType);
+    await keyring.deserialize({ type: KEYRING_TYPE.SimpleKeyring, privateKeys: [privateKey] });
     return this.addKeyring(keyring, addressType);
   }
 
@@ -530,7 +522,7 @@ export class DogecoinKeyringService extends EventEmitter {
       signMessage: async () => '',
       verifyMessage: async () => false,
       exportAccount: async () => '',
-      setNetwork: () => {},
+      setNetwork: () => {}
     };
 
     this.keyrings[keyringIndex] = emptyKeyring;
@@ -548,7 +540,7 @@ export class DogecoinKeyringService extends EventEmitter {
     const accounts = await keyring.addAccounts(1);
     this.cachedDisplayedKeyring = null;
 
-    accounts.forEach(account => {
+    accounts.forEach((account) => {
       this.emit('newAccount', account);
     });
 
@@ -582,9 +574,7 @@ export class DogecoinKeyringService extends EventEmitter {
    * Get keyring for a specific account
    */
   async getKeyringForAccount(publicKey: string, type?: string): Promise<KeyringInterface> {
-    const keyrings = type 
-      ? this.keyrings.filter(k => k.type === type)
-      : this.keyrings;
+    const keyrings = type ? this.keyrings.filter((k) => k.type === type) : this.keyrings;
 
     for (const keyring of keyrings) {
       const accounts = await keyring.getAccounts();
@@ -600,7 +590,7 @@ export class DogecoinKeyringService extends EventEmitter {
    * Get keyring by type
    */
   getKeyringByType(type: string): KeyringInterface | undefined {
-    return this.keyrings.find(k => k.type === type);
+    return this.keyrings.find((k) => k.type === type);
   }
 
   /**
@@ -665,9 +655,12 @@ export class DogecoinKeyringService extends EventEmitter {
     index: number
   ): Promise<DisplayedKeyring> {
     const accounts = await keyring.getAccounts();
-    const allAccounts = accounts.map(pubkey => ({
+
+    // Derive actual Dogecoin addresses from public keys
+    const allAccounts = accounts.map((pubkey) => ({
       pubkey,
       brandName: keyring.type,
+      address: keyring.getAddressFromPublicKey(pubkey)
     }));
 
     const serialized = await keyring.serialize();
@@ -678,10 +671,10 @@ export class DogecoinKeyringService extends EventEmitter {
       keyring: {
         accounts,
         type: keyring.type,
-        hdPath: (serialized as any).hdPath,
+        hdPath: (serialized as any).hdPath
       },
       addressType,
-      index,
+      index
     };
   }
 
@@ -713,7 +706,7 @@ export class DogecoinKeyringService extends EventEmitter {
    * Check for duplicate accounts
    */
   private async checkForDuplicate(type: string, newAccounts: string[]): Promise<string[]> {
-    const keyrings = this.keyrings.filter(k => k.type === type);
+    const keyrings = this.keyrings.filter((k) => k.type === type);
     const existingAccounts: string[] = [];
 
     for (const keyring of keyrings) {
@@ -721,7 +714,7 @@ export class DogecoinKeyringService extends EventEmitter {
       existingAccounts.push(...accounts);
     }
 
-    const isDuplicate = newAccounts.some(account => existingAccounts.includes(account));
+    const isDuplicate = newAccounts.some((account) => existingAccounts.includes(account));
 
     if (isDuplicate) {
       throw new Error(this.t('wallet_existed'));
@@ -742,7 +735,7 @@ export class DogecoinKeyringService extends EventEmitter {
       this.keyrings.map(async (keyring, index) => ({
         type: keyring.type,
         data: await keyring.serialize(),
-        addressType: this.addressTypes[index],
+        addressType: this.addressTypes[index]
       }))
     );
 
@@ -803,7 +796,7 @@ export class DogecoinKeyringService extends EventEmitter {
         signMessage: async () => '',
         verifyMessage: async () => false,
         exportAccount: async () => '',
-        setNetwork: () => {},
+        setNetwork: () => {}
       };
     } else {
       throw new Error(`Unknown keyring type: ${type}`);
@@ -834,7 +827,7 @@ export class DogecoinKeyringService extends EventEmitter {
     if (this.eventBus) {
       this.eventBus.emit('broadcastToUI', {
         method: 'unlock',
-        params: {},
+        params: {}
       });
     }
   }
@@ -849,4 +842,3 @@ export class DogecoinKeyringService extends EventEmitter {
 }
 
 export default DogecoinKeyringService;
-

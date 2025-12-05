@@ -24,7 +24,8 @@ export default function MultiSignDisclaimerModal({
           <Row
             onClick={() => {
               onClose();
-            }}>
+            }}
+          >
             <CloseOutlined />
           </Row>
         </Row>
@@ -37,7 +38,8 @@ export default function MultiSignDisclaimerModal({
           <Text
             mt="lg"
             style={{ fontSize: fontSizes.sm, lineHeight: 2 }}
-            text={t('by_proceeding_you_confirm_that_youve_read_and_accepted_this_disclaimer')}></Text>
+            text={t('by_proceeding_you_confirm_that_youve_read_and_accepted_this_disclaimer')}
+          ></Text>
         </Column>
 
         <Button
@@ -51,5 +53,3 @@ export default function MultiSignDisclaimerModal({
     </BottomModal>
   );
 }
-
-

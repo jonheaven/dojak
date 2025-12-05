@@ -17,5 +17,3 @@ export function Column(props: ColumnProps) {
   const $style = Object.assign({}, $columnStyle, $styleOverride);
   return <BaseView style={$style} {...rest} />;
 }
-
-

@@ -14,5 +14,3 @@ export const withI18n = (WrappedComponent: React.ComponentType<any>) => {
     return <WrappedComponent {...props} i18n={i18n} />;
   };
 };
-
-

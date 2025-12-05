@@ -28,7 +28,16 @@ export function Tabs({ items, defaultActiveKey, activeKey, onTabClick }: TabsPro
 
   return (
     <Column>
-      <Column gap="zero" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#070606' }}>
+      <Column
+        gap="zero"
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          // Theme-aware background so sticky header works in both light and dark modes
+          backgroundColor: 'var(--theme-bg2)'
+        }}
+      >
         <Row style={{ padding: 0, height: 50 }}>
           {items.map((item) => {
             const isActiveItem = item.key === activeTab;
@@ -61,11 +70,7 @@ export function Tabs({ items, defaultActiveKey, activeKey, onTabClick }: TabsPro
         />
       </Column>
 
-      <Column style={{ marginTop: '24px' }}>
-        {items.find((item) => item.key === activeTab)?.children}
-      </Column>
+      <Column style={{ marginTop: '24px' }}>{items.find((item) => item.key === activeTab)?.children}</Column>
     </Column>
   );
 }
-
-

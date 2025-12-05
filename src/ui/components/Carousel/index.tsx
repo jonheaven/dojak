@@ -1,6 +1,7 @@
 import React, { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
-import { colors } from '@/ui/theme/colors';
+
 import { Row } from '@/ui/components';
+import { colors } from '@/ui/theme/colors';
 
 interface CarouselProps {
   children: React.ReactNode[];
@@ -115,9 +116,7 @@ export function Carousel({
   }, []);
 
   const goToPrevious = useCallback(() => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === 0 ? totalSlides - 1 : prevIndex - 1
-    );
+    setCurrentIndex((prevIndex) => (prevIndex === 0 ? totalSlides - 1 : prevIndex - 1));
   }, [totalSlides]);
 
   const goToNext = useCallback(() => {
@@ -137,20 +136,12 @@ export function Carousel({
   }
 
   if (totalSlides === 1) {
-    return (
-      <div style={{ ...style }}>
-        {children}
-      </div>
-    );
+    return <div style={{ ...style }}>{children}</div>;
   }
 
   return (
     <div style={{ ...style }}>
-      <div
-        style={$carouselContainer}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
+      <div style={$carouselContainer} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
         <div
           style={{
             ...$carouselWrapper,
@@ -218,5 +209,3 @@ export function Carousel({
     </div>
   );
 }
-
-

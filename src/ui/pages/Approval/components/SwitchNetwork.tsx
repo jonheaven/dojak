@@ -65,5 +65,3 @@ export default function SwitchNetwork({ params: { data, session } }: Props) {
     </Layout>
   );
 }
-
-

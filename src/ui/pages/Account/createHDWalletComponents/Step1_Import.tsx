@@ -7,10 +7,10 @@ import { useTools } from '@/ui/components/ActionComponent';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { useI18n } from '@/ui/hooks/useI18n';
 import {
-    ContextData,
-    TabType,
-    UpdateContextDataParams,
-    WordsType
+  ContextData,
+  TabType,
+  UpdateContextDataParams,
+  WordsType
 } from '@/ui/pages/Account/createHDWalletComponents/types';
 import { useNavigate } from '@/ui/pages/MainRoute';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
@@ -134,7 +134,8 @@ export function Step1_Import({
               updateContextData({ wordsType });
               setKeys(new Array(wordsItems[wordsType].count).fill(''));
             }}
-            value={contextData.wordsType}>
+            value={contextData.wordsType}
+          >
             {wordsItems.map((v) => (
               <Radio key={v.key} value={v.key}>
                 {v.label}
@@ -198,5 +199,3 @@ export function Step1_Import({
     </Column>
   );
 }
-
-

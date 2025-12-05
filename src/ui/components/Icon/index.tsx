@@ -75,16 +75,16 @@ export const svgRegistry = {
   gas: './images/icons/gas.svg',
   fb: './images/icons/fb.svg',
   trade: './images/icons/trade.svg',
-  baby: './images/icons/baby.svg',
-  'claimable-baby': './images/icons/claimable-baby.svg',
-  'claimed-baby': './images/icons/claimed-baby.svg',
+  jawn: './images/icons/jawn.svg',
+  'claimable-jawn': './images/icons/claimable-jawn.svg',
+  'claimed-jawn': './images/icons/claimed-jawn.svg',
   'staked-btc': './images/icons/staked-btc.svg',
-  'baby-tip1': './images/icons/baby-tip1.svg',
-  'baby-tip2': './images/icons/baby-tip2.svg',
-  'baby-delegation': './images/icons/baby-delegation.svg',
-  'baby-stakers': './images/icons/baby-stakers.svg',
-  'baby-staking': './images/icons/baby-staking.svg',
-  'baby-tvl': './images/icons/baby-tvl.svg',
+  'jawn-tip1': './images/icons/jawn-tip1.svg',
+  'jawn-tip2': './images/icons/jawn-tip2.svg',
+  'jawn-delegation': './images/icons/jawn-delegation.svg',
+  'jawn-stakers': './images/icons/jawn-stakers.svg',
+  'jawn-staking': './images/icons/jawn-staking.svg',
+  'jawn-tvl': './images/icons/jawn-tvl.svg',
   'error-boundary': '/images/icons/error-boundary.svg',
 
   addressType: '/images/icons/address-type.svg',
@@ -136,12 +136,12 @@ const iconImgList: Array<IconTypes> = [
   'success',
   'delete',
   'btc',
-  'baby',
+  'jawn',
   'staked-btc',
-  'claimable-baby',
-  'claimed-baby',
-  'baby-tip1',
-  'baby-tip2',
+  'claimable-jawn',
+  'claimed-jawn',
+  'jawn-tip1',
+  'jawn-tip2',
   'error-boundary',
   'utxobg',
   'addressType',
@@ -177,6 +177,8 @@ const iconImgList: Array<IconTypes> = [
   'drc20-single-step',
   'arrow-right',
   'version-notice',
+  // Render Dojak logo as an image instead of a masked square
+  'dojak-logo',
   'side-panel-logo',
 
   'history_send',
@@ -237,14 +239,15 @@ export function Icon(props: IconProps) {
         style={Object.assign(
           {},
           {
-            color: color ? colors[color] : '#FFF',
+            color: color ? colors[color] : colors.text,
             fontSizes: size || fontSizes.icon,
             display: 'flex'
           } as CSSProperties,
           $containerStyleOverride,
           $imageStyleOverride || {},
           onClick ? { cursor: 'pointer' } : {}
-        )}>
+        )}
+      >
         {children}
       </div>
     );
@@ -270,10 +273,12 @@ export function Icon(props: IconProps) {
           style={Object.assign(
             {},
             {
-              color: color ? colors[color] : '#FFF',
+              // Use theme-aware text color for icons by default
+              color: color ? colors[color] : 'var(--theme-text)',
               width: size || fontSizes.icon,
               height: size || fontSizes.icon,
-              backgroundColor: color ? colors[color] : '#FFF',
+              // Transparent background by default so icons work on both light and dark backgrounds
+              backgroundColor: color ? colors[color] : 'transparent',
               maskImage: `url(${iconPath})`,
               maskSize: 'cover',
               maskRepeat: 'no-repeat',
@@ -293,5 +298,3 @@ export function Icon(props: IconProps) {
     return <div />;
   }
 }
-
-

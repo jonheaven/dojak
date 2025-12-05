@@ -71,5 +71,3 @@ const slice = createSlice({
 
 export const discoveryActions = slice.actions;
 export default slice.reducer;
-
-

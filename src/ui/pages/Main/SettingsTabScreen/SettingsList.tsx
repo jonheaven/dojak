@@ -56,11 +56,18 @@ export function SettingsList() {
   }, []);
 
   const isCustomHdPath = useMemo(() => {
+    if (!currentKeyring) return false;
     const item = ADDRESS_TYPES[currentKeyring.addressType];
+    if (!item) return false;
     return currentKeyring.hdPath !== '' && item.hdPath !== currentKeyring.hdPath;
   }, [currentKeyring]);
 
   const toRenderSettings = useMemo(() => {
+    // If keyring isn't ready yet, avoid accessing its properties
+    if (!currentKeyring) {
+      return [];
+    }
+
     return getSettingsList().filter((v) => {
       if (v.action === SettingsAction.MANAGE_WALLET) {
         v.value = currentKeyring.alianName;
@@ -76,11 +83,15 @@ export function SettingsList() {
 
       if (v.action === SettingsAction.ADDRESS_TYPE) {
         const item = ADDRESS_TYPES[currentKeyring.addressType];
-        const hdPath = currentKeyring.hdPath || item.hdPath;
-        if (currentKeyring.type === KeyringType.SimpleKeyring) {
-          v.value = `${item.name}`;
+        if (item) {
+          const hdPath = currentKeyring.hdPath || item.hdPath;
+          if (currentKeyring.type === KeyringType.SimpleKeyring) {
+            v.value = `${item.name}`;
+          } else {
+            v.value = `${item.name} (${hdPath}/${currentAccount?.index ?? 0})`;
+          }
         } else {
-          v.value = `${item.name} (${hdPath}/${currentAccount.index})`;
+          v.value = 'Legacy (P2PKH)';
         }
       }
 
@@ -158,16 +169,18 @@ export function SettingsList() {
                 : groupBottom
                 ? '0 0 12px 12px'
                 : '0',
-            background: 'rgba(255, 255, 255, 0.06)',
+            // Theme-aware background so card looks correct in light & dark
+            background: 'var(--theme-card)',
             padding: '0 16px',
             margin: 0
-          }}>
+          }}
+        >
           <Row full justifyBetween style={{ height: '100%', alignItems: 'center' }}>
             <Row style={{ minWidth: 0, alignItems: 'center' }}>
               <Icon icon={item.icon || 'theme'} size={fontSizes.logo} color="textDim" />
               <Column style={{ gap: spacing.tiny, minWidth: 0, flex: 1, marginLeft: spacing.tiny }}>
                 <Row justifyBetween>
-                  <Text text={item.label || item.desc} preset="regular" size="sm" style={{ color: 'white' }} />
+                  <Text text={item.label || item.desc} preset="regular" size="sm" />
                   {item.badge && (
                     <Text
                       text={item.badge}
@@ -200,16 +213,17 @@ export function SettingsList() {
               : groupBottom
               ? '0 0 12px 12px'
               : '0',
-          background: 'rgba(255, 255, 255, 0.06)',
+          background: 'var(--theme-card)',
           padding: '0 16px',
           margin: 0
-        }}>
+        }}
+      >
         <Row full justifyBetween style={{ height: '100%', alignItems: 'center' }}>
           <Row style={{ minWidth: 0, alignItems: 'center' }}>
             <Icon icon={item.icon} size={fontSizes.logo} color="textDim" />
             <Column style={{ gap: spacing.tiny, minWidth: 0, flex: 1, marginLeft: spacing.tiny }}>
               <Row justifyBetween>
-                <Text text={item.label || item.desc} preset="regular" size="sm" style={{ color: 'white' }} />
+                <Text text={item.label || item.desc} preset="regular" size="sm" />
                 {item.badge && (
                   <Text
                     text={item.badge}
@@ -220,7 +234,9 @@ export function SettingsList() {
                   />
                 )}
               </Row>
-              {item.action !== SettingsAction.CONNECTED_SITES && <Text text={item.value} preset="sub" wrap size="xxs" />}
+              {item.action !== SettingsAction.CONNECTED_SITES && (
+                <Text text={item.value} preset="sub" wrap size="xxs" />
+              )}
             </Column>
           </Row>
           <Row style={{ alignItems: 'center', gap: spacing.small }}>
@@ -231,7 +247,7 @@ export function SettingsList() {
                     width: '8px',
                     height: '8px',
                     borderRadius: '50%',
-                    backgroundColor: connected ? '#ffd700' : 'rgba(255, 255, 255, 0.3)'
+                    backgroundColor: connected ? 'var(--theme-primary)' : 'var(--theme-border2)'
                   }}
                 />
                 <Text text={connected ? t('connected') : t('not_connected')} preset="sub" size="xs" />
@@ -248,7 +264,8 @@ export function SettingsList() {
     <div
       style={{
         height: '1px',
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        // Theme-aware divider color
+        backgroundColor: 'var(--theme-border)',
         margin: '0'
       }}
     />
@@ -269,7 +286,10 @@ export function SettingsList() {
   const connectedSitesGroup = toRenderSettings.filter((item) => item.action === SettingsAction.CONNECTED_SITES);
   const addressBookGroup = toRenderSettings.filter((item) => item.action === SettingsAction.CONTACTS);
   const addressTypeSettingsGroup = toRenderSettings.filter(
-    (item) => item.action === SettingsAction.ADDRESS_TYPE || item.action === SettingsAction.ADVANCED || item.action === SettingsAction.THEME
+    (item) =>
+      item.action === SettingsAction.ADDRESS_TYPE ||
+      item.action === SettingsAction.ADVANCED ||
+      item.action === SettingsAction.THEME
   );
   const feedbackGroup = toRenderSettings.filter((item) =>
     [SettingsAction.FEEDBACK, SettingsAction.RATE_US, SettingsAction.ABOUT_US].includes(item.action)
@@ -315,5 +335,3 @@ export function SettingsList() {
     </Column>
   );
 }
-
-

@@ -159,5 +159,3 @@ export function browserRuntimeConnect(extensionId?: string, connectInfo?: any) {
 }
 
 export default browser;
-
-

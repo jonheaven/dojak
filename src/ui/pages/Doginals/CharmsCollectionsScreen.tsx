@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
 import { Card, Button, Spin, Empty, Tag, List, Modal, Input, message } from 'antd';
-import { StarOutlined, PlusOutlined, LinkOutlined, AppstoreOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
 
 import { useWallet } from '@/ui/utils';
-import { useTranslation } from 'react-i18next';
+import { StarOutlined, PlusOutlined, LinkOutlined, AppstoreOutlined } from '@ant-design/icons';
 
 interface Charm {
   id: string;
@@ -70,12 +70,7 @@ export const CharmsCollectionsScreen = () => {
 
   const loadCollectionCharms = async (collection: CharmCollection) => {
     try {
-      const result = await wallet.getCharmsCollectionItems(
-        currentAccount.address,
-        collection.id,
-        1,
-        50
-      );
+      const result = await wallet.getCharmsCollectionItems(currentAccount.address, collection.id, 1, 50);
       setCharms(result.list || []);
       setSelectedCollection(collection);
     } catch (error) {
@@ -104,11 +99,11 @@ export const CharmsCollectionsScreen = () => {
 
   const getAppColor = (app: string) => {
     const colors: Record<string, string> = {
-      'rarity': '#9C27B0',
-      'royalty': '#FF9800',
-      'utility': '#2196F3',
-      'governance': '#4CAF50',
-      'identity': '#FF5722'
+      rarity: '#9C27B0',
+      royalty: '#FF9800',
+      utility: '#2196F3',
+      governance: '#4CAF50',
+      identity: '#FF5722'
     };
     return colors[app] || '#8B8B8B';
   };
@@ -147,18 +142,14 @@ export const CharmsCollectionsScreen = () => {
 
           <Card className="bg-[#262222] border-[#333]">
             <div className="text-center">
-              <div className="text-3xl font-bold text-[#2196F3]">
-                {Object.keys(stats.charms_by_app).length}
-              </div>
+              <div className="text-3xl font-bold text-[#2196F3]">{Object.keys(stats.charms_by_app).length}</div>
               <div className="text-gray-400">Applications</div>
             </div>
           </Card>
 
           <Card className="bg-[#262222] border-[#333]">
             <div className="text-center">
-              <div className="text-3xl font-bold text-[#FF9800]">
-                {Object.keys(stats.charms_by_collection).length}
-              </div>
+              <div className="text-3xl font-bold text-[#FF9800]">{Object.keys(stats.charms_by_collection).length}</div>
               <div className="text-gray-400">Collections</div>
             </div>
           </Card>
@@ -167,10 +158,7 @@ export const CharmsCollectionsScreen = () => {
 
       {/* Collections Grid */}
       {collections.length === 0 ? (
-        <Empty
-          description="No Charms collections found. Create your first Charm!"
-          className="text-gray-400"
-        />
+        <Empty description="No Charms collections found. Create your first Charm!" className="text-gray-400" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {collections.map((collection) => (
@@ -188,9 +176,7 @@ export const CharmsCollectionsScreen = () => {
                 <p className="text-gray-400 text-sm">{collection.description}</p>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400 text-sm">
-                    {collection.total_charms} charms
-                  </span>
+                  <span className="text-gray-400 text-sm">{collection.total_charms} charms</span>
                   <Button size="small" type="text" icon={<AppstoreOutlined />}>
                     View
                   </Button>
@@ -223,10 +209,10 @@ export const CharmsCollectionsScreen = () => {
                 <List.Item
                   className="border-b border-[#333] hover:bg-[#1a1a1a] cursor-pointer"
                   onClick={() => {
-                    if (selectedCharms.find(c => c.id === charm.id)) {
-                      setSelectedCharms(prev => prev.filter(c => c.id !== charm.id));
+                    if (selectedCharms.find((c) => c.id === charm.id)) {
+                      setSelectedCharms((prev) => prev.filter((c) => c.id !== charm.id));
                     } else {
-                      setSelectedCharms(prev => [...prev, charm]);
+                      setSelectedCharms((prev) => [...prev, charm]);
                     }
                   }}
                 >
@@ -234,7 +220,7 @@ export const CharmsCollectionsScreen = () => {
                     avatar={
                       <div className="flex items-center">
                         <StarOutlined className="text-[#069420] mr-2" />
-                        {selectedCharms.find(c => c.id === charm.id) && (
+                        {selectedCharms.find((c) => c.id === charm.id) && (
                           <div className="w-4 h-4 bg-[#069420] rounded-full"></div>
                         )}
                       </div>
@@ -242,14 +228,14 @@ export const CharmsCollectionsScreen = () => {
                     title={
                       <div className="flex items-center gap-2">
                         <span className="text-white">{charm.name}</span>
-                        <Tag color={getAppColor(charm.app)} size="small">{charm.app}</Tag>
+                        <Tag color={getAppColor(charm.app)} size="small">
+                          {charm.app}
+                        </Tag>
                       </div>
                     }
                     description={
                       <div className="space-y-1">
-                        <div className="text-gray-400 text-sm">
-                          Collection: {charm.collection}
-                        </div>
+                        <div className="text-gray-400 text-sm">Collection: {charm.collection}</div>
                         <div className="flex flex-wrap gap-1">
                           {charm.traits.map((trait_, index) => (
                             <Tag key={index} size="small" className="text-xs">
@@ -270,15 +256,13 @@ export const CharmsCollectionsScreen = () => {
 
           {selectedCharms.length > 0 && (
             <div className="mt-4 p-3 bg-[#1a1a1a] rounded-lg">
-              <div className="text-white font-medium mb-2">
-                Selected for Composition ({selectedCharms.length})
-              </div>
+              <div className="text-white font-medium mb-2">Selected for Composition ({selectedCharms.length})</div>
               <div className="flex flex-wrap gap-2 mb-3">
                 {selectedCharms.map((charm) => (
                   <Tag
                     key={charm.id}
                     closable
-                    onClose={() => setSelectedCharms(prev => prev.filter(c => c.id !== charm.id))}
+                    onClose={() => setSelectedCharms((prev) => prev.filter((c) => c.id !== charm.id))}
                     color="blue"
                   >
                     {charm.name}
@@ -315,22 +299,16 @@ export const CharmsCollectionsScreen = () => {
             <StarOutlined className="text-4xl text-[#069420] mb-4" />
             <div className="text-white font-medium mb-2">Charm Composition</div>
             <div className="text-gray-400 text-sm">
-              This feature allows you to combine multiple charms to create new programmable assets
-              with enhanced capabilities and cross-chain compatibility.
+              This feature allows you to combine multiple charms to create new programmable assets with enhanced
+              capabilities and cross-chain compatibility.
             </div>
           </div>
 
           <div className="text-center">
-            <Button
-              onClick={() => setComposeModalVisible(false)}
-              className="mr-2"
-            >
+            <Button onClick={() => setComposeModalVisible(false)} className="mr-2">
               Cancel
             </Button>
-            <Button
-              type="primary"
-              className="bg-[#069420] border-[#069420] hover:bg-[#07a521]"
-            >
+            <Button type="primary" className="bg-[#069420] border-[#069420] hover:bg-[#07a521]">
               Open Collections
             </Button>
           </div>

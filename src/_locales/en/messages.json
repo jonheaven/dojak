@@ -24,7 +24,7 @@
   "atomicals": {
     "message": "Atomicals"
   },
-  "runes": {
+  "dunes": {
     "message": "Dunes"
   },
   "doginals": {
@@ -254,7 +254,7 @@
     "message": "Enable Unconfirmed Balance"
   },
   "enable_unconfirmed_balance_warning": {
-    "message": "If Runes assets are detected in the given address, unconfirmed UTXOs will not be allowed to be spent until they are confirmed. Forcing to spend these unconfirmed UTXOs may risk losing assets."
+    "message": "If Dunes assets are detected in the given address, unconfirmed UTXOs will not be allowed to be spent until they are confirmed. Forcing to spend these unconfirmed UTXOs may risk losing assets."
   },
 
   "allow_using_unconfirmed_balance": {
@@ -396,7 +396,7 @@
     "message": "Active Addresses (24h)"
   },
   "go_to_unisat_explorer": {
-    "message": "Go to PepeBlocks"
+    "message": "Go to SoChain"
   },
   "search_address_and_txids": {
     "message": "Search Address and TXIDs"
@@ -645,8 +645,8 @@
   "tx_fee": {
     "message": "Tx Fee:"
   },
-  "t_baby": {
-    "message": "tBABY"
+  "t_jawn": {
+    "message": "tJAWN"
   },
   "send_to": {
     "message": "Send to"
@@ -654,8 +654,8 @@
   "send_amount": {
     "message": "Send Amount"
   },
-  "how_to_import_baby": {
-    "message": "How to Import BABY"
+  "how_to_import_jawn": {
+    "message": "How to Import JAWN"
   },
   "click_the_account_on_the_main_page": {
     "message": "Click the account on the main page."
@@ -663,16 +663,16 @@
   "tap_the_more_menu_then_select_the_export_private_key_option": {
     "message": "Tap the 'More' menu, then select the 'Export Private Key' option."
   },
-  "pep_stake": {
+  "doge_steak": {
     "message": "DOGE Stake"
   },
-  "pep_stake_stats": {
+  "doge_steak_stats": {
     "message": "DOGE Staking Stats"
   },
-  "pep_stake_phase1": {
+  "doge_steak_phase1": {
     "message": "DOGE Staking Phase 1"
   },
-  "pep_stake_dashboard": {
+  "doge_steak_dashboard": {
     "message": "DOGE Staking Dashboard"
   },
   "closed": {
@@ -684,7 +684,7 @@
   "staked": {
     "message": "Staked"
   },
-  "pep_stake_rewards": {
+  "doge_steak_rewards": {
     "message": "DOGE Staking Rewards"
   },
   "unstake": {
@@ -693,8 +693,8 @@
   "claimable": {
     "message": "Claimable"
   },
-  "baby_rewards": {
-    "message": "BABY Rewards"
+  "jawn_rewards": {
+    "message": "JAWN Rewards"
   },
   "claim": {
     "message": "Claim"
@@ -805,8 +805,8 @@
   "total": {
     "message": "Total"
   },
-  "baby_balance": {
-    "message": "BABY Balance"
+  "jawn_balance": {
+    "message": "JAWN Balance"
   },
   "failed_to_handle_signature": {
     "message": "Failed to handle signature"
@@ -1115,7 +1115,7 @@
   "sending_out_assets": {
     "message": "Sending Out Assets"
   },
-  "runes_burn_risk_list": {
+  "dunes_burn_risk_list": {
     "message": "Dunes Burn Risk List"
   },
   "inscription_burn_risk_list": {
@@ -1193,8 +1193,8 @@
   "for_doginals_assets": {
     "message": "For Doginals assets,"
   },
-  "rare_sats": {
-    "message": "Rare sats"
+  "rare_koinu": {
+    "message": "Rare koinu"
   },
   "are_not_supported": {
     "message": "are not supported."
@@ -1211,8 +1211,8 @@
   "not_supported": {
     "message": "Not supported"
   },
-  "satsvb": {
-    "message": "Sats/vB"
+  "koinuvb": {
+    "message": "Koinu/vB"
   },
   "precautions": {
     "message": "Precautions"
@@ -1236,7 +1236,7 @@
     "message": "To enable spending of unconfirmed balances, please visit the advanced options in settings."
   },
   "unconfirmed_balance_not_spendable_warning": {
-    "message": "To protect your assets, only confirmed balances are spendable when holding Runes assets. This is to prevent accidental asset burning."
+    "message": "To protect your assets, only confirmed balances are spendable when holding Dunes assets. This is to prevent accidental asset burning."
   },
   "mandatory_use_of_unconfirmed_balance": {
     "message": "Mandatory use of unconfirmed balance"
@@ -1311,25 +1311,25 @@
     "message": "Public key must be compressed secp256k1, i.e. 33 bytes starting with 0x02 or 0x03"
   },
   "no_current_keyring": {
-    "message": "no current keyring"
+    "message": "No current keyring"
   },
   "invalid_index_in_tosigninput": {
-    "message": "invalid index in toSignInput"
+    "message": "Invalid index in toSignInput"
   },
   "no_address_or_public_key_in_tosigninput": {
-    "message": "no address or public key in toSignInput"
+    "message": "No address or public key in toSignInput"
   },
   "invalid_address_in_tosigninput": {
-    "message": "invalid address in toSignInput"
+    "message": "Invalid address in toSignInput"
   },
   "invalid_public_key_in_tosigninput": {
-    "message": "invalid public key in toSignInput"
+    "message": "Invalid public key in toSignInput"
   },
   "invalid_sighash_type_in_tosigninput": {
-    "message": "invalid sighash type in toSignInput"
+    "message": "Invalid sighash type in toSignInput"
   },
   "no_mfp_in_keyring": {
-    "message": "no mfp in keyring"
+    "message": "No mfp in keyring"
   },
   "insufficient_balance": {
     "message": "Insufficient balance."
@@ -1346,8 +1346,8 @@
   "each_output_value": {
     "message": "Each OutputValue"
   },
-  "spliting_to": {
-    "message": "Spliting to"
+  "splitting_to": {
+    "message": "Splitting to"
   },
   "security_warning": {
     "message": "Security Warning"
@@ -1355,8 +1355,8 @@
   "danger_potential_phishing_website_detected": {
     "message": "Danger! Potential phishing website detected"
   },
-  "this_website_has_been_identified_as_malicious_by_unisat_and_may": {
-    "message": "This website has been identified as malicious by UniSat and may:"
+  "this_website_has_been_identified_as_malicious_by_dojak_and_may": {
+    "message": "This website has been identified as malicious by Dojak and may:"
   },
   "steal_your_private_keys_or_seed_phrases": {
     "message": "Steal your private keys or seed phrases"
@@ -1376,7 +1376,7 @@
   "continue_to": {
     "message": "Continue to"
   },
-  "send_runes": {
+  "send_dunes": {
     "message": "Send Dunes"
   },
   "send_atomicals_inscription": {
@@ -1388,8 +1388,8 @@
   "ordinals_inscriptions": {
     "message": "Doginals"
   },
-  "babylon_staking": {
-    "message": "Babylon Staking"
+  "jawntype_staking": {
+    "message": "Jawntype Staking"
   },
   "confirmed_tvl": {
     "message": "Confirmed"
@@ -1487,7 +1487,7 @@
   "amount_must_be_at_least": {
     "message": "Amount must be at least"
   },
-  "includes_inscriptions_runes_and_unconfirmed_utxos": {
+  "includes_inscriptions_dunes_and_unconfirmed_utxos": {
     "message": "Includes Doginals, Dunes, and unconfirmed UTXO assets."
   },
   "future_versions_will_support_spending_these_assets": {
@@ -1511,8 +1511,8 @@
   "date": {
     "message": "Date"
   },
-  "view_on_unisat_explorer": {
-    "message": "View on PepeBlocks Explorer"
+  "view_on_sochain_explorer": {
+    "message": "View on SoChain Explorer"
   },
   "view_on_okx_explorer": {
     "message": "View on OKX Explorer"
@@ -1571,7 +1571,7 @@
   "script": {
     "message": "Script"
   },
-  "this_message_serves_as_a_notice_that_if_runes_assets_are_detected_in_your_address_your": {
+  "this_message_serves_as_a_notice_that_if_dunes_assets_are_detected_in_your_address_your": {
     "message": "This message serves as a notice that if Dunes assets are detected in your address, your unconfirmed balances will not be spendable. You don't need to do anything."
   },
   "in_the_current_version_only_the_confirmed_balance_can_be_used_once_atomicals_enabled": {
@@ -1667,8 +1667,8 @@
   "address_or_name_fb": {
     "message": "Address or name (.fb)"
   },
-  "address_or_name_sats_unisat_etc": {
-    "message": "Address or name (.sats, .unisat, ...)"
+  "address_or_name_dotdoge_dotdogecoin_etc": {
+    "message": "Address or name (.doge, .dogecoin, ...)"
   },
   "does_not_exist": {
     "message": "does not exist"
@@ -1934,50 +1934,50 @@
   "about_10_minutes": {
     "message": "about 10 minutes"
   },
-  "babylon_bitcoin_staking_phase2": {
-    "message": "Babylon Bitcoin Staking Phase2"
+  "jawntype_bitcoin_staking_phase2": {
+    "message": "Jawntype Bitcoin Staking Phase2"
   },
-  "go_to_babylon": {
-    "message": "Go to Babylon"
+  "go_to_jawnlon": {
+    "message": "Go to Jawntype"
   },
-  "closed_babylon": {
+  "closed_jawnlon": {
     "message": "Closed"
   },
-  "open_babylon": {
+  "open_jawnlon": {
     "message": "Open"
   },
-  "pending_babylon": {
+  "pending_jawnlon": {
     "message": "Pending"
   },
-  "convert_baby_to_drc20": {
-    "message": "Convert $BABY to drc-20"
+  "convert_jawn_to_drc20": {
+    "message": "Convert $JAWN to drc-20"
   },
-  "you_are_about_to_convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "You are about to convert your native BABY to DOGE drc-20 BABY."
+  "you_are_about_to_convert_your_native_jawn_to_doge_drc20_jawn": {
+    "message": "You are about to convert your native JAWN to DOGE DRC-20 JAWN."
   },
-  "once_the_conversion_is_complete_your_native_baby_cannot_be_restored": {
-    "message": "Once the conversion is complete, your native BABY cannot be restored."
+  "once_the_conversion_is_complete_your_native_jawn_cannot_be_restored": {
+    "message": "Once the conversion is complete, your native JAWN cannot be restored."
   },
   "do_you_confirm_the_conversion": {
     "message": "Do you confirm the conversion?"
   },
-  "transfer_baby_to_cosmos_wallet": {
-    "message": "Transfer $BABY to Cosmos Wallet"
+  "transfer_jawn_to_cosmos_wallet": {
+    "message": "Transfer $JAWN to Cosmos Wallet"
   },
   "do_you_confirm_the_transfer": {
     "message": "Do you confirm the transfer?"
   },
-  "you_are_about_to_transfer_your_native_baby_to_your_cosmos_wallet": {
-    "message": "You are about to transfer your native BABY to your Cosmos wallet."
+  "you_are_about_to_transfer_your_native_jawn_to_your_cosmos_wallet": {
+    "message": "You are about to transfer your native JAWN to your Cosmos wallet."
   },
-  "click_baby_to_drc20_coming_soon": {
-    "message": "Click $BABY to drc-20 (Coming Soon)"
+  "click_jawn_to_drc20_coming_soon": {
+    "message": "Click $JAWN to DRC-20 (Coming Soon)"
   },
-  "convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "Convert your native $BABY token to drc-20 BABY on Dogecoin."
+  "convert_your_native_jawn_to_btc_drc20_jawn": {
+    "message": "Convert your native $JAWN token to drc-20 JAWN on Dogecoin."
   },
-  "transfer_your_baby_to_your_cosmos_wallet": {
-    "message": "Transfer your $BABY to your Cosmos wallet."
+  "transfer_your_jawn_to_your_cosmos_wallet": {
+    "message": "Transfer your $JAWN to your Cosmos wallet."
   },
   "password_error": {
     "message": "Password is incorrect"
@@ -2330,16 +2330,16 @@
   "changing_inscription_risk_description": {
     "message": "This transaction involves changing an inscription. Please ensure you understand the implications of this action before proceeding."
   },
-  "runes_burning_risk_title": {
+  "dunes_burning_risk_title": {
     "message": "Dunes burning detected"
   },
-  "runes_burning_risk_description": {
+  "dunes_burning_risk_description": {
     "message": "This transaction involves the burning of Dunes. Please ensure you understand the implications of this action before proceeding."
   },
-  "runes_multiple_assets_risk_title": {
+  "dunes_multiple_assets_risk_title": {
     "message": "Dunes multiple assets detected"
   },
-  "runes_multiple_assets_risk_description": {
+  "dunes_multiple_assets_risk_description": {
     "message": "This transaction involves multiple Dunes assets. Please ensure you understand the implications of this action before proceeding."
   },
   "indexer_api_down_risk_title": {
@@ -2348,10 +2348,10 @@
   "indexer_api_down_risk_description": {
     "message": "The indexer API is currently down. This may affect the accuracy of transaction details and asset balances. Please proceed with caution and verify all information independently."
   },
-  "runes_api_down_risk_title": {
+  "dunes_api_down_risk_title": {
     "message": "Dunes API Down"
   },
-  "runes_api_down_risk_description": {
+  "dunes_api_down_risk_description": {
     "message": "The Dunes API is currently down. This may affect the accuracy of transaction details and Dunes asset balances. Please proceed with caution and verify all information independently."
   },
   "charms_burning_risk_title": {

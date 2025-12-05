@@ -2,9 +2,9 @@ import { ReactEventHandler } from 'react';
 
 import { AddressAssets } from '@/shared/types';
 import { useI18n } from '@/ui/hooks/useI18n';
-import { useChain, usePEPUnit } from '@/ui/state/settings/hooks';
+import { useChain, useDOGEUnit } from '@/ui/state/settings/hooks';
 import { fontSizes } from '@/ui/theme/font';
-import { satoshisToPEP } from '@/ui/utils';
+import { satoshisToDOGE } from '@/ui/utils';
 
 import { Card } from '../Card';
 import { Column } from '../Column';
@@ -14,51 +14,15 @@ import { Image } from '../Image';
 import { Row } from '../Row';
 import { Text } from '../Text';
 
-interface AddressTypeCardProps {
+interface SingleAddressCardProps {
   label: string;
   address: string;
   checked: boolean;
   assets: AddressAssets;
   onClick?: ReactEventHandler<HTMLDivElement>;
 }
-export function AddressTypeCard(props: AddressTypeCardProps) {
-  const btcUnit = usePEPUnit();
-  const { onClick, label, address, checked, assets } = props;
-  const hasVault = Boolean(assets.satoshis && assets.satoshis > 0);
-  const { t } = useI18n();
 
-  const chain = useChain();
-  return (
-    <Card px="zero" py="zero" gap="zero" rounded onClick={onClick}>
-      <Column full>
-        <Row justifyBetween px="md" pt="md">
-          <Column justifyCenter>
-            <Text text={label} size="xs" disableTranslate />
-          </Column>
-        </Row>
-        <Row justifyBetween px="md" pb="md">
-          <CopyableAddress address={address} />
-          <Column justifyCenter>{checked && <Icon icon="check" />}</Column>
-        </Row>
-        {hasVault && (
-          <Row justifyBetween bg="bg3" roundedBottom px="md" py="md">
-            <Row justifyCenter>
-              <Image src={chain.icon} size={fontSizes.iconMiddle} />
-              <Text text={`${assets.total_btc} ${btcUnit}`} color="yellow" />
-            </Row>
-            <Row>
-              {assets.total_inscription > 0 && (
-                <Text text={`${assets.total_inscription} ${t('inscriptions_capital')}`} color="gold" preset="bold" />
-              )}
-            </Row>
-          </Row>
-        )}
-      </Column>
-    </Card>
-  );
-}
-
-interface AddressTypeCardProp2 {
+interface MultiAddressCardProps {
   label: string;
   items: {
     address: string;
@@ -69,9 +33,16 @@ interface AddressTypeCardProp2 {
   onClick?: ReactEventHandler<HTMLDivElement>;
 }
 
-export function AddressTypeCard2(props: AddressTypeCardProp2) {
-  const btcUnit = usePEPUnit();
-  const { onClick, label, items, checked } = props;
+type AddressTypeCardProps = SingleAddressCardProps | MultiAddressCardProps;
+
+export function AddressTypeCard(props: AddressTypeCardProps) {
+  const btcUnit = useDOGEUnit();
+  const { label, checked, onClick } = props;
+  const { t } = useI18n();
+  const chain = useChain();
+
+  const isSingle = 'address' in props;
+
   return (
     <Card px="zero" py="zero" gap="zero" rounded onClick={onClick}>
       <Column full>
@@ -82,25 +53,44 @@ export function AddressTypeCard2(props: AddressTypeCardProp2) {
           <Column justifyCenter>{checked && <Icon icon="check" />}</Column>
         </Row>
 
-        {items.map((v) => (
-          <Row px="md" pb="sm" key={v.address} itemsCenter>
-            <Row style={{ width: '120px' }} key={`${v.address}-copy`}>
-              <CopyableAddress address={v.address} />
+        {isSingle ? (
+          <>
+            <Row justifyBetween px="md" pb="md">
+              <CopyableAddress address={props.address} />
             </Row>
-
-            <Text text={`(${v.path})`} size="xs" color="textDim" disableTranslate />
-
-            {v.satoshis > 0 && (
-              <Row justifyCenter gap="zero" itemsCenter key={`${v.address}-balance`}>
-                <Icon icon="btc" size={fontSizes.iconMiddle} />
-                <Text text={`${satoshisToPEP(v.satoshis)} ${btcUnit}`} color="yellow" size="xxxs" />
+            {Boolean(props.assets.satoshis && props.assets.satoshis > 0) && (
+              <Row justifyBetween bg="bg3" roundedBottom px="md" py="md">
+                <Row justifyCenter>
+                  <Image src={chain.icon} size={fontSizes.iconMiddle} />
+                  <Text text={`${props.assets.total_btc} ${btcUnit}`} color="yellow" />
+                </Row>
+                <Row>
+                  {props.assets.total_inscription > 0 && (
+                    <Text text={`${props.assets.total_inscription} ${t('inscriptions_capital')}`} color="gold" preset="bold" />
+                  )}
+                </Row>
               </Row>
             )}
-          </Row>
-        ))}
+          </>
+        ) : (
+          props.items.map((v) => (
+            <Row px="md" pb="sm" key={v.address} itemsCenter>
+              <Row style={{ width: '120px' }} key={`${v.address}-copy`}>
+                <CopyableAddress address={v.address} />
+              </Row>
+
+              <Text text={`(${v.path})`} size="xs" color="textDim" disableTranslate />
+
+              {v.satoshis > 0 && (
+                <Row justifyCenter gap="zero" itemsCenter key={`${v.address}-balance`}>
+                  <Icon icon="btc" size={fontSizes.iconMiddle} />
+                  <Text text={`${satoshisToDOGE(v.satoshis)} ${btcUnit}`} color="yellow" size="xxxs" />
+                </Row>
+              )}
+            </Row>
+          ))
+        )}
       </Column>
     </Card>
   );
 }
-
-

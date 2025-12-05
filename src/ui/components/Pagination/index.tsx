@@ -120,5 +120,3 @@ export const Pagination = (props: PaginationProps) => {
     );
   }, [pagination, preButton, nexButton, pageArray]);
 };
-
-

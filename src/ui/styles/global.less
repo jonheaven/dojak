@@ -1,13 +1,13 @@
 @import url('./font.css');
 
-/* Text selection - Dogecoin gold theme */
+/* Text selection - Dogecoin orange-gold theme */
 ::selection {
-  background-color: #ffd700 !important;
+  background-color: #C9822A !important;
   color: #000000 !important;
 }
 
 ::-moz-selection {
-  background-color: #ffd700 !important;
+  background-color: #C9822A !important;
   color: #000000 !important;
 }
 
@@ -48,7 +48,7 @@ iframe {
 }
 
 .ant-checkbox-checked {
-  background-color: #ffd700 !important;
+  background-color: #C9822A !important;
 }
 
 .ant-switch {
@@ -57,13 +57,13 @@ iframe {
 
 .ant-switch {
   &.ant-switch-checked {
-    background-color: #ffd700 !important;
+    background-color: #C9822A !important;
   }
 }
 
 .custom-switch {
   &.ant-switch-checked {
-    background-color: #ffd700 !important;
+    background-color: #C9822A !important;
   }
   
   .ant-switch-handle::before {
@@ -128,7 +128,7 @@ div {
 }
 
 .ant-slider-track {
-  background: linear-gradient(103.92deg, #ffd700 0%, #ffed4e 100%) !important;
+  background: linear-gradient(103.92deg, #C9822A 0%, #E5A03A 100%) !important;
   height: 10px !important;
 }
 
@@ -142,9 +142,9 @@ div {
 
 /* === DOJAK FROG GOD THEME 2025 - 100% STABLE === */
 
-/* Extension popup layout - exact 345x600 dimensions */
+/* Extension popup layout - 800x600 dimensions for testing */
 .app, .popup-container, .main-container {
-  width: 345px !important;
+  width: 800px !important;
   height: 600px !important;
   margin: 0 auto !important;
   padding: 0 !important;
@@ -166,20 +166,20 @@ div {
   --theme-border2: rgba(0, 0, 0, 0.05);
   --theme-line: rgba(0, 0, 0, 0.1);
   --theme-line2: rgba(0, 0, 0, 0.05);
-  --theme-primary: #ffd700;
-  --theme-primary-hover: #ffed4e;
-  --theme-success: #ffd700;
-  --theme-success-light: #ffed4e;
+  --theme-primary: #C9822A;
+  --theme-primary-hover: #E5A03A;
+  --theme-success: #C9822A;
+  --theme-success-light: #E5A03A;
   --theme-error: #ED334B;
   --theme-danger: rgba(237, 51, 75, 0.9);
   --theme-warning: #FF7B21;
-  --theme-value-up: #ffd700;
+  --theme-value-up: #C9822A;
   --theme-value-down: #BF3F4D;
-  --theme-ticker: #ffd700;
-  --theme-ticker2: rgba(255, 215, 0, 0.85);
+  --theme-ticker: #C9822A;
+  --theme-ticker2: rgba(201, 130, 42, 0.85);
   --theme-drc20-deploy: #fff8dc;
-  --theme-drc20-transfer: #ffed4e;
-  --theme-drc20-transfer-selected: #ffd700;
+  --theme-drc20-transfer: #E5A03A;
+  --theme-drc20-transfer-selected: #C9822A;
   --theme-drc20-other: #f5f5dc;
   --theme-bg2: #f8f9fa;
   --theme-bg3: #e9ecef;
@@ -193,26 +193,26 @@ div {
   --theme-surface: #1a1a1a;
   --theme-card: rgba(47, 27, 20, 0.88);
   --theme-text: #ffffff;
-  --theme-text-secondary: #ffd700;
-  --theme-text-dim: #ffd700;
+  --theme-text-secondary: #C9822A;
+  --theme-text-dim: #C9822A;
   --theme-border: rgba(255,255,255,0.04);
   --theme-border2: rgba(255, 255, 255, 0.1);
   --theme-line: rgba(255,255,255,0.15);
   --theme-line2: rgba(255,255,255,0.3);
-  --theme-primary: #ffd700;
-  --theme-primary-hover: #ffed4e;
-  --theme-success: #ffd700;
-  --theme-success-light: #ffed4e;
+  --theme-primary: #C9822A;
+  --theme-primary-hover: #E5A03A;
+  --theme-success: #C9822A;
+  --theme-success-light: #E5A03A;
   --theme-error: #ED334B;
   --theme-danger: rgba(237, 51, 75, 0.9);
   --theme-warning: #FF7B21;
-  --theme-value-up: #ffd700;
+  --theme-value-up: #C9822A;
   --theme-value-down: #BF3F4D;
-  --theme-ticker: #ffd700;
-  --theme-ticker2: rgba(255, 215, 0, 0.85);
+  --theme-ticker: #C9822A;
+  --theme-ticker2: rgba(201, 130, 42, 0.85);
   --theme-drc20-deploy: #2a2626;
   --theme-drc20-transfer: #3a3526;
-  --theme-drc20-transfer-selected: #ffd700;
+  --theme-drc20-transfer-selected: #C9822A;
   --theme-drc20-other: #2a2626;
   --theme-bg2: #1a1a1a;
   --theme-bg3: #2a2626;
@@ -331,7 +331,7 @@ h1, h2, h3, .title {
 
 /* Onboarding / Welcome screen full bleed */
 .onboarding-container, .welcome-screen, .create-wallet-screen {
-  width: 345px !important;
+  width: 800px !important;
   height: 600px !important;
   padding: 60px 24px 40px !important;
   background: transparent !important;
@@ -372,4 +372,10 @@ img[alt*="dojak"] {
   width: auto !important;
   height: auto !important;
   max-width: 200px !important; /* Reasonable max size for popup */
+}
+
+/* Invert main logo in dark mode so it stays readable on dark backgrounds */
+[data-theme='dark'] img[src*='dojak-logo-full'],
+[data-theme='dark'] .dojak-logo img {
+  filter: invert(1) hue-rotate(180deg) drop-shadow(0 0 20px var(--theme-primary));
 }

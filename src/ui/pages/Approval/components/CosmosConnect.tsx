@@ -47,7 +47,7 @@ export default function CosmosConnect({ params: { session, data } }: Props) {
   const [address, setAddress] = useState('');
 
   useEffect(() => {
-    wallet.getPepStakeAddress(data.chainId).then((address) => {
+    wallet.getSteakAddress(data.chainId).then((address) => {
       setAddress(address);
     });
 
@@ -152,5 +152,3 @@ export default function CosmosConnect({ params: { session, data } }: Props) {
     </Layout>
   );
 }
-
-

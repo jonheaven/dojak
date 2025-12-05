@@ -30,7 +30,8 @@ export const AddressText = (props: AddressTextProps) => {
         <Column
           onClick={() => {
             setPopoverVisible(true);
-          }}>
+          }}
+        >
           {domain && <Text text={domain} textCenter={props.textCenter} />}
           {inscription && (
             <Row full itemsCenter mt="sm">
@@ -43,7 +44,8 @@ export const AddressText = (props: AddressTextProps) => {
         <Column
           onClick={() => {
             setPopoverVisible(true);
-          }}>
+          }}
+        >
           <Text text={shortAddress(address)} color={props.color || 'white'} />
         </Column>
       )}
@@ -59,5 +61,3 @@ export const AddressText = (props: AddressTextProps) => {
     </Column>
   );
 };
-
-

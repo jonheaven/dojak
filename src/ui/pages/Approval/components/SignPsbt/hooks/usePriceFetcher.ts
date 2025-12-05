@@ -45,5 +45,3 @@ export const usePriceFetcher = (txInfo, wallet, tools) => {
 
   return { drc20PriceMap, dunesPriceMap };
 };
-
-

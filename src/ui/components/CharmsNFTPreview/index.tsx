@@ -124,7 +124,8 @@ export default function CharmsNFTPreview({ CharmsInfo, onClick, preset }: Inscri
           width: style.width,
           borderBottomLeftRadius: style.borderTopLeftRadius,
           borderBottomRightRadius: style.borderTopRightRadius
-        }}>
+        }}
+      >
         <Row my="xs">
           <Text text={shortDesc(CharmsInfo.name, style.shortLength)} color="white" size={style.textSize} />
         </Row>
@@ -135,5 +136,3 @@ export default function CharmsNFTPreview({ CharmsInfo, onClick, preset }: Inscri
     </Column>
   );
 }
-
-

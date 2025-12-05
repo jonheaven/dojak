@@ -46,5 +46,3 @@ export function Step1_Confirm({
     </Column>
   );
 }
-
-

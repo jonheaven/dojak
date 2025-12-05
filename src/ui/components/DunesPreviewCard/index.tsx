@@ -2,9 +2,9 @@ import { dunesUtils } from '@/shared/lib/dunes-utils';
 import { DuneBalance, TickPriceItem } from '@/shared/types';
 import { TickUsd } from '@/ui/components/TickUsd';
 
-import { Column } from './Column';
-import { Row } from './Row';
-import { Text } from './Text';
+import { Column } from '../Column';
+import { Row } from '../Row';
+import { Text } from '../Text';
 
 export interface DunesPreviewCardProps {
   balance: DuneBalance;
@@ -33,13 +33,15 @@ export default function DunesPreviewCard({ balance, onClick, price }: DunesPrevi
         borderRadius: 5,
         padding: 0
       }}
-      onClick={onClick}>
+      onClick={onClick}
+    >
       <Row
         style={{
           borderTopLeftRadius: 5,
           borderTopRightRadius: 5,
           position: 'absolute'
-        }}>
+        }}
+      >
         <Row
           style={{
             backgroundColor: 'rgba(255,255,255,0.2)',
@@ -47,7 +49,8 @@ export default function DunesPreviewCard({ balance, onClick, price }: DunesPrevi
             borderTopLeftRadius: 5,
             width: 70
           }}
-          px="sm">
+          px="sm"
+        >
           <Text text={balance.spacedDune} wrap color="white" size="xxxs" />
         </Row>
       </Row>

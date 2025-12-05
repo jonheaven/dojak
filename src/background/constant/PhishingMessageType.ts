@@ -100,5 +100,3 @@ export enum PhishingMessageType {
    */
   GET_PHISHING_STATS = 'GET_PHISHING_STATS'
 }
-
-

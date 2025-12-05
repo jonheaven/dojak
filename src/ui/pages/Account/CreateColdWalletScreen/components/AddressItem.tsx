@@ -21,7 +21,8 @@ export default function AddressItem({
         style={{
           padding: '16px 12px',
           minHeight: '56px'
-        }}>
+        }}
+      >
         <Column gap="xs" style={{ flex: 1 }}>
           <Row itemsCenter gap="sm">
             <Text
@@ -75,5 +76,3 @@ export default function AddressItem({
     </Column>
   );
 }
-
-

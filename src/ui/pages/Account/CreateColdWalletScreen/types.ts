@@ -40,5 +40,3 @@ export interface AddressItemProps {
   getDerivePath: (index: number) => string;
   showDivider: boolean;
 }
-
-

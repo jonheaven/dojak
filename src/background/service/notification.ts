@@ -119,5 +119,3 @@ class NotificationService extends Events {
 }
 
 export default new NotificationService();
-
-

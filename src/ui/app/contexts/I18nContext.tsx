@@ -5,13 +5,13 @@ import { getCurrentLocale } from '@/background/service/i18n';
 import { useWallet } from '@/ui/utils';
 import { LoadingOutlined } from '@ant-design/icons';
 import {
-    BROWSER_TO_APP_LOCALE_MAP,
-    changeLanguage,
-    FALLBACK_LOCALE,
-    getSupportedLocales,
-    initI18n,
-    LOCALE_NAMES,
-    t as translate
+  BROWSER_TO_APP_LOCALE_MAP,
+  changeLanguage,
+  FALLBACK_LOCALE,
+  getSupportedLocales,
+  initI18n,
+  LOCALE_NAMES,
+  t as translate
 } from '@unisat/i18n';
 
 interface I18nContextType {
@@ -141,7 +141,8 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
           height: '100vh',
           overflowY: 'auto',
           overflowX: 'hidden'
-        }}>
+        }}
+      >
         <div
           style={{
             display: 'flex',
@@ -149,7 +150,8 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
             flexDirection: 'column',
             justifyItems: 'center',
             alignItems: 'center'
-          }}>
+          }}
+        >
           <LoadingOutlined />
         </div>
       </div>
@@ -175,10 +177,9 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supportedLocales: getSupportedLocales(),
         localeNames: LOCALE_NAMES,
         changeLocale
-      }}>
+      }}
+    >
       {children}
     </I18nContext.Provider>
   );
 };
-
-

@@ -1,8 +1,8 @@
 import React from 'react';
 
+import { useThemeContext } from '@/ui/app/contexts/ThemeContext';
 import { Row, Text } from '@/ui/components';
 import { Switch } from '@/ui/components/Switch';
-import { useThemeContext } from '@/ui/app/contexts/ThemeContext';
 import { useI18n } from '@/ui/hooks/useI18n';
 
 interface ThemeToggleProps {
@@ -21,17 +21,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ style }) => {
     <Row justifyBetween itemsCenter style={{ width: '100%', ...style }}>
       <Text text={t('theme')} preset="regular" size="sm" />
       <Row itemsCenter gap="sm">
-        <Text
-          text={theme === 'light' ? t('light') : t('dark')}
-          preset="sub"
-          size="xs"
-          style={{ minWidth: '40px' }}
-        />
-        <Switch
-          checked={theme === 'dark'}
-          onChange={handleToggle}
-          size="small"
-        />
+        <Text text={theme === 'light' ? t('light') : t('dark')} preset="sub" size="xs" style={{ minWidth: '40px' }} />
+        <Switch checked={theme === 'dark'} onChange={handleToggle} size="small" />
       </Row>
     </Row>
   );

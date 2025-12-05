@@ -12,7 +12,11 @@ import { useWallet } from '@/ui/utils';
 
 import { useNavigate } from '../../MainRoute';
 
-export function InscriptionList() {
+interface InscriptionListProps {
+  filterType?: 'doginals' | 'all'; // Optional filter for inscription types
+}
+
+export function InscriptionList({ filterType = 'all' }: InscriptionListProps) {
   const navigate = useNavigate();
   const wallet = useWallet();
   const currentAccount = useCurrentAccount();
@@ -38,9 +42,10 @@ export function InscriptionList() {
 
   const fetchInscriptions = useCallback(
     async (fetchParams: { address: string }, page: number, pageSize: number) => {
+      // Fetch inscriptions - filterType can be used for future server-side filtering
       return wallet.getDoginalsInscriptions(fetchParams.address, page, pageSize);
     },
-    [wallet]
+    [wallet, filterType]
   );
 
   const renderInscription = useCallback(
@@ -87,5 +92,3 @@ export function InscriptionList() {
     />
   );
 }
-
-

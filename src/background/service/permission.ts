@@ -43,5 +43,3 @@ class PermissionServiceWrapper extends PermissionService {
 const permissionService = new PermissionServiceWrapper();
 
 export default permissionService;
-
-

@@ -205,7 +205,8 @@ function EditContactScreen() {
                 display: 'flex',
                 alignItems: 'center'
               }}
-              itemsCenter>
+              itemsCenter
+            >
               <Row itemsCenter>
                 <Image src={CHAINS_MAP[chainType].icon} size={30} style={{ marginRight: 8 }} />
                 <Text text={CHAINS_MAP[chainType].label} color="text" />
@@ -219,7 +220,8 @@ function EditContactScreen() {
                 padding: spacing.small,
                 backgroundColor: 'rgba(245, 84, 84, 0.1)',
                 borderRadius: 8
-              }}>
+              }}
+            >
               <Text text={error} preset="regular" color="error" />
             </Row>
           )}
@@ -256,5 +258,3 @@ function EditContactScreen() {
 }
 
 export default EditContactScreen;
-
-

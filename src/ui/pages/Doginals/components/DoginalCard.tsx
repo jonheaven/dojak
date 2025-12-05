@@ -1,28 +1,35 @@
-import { EyeOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { Button, Card, Tag } from 'antd';
 import React from 'react';
+
+import { EyeOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 
 import { DoginalProtocolTag, DoginalViewModel } from '../types';
 
 interface DoginalCardProps {
-  pepinal: DoginalViewModel;
+  doginal: DoginalViewModel;
   onRefresh: () => void;
 }
 
 const getRarityColor = (rarity: Doginal['rarity']) => {
   switch (rarity) {
-    case 'common': return '#8B8B8B';
-    case 'uncommon': return '#4CAF50';
-    case 'rare': return '#2196F3';
-    case 'epic': return '#9C27B0';
-    case 'legendary': return '#FF9800';
-    default: return '#8B8B8B';
+    case 'common':
+      return '#8B8B8B';
+    case 'uncommon':
+      return '#4CAF50';
+    case 'rare':
+      return '#2196F3';
+    case 'epic':
+      return '#9C27B0';
+    case 'legendary':
+      return '#FF9800';
+    default:
+      return '#8B8B8B';
   }
 };
 
 const tagColorMap: Record<DoginalProtocolTag, string> = {
-  pepinal: '#00FF88',
-  pepemap: '#2dd4bf',
+  doginal: '#00FF88',
+  dogemap: '#2dd4bf',
   dns: '#fcd34d',
   'charms-token': '#60a5fa',
   'charms-nft': '#c084fc',
@@ -31,8 +38,8 @@ const tagColorMap: Record<DoginalProtocolTag, string> = {
   unknown: '#9ca3af'
 };
 
-export const DoginalCard: React.FC<DoginalCardProps> = ({ pepinal, onRefresh }) => {
-  const { pepinal: base, insights, pairedVideo } = pepinal;
+export const DoginalCard: React.FC<DoginalCardProps> = ({ doginal, onRefresh }) => {
+  const { doginal: base, insights, pairedVideo } = doginal;
 
   const displaySource = insights.mediaType === 'video' && pairedVideo ? pairedVideo : base;
 
@@ -49,11 +56,7 @@ export const DoginalCard: React.FC<DoginalCardProps> = ({ pepinal, onRefresh }) 
       case 'video':
         return (
           <div className="relative w-full h-full flex items-center justify-center">
-            <video
-              controls
-              className="w-full h-full object-cover rounded"
-              src={displaySource.content}
-            />
+            <video controls className="w-full h-full object-cover rounded" src={displaySource.content} />
             {insights.vepe?.caption && (
               <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-60 text-white p-2 rounded">
                 <div className="font-semibold">{insights.vepe.caption}</div>
@@ -97,24 +100,20 @@ export const DoginalCard: React.FC<DoginalCardProps> = ({ pepinal, onRefresh }) 
   };
 
   const handleView = () => {
-    // Open pepinal details
-    window.open(`https://pepeblocks.com/inscription/${base.inscriptionId}`, '_blank');
+    // Open doginal details
+    window.open(`https://dojak.com/inscription/${base.inscriptionId}`, '_blank');
   };
 
   const handleList = () => {
     // Open marketplace listing modal
-    console.log('List pepinal for sale:', base.id);
+    console.log('List doginal for sale:', base.id);
   };
 
   return (
     <Card
       hoverable
       className="bg-[#0f2c1f] border-[#144e38] hover:border-[#00ff88]"
-      cover={
-        <div className="aspect-square bg-[#1a1a1a] flex items-center justify-center p-4">
-          {renderMedia()}
-        </div>
-      }
+      cover={<div className="aspect-square bg-[#1a1a1a] flex items-center justify-center p-4">{renderMedia()}</div>}
       actions={[
         <Button
           key="view"
@@ -139,23 +138,14 @@ export const DoginalCard: React.FC<DoginalCardProps> = ({ pepinal, onRefresh }) 
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <span className="text-white font-medium">#{base.id}</span>
-          <Tag
-            color={getRarityColor(base.rarity)}
-            className="text-xs"
-          >
+          <Tag color={getRarityColor(base.rarity)} className="text-xs">
             {base.rarity}
           </Tag>
         </div>
 
-        {base.price && (
-          <div className="text-[#069420] font-medium">
-            {base.price} DOGE
-          </div>
-        )}
+        {base.price && <div className="text-[#069420] font-medium">{base.price} DOGE</div>}
 
-        <div className="text-xs text-gray-400">
-          Score: {base.rarityScore}
-        </div>
+        <div className="text-xs text-gray-400">Score: {base.rarityScore}</div>
 
         {insights.collectionName && (
           <Tag color="#00ff88" className="text-xs font-semibold text-black">
@@ -184,5 +174,3 @@ export const DoginalCard: React.FC<DoginalCardProps> = ({ pepinal, onRefresh }) 
     </Card>
   );
 };
-
-

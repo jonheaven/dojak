@@ -148,28 +148,17 @@ exports.build = gulp.series(
 
 // Fast watch mode for development - skips clean and enables webpack watch
 function task_webpack_watch(cb) {
-  webpack(
+  const compiler = webpack(
     webpackConfigFunc({
       version: validVersion,
       config: options.env,
       browser: options.browser,
       manifest: options.manifest,
-      channel: options.channel,
-      watch: true // Enable watch mode
-    }),
-    (err, stats) => {
-      if (err) {
-        console.error(err);
-        return cb(err);
-      }
-      if (stats.hasErrors()) {
-        console.error(stats.toString({ colors: true, errors: true }));
-        // Don't exit on errors in watch mode
-        return;
-      }
-      console.log(stats.toString({ colors: true }));
-    }
-  ).watch({}, (err, stats) => {
+      channel: options.channel
+    })
+  );
+
+  compiler.watch({}, (err, stats) => {
     if (err) {
       console.error(err);
       return;
@@ -181,6 +170,8 @@ function task_webpack_watch(cb) {
     console.log('✨ Rebuilt:', new Date().toLocaleTimeString());
     console.log(stats.toString({ colors: true, chunks: false, modules: false }));
   });
+
+  // Don't call cb() - watch mode runs indefinitely
 }
 
 exports.watch = gulp.series(

@@ -14,33 +14,45 @@ import { Text } from '../Text';
 export const UpgradePopover = ({ onClose }: { onClose: () => void }) => {
   const versionInfo = useVersionInfo();
 
-  const [versionDetail, setVersionDetail] = useState<VersionDetail>({
-    version: '',
-    changelogs: [],
-    title: '',
-    notice: ''
-  });
+  const [versionDetail, setVersionDetail] = useState<VersionDetail | null>(null);
   const wallet = useWallet();
   useEffect(() => {
-    if (!versionInfo.newVersion) return;
+    if (!versionInfo.newVersion) {
+      // No new version, auto-close
+      onClose();
+      return;
+    }
     wallet
       .getVersionDetail(versionInfo.newVersion)
       .then((res) => {
-        setVersionDetail(res);
+        if (res && res.title) {
+          setVersionDetail(res);
+        } else {
+          // No valid data, auto-close
+          onClose();
+        }
       })
       .catch((e) => {
         console.log(e);
+        // API failed, auto-close
+        onClose();
       });
   }, [versionInfo.newVersion]);
+
+  // Don't render until we have valid data
+  if (!versionDetail) {
+    return null;
+  }
+
   return (
     <Popover onClose={onClose}>
       <Column justifyCenter itemsCenter>
         <Column mt="lg">
-          <Text preset="bold" text={versionDetail.title} textCenter />
+          <Text preset="bold" text={versionDetail?.title || 'Update Available'} textCenter />
         </Column>
 
         <div style={{ marginTop: 8 }}>
-          {versionDetail.changelogs.map((str, index) => (
+          {(versionDetail?.changelogs || []).map((str, index) => (
             <div key={index} style={{ fontSize: fontSizes.sm }}>
               {str}
             </div>
@@ -71,5 +83,3 @@ export const UpgradePopover = ({ onClose }: { onClose: () => void }) => {
     </Popover>
   );
 };
-
-

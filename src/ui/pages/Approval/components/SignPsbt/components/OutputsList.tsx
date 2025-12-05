@@ -68,5 +68,3 @@ const OutputsList = ({ txInfo, t, currentAccount, btcUnit, canChanged, dunesPric
 };
 
 export default OutputsList;
-
-

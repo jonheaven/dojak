@@ -5,12 +5,12 @@ import { Button, Card, Column, Row, Spin, Text } from '@/ui/components';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { useWallet } from '@/ui/utils';
 import {
-    createMessageDecoder,
-    encodeSignRequest,
-    getSignTypeDisplayName,
-    normalizeSignType,
-    type MsgSignRequest,
-    type MsgSignResult
+  createMessageDecoder,
+  encodeSignRequest,
+  getSignTypeDisplayName,
+  normalizeSignType,
+  type MsgSignRequest,
+  type MsgSignResult
 } from '@unisat/animated-qr';
 
 import MultiQRDisplay from '../MultiQRDisplay';
@@ -278,7 +278,8 @@ export default function ColdWalletSignMessage({
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center'
-        }}>
+        }}
+      >
         {isCurrentMessageSigned ? (
           <Column style={{ alignItems: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
@@ -323,7 +324,8 @@ export default function ColdWalletSignMessage({
         flexDirection: 'column',
         height: '100%',
         position: 'relative'
-      }}>
+      }}
+    >
       {header}
 
       {/* Scrollable Content Area */}
@@ -332,7 +334,8 @@ export default function ColdWalletSignMessage({
           flex: 1,
           overflow: 'auto',
           paddingBottom: '80px'
-        }}>
+        }}
+      >
         <Card>
           <Column>
             <Text text={t('msg_sign')} preset="title-bold" color="textDim" />
@@ -360,7 +363,8 @@ export default function ColdWalletSignMessage({
                 fontWeight: activeTab === SignMessageTab.DETAILS ? '600' : '400',
                 transition: 'all 0.2s ease',
                 whiteSpace: 'nowrap'
-              }}>
+              }}
+            >
               1. {t('msg_detail')}
             </div>
             <div
@@ -376,7 +380,8 @@ export default function ColdWalletSignMessage({
                 fontWeight: activeTab === SignMessageTab.QRCODE ? '600' : '400',
                 transition: 'all 0.2s ease',
                 whiteSpace: 'nowrap'
-              }}>
+              }}
+            >
               2. {t('msg_generate_sign')}
             </div>
             <div
@@ -397,7 +402,8 @@ export default function ColdWalletSignMessage({
                 transition: 'all 0.2s ease',
                 whiteSpace: 'nowrap',
                 opacity: !qrData ? 0.5 : 1
-              }}>
+              }}
+            >
               3. {t('msg_scan_result')}
             </div>
           </Row>
@@ -419,7 +425,8 @@ export default function ColdWalletSignMessage({
           background: 'linear-gradient(to top, rgba(6, 7, 25, 1) 0%, rgba(6, 7, 25, 0.95) 50%, rgba(6, 7, 25, 0) 100%)',
           padding: '16px',
           paddingTop: '24px'
-        }}>
+        }}
+      >
         <Row>
           <Button text={t('cancel')} preset="default" onClick={onCancel} style={{ flex: 1, marginRight: 8 }} />
 
@@ -454,5 +461,3 @@ export default function ColdWalletSignMessage({
     </div>
   );
 }
-
-

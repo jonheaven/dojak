@@ -58,21 +58,24 @@ export function LockTimePage() {
             alignItems: 'center',
             marginTop: 16,
             paddingBottom: 16
-          }}>
+          }}
+        >
           <Card
             style={{
               width: '328px',
               borderRadius: '12px',
               backgroundColor: 'rgba(255, 255, 255, 0.06)',
               padding: 0
-            }}>
+            }}
+          >
             <div
               style={{
                 width: '100%',
                 overflow: 'auto',
                 scrollbarWidth: 'none',
                 msOverflowStyle: 'none'
-              }}>
+              }}
+            >
               <Column fullX>
                 {autoLockTimes.map((option, index) => {
                   const check = option.id === autoLockTimeId;
@@ -88,7 +91,8 @@ export function LockTimePage() {
                           cursor: 'pointer',
                           minHeight: '34px'
                         }}
-                        full>
+                        full
+                      >
                         <Text color={check ? 'white' : 'textDim'} size="sm" text={option.label} />
                         {check && !loading && <Icon icon="checked" color="gold" size={20} />}
                         {check && loading && <Loading />}
@@ -104,5 +108,3 @@ export function LockTimePage() {
     </Layout>
   );
 }
-
-

@@ -2,11 +2,11 @@ import { useMemo } from 'react';
 
 import { ChainType } from '@/shared/constant';
 import { Row, Text } from '@/ui/components';
-import { useChainType, usePEPUnit } from '@/ui/state/settings/hooks';
+import { useChainType, useDOGEUnit } from '@/ui/state/settings/hooks';
 
-export function PEPDisplay({ balance }: { balance: string }) {
+export function DOGEDisplay({ balance }: { balance: string }) {
   const chainType = useChainType();
-  const pepUnit = usePEPUnit();
+  const dogeUnit = useDOGEUnit();
   const { intPart, decPart } = useMemo(() => {
     //   split balance into integer and decimal parts
     const [intPart, decPart] = balance.split('.');
@@ -17,7 +17,7 @@ export function PEPDisplay({ balance }: { balance: string }) {
     };
   }, [balance]);
 
-  const isPEPChain =
+  const isDOGEChain =
     chainType === ChainType.BITCOIN_MAINNET ||
     chainType === ChainType.BITCOIN_TESTNET ||
     chainType === ChainType.BITCOIN_TESTNET4 ||
@@ -32,26 +32,24 @@ export function PEPDisplay({ balance }: { balance: string }) {
 
   return (
     <Row style={{ alignItems: 'flex-end' }} justifyCenter gap={'zero'} my="sm">
-      <Text text={intPart} preset="title-bold" size="xxxl" color={isPEPChain ? 'white' : undefined} />
+      <Text text={intPart} preset="title-bold" size="xxxl" color={isDOGEChain ? 'white' : undefined} />
       {decPart && (
         <Text
           text={'.' + decPart.slice(0, decimalPlaces)}
           preset="title-bold"
           style={{
-            color: isPEPChain ? '#FFFFFF' : '#8a8a8a',
+            color: isDOGEChain ? '#FFFFFF' : '#8a8a8a',
             fontSize: 28
           }}
         />
       )}
       <Text
-        text={pepUnit}
+        text={dogeUnit}
         preset="title-bold"
         size="xxxl"
         style={{ marginLeft: '0.25em' }}
-        color={isPEPChain ? 'white' : undefined}
+        color={isDOGEChain ? 'white' : undefined}
       />
     </Row>
   );
 }
-
-

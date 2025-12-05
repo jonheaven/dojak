@@ -69,7 +69,8 @@ const PhishingScreen = () => {
             href="https://github.com/dojak-wallet/phishing-detect/issues/new"
             target="_blank"
             rel="noopener noreferrer"
-            className="phishing-report-link">
+            className="phishing-report-link"
+          >
             {t('think_this_is_a_false_positive_click_here_to_report_an_issue')}
           </a>
           <p className="phishing-proceed-text">
@@ -85,5 +86,3 @@ const PhishingScreen = () => {
 };
 
 export default PhishingScreen;
-
-

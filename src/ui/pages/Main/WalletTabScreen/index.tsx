@@ -31,12 +31,10 @@ import { KeyringType } from '@unisat/keyring-service/types';
 
 import { useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/SwitchChainModal';
-import { CharmsTab } from './CharmsTab';
-import { PepStakeTab } from './DogeStakeTab';
-import { DunesList } from './DunesList';
-import { InscriptionList } from './InscriptionList';
-import { FeelsTab } from './PackTab';
+import { InscriptionsTab } from './InscriptionsTab';
+import { WoofTab } from './WoofTab';
 import { SidePanelExpand } from './SidePanelExpand';
+import { SteakTab } from './SteakTab';
 import { BalanceCard } from './components/BalanceCard';
 import { WalletActions } from './components/WalletActions';
 
@@ -132,57 +130,40 @@ export default function WalletTabScreen() {
       label: string;
       children: JSX.Element;
     }[] = [];
-    if (supportedAssets.assets.doginals) {
+
+    // Inscriptions tab - combines all inscription-based assets with filtering
+    if (supportedAssets.assets.inscriptions) {
       items.push({
-        key: AssetTabKey.doginals,
-        label: t('doginals'),
-        children: <InscriptionList key={AssetTabKey.doginals} />
+        key: AssetTabKey.INSCRIPTIONS,
+        label: t('Inscriptions'),
+        children: <InscriptionsTab key={AssetTabKey.INSCRIPTIONS} />
       });
     }
 
-    if (supportedAssets.assets.dunes) {
+    // Steak tab
+    if (supportedAssets.assets.steak) {
       items.push({
-        key: AssetTabKey.RUNES,
-        label: t('runes'),
-        children: <DunesList key={AssetTabKey.RUNES} />
-      });
-    }
-    if (supportedAssets.assets.Charms) {
-      items.push({
-        key: AssetTabKey.Charms,
-        label: 'Charms',
-        children: <CharmsTab key={AssetTabKey.Charms} />
-      });
-    }
-    if (supportedAssets.assets.PepStake) {
-      items.push({
-        key: AssetTabKey.PEPSTAKE,
-        label: 'PepStake',
-        children: <PepStakeTab key={AssetTabKey.PEPSTAKE} />
+        key: AssetTabKey.STEAK,
+        label: 'Steak',
+        children: <SteakTab key={AssetTabKey.STEAK} />
       });
     }
 
-    if (supportedAssets.assets.Feels) {
+    // Woof tab
+    if (supportedAssets.assets.woof) {
       items.push({
-        key: AssetTabKey.FEELS,
-        label: 'Feels',
-        children: <FeelsTab key={AssetTabKey.FEELS} />
+        key: AssetTabKey.WOOF,
+        label: 'Woof',
+        children: <WoofTab key={AssetTabKey.WOOF} />
       });
     }
 
     return items;
-  }, [
-    supportedAssets.assets.doginals,
-    supportedAssets.assets.dunes,
-    supportedAssets.assets.Charms,
-    supportedAssets.assets.PepStake,
-    supportedAssets.assets.Feels,
-    t
-  ]);
+  }, [supportedAssets.assets.inscriptions, supportedAssets.assets.steak, supportedAssets.assets.woof, t]);
 
   const finalAssetTabKey = useMemo(() => {
     if (!supportedAssets.tabKeys.includes(assetTabKey)) {
-      return AssetTabKey.doginals;
+      return AssetTabKey.INSCRIPTIONS;
     }
     return assetTabKey;
   }, [assetTabKey, supportedAssets.key]);
@@ -202,7 +183,8 @@ export default function WalletTabScreen() {
             style={{ height: 28 }}
             onClick={() => {
               navigate('SwitchKeyringScreen');
-            }}>
+            }}
+          >
             <Text
               text={
                 currentKeyring.type === KeyringType.ColdWalletKeyring
@@ -225,43 +207,73 @@ export default function WalletTabScreen() {
       />
 
       <Content style={{ overflowY: 'auto' }}>
-        <AccountSelect />
-
-        <Column gap="lg2" mt="md">
-          {(walletConfig.chainTip || walletConfig.statusMessage || addressTips.homeTip) && (
-            <Column
-              py={'lg'}
-              px={'md'}
-              gap={'lg'}
-              style={{
-                borderRadius: 12,
-                border: '1px solid rgba(245, 84, 84, 0.35)',
-                background: 'rgba(245, 84, 84, 0.08)'
-              }}>
-              {walletConfig.chainTip && <Text text={walletConfig.chainTip} color="text" textCenter />}
-              {walletConfig.statusMessage && <Text text={walletConfig.statusMessage} color="danger" textCenter />}
-              {addressTips.homeTip && <Text text={addressTips.homeTip} color="warning" textCenter />}
-            </Column>
-          )}
-
-          <BalanceCard
-            accountBalance={accountBalance}
-            disableUtxoTools={walletConfig.disableUtxoTools}
-            enableRefresh={isSidePanel}
-            address={currentAccount?.address}
-          />
-
-          <WalletActions address={currentAccount?.address} chain={chain} />
-
-          <Tabs
-            defaultActiveKey={finalAssetTabKey as unknown as string}
-            activeKey={finalAssetTabKey as unknown as string}
-            items={tabItems as unknown as any[]}
-            onTabClick={(key) => {
-              dispatch(uiActions.updateAssetTabScreen({ assetTabKey: key as unknown as AssetTabKey }));
+        <Row
+          full
+          gap="lg"
+          style={{
+            alignItems: 'flex-start',
+            // Stack columns vertically in side panel / narrow views
+            flexDirection: isSidePanel ? 'column' : 'row'
+          }}
+        >
+          {/* Left column: asset tabs and lists */}
+          <Column
+            gap="lg2"
+            mt="md"
+            style={{
+              flex: 1,
+              minWidth: 0
             }}
-          />
-        </Column>
+          >
+            <Tabs
+              defaultActiveKey={finalAssetTabKey as unknown as string}
+              activeKey={finalAssetTabKey as unknown as string}
+              items={tabItems as unknown as any[]}
+              onTabClick={(key) => {
+                dispatch(uiActions.updateAssetTabScreen({ assetTabKey: key as unknown as AssetTabKey }));
+              }}
+            />
+          </Column>
+
+          {/* Right column: account selector, warnings, balance, actions */}
+          <Column
+            gap="lg2"
+            mt="md"
+            style={{
+              width: isSidePanel ? '100%' : 320,
+              maxWidth: isSidePanel ? '100%' : 360,
+              alignSelf: 'stretch'
+            }}
+          >
+            <AccountSelect />
+
+            {(walletConfig.chainTip || walletConfig.statusMessage || addressTips.homeTip) && (
+              <Column
+                py={'lg'}
+                px={'md'}
+                gap={'lg'}
+                style={{
+                  borderRadius: 12,
+                  border: '1px solid rgba(245, 84, 84, 0.35)',
+                  background: 'rgba(245, 84, 84, 0.08)'
+                }}
+              >
+                {walletConfig.chainTip && <Text text={walletConfig.chainTip} color="text" textCenter />}
+                {walletConfig.statusMessage && <Text text={walletConfig.statusMessage} color="danger" textCenter />}
+                {addressTips.homeTip && <Text text={addressTips.homeTip} color="warning" textCenter />}
+              </Column>
+            )}
+
+            <BalanceCard
+              accountBalance={accountBalance}
+              disableUtxoTools={walletConfig.disableUtxoTools}
+              enableRefresh={isSidePanel}
+              address={currentAccount?.address}
+            />
+
+            <WalletActions address={currentAccount?.address} chain={chain} />
+          </Column>
+        </Row>
         {showSafeNotice && (
           <NoticePopover
             onClose={() => {
@@ -301,5 +313,3 @@ export default function WalletTabScreen() {
     </Layout>
   );
 }
-
-

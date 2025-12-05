@@ -64,7 +64,8 @@ export const ChangingInscription = ({ decodedPsbt, onClose }: { decodedPsbt: Dec
                   marginLeft: index > 0 ? 8 : 0,
                   width: '150px',
                   flexShrink: 0
-                }}>
+                }}
+              >
                 <div
                   style={{
                     width: '100%',
@@ -72,13 +73,15 @@ export const ChangingInscription = ({ decodedPsbt, onClose }: { decodedPsbt: Dec
                     justifyContent: 'center',
                     alignItems: 'center',
                     padding: '16px 0 8px 0'
-                  }}>
+                  }}
+                >
                   <div
                     style={{
                       display: 'flex',
                       justifyContent: 'center',
                       alignItems: 'center'
-                    }}>
+                    }}
+                  >
                     <InscriptionPreview key={'inscription_' + index} data={inscription.data} preset="small" />
                   </div>
                 </div>
@@ -89,7 +92,8 @@ export const ChangingInscription = ({ decodedPsbt, onClose }: { decodedPsbt: Dec
                   style={{
                     borderTopWidth: 1,
                     borderColor: 'rgba(68, 35, 38, 0.5)'
-                  }}>
+                  }}
+                >
                   <Row fullX justifyBetween>
                     <Text text={t('old_value')} preset="sub" />
                     <Text text={`${inscription.in} sats`} size="xs" />
@@ -107,5 +111,3 @@ export const ChangingInscription = ({ decodedPsbt, onClose }: { decodedPsbt: Dec
     </Popover>
   );
 };
-
-

@@ -59,5 +59,3 @@ export const ContractPopover = ({ contract, onClose }: { contract: ContractResul
     </Popover>
   );
 };
-
-

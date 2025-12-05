@@ -215,7 +215,7 @@ export enum TxType {
   SEND_BITCOIN,
   SEND_doginals_INSCRIPTION,
   SEND_ATOMICALS_INSCRIPTION, // deprecated
-  SEND_RUNES,
+  SEND_DUNES,
   SEND_Charms
 }
 
@@ -352,11 +352,11 @@ export enum RiskType {
   SPLITTING_INSCRIPTIONS,
   MERGING_INSCRIPTIONS,
   CHANGING_INSCRIPTION,
-  RUNES_BURNING,
-  RUNES_MULTIPLE_ASSETS,
+  DUNES_BURNING,
+  DUNES_MULTIPLE_ASSETS,
   INDEXER_API_DOWN,
   ATOMICALS_API_DOWN, // deprecated
-  RUNES_API_DOWN,
+  DUNES_API_DOWN,
   Charms_BURNING,
   Charms_MULTIPLE_ASSETS,
   UTXO_INDEXING
@@ -597,8 +597,7 @@ export interface BitcoinBalanceV2 {
   totalBalance: number;
 }
 
-
-export interface PepStakeAddressSummary {
+export interface SteakAddressSummary {
   address: string;
   stakedBalance: number; // Amount of DOGE staked
   rewardBalance: number; // Accumulated rewards
@@ -607,7 +606,7 @@ export interface PepStakeAddressSummary {
   stakeTier: 'bronze' | 'silver' | 'gold' | 'diamond'; // Based on amount/time
 }
 
-export interface PepStakeTxInfo {
+export interface SteakTxInfo {
   toAddress: string; // Multisig staking address
   amount: number; // DOGE amount to stake
   lockPeriod: number; // Lock period in days
@@ -705,7 +704,6 @@ export interface RequestMethodGetAvailableUtxosParams {
   size: number;
 }
 
-
 export interface DRC20HistoryItem {
   type: string;
   from: string;
@@ -714,5 +712,3 @@ export interface DRC20HistoryItem {
   txid: string;
   blocktime: number;
 }
-
-

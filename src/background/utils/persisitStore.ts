@@ -51,5 +51,3 @@ const createPersistStore = async <T extends object>({
 };
 
 export default createPersistStore;
-
-

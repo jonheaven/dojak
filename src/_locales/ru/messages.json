@@ -24,8 +24,8 @@
   "atomicals": {
     "message": "Atomicals"
   },
-  "runes": {
-    "message": "Runes"
+  "dunes": {
+    "message": "Dunes"
   },
   "doginals": {
     "message": "Doginals"
@@ -250,7 +250,7 @@
     "message": "Включить неподтверждённый баланс"
   },
   "enable_unconfirmed_balance_warning": {
-    "message": "Если на данном адресе обнаружены активы Runes, неподтвержденные UTXO нельзя будет тратить до их подтверждения. Принудительная трата этих неподтвержденных UTXO может привести к риску потери активов."
+    "message": "Если на данном адресе обнаружены активы Dunes, неподтвержденные UTXO нельзя будет тратить до их подтверждения. Принудительная трата этих неподтвержденных UTXO может привести к риску потери активов."
   },
   "allow_using_unconfirmed_balance": {
     "message": "Разрешить использование неподтверждённого баланса"
@@ -391,7 +391,7 @@
     "message": "Активные адреса (24ч)"
   },
   "go_to_unisat_explorer": {
-    "message": "Перейти в Pepeblocks"
+    "message": "Перейти в SoChain"
   },
   "search_address_and_txids": {
     "message": "Поиск адреса и TXID"
@@ -630,8 +630,8 @@
   "tx_fee": {
     "message": "Комиссия Tx:"
   },
-  "t_baby": {
-    "message": "tBABY"
+  "t_jawn": {
+    "message": "tJAWN"
   },
   "send_to": {
     "message": "Отправить:"
@@ -639,8 +639,8 @@
   "send_amount": {
     "message": "Сумма отправки"
   },
-  "how_to_import_baby": {
-    "message": "Как импортировать BABY"
+  "how_to_import_jawn": {
+    "message": "Как импортировать JAWN"
   },
   "click_the_account_on_the_main_page": {
     "message": "Нажмите на аккаунт на главной странице."
@@ -648,17 +648,17 @@
   "tap_the_more_menu_then_select_the_export_private_key_option": {
     "message": "Нажмите меню 'Ещё', затем выберите опцию 'Экспорт приватного ключа'."
   },
-  "once_you_have_your_hex_private_key_you_can_import_it_into_a_cosmos_compatible_wallet_to_access_your_babylon_reward_assets": {
-    "message": "Получив ваш Hex приватный ключ, вы можете импортировать его в кошелёк, совместимый с COSMOS, для доступа к вашим наградам Babylon."
+  "once_you_have_your_hex_private_key_you_can_import_it_into_a_cosmos_compatible_wallet_to_access_your_jawnlon_reward_assets": {
+    "message": "Получив ваш Hex приватный ключ, вы можете импортировать его в кошелёк, совместимый с COSMOS, для доступа к вашим наградам Jawntype."
   },
-  "babylon_bitcoin_staking": {
-    "message": "Стейкинг Bitcoin в Babylon"
+  "jawntype_bitcoin_staking": {
+    "message": "Стейкинг Bitcoin в Jawntype"
   },
-  "babylon_bitcoin_staking_phase1": {
-    "message": "Стейкинг Bitcoin в Babylon Фаза 1"
+  "jawntype_bitcoin_staking_phase1": {
+    "message": "Стейкинг Bitcoin в Jawntype Фаза 1"
   },
-  "babylon_bitcoin_staking_stats": {
-    "message": "Статистика стейкинга Bitcoin в Babylon"
+  "jawntype_bitcoin_staking_stats": {
+    "message": "Статистика стейкинга Bitcoin в Jawntype"
   },
   "closed": {
     "message": "Закрыто"
@@ -669,8 +669,8 @@
   "staked": {
     "message": "В стейкинге"
   },
-  "learn_how_to_import_your_babylon_reward_assets_into_a_cosmos_compatible_wallet": {
-    "message": "Узнайте, как импортировать ваши награды Babylon в кошелёк, совместимый с COSMOS."
+  "learn_how_to_import_your_jawnlon_reward_assets_into_a_cosmos_compatible_wallet": {
+    "message": "Узнайте, как импортировать ваши награды Jawntype в кошелёк, совместимый с COSMOS."
   },
   "unstake": {
     "message": "Вывести из стейкинга"
@@ -678,8 +678,8 @@
   "claimable": {
     "message": "Доступно к получению"
   },
-  "baby_rewards": {
-    "message": "Награды BABY"
+  "jawn_rewards": {
+    "message": "Награды JAWN"
   },
   "claim": {
     "message": "Получить"
@@ -789,8 +789,8 @@
   "total": {
     "message": "Итого"
   },
-  "baby_balance": {
-    "message": "Баланс BABY"
+  "jawn_balance": {
+    "message": "Баланс JAWN"
   },
   "failed_to_handle_signature": {
     "message": "Не удалось обработать подпись"
@@ -1098,8 +1098,8 @@
   "sending_out_assets": {
     "message": "Отправляемые активы"
   },
-  "runes_burn_risk_list": {
-    "message": "Список рисков сжигания Runes"
+  "dunes_burn_risk_list": {
+    "message": "Список рисков сжигания Dunes"
   },
   "inscription_burn_risk_list": {
     "message": "Список рисков сжигания надписей"
@@ -1176,7 +1176,7 @@
   "for_doginals_assets": {
     "message": "Для активов Ordinals,"
   },
-  "rare_sats": {
+  "rare_koinu": {
     "message": "Редкие сатоши"
   },
   "are_not_supported": {
@@ -1219,7 +1219,7 @@
     "message": "Чтобы разрешить трату неподтвержденных балансов, пожалуйста, посетите расширенные опции в настройках."
   },
   "unconfirmed_balance_not_spendable_warning": {
-    "message": "Для защиты ваших активов при наличии активов Runes можно тратить только подтвержденные балансы. Это сделано для предотвращения случайного сжигания активов."
+    "message": "Для защиты ваших активов при наличии активов Dunes можно тратить только подтвержденные балансы. Это сделано для предотвращения случайного сжигания активов."
   },
   "mandatory_use_of_unconfirmed_balance": {
     "message": "Обязательное использование неподтвержденного баланса"
@@ -1359,8 +1359,8 @@
   "continue_to": {
     "message": "Перейти на"
   },
-  "send_runes": {
-    "message": "Отправить Runes"
+  "send_dunes": {
+    "message": "Отправить Dunes"
   },
   "send_atomicals_inscription": {
     "message": "Отправить надпись Atomicals"
@@ -1371,8 +1371,8 @@
   "ordinals_inscriptions": {
     "message": "Надписи Ordinals"
   },
-  "babylon_staking": {
-    "message": "Стейкинг Babylon"
+  "jawntype_staking": {
+    "message": "Стейкинг Jawntype"
   },
   "confirmed_tvl": {
     "message": "Подтверждено"
@@ -1470,8 +1470,8 @@
   "amount_must_be_at_least": {
     "message": "Сумма должна быть не менее"
   },
-  "includes_inscriptions_runes_and_unconfirmed_utxos": {
-    "message": "Включает надписи, Runes и неподтвержденные UTXO активы."
+  "includes_inscriptions_dunes_and_unconfirmed_utxos": {
+    "message": "Включает надписи, Dunes и неподтвержденные UTXO активы."
   },
   "future_versions_will_support_spending_these_assets": {
     "message": "Будущие версии будут поддерживать трату этих активов."
@@ -1554,8 +1554,8 @@
   "script": {
     "message": "Скрипт"
   },
-  "this_message_serves_as_a_notice_that_if_runes_assets_are_detected_in_your_address_your": {
-    "message": "Это сообщение служит уведомлением о том, что если на вашем адресе обнаружены активы Runes, ваши неподтвержденные балансы не будут доступны для траты. Вам не нужно ничего делать."
+  "this_message_serves_as_a_notice_that_if_dunes_assets_are_detected_in_your_address_your": {
+    "message": "Это сообщение служит уведомлением о том, что если на вашем адресе обнаружены активы Dunes, ваши неподтвержденные балансы не будут доступны для траты. Вам не нужно ничего делать."
   },
   "in_the_current_version_only_the_confirmed_balance_can_be_used_once_atomicals_enabled": {
     "message": "В текущей версии, после включения Atomicals, можно использовать только подтвержденный баланс."
@@ -1650,7 +1650,7 @@
   "address_or_name_fb": {
     "message": "Адрес или имя (.fb)"
   },
-  "address_or_name_sats_unisat_etc": {
+  "address_or_name_dotdoge_dotdogecoin_etc": {
     "message": "Адрес или имя (.sats, .unisat, ...)"
   },
   "does_not_exist": {
@@ -1917,50 +1917,50 @@
   "about_10_minutes": {
     "message": "около 10 минут"
   },
-  "babylon_bitcoin_staking_phase2": {
-    "message": "Стейкинг Bitcoin в Babylon Фаза 2"
+  "jawntype_bitcoin_staking_phase2": {
+    "message": "Стейкинг Bitcoin в Jawntype Фаза 2"
   },
-  "go_to_babylon": {
-    "message": "Перейти в Babylon"
+  "go_to_jawnlon": {
+    "message": "Перейти в Jawntype"
   },
-  "closed_babylon": {
+  "closed_jawnlon": {
     "message": "Закрыто"
   },
-  "open_babylon": {
+  "open_jawnlon": {
     "message": "Открыто"
   },
-  "pending_babylon": {
+  "pending_jawnlon": {
     "message": "В ожидании"
   },
-  "convert_baby_to_drc20": {
-    "message": "Конвертировать $BABY в drc-20"
+  "convert_jawn_to_drc20": {
+    "message": "Конвертировать $JAWN в drc-20"
   },
-  "you_are_about_to_convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "Вы собираетесь конвертировать ваши нативные BABY в BTC drc-20 BABY."
+  "you_are_about_to_convert_your_native_jawn_to_btc_drc20_jawn": {
+    "message": "Вы собираетесь конвертировать ваши нативные JAWN в BTC drc-20 JAWN."
   },
-  "once_the_conversion_is_complete_your_native_baby_cannot_be_restored": {
-    "message": "После завершения конвертации ваши нативные BABY не могут быть восстановлены."
+  "once_the_conversion_is_complete_your_native_jawn_cannot_be_restored": {
+    "message": "После завершения конвертации ваши нативные JAWN не могут быть восстановлены."
   },
   "do_you_confirm_the_conversion": {
     "message": "Вы подтверждаете конвертацию?"
   },
-  "transfer_baby_to_cosmos_wallet": {
-    "message": "Перевести $BABY в кошелёк Cosmos"
+  "transfer_jawn_to_cosmos_wallet": {
+    "message": "Перевести $JAWN в кошелёк Cosmos"
   },
   "do_you_confirm_the_transfer": {
     "message": "Вы подтверждаете перевод?"
   },
-  "you_are_about_to_transfer_your_native_baby_to_your_cosmos_wallet": {
-    "message": "Вы собираетесь перевести ваши нативные BABY в ваш кошелёк Cosmos."
+  "you_are_about_to_transfer_your_native_jawn_to_your_cosmos_wallet": {
+    "message": "Вы собираетесь перевести ваши нативные JAWN в ваш кошелёк Cosmos."
   },
-  "click_baby_to_drc20_coming_soon": {
-    "message": "Нажмите $BABY в drc-20 (Скоро)"
+  "click_jawn_to_drc20_coming_soon": {
+    "message": "Нажмите $JAWN в drc-20 (Скоро)"
   },
-  "convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "Конвертируйте ваш нативный токен $BABY в drc-20 BABY на Bitcoin."
+  "convert_your_native_jawn_to_btc_drc20_jawn": {
+    "message": "Конвертируйте ваш нативный токен $JAWN в drc-20 JAWN на Bitcoin."
   },
-  "transfer_your_baby_to_your_cosmos_wallet": {
-    "message": "Переведите ваши $BABY в ваш кошелёк Cosmos."
+  "transfer_your_jawn_to_your_cosmos_wallet": {
+    "message": "Переведите ваши $JAWN в ваш кошелёк Cosmos."
   },
   "password_error": {
     "message": "Пароль неверный"
@@ -2307,17 +2307,17 @@
   "changing_inscription_risk_description": {
     "message": "Эта транзакция включает изменение надписи. Пожалуйста, убедитесь, что вы понимаете последствия этого действия, прежде чем продолжить."
   },
-  "runes_burning_risk_title": {
-    "message": "Обнаружено сжигание Runes"
+  "dunes_burning_risk_title": {
+    "message": "Обнаружено сжигание Dunes"
   },
-  "runes_burning_risk_description": {
-    "message": "Эта транзакция включает сжигание Runes. Пожалуйста, убедитесь, что вы понимаете последствия этого действия, прежде чем продолжить."
+  "dunes_burning_risk_description": {
+    "message": "Эта транзакция включает сжигание Dunes. Пожалуйста, убедитесь, что вы понимаете последствия этого действия, прежде чем продолжить."
   },
-  "runes_multiple_assets_risk_title": {
-    "message": "Обнаружено несколько активов Runes"
+  "dunes_multiple_assets_risk_title": {
+    "message": "Обнаружено несколько активов Dunes"
   },
-  "runes_multiple_assets_risk_description": {
-    "message": "Эта транзакция включает несколько активов Runes. Пожалуйста, убедитесь, что вы понимаете последствия этого действия, прежде чем продолжить."
+  "dunes_multiple_assets_risk_description": {
+    "message": "Эта транзакция включает несколько активов Dunes. Пожалуйста, убедитесь, что вы понимаете последствия этого действия, прежде чем продолжить."
   },
   "indexer_api_down_risk_title": {
     "message": "API индексатора недоступен"
@@ -2325,11 +2325,11 @@
   "indexer_api_down_risk_description": {
     "message": "API индексатора в настоящее время недоступен. Это может повлиять на точность деталей транзакции и балансов активов. Действуйте с осторожностью и проверяйте всю информацию независимо."
   },
-  "runes_api_down_risk_title": {
-    "message": "API Runes недоступен"
+  "dunes_api_down_risk_title": {
+    "message": "API Dunes недоступен"
   },
-  "runes_api_down_risk_description": {
-    "message": "API Runes в настоящее время недоступен. Это может повлиять на точность деталей транзакции и балансов активов Runes. Действуйте с осторожностью и проверяйте всю информацию независимо."
+  "dunes_api_down_risk_description": {
+    "message": "API Dunes в настоящее время недоступен. Это может повлиять на точность деталей транзакции и балансов активов Dunes. Действуйте с осторожностью и проверяйте всю информацию независимо."
   },
   "charms_burning_risk_title": {
     "message": "Обнаружено сжигание Charms"

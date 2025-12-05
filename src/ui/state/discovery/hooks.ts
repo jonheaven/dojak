@@ -27,5 +27,3 @@ export function useHasNewBanner() {
   const state = useDiscoveryState();
   return state.hasNewBanner;
 }
-
-

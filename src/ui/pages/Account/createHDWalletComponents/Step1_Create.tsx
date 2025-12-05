@@ -6,26 +6,37 @@ import { useTools } from '@/ui/components/ActionComponent';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
+import { useNavigate } from '@/ui/pages/MainRoute';
 import { fontSizes } from '@/ui/theme/font';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 
-export function Step1_Create({
+export function MnemonicDisplay({
   contextData,
   updateContextData
 }: {
   contextData: ContextData;
   updateContextData: (params: UpdateContextDataParams) => void;
 }) {
+  const navigate = useNavigate();
   const [checked, setChecked] = useState(false);
   const { t } = useI18n();
   const wallet = useWallet();
   const tools = useTools();
 
   const init = async () => {
-    const _mnemonics = await wallet.generatePreMnemonic();
-    updateContextData({
-      mnemonics: _mnemonics
-    });
+    try {
+      console.log('[Step1_Create] Calling generatePreMnemonic...');
+      const _mnemonics = await wallet.generatePreMnemonic();
+      console.log('[Step1_Create] Got mnemonics:', _mnemonics);
+      updateContextData({
+        mnemonics: _mnemonics
+      });
+    } catch (error) {
+      console.error('[Step1_Create] Error generating mnemonic:', error);
+      console.error('[Step1_Create] Error details:', JSON.stringify(error));
+      const errorMsg = (error as any)?.message || 'Unknown error';
+      tools.toastError(`Failed to generate mnemonic: ${errorMsg}`);
+    }
   };
 
   useEffect(() => {
@@ -35,7 +46,7 @@ export function Step1_Create({
   const onChange = (e: CheckboxChangeEvent) => {
     const val = e.target.checked;
     setChecked(val);
-    updateContextData({ step1Completed: val });
+    updateContextData({ mnemonicConfirmed: val });
   };
 
   function copy(str: string) {
@@ -45,12 +56,23 @@ export function Step1_Create({
   }
 
   const btnClick = () => {
-    updateContextData({
-      tabType: TabType.STEP2
-    });
+    // After confirming mnemonic, go directly to main screen
+    navigate('MainScreen');
   };
 
-  const words = contextData.mnemonics.split(' ');
+  // Don't render until we have mnemonics
+  if (!contextData.mnemonics) {
+    return (
+      <Column gap="xl" style={{ padding: 20 }}>
+        <Text text="Generating..." preset="sub" textCenter />
+      </Column>
+    );
+  }
+
+  const words = contextData.mnemonics.split(' ').filter((w) => w.trim().length > 0);
+  console.log('[Step1_Create] mnemonics:', contextData.mnemonics);
+  console.log('[Step1_Create] words array:', words);
+
   return (
     <Column gap="xl">
       <Text text={t('secret_recovery_phrase')} preset="title-bold" textCenter />
@@ -83,5 +105,3 @@ export function Step1_Create({
     </Column>
   );
 }
-
-

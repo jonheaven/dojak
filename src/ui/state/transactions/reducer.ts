@@ -253,5 +253,3 @@ const slice = createSlice({
 
 export const transactionsActions = slice.actions;
 export default slice.reducer;
-
-

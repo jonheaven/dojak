@@ -194,10 +194,9 @@ export default function SendCharmsNFTScreen() {
           text={t('next')}
           onClick={(e) => {
             onConfirm();
-          }}></Button>
+          }}
+        ></Button>
       </Content>
     </Layout>
   );
 }
-
-

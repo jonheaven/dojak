@@ -25,5 +25,3 @@ export function Logo(props: { preset?: 'large' | 'small' | 'intrinsic' }) {
     );
   }
 }
-
-

@@ -16,7 +16,7 @@ export const usePsbtInitializer = (setTxInfo, setLoading, tools) => {
       session,
       currentAccount,
       wallet,
-      prepareSendPEP,
+      prepareSendDOGE,
       prepareSendDoginalsInscription,
       prepareSendDunes,
       prepareSendCharms
@@ -33,7 +33,7 @@ export const usePsbtInitializer = (setTxInfo, setLoading, tools) => {
           }
         } else if (type === TxType.SEND_BITCOIN && sendBitcoinParams) {
           if (!psbtHex) {
-            const rawTxInfo = await prepareSendPEP({
+            const rawTxInfo = await prepareSendDOGE({
               toAddressInfo: { address: sendBitcoinParams.toAddress, domain: '' },
               toAmount: sendBitcoinParams.satoshis,
               feeRate: sendBitcoinParams.feeRate,
@@ -54,7 +54,7 @@ export const usePsbtInitializer = (setTxInfo, setLoading, tools) => {
             });
             finalPsbtHex = rawTxInfo.psbtHex;
           }
-        } else if (type === TxType.SEND_RUNES && sendDunesParams) {
+        } else if (type === TxType.SEND_DUNES && sendDunesParams) {
           if (!psbtHex) {
             const rawTxInfo = await prepareSendDunes({
               toAddressInfo: { address: sendDunesParams.toAddress, domain: '' },
@@ -95,7 +95,7 @@ export const usePsbtInitializer = (setTxInfo, setLoading, tools) => {
 
         let toSignInputs = [];
         if (
-          [TxType.SEND_BITCOIN, TxType.SEND_doginals_INSCRIPTION, TxType.SEND_RUNES, TxType.SEND_Charms].includes(type)
+          [TxType.SEND_BITCOIN, TxType.SEND_doginals_INSCRIPTION, TxType.SEND_DUNES, TxType.SEND_Charms].includes(type)
         ) {
           toSignInputs = decodedPsbt.inputInfos.map((v, index) => ({
             index,
@@ -158,5 +158,3 @@ export const usePsbtInitializer = (setTxInfo, setLoading, tools) => {
 
   return { initializePsbt };
 };
-
-

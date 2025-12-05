@@ -2,7 +2,6 @@
  * Dojak Wallet - Dogecoin Native Keyring Types
  * Purpose-built for Dogecoin, not patched Bitcoin code
  */
-
 import { Network } from 'bitcoinjs-lib';
 
 export interface DogecoinAccount {
@@ -28,24 +27,27 @@ export type SerializedKeyring = SerializedHdKeyring | SerializedSimpleKeyring;
 
 export interface KeyringInterface {
   type: string;
-  
+
   // Serialization
   serialize(): Promise<SerializedKeyring>;
   deserialize(opts: any): Promise<void>;
-  
+
   // Account management
   getAccounts(): Promise<string[]>;
   addAccounts(count: number): Promise<string[]>;
   removeAccount?(address: string): void;
-  
+
+  // Address derivation
+  getAddressFromPublicKey(publicKeyHex: string): string;
+
   // Signing
   signTransaction(psbt: any, inputs: ToSignInput[]): Promise<any>;
   signMessage(address: string, message: string): Promise<string>;
   verifyMessage(address: string, message: string, signature: string): Promise<boolean>;
-  
+
   // Export
   exportAccount(address: string): Promise<string>;
-  
+
   // Network
   setNetwork(network: DogecoinNetworkType): void;
 }
@@ -76,8 +78,7 @@ export const KEYRING_TYPE = {
   SimpleKeyring: 'Simple Key Pair',
   KeystoneKeyring: 'Keystone',
   ColdWalletKeyring: 'Cold Wallet',
-  Empty: 'Empty',
+  Empty: 'Empty'
 } as const;
 
-export type KeyringType = typeof KEYRING_TYPE[keyof typeof KEYRING_TYPE];
-
+export type KeyringType = (typeof KEYRING_TYPE)[keyof typeof KEYRING_TYPE];

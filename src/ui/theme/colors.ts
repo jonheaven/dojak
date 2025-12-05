@@ -15,14 +15,14 @@ const palette = {
 
   black_dark: '#2a2626',
 
-  gold_dark2: '#b8860b',
-  gold_dark: '#daa520',
-  gold: '#ffd700',
-  gold_light: '#ffed4e',
+  gold_dark2: '#9a6b1a',
+  gold_dark: '#b87d20',
+  gold: '#C9822A',
+  gold_light: '#E5A03A',
 
-  yellow_dark: '#d5ac00',
-  yellow: '#e3bb5f',
-  yellow_light: '#fcd226',
+  yellow_dark: '#b87d20',
+  yellow: '#C9822A',
+  yellow_light: '#E5A03A',
 
   red_dark: '#c92b40',
   red: '#ED334B',
@@ -55,13 +55,13 @@ const lightThemeColors = {
   line: 'rgba(0, 0, 0, 0.1)',
   line2: 'rgba(0, 0, 0, 0.05)',
 
-  // Primary colors - yellow-gold
-  primary: '#ffd700',
-  primaryHover: '#ffed4e',
+  // Primary colors - Dogecoin orange-gold
+  primary: '#C9822A',
+  primaryHover: '#E5A03A',
 
-  // Success colors - yellow-gold instead of green
-  success: '#ffd700',
-  successLight: '#ffed4e',
+  // Success colors - Dogecoin orange-gold
+  success: '#C9822A',
+  successLight: '#E5A03A',
 
   // Error colors
   error: '#ED334B',
@@ -72,18 +72,18 @@ const lightThemeColors = {
   warning_content: '#F4B62CD9',
   warning_bg: '#F4B62C59',
 
-  // Value colors - yellow-gold for positive
-  value_up_color: '#ffd700',
+  // Value colors - Dogecoin orange-gold for positive
+  value_up_color: '#C9822A',
   value_down_color: '#BF3F4D',
 
-  // Ticker colors - yellow-gold
-  ticker_color: '#ffd700',
-  ticker_color2: 'rgba(255, 215, 0, 0.85)',
+  // Ticker colors - Dogecoin orange-gold
+  ticker_color: '#C9822A',
+  ticker_color2: 'rgba(201, 130, 42, 0.85)',
 
-  // DRC20 colors - yellow-gold
+  // DRC20 colors - Dogecoin orange-gold
   drc20_deploy: '#fff8dc',
-  drc20_transfer: '#ffed4e',
-  drc20_transfer_selected: '#ffd700',
+  drc20_transfer: '#E5A03A',
+  drc20_transfer_selected: '#C9822A',
   drc20_other: '#f5f5dc',
 
   // Icon colors
@@ -105,20 +105,20 @@ const darkThemeColors = {
   surface: '#1a1a1a',
   card: 'rgba(47, 27, 20, 0.88)',
   text: '#ffffff',
-  textSecondary: '#ffd700',
-  textDim: '#ffd700',
+  textSecondary: '#C9822A',
+  textDim: '#C9822A',
   border: 'rgba(255,255,255,0.04)',
   border2: 'rgba(255, 255, 255, 0.1)',
   line: 'rgba(255,255,255,0.15)',
   line2: 'rgba(255,255,255,0.3)',
 
-  // Primary colors - yellow-gold
-  primary: '#ffd700',
-  primaryHover: '#ffed4e',
+  // Primary colors - Dogecoin orange-gold
+  primary: '#C9822A',
+  primaryHover: '#E5A03A',
 
-  // Success colors - yellow-gold instead of green
-  success: '#ffd700',
-  successLight: '#ffed4e',
+  // Success colors - Dogecoin orange-gold
+  success: '#C9822A',
+  successLight: '#E5A03A',
 
   // Error colors
   error: '#ED334B',
@@ -129,18 +129,18 @@ const darkThemeColors = {
   warning_content: '#F4B62CD9',
   warning_bg: '#F4B62C59',
 
-  // Value colors - yellow-gold for positive
-  value_up_color: '#ffd700',
+  // Value colors - Dogecoin orange-gold for positive
+  value_up_color: '#C9822A',
   value_down_color: '#BF3F4D',
 
-  // Ticker colors - yellow-gold
-  ticker_color: '#ffd700',
-  ticker_color2: 'rgba(255, 215, 0, 0.85)',
+  // Ticker colors - Dogecoin orange-gold
+  ticker_color: '#C9822A',
+  ticker_color2: 'rgba(201, 130, 42, 0.85)',
 
-  // DRC20 colors - yellow-gold
+  // DRC20 colors - Dogecoin orange-gold
   drc20_deploy: '#2a2626',
   drc20_transfer: '#3a3526',
-  drc20_transfer_selected: '#ffd700',
+  drc20_transfer_selected: '#C9822A',
   drc20_other: '#2a2626',
 
   // Icon colors
@@ -170,5 +170,3 @@ export const colors = Object.assign({}, palette, {
 });
 
 export type ColorTypes = keyof typeof colors;
-
-

@@ -23,12 +23,14 @@ export function SwitchNetworkBar() {
         borderRadius: 8,
         padding: '2px 4px',
         gap: 2
-      }}>
+      }}
+    >
       <Row
         itemsCenter
         onClick={() => {
           setSwitchChainModalVisible(true);
-        }}>
+        }}
+      >
         <Image src={chain.icon} size={22} style={{}} />
         <Text text={chain.iconLabel} color="white" size="xs" />
         <Icon icon="down" color="textDim" size={10} />
@@ -43,5 +45,3 @@ export function SwitchNetworkBar() {
     </Card>
   );
 }
-
-

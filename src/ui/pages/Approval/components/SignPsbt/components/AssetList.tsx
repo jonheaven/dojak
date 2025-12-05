@@ -34,7 +34,7 @@ const AssetList = ({ inscriptions, dunes, txInfo, Charms, t, isToSign, isMyAddre
       {dunes.length > 0 && (
         <Row>
           <Column justifyCenter>
-            <Text text={t('runes')} color={textColor} />
+            <Text text={t('dunes')} color={textColor} />
             <Row overflowX gap="lg" style={{ width: 280 }} pb="lg">
               {dunes.map((w) => (
                 <DunesPreviewCard key={w.runeid} balance={w} price={dunesPriceMap?.[w.spacedDune]} />
@@ -65,5 +65,3 @@ const AssetList = ({ inscriptions, dunes, txInfo, Charms, t, isToSign, isMyAddre
 };
 
 export default AssetList;
-
-

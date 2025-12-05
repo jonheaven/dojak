@@ -19,7 +19,7 @@ import { getAddressType } from '@/ui/utils/bitcoin-utils';
 import { useNavigate } from '../MainRoute';
 import { SwitchChainModal } from '../Settings/SwitchChainModal';
 
-const APP_ID_PepStake_STAKING = 1103;
+const APP_ID_Steak_STAKING = 1103;
 
 function BannerItem({ img, link }: { img: string; link: string }) {
   return (
@@ -27,7 +27,8 @@ function BannerItem({ img, link }: { img: string; link: string }) {
       justifyCenter
       onClick={() => {
         window.open(link);
-      }}>
+      }}
+    >
       <Image
         src={img}
         width={'100%'}
@@ -49,7 +50,7 @@ function AppItem({ info, onClick }: { info: AppInfo; onClick?: () => void }) {
   const networkType = useNetworkType();
 
   // todo: Temporary handling plan, should change to control by config
-  if (info.id === APP_ID_PepStake_STAKING) {
+  if (info.id === APP_ID_Steak_STAKING) {
     const addressType = getAddressType(currentAddress, networkType);
     if (addressType == AddressType.P2SH_P2WPKH || addressType == AddressType.P2PKH) {
       return <></>;
@@ -80,7 +81,8 @@ function AppItem({ info, onClick }: { info: AppInfo; onClick?: () => void }) {
         }
 
         readApp(info.id);
-      }}>
+      }}
+    >
       <Row full>
         <Column justifyCenter>
           <Image src={info.logo} size={48} />
@@ -97,7 +99,8 @@ function AppItem({ info, onClick }: { info: AppInfo; onClick?: () => void }) {
             overlayStyle={{
               fontSize: '10px',
               lineHeight: '14px'
-            }}>
+            }}
+          >
             <div>
               <Text text={info.desc} preset="sub" max2Lines />
             </div>
@@ -258,5 +261,3 @@ export default function DiscoverTabScreen() {
     </Layout>
   );
 }
-
-

@@ -18,5 +18,3 @@ const WebsiteBar = ({ session }: { session: { origin: string; icon: string; name
 };
 
 export default WebsiteBar;
-
-

@@ -74,5 +74,3 @@ export const getPasswordStrengthWord = (password: string) => {
     };
   }
 };
-
-

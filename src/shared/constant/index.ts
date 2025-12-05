@@ -122,7 +122,12 @@ export const ADDRESS_TYPES: {
 
 export const OW_HD_PATH = "m/44'/3'/0'"; // Dogecoin coin type 3
 
-export const getRestoreWallets = (): { value: RestoreWalletType; name: string; addressTypes: AddressType[]; recommended?: boolean }[] => [
+export const getRestoreWallets = (): {
+  value: RestoreWalletType;
+  name: string;
+  addressTypes: AddressType[];
+  recommended?: boolean;
+}[] => [
   {
     value: RestoreWalletType.dojak,
     name: 'Mnemonic Phrase (12/24 words)',
@@ -171,8 +176,9 @@ export type TypeChain = {
 export const CHAINS_MAP: { [key: string]: TypeChain } = {
   [ChainType.BITCOIN_MAINNET]: {
     enum: ChainType.BITCOIN_MAINNET,
-    label: 'Dogecoin',
-    iconLabel: 'Dogecoin',
+    label: 'Dogecoin Mainnet',
+    // For compact UI (e.g. SwitchNetworkBar), just show the network name
+    iconLabel: 'Mainnet',
     icon: './images/logo/logo@128x.png',
     unit: 'DOGE',
     networkType: NetworkType.MAINNET,
@@ -193,7 +199,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
   [ChainType.BITCOIN_TESTNET]: {
     enum: ChainType.BITCOIN_TESTNET,
     label: 'Dogecoin Testnet',
-    iconLabel: 'Dogecoin',
+    iconLabel: 'Testnet',
     icon: './images/logo/logo@128x.png',
     unit: 'tDOGE',
     networkType: NetworkType.TESTNET,
@@ -209,7 +215,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
   [ChainType.BITCOIN_TESTNET4]: {
     enum: ChainType.BITCOIN_TESTNET4,
     label: 'Dogecoin Testnet4 (Beta)',
-    iconLabel: 'Dogecoin',
+    iconLabel: 'Testnet4',
     icon: './images/logo/logo@128x.png',
     unit: 'tDOGE',
     networkType: NetworkType.TESTNET,
@@ -221,7 +227,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
     okxExplorerUrl: '',
     showPrice: false,
     defaultExplorer: 'mempool-space'
-  },
+  }
 };
 
 export const CHAINS = Object.values(CHAINS_MAP);
@@ -243,10 +249,7 @@ export const CHAIN_GROUPS: TypeChainGroup[] = [
     type: 'list',
     label: 'Dogecoin Testnet',
     icon: './images/logo/logo@128x.png',
-    items: [
-      CHAINS_MAP[ChainType.BITCOIN_TESTNET],
-      CHAINS_MAP[ChainType.BITCOIN_TESTNET4]
-    ]
+    items: [CHAINS_MAP[ChainType.BITCOIN_TESTNET], CHAINS_MAP[ChainType.BITCOIN_TESTNET4]]
   }
 ];
 
@@ -305,8 +308,7 @@ export const EMAIL_URL = 'contact@dojak.dog';
 export const DOCS_URL = ' https://docs.dojak.dog/dev/dojak-developer-center ';
 export const MEDIUM_URL = 'https://dojak-wallet.medium.com/';
 export const UPDATE_URL = 'https://chromewebstore.google.com/detail/dojak-wallet/dojak-wallet-id';
-export const REVIEW_URL =
-  'https://chromewebstore.google.com/detail/dojak-wallet/dojak-wallet-id/reviews';
+export const REVIEW_URL = 'https://chromewebstore.google.com/detail/dojak-wallet/dojak-wallet-id/reviews';
 export const TERMS_OF_SERVICE_URL = 'https://dojak.dog/terms-of-service.html';
 export const PRIVACY_POLICY_URL = 'https://dojak.dog/privacy-policy.html';
 
@@ -389,5 +391,3 @@ export const getAutoLockTimes = () => [
 ];
 
 export const DEFAULT_LOCKTIME_ID = 5;
-
-

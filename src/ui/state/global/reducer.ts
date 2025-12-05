@@ -50,5 +50,3 @@ const slice = createSlice({
 
 export const globalActions = slice.actions;
 export default slice.reducer;
-
-

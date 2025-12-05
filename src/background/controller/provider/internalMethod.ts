@@ -50,5 +50,3 @@ export default {
   getProviderState,
   keepAlive
 };
-
-

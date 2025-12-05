@@ -4,7 +4,7 @@ import { ADDRESS_TYPES } from '@/shared/constant';
 import { AddressType } from '@/shared/types';
 import { Button, Column, Icon, Input, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
+import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { ContextData, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
@@ -27,15 +27,14 @@ export function Step2({
 
   const hdPathOptions = useMemo(() => {
     // Dogecoin only supports P2PKH addresses
-    return ADDRESS_TYPES.filter((v) => v.value === AddressType.P2PKH)
-      .map((v) => {
-        return {
-          label: v.name,
-          hdPath: v.hdPath,
-          addressType: v.value,
-          isdojakLegacy: v.isdojakLegacy
-        };
-      });
+    return ADDRESS_TYPES.filter((v) => v.value === AddressType.P2PKH).map((v) => {
+      return {
+        label: v.name,
+        hdPath: v.hdPath,
+        addressType: v.value,
+        isdojakLegacy: v.isdojakLegacy
+      };
+    });
   }, []);
 
   const allHdPathOptions = useMemo(() => {
@@ -289,7 +288,7 @@ export function Step2({
         };
 
         const hdPath = (contextData.customHdPath || item.hdPath) + '/0';
-        
+
         // Only render the card if we have a valid address
         if (!address) {
           return (
@@ -299,9 +298,9 @@ export function Step2({
             </Column>
           );
         }
-        
+
         return (
-          <AddressTypeCard2
+          <AddressTypeCard
             key={index}
             label={`${item.label}`}
             items={[
@@ -357,5 +356,3 @@ export function Step2({
     </Column>
   );
 }
-
-

@@ -1,4 +1,11 @@
-import { Doginal, DoginalInsights, DoginalMediaType, DoginalProtocolTag, DoginalViewModel, VepeMetadata } from '../types';
+import {
+  Doginal,
+  DoginalInsights,
+  DoginalMediaType,
+  DoginalProtocolTag,
+  DoginalViewModel,
+  VepeMetadata
+} from '../types';
 
 const isJsonLike = (contentType?: string) => contentType?.includes('json') || contentType?.includes('javascript');
 const isTextLike = (contentType?: string) => contentType?.startsWith('text/') || contentType === 'application/text';
@@ -12,8 +19,8 @@ const normalizeHashtags = (hashtags?: string[] | string): string[] => {
     .filter(Boolean);
 };
 
-export function detectMediaType(pepinal: Doginal): DoginalMediaType {
-  const contentType = pepinal.contentType?.toLowerCase() || '';
+export function detectMediaType(doginal: Doginal): DoginalMediaType {
+  const contentType = doginal.contentType?.toLowerCase() || '';
 
   if (contentType.startsWith('image/')) return 'image';
   if (contentType.startsWith('video/')) return 'video';
@@ -24,8 +31,8 @@ export function detectMediaType(pepinal: Doginal): DoginalMediaType {
   return 'unknown';
 }
 
-export function parseVepeMetadata(pepinal: Doginal): VepeMetadata | undefined {
-  const vepeMeta = pepinal.meta?.vepe as VepeMetadata | undefined;
+export function parseVepeMetadata(doginal: Doginal): VepeMetadata | undefined {
+  const vepeMeta = doginal.meta?.vepe as VepeMetadata | undefined;
   if (vepeMeta) {
     return {
       ...vepeMeta,
@@ -33,9 +40,9 @@ export function parseVepeMetadata(pepinal: Doginal): VepeMetadata | undefined {
     };
   }
 
-  if (isJsonLike(pepinal.contentType) || isTextLike(pepinal.contentType)) {
+  if (isJsonLike(doginal.contentType) || isTextLike(doginal.contentType)) {
     try {
-      const parsed = JSON.parse(pepinal.content);
+      const parsed = JSON.parse(doginal.content);
       if (parsed?.vepe) {
         return {
           caption: parsed.vepe.caption || parsed.caption,
@@ -48,7 +55,7 @@ export function parseVepeMetadata(pepinal: Doginal): VepeMetadata | undefined {
     } catch (error) {
       // Text-only Vepe metadata: look for hashtags or caption markers
       const hashtags = normalizeHashtags(
-        pepinal.content
+        doginal.content
           ?.split(/\s+/)
           .filter((token) => token.startsWith('#'))
           .join(' ')
@@ -56,7 +63,7 @@ export function parseVepeMetadata(pepinal: Doginal): VepeMetadata | undefined {
 
       if (hashtags.length > 0) {
         return {
-          caption: pepinal.content,
+          caption: doginal.content,
           hashtags
         };
       }
@@ -66,20 +73,23 @@ export function parseVepeMetadata(pepinal: Doginal): VepeMetadata | undefined {
   return undefined;
 }
 
-export function detectProtocolTags(pepinal: Doginal, mediaType: DoginalMediaType): { tags: DoginalProtocolTag[]; collectionName?: string; vepe?: VepeMetadata } {
-  const tags: DoginalProtocolTag[] = ['pepinal'];
+export function detectProtocolTags(
+  doginal: Doginal,
+  mediaType: DoginalMediaType
+): { tags: DoginalProtocolTag[]; collectionName?: string; vepe?: VepeMetadata } {
+  const tags: DoginalProtocolTag[] = ['doginal'];
   let collectionName: string | undefined;
   let vepe: VepeMetadata | undefined;
 
-  const protocol = pepinal.protocol?.toLowerCase() || (pepinal.meta?.protocol as string | undefined)?.toLowerCase();
-  const contentType = pepinal.contentType?.toLowerCase() || '';
-  const meta = pepinal.meta || {};
+  const protocol = doginal.protocol?.toLowerCase() || (doginal.meta?.protocol as string | undefined)?.toLowerCase();
+  const contentType = doginal.contentType?.toLowerCase() || '';
+  const meta = doginal.meta || {};
 
-  if (protocol === 'pepemap' || contentType.includes('pepemap')) {
-    tags.push('pepemap');
+  if (protocol === 'dogemap' || contentType.includes('dogemap')) {
+    tags.push('dogemap');
   }
 
-  if (protocol === 'dns' || pepinal.id.endsWith('.pepe') || meta.domain?.endsWith('.pepe')) {
+  if (protocol === 'dns' || doginal.id.endsWith('.doge') || meta.domain?.endsWith('.doge')) {
     tags.push('dns');
   }
 
@@ -91,12 +101,13 @@ export function detectProtocolTags(pepinal: Doginal, mediaType: DoginalMediaType
     tags.push('charms-nft');
   }
 
-  collectionName = meta.collection?.name || meta.collectionName || pepinal.collection?.name || pepinal.attributes?.collection;
+  collectionName =
+    meta.collection?.name || meta.collectionName || doginal.collection?.name || doginal.attributes?.collection;
   if (collectionName) {
     tags.push('collection');
   }
 
-  vepe = parseVepeMetadata(pepinal);
+  vepe = parseVepeMetadata(doginal);
   if (vepe || mediaType === 'video') {
     tags.push('vepe');
   }
@@ -104,9 +115,9 @@ export function detectProtocolTags(pepinal: Doginal, mediaType: DoginalMediaType
   return { tags, collectionName, vepe };
 }
 
-export function buildDoginalViewModel(pepinal: Doginal): DoginalViewModel {
-  const mediaType = detectMediaType(pepinal);
-  const { tags, collectionName, vepe } = detectProtocolTags(pepinal, mediaType);
+export function buildDoginalViewModel(doginal: Doginal): DoginalViewModel {
+  const mediaType = detectMediaType(doginal);
+  const { tags, collectionName, vepe } = detectProtocolTags(doginal, mediaType);
 
   const insights: DoginalInsights = {
     mediaType,
@@ -115,30 +126,5 @@ export function buildDoginalViewModel(pepinal: Doginal): DoginalViewModel {
     vepe
   };
 
-  return { pepinal, insights };
-}
-
-export function mergeVepePairs(doginals: DoginalViewModel[]): DoginalViewModel[] {
-  const videos = new Map<string, DoginalViewModel>();
-  const result: DoginalViewModel[] = [];
-
-  doginals.forEach((item) => {
-    if (item.insights.mediaType === 'video') {
-      videos.set(item.pepinal.inscriptionId, item);
-    }
-  });
-
-  doginals.forEach((item) => {
-    const vepeVideoId = item.insights.vepe?.videoInscriptionId;
-    if (vepeVideoId && videos.has(vepeVideoId)) {
-      const video = videos.get(vepeVideoId)!;
-      result.push({ ...video, insights: { ...video.insights, vepe: item.insights.vepe, protocolTags: Array.from(new Set([...video.insights.protocolTags, 'vepe'])) }, pairedVideo: video.pepinal });
-    } else if (item.insights.mediaType !== 'video') {
-      result.push(item);
-    } else if (!videos.has(item.pepinal.inscriptionId)) {
-      result.push(item);
-    }
-  });
-
-  return result;
+  return { doginal, insights };
 }

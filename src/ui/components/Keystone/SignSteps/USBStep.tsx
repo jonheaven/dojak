@@ -74,5 +74,3 @@ export default function USBStep(props: KeystoneSignBaseProps) {
     </Column>
   );
 }
-
-

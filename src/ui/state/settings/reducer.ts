@@ -30,7 +30,8 @@ export const initialState: SettingsState = {
   skippedVersion: '',
   autoLockTimeId: DEFAULT_LOCKTIME_ID,
   developerMode: false,
-  theme: 'light'
+  // Default to dark theme for new installs; existing users keep their saved value
+  theme: 'dark'
 };
 
 const slice = createSlice({
@@ -72,5 +73,3 @@ const slice = createSlice({
 
 export const settingsActions = slice.actions;
 export default slice.reducer;
-
-

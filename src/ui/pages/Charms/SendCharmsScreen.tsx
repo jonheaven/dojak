@@ -170,10 +170,10 @@ export default function SendCharmsScreen() {
               return;
             }
 
-            const toSignInputs = await wallet.formatOptionsToSignInputs(
-              transferData.current.commitTx,
-              { autoFinalized: true, toSignInputs: transferData.current.commitToSignInputs }
-            );
+            const toSignInputs = await wallet.formatOptionsToSignInputs(transferData.current.commitTx, {
+              autoFinalized: true,
+              toSignInputs: transferData.current.commitToSignInputs
+            });
             const result = await wallet.signCharmsSendTx({
               commitTx: transferData.current.commitTx,
               toSignInputs
@@ -234,12 +234,13 @@ export default function SendCharmsScreen() {
         <Column mt="lg">
           <Row justifyBetween>
             <Text text={t('balance')} color="textDim" />
-            <TickUsdWithoutPrice tick={tokenBalance.name} balance={inputAmount} type={TokenType.RUNES} />
+            <TickUsdWithoutPrice tick={tokenBalance.name} balance={inputAmount} type={TokenType.DUNES} />
             <Row
               itemsCenter
               onClick={() => {
                 setInputAmount(dunesUtils.toDecimalAmount(availableBalance, tokenBalance.divisibility));
-              }}>
+              }}
+            >
               <Text text={t('max')} preset="sub" style={{ color: colors.white_muted }} />
               <Text
                 text={`${showLongNumber(dunesUtils.toDecimalAmount(availableBalance, tokenBalance.divisibility))} ${
@@ -280,10 +281,9 @@ export default function SendCharmsScreen() {
           text={t('next')}
           onClick={(e) => {
             onConfirm();
-          }}></Button>
+          }}
+        ></Button>
       </Content>
     </Layout>
   );
 }
-
-

@@ -43,5 +43,3 @@ export const InscribeResultPopver = ({ inscription, onClose }: { inscription: In
     </Popover>
   );
 };
-
-

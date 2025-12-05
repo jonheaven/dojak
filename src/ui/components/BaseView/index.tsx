@@ -113,5 +113,3 @@ export function BaseView(props: BaseViewProps) {
     </div>
   );
 }
-
-

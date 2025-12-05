@@ -23,14 +23,27 @@ export default function Tag(props: AssetTagProps) {
 
   if (type === 'bool-bridge') {
     return (
-      <Row style={{ padding: '2px 4px', borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.15)' }}>
-        <Text text={'Bool Bridge'} size={small ? 'xxs' : 'xs'} style={{ color: '#ddd' }} />
+      <Row
+        style={{
+          padding: '2px 4px',
+          borderRadius: 4,
+          // Theme-aware pill background
+          backgroundColor: 'var(--theme-bg3)'
+        }}
+      >
+        <Text text={'Bool Bridge'} size={small ? 'xxs' : 'xs'} preset="sub" />
       </Row>
     );
   } else if (type === 'simple-bridge') {
     return (
-      <Row style={{ padding: '2px 4px', borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.15)' }}>
-        <Text text={'Simple Bridge'} size={small ? 'xxs' : 'xs'} style={{ color: '#ddd' }} />
+      <Row
+        style={{
+          padding: '2px 4px',
+          borderRadius: 4,
+          backgroundColor: 'var(--theme-bg3)'
+        }}
+      >
+        <Text text={'Simple Bridge'} size={small ? 'xxs' : 'xs'} preset="sub" />
       </Row>
     );
   } else if (type === 'self-issuance' && !isFractal) {
@@ -39,7 +52,8 @@ export default function Tag(props: AssetTagProps) {
         style={{ borderColor: colors[type], borderWidth: 1, borderRadius: small ? 4 : 5 }}
         px={small ? 'sm' : 'md'}
         py={small ? 'zero' : 'xs'}
-        itemsCenter>
+        itemsCenter
+      >
         <Text text="self-issuance" size={small ? 'xxs' : 'xs'} style={{ color: colors[type] }} />
       </Row>
     );
@@ -50,10 +64,9 @@ export default function Tag(props: AssetTagProps) {
       style={{ borderColor: colors[type], borderWidth: 1, borderRadius: small ? 4 : 5 }}
       px={small ? 'sm' : 'md'}
       py={small ? 'zero' : 'xs'}
-      itemsCenter>
+      itemsCenter
+    >
       <Text text={type} size={small ? 'xxs' : 'xs'} style={{ color: colors[type] }} />
     </Row>
   );
 }
-
-

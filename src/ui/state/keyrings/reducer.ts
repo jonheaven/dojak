@@ -79,5 +79,3 @@ const slice = createSlice({
 
 export const keyringsActions = slice.actions;
 export default slice.reducer;
-
-

@@ -4,15 +4,15 @@ import { COIN_DUST } from '@/shared/constant';
 import { RawTxInfo } from '@/shared/types';
 import { Button, Card, Column, Content, Header, Icon, Image, Input, Layout, Row, Text, Tooltip } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { BtcUsd } from '@/ui/components/BtcUsd';
+import { DOGEUSD } from '@/ui/components/DOGEUSD';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { RBFBar } from '@/ui/components/RBFBar';
 import { getSpecialLocale, useI18n } from '@/ui/hooks/useI18n';
 import { useUtxoTools } from '@/ui/hooks/useUtxoTools';
 import { useNavigate } from '@/ui/pages/MainRoute';
 import { useAccountBalance } from '@/ui/state/accounts/hooks';
-import { useChain, usePEPUnit, useWalletConfig } from '@/ui/state/settings/hooks';
-import { useBitcoinTx, useFetchUtxosCallback, usePrepareSendPEPCallback } from '@/ui/state/transactions/hooks';
+import { useChain, useDOGEUnit, useWalletConfig } from '@/ui/state/settings/hooks';
+import { useBitcoinTx, useFetchUtxosCallback, usePrepareSendDOGECallback } from '@/ui/state/transactions/hooks';
 import { useUiTxCreateScreen, useUpdateUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { colors } from '@/ui/theme/colors';
 import { fontSizes } from '@/ui/theme/font';
@@ -23,7 +23,7 @@ export default function TxCreateScreen() {
   const accountBalance = useAccountBalance();
   const navigate = useNavigate();
   const bitcoinTx = useBitcoinTx();
-  const btcUnit = usePEPUnit();
+  const btcUnit = useDOGEUnit();
   const [isSpecialLocale, setIsSpecialLocale] = useState(false);
   useEffect(() => {
     getSpecialLocale().then(({ isSpecialLocale }) => {
@@ -53,7 +53,7 @@ export default function TxCreateScreen() {
     });
   }, []);
 
-  const prepareSendPEP = usePrepareSendPEPCallback();
+  const prepareSendDOGE = usePrepareSendDOGECallback();
 
   const toSatoshis = useMemo(() => {
     if (!inputAmount) return 0;
@@ -106,7 +106,7 @@ export default function TxCreateScreen() {
       return;
     }
 
-    prepareSendPEP({ toAddressInfo: toInfo, toAmount: toSatoshis, feeRate, enableRBF })
+    prepareSendDOGE({ toAddressInfo: toInfo, toAmount: toSatoshis, feeRate, enableRBF })
       .then((data) => {
         // if (data.fee < data.estimateFee) {
         //   setError(`Network fee must be at leat ${data.estimateFee}`);
@@ -163,7 +163,7 @@ export default function TxCreateScreen() {
         <Column mt="lg">
           <Row justifyBetween>
             <Text text={t('transfer_amount')} preset="regular" />
-            <BtcUsd sats={toSatoshis} />
+            <DOGEUSD sats={toSatoshis} />
           </Row>
           <Input
             preset="amount"
@@ -186,14 +186,16 @@ export default function TxCreateScreen() {
             style={{
               flexDirection: 'column',
               borderRadius: 8
-            }}>
+            }}
+          >
             <Row
               justifyBetween
               fullX
               itemsCenter
               style={{
                 minHeight: 30
-              }}>
+              }}
+            >
               <Text text={t('available')} color="gold" />
               <Row>
                 <Text text={`${availableAmount}`} size="sm" color="gold" />
@@ -207,7 +209,8 @@ export default function TxCreateScreen() {
                   width: '100%',
                   border: '1px dashed',
                   borderColor: colors.line
-                }}></Row>
+                }}
+              ></Row>
             ) : null}
 
             {showUnavailable ? (
@@ -217,7 +220,8 @@ export default function TxCreateScreen() {
                 itemsCenter
                 style={{
                   minHeight: 30
-                }}>
+                }}
+              >
                 <Tooltip
                   title={unavailableTipText}
                   placement="top"
@@ -233,7 +237,8 @@ export default function TxCreateScreen() {
                     maxWidth: '280px',
                     wordWrap: 'break-word',
                     whiteSpace: 'normal'
-                  }}>
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <Row itemsCenter>
                       <Text text={t('unavailable')} />
@@ -292,10 +297,9 @@ export default function TxCreateScreen() {
           text={t('next')}
           onClick={(e) => {
             navigate('TxConfirmScreen', { rawTxInfo });
-          }}></Button>
+          }}
+        ></Button>
       </Content>
     </Layout>
   );
 }
-
-

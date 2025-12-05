@@ -33,7 +33,8 @@ export default function CharmsBalanceCard(props: CharmsBalanceCardProps) {
       fullX
       onClick={() => {
         onClick && onClick();
-      }}>
+      }}
+    >
       <Column full py="zero" gap="zero">
         <Row fullY justifyBetween justifyCenter>
           <Column fullY justifyCenter>
@@ -65,5 +66,3 @@ export default function CharmsBalanceCard(props: CharmsBalanceCardProps) {
     </Card>
   );
 }
-
-

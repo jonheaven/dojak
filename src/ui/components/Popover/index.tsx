@@ -17,25 +17,29 @@ export const Popover = ({
     <div
       className="popover-container"
       style={{
-        backgroundColor: 'rgba(0,0,0,0.8)'
-      }}>
+        backgroundColor: 'rgba(0,0,0,0.6)'
+      }}
+    >
       <div
         style={{
-          backgroundColor: 'rgba(36, 40, 47, 1)',
+          backgroundColor: 'var(--theme-card)',
+          border: '1px solid var(--theme-border)',
           width: 340,
           padding: 20,
           borderRadius: 15,
           position: 'relative',
           ...contentStyle
-        }}>
+        }}
+      >
         {onClose && (
           <Row
-            style={{ position: 'absolute', top: 20, right: 20 }}
+            style={{ position: 'absolute', top: 20, right: 20, cursor: 'pointer' }}
             justifyEnd
             onClick={() => {
               onClose();
-            }}>
-            <CloseOutlined />
+            }}
+          >
+            <CloseOutlined style={{ color: 'var(--theme-text)' }} />
           </Row>
         )}
 
@@ -44,5 +48,3 @@ export const Popover = ({
     </div>
   );
 };
-
-

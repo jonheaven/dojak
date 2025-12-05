@@ -38,7 +38,8 @@ export function Section({
       px="md"
       style={{
         minHeight: 25
-      }}>
+      }}
+    >
       <Text text={title} preset="sub" />
       {rightComponent ? (
         rightComponent
@@ -52,7 +53,8 @@ export function Section({
                 tools.toastSuccess(t('copied'));
               });
             }
-          }}>
+          }}
+        >
           <Text text={displayText} preset={link ? 'link' : 'regular'} size="xs" wrap />
           {showCopyIcon && <CopyOutlined style={{ color: '#888', fontSize: 14 }} />}
         </Row>
@@ -60,5 +62,3 @@ export function Section({
     </Row>
   );
 }
-
-

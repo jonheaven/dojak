@@ -181,7 +181,8 @@ export function VirtualList<T>({
           touchAction: 'pan-y',
           width: '100%',
           overflowX: 'hidden'
-        }}>
+        }}
+      >
         {isLoading && (
           <Row justifyCenter style={{ position: 'absolute', width: '100%', zIndex: 10, padding: '10px 0' }}>
             <div style={{ backgroundColor: 'rgba(0,0,0,0.7)', padding: '8px 12px', borderRadius: '4px' }}>
@@ -200,14 +201,16 @@ export function VirtualList<T>({
                 gridTemplateColumns: `repeat(${itemsPerRow}, 1fr)`,
                 gap: '8px',
                 justifyContent: 'center'
-              }}>
+              }}
+            >
               {row.map((item, index) => (
                 <div
                   key={index}
                   style={{
                     width: '100%',
                     boxSizing: 'border-box'
-                  }}>
+                  }}
+                >
                   {renderItem(item, index)}
                 </div>
               ))}
@@ -227,5 +230,3 @@ export function VirtualList<T>({
     </Column>
   );
 }
-
-

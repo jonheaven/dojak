@@ -32,7 +32,8 @@ function CardComponent(props: { children: React.ReactNode; onClick?: () => void 
       py="zero"
       onClick={() => {
         props.onClick && props.onClick();
-      }}>
+      }}
+    >
       {props.children}
     </Row>
   );
@@ -82,5 +83,3 @@ export function CharmsCollectionCard(props: CharmsCollectionCardProps) {
     </Column>
   );
 }
-
-

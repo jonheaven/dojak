@@ -5,9 +5,8 @@ import { updateVersion } from '../global/actions';
 
 export interface UIState {
   assetTabKey: AssetTabKey;
-  doginalsAssetTabKey: DoginalsAssetTabKey;
-  pepStakeAssetTabKey: PepStakeAssetTabKey;
-  charmsAssetTabKey: CharmsAssetTabKey;
+  inscriptionFilter: InscriptionFilterKey;
+  steakAssetTabKey: SteakAssetTabKey;
   uiTxCreateScreen: {
     toInfo: {
       address: string;
@@ -18,7 +17,7 @@ export interface UIState {
     enableRBF: boolean;
     feeRate: number;
   };
-  PepStakeSendScreen: {
+  SteakSendScreen: {
     inputAmount: string;
     memo: string;
   };
@@ -26,31 +25,27 @@ export interface UIState {
   isBalanceHidden: boolean;
 }
 
+// Main asset tabs - simplified to 3 categories
 export enum AssetTabKey {
-  doginals = 0,
-  ATOMICALS = 1, // IGNORED
-  DUNES = 2,
-  PEPSTAKE = 3,
-  FEELS = 4
+  INSCRIPTIONS = 0, // All inscription-based assets (Doginals, DRC20, Dunes, Charms)
+  STEAK = 1,
+  WOOF = 2
 }
 
-export enum DoginalsAssetTabKey {
-  ALL = 0,
-  DRC20 = 1,
-  DRC20_6BYTE = 2
+// Filter for inscription types within the Inscriptions tab
+export enum InscriptionFilterKey {
+  ALL = 0, // Show all inscriptions
+  DOGINALS = 1, // Generic doginals/images
+  DRC20 = 2, // DRC-20 tokens
+  DUNES = 3, // Dunes (runes-like)
+  CHARMS = 4 // Charms metaprotocol
 }
 
-export enum PepStakeAssetTabKey {
+export enum SteakAssetTabKey {
   DASHBOARD = 0,
   STAKES = 1,
   HISTORY = 2
 }
-
-export enum CharmsAssetTabKey {
-  TOKEN = 0,
-  COLLECTION = 1
-}
-
 
 export enum NavigationSource {
   BACK,
@@ -58,10 +53,9 @@ export enum NavigationSource {
 }
 
 export const initialState: UIState = {
-  assetTabKey: AssetTabKey.doginals,
-  doginalsAssetTabKey: DoginalsAssetTabKey.ALL,
-  pepStakeAssetTabKey: PepStakeAssetTabKey.DASHBOARD,
-  charmsAssetTabKey: CharmsAssetTabKey.TOKEN,
+  assetTabKey: AssetTabKey.INSCRIPTIONS,
+  inscriptionFilter: InscriptionFilterKey.ALL,
+  steakAssetTabKey: SteakAssetTabKey.DASHBOARD,
   uiTxCreateScreen: {
     toInfo: {
       address: '',
@@ -72,7 +66,7 @@ export const initialState: UIState = {
     enableRBF: false,
     feeRate: 1
   },
-  PepStakeSendScreen: {
+  SteakSendScreen: {
     inputAmount: '',
     memo: ''
   },
@@ -92,9 +86,8 @@ const slice = createSlice({
       action: {
         payload: {
           assetTabKey?: AssetTabKey;
-          doginalsAssetTabKey?: DoginalsAssetTabKey;
-          pepStakeAssetTabKey?: PepStakeAssetTabKey;
-          charmsAssetTabKey?: CharmsAssetTabKey;
+          inscriptionFilter?: InscriptionFilterKey;
+          steakAssetTabKey?: SteakAssetTabKey;
         };
       }
     ) {
@@ -102,14 +95,11 @@ const slice = createSlice({
       if (payload.assetTabKey !== undefined) {
         state.assetTabKey = payload.assetTabKey;
       }
-      if (payload.doginalsAssetTabKey !== undefined) {
-        state.doginalsAssetTabKey = payload.doginalsAssetTabKey;
+      if (payload.inscriptionFilter !== undefined) {
+        state.inscriptionFilter = payload.inscriptionFilter;
       }
-      if (payload.pepStakeAssetTabKey !== undefined) {
-        state.pepStakeAssetTabKey = payload.pepStakeAssetTabKey;
-      }
-      if (payload.charmsAssetTabKey !== undefined) {
-        state.charmsAssetTabKey = payload.charmsAssetTabKey;
+      if (payload.steakAssetTabKey !== undefined) {
+        state.steakAssetTabKey = payload.steakAssetTabKey;
       }
 
       return state;
@@ -145,7 +135,7 @@ const slice = createSlice({
     resetTxCreateScreen(state) {
       state.uiTxCreateScreen = initialState.uiTxCreateScreen;
     },
-    updatePepStakeSendScreen(
+    updateSteakSendScreen(
       state,
       action: {
         payload: {
@@ -155,14 +145,14 @@ const slice = createSlice({
       }
     ) {
       if (action.payload.inputAmount !== undefined) {
-        state.PepStakeSendScreen.inputAmount = action.payload.inputAmount;
+        state.SteakSendScreen.inputAmount = action.payload.inputAmount;
       }
       if (action.payload.memo !== undefined) {
-        state.PepStakeSendScreen.memo = action.payload.memo;
+        state.SteakSendScreen.memo = action.payload.memo;
       }
     },
-    resetPepStakeSendScreen(state) {
-      state.PepStakeSendScreen = initialState.PepStakeSendScreen;
+    resetSteakSendScreen(state) {
+      state.SteakSendScreen = initialState.SteakSendScreen;
     },
     setNavigationSource(state, action: { payload: NavigationSource }) {
       state.navigationSource = action.payload;
@@ -173,21 +163,21 @@ const slice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase(updateVersion, (state) => {
-      // todo
-      if (!state.assetTabKey) {
-        state.assetTabKey = AssetTabKey.doginals;
+      // Migration: convert old tab keys to new simplified system
+      if (!state.assetTabKey || state.assetTabKey > AssetTabKey.WOOF) {
+        state.assetTabKey = AssetTabKey.INSCRIPTIONS;
       }
-      if (!state.doginalsAssetTabKey) {
-        state.doginalsAssetTabKey = DoginalsAssetTabKey.ALL;
+      if (state.inscriptionFilter === undefined) {
+        state.inscriptionFilter = InscriptionFilterKey.ALL;
       }
-      if (!state.pepStakeAssetTabKey) {
-        state.pepStakeAssetTabKey = PepStakeAssetTabKey.DASHBOARD;
+      if (!state.steakAssetTabKey) {
+        state.steakAssetTabKey = SteakAssetTabKey.DASHBOARD;
       }
       if (!state.uiTxCreateScreen) {
         state.uiTxCreateScreen = initialState.uiTxCreateScreen;
       }
-      if (!state.PepStakeSendScreen) {
-        state.PepStakeSendScreen = initialState.PepStakeSendScreen;
+      if (!state.SteakSendScreen) {
+        state.SteakSendScreen = initialState.SteakSendScreen;
       }
       if (state.isBalanceHidden === undefined) {
         state.isBalanceHidden = false;
@@ -198,5 +188,3 @@ const slice = createSlice({
 
 export const uiActions = slice.actions;
 export default slice.reducer;
-
-

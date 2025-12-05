@@ -23,5 +23,3 @@ export const formatBalance = (balance: number): string => {
   if (balance < 0.00000001) return '< 0.00000001';
   return balance.toFixed(8).replace(/\.?0+$/, '');
 };
-
-

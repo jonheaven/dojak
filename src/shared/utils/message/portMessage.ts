@@ -58,5 +58,3 @@ class PortMessage extends Message {
 }
 
 export default PortMessage;
-
-

@@ -14,5 +14,3 @@ const translationKeys = {
 const MAX_FEE_RATE = 10000;
 
 export { FeeRateType, MAX_FEE_RATE, translationKeys };
-
-

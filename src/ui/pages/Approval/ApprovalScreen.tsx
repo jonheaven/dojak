@@ -39,5 +39,3 @@ export default function ApprovalScreen() {
   const CurrentApprovalComponent = ApprovalComponent[approvalComponent];
   return <CurrentApprovalComponent params={params} origin={origin} requestDefer={requestDefer} />;
 }
-
-

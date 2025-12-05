@@ -1,11 +1,11 @@
 import {
-    Account,
-    AddressSummary,
-    AppSummary,
-    BitcoinBalanceV2,
-    Inscription,
-    InscriptionSummary,
-    TxHistoryItem
+  Account,
+  AddressSummary,
+  AppSummary,
+  BitcoinBalanceV2,
+  Inscription,
+  InscriptionSummary,
+  TxHistoryItem
 } from '@/shared/types';
 import { createSlice } from '@reduxjs/toolkit';
 
@@ -273,5 +273,3 @@ const slice = createSlice({
 
 export const accountActions = slice.actions;
 export default slice.reducer;
-
-

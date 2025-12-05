@@ -166,5 +166,3 @@ export function publicKeyHexToAddress(publicKeyHex: string, prefix = 'cosmos'): 
   const pubKey = new PubKeySecp256k1(publicKeyBytes);
   return pubKey.getBech32Address(prefix);
 }
-
-

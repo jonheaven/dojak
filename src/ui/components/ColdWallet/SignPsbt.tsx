@@ -172,5 +172,3 @@ export default function ColdWalletSignPsbt({ psbtHex, onSuccess, onCancel, heade
 
   return null;
 }
-
-

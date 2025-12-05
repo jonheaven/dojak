@@ -45,5 +45,3 @@ export default function CosmosSignScreen(props: Props) {
 
   return <KeystoneSignBase {...baseProps} />;
 }
-
-

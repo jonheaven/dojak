@@ -5,7 +5,7 @@ import { CosmosSignDataType } from '@/shared/types';
 import { Button, Column, Content, Footer, Header, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 
-// import { makeADR36AminoSignDoc, serializeSignDoc } from '@unisat/PepStake-service';
+// import { makeADR36AminoSignDoc, serializeSignDoc } from '@unisat/Steak-service';
 import CosmosSignScreen from '../Wallet/CosmosSignScreen';
 
 export default function CosmosSignDemo() {
@@ -21,7 +21,7 @@ export default function CosmosSignDemo() {
   const cosmosSignRequest = {
     signData: '',
     dataType: CosmosSignDataType.COSMOS_AMINO,
-    path: 'm/84\'/0\'/0\'/0/0',
+    path: "m/84'/0'/0'/0/0",
     chainId: 'bbn-test-5',
     accountNumber: '0',
     address: signerAddress
@@ -62,7 +62,8 @@ export default function CosmosSignDemo() {
                     maxHeight: 200,
                     overflow: 'auto',
                     wordBreak: 'break-all'
-                  }}>
+                  }}
+                >
                   <pre>{JSON.stringify(signResult, null, 2)}</pre>
                 </div>
               </Column>
@@ -82,5 +83,3 @@ export default function CosmosSignDemo() {
     </Layout>
   );
 }
-
-

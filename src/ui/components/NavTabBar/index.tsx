@@ -10,7 +10,15 @@ import { Icon, IconTypes } from '../Icon';
 
 export function NavTabBar({ tab }: { tab: TabOption }) {
   return (
-    <Grid columns={3} style={{ width: '100%', height: '67.5px', backgroundColor: colors.bg2 }}>
+    <Grid
+      columns={3}
+      style={{
+        width: '100%',
+        // Slightly slimmer bottom nav to optimize main content height
+        height: '52px',
+        backgroundColor: colors.bg2
+      }}
+    >
       <TabButton tabName="home" icon="dojak-logo" isActive={tab === 'home'} />
       <TabButton tabName="discover" icon="compass" isActive={tab === 'discover'} />
       <TabButton tabName="settings" icon="settings" isActive={tab === 'settings'} />
@@ -34,7 +42,8 @@ function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: Icon
         } else if (tabName === 'settings') {
           navigate('SettingsTabScreen');
         }
-      }}>
+      }}
+    >
       <Icon size={20} icon={icon} color={isActive ? 'white' : 'white_muted'} />
       <BaseView style={{ position: 'relative' }}>
         {tabName === 'discover' && hasNewBanner && (
@@ -47,11 +56,10 @@ function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: Icon
               height: 7,
               backgroundColor: 'red',
               borderRadius: '50%'
-            }}></BaseView>
+            }}
+          ></BaseView>
         )}
       </BaseView>
     </Column>
   );
 }
-
-

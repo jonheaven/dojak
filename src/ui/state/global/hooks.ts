@@ -110,5 +110,3 @@ export function useCreateColdWalletCallback() {
     [dispatch, wallet]
   );
 }
-
-

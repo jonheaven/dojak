@@ -18,5 +18,3 @@ export default class PromiseFlow {
     return compose(this._tasks);
   }
 }
-
-

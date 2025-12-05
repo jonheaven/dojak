@@ -43,10 +43,11 @@ export const NoticePopover = ({ onClose }: { onClose: () => void }) => {
               checked={checked1}
               onChange={(e) => {
                 setChecked1(e.target.checked);
-              }}>
+              }}
+            >
               <div style={{ fontSize: fontSizes.sm }}>
                 {t('for_doginals_assets')}
-                <span style={{ color: '#00FF88' }}>{t('rare_sats')}</span> {t('are_not_supported')}
+                <span style={{ color: 'var(--theme-primary)' }}>{t('rare_koinu')}</span> {t('are_not_supported')}
               </div>
             </Checkbox>
           </div>
@@ -71,5 +72,3 @@ export const NoticePopover = ({ onClose }: { onClose: () => void }) => {
     </Popover>
   );
 };
-
-

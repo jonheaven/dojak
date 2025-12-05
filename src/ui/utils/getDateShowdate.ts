@@ -26,5 +26,3 @@ export function getDateShowdate(date: Date, t: (key: string, substitutions?: str
   }
   return formatDate(date, 'yyyy-MM-dd');
 }
-
-

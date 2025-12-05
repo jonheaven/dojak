@@ -23,7 +23,8 @@ export function SecurityCard() {
             cursor: 'pointer',
             marginBottom: 16
           }}
-          onClick={() => navigate('/settings/password')}>
+          onClick={() => navigate('/settings/password')}
+        >
           <Text text={t('change_password')} size="sm" />
           <Icon icon="right" size={fontSizes.lg} color="textDim" />
         </Row>
@@ -34,7 +35,8 @@ export function SecurityCard() {
           style={{
             cursor: 'pointer'
           }}
-          onClick={() => navigate('/settings/lock-time')}>
+          onClick={() => navigate('/settings/lock-time')}
+        >
           <Text text={t('automatic_lock_time')} size="sm" />
 
           <Row itemsCenter>
@@ -46,5 +48,3 @@ export function SecurityCard() {
     </Card>
   );
 }
-
-

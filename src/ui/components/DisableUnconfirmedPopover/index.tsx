@@ -41,5 +41,3 @@ export const DisableUnconfirmedsPopover = ({ onClose }: { onClose: () => void })
     </Popover>
   );
 };
-
-

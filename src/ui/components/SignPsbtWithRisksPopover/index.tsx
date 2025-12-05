@@ -27,7 +27,7 @@ const visibleRiskDetailTypes = [
   //   RiskType.SPLITTING_INSCRIPTIONS,
   //   RiskType.MERGING_INSCRIPTIONS,
   RiskType.CHANGING_INSCRIPTION,
-  RiskType.RUNES_BURNING
+  RiskType.DUNES_BURNING
 ];
 
 function getRiskContentKey(riskType: RiskType) {
@@ -72,25 +72,25 @@ function getRiskContentKey(riskType: RiskType) {
         title: 'changing_inscription_risk_title',
         description: 'changing_inscription_risk_description'
       };
-    case RiskType.RUNES_BURNING:
+    case RiskType.DUNES_BURNING:
       return {
-        title: 'runes_burning_risk_title',
-        description: 'runes_burning_risk_description'
+        title: 'dunes_burning_risk_title',
+        description: 'dunes_burning_risk_description'
       };
-    case RiskType.RUNES_MULTIPLE_ASSETS:
+    case RiskType.DUNES_MULTIPLE_ASSETS:
       return {
-        title: 'runes_multiple_assets_risk_title',
-        description: 'runes_multiple_assets_risk_description'
+        title: 'dunes_multiple_assets_risk_title',
+        description: 'dunes_multiple_assets_risk_description'
       };
     case RiskType.INDEXER_API_DOWN:
       return {
         title: 'indexer_api_down_risk_title',
         description: 'indexer_api_down_risk_description'
       };
-    case RiskType.RUNES_API_DOWN:
+    case RiskType.DUNES_API_DOWN:
       return {
-        title: 'runes_api_down_risk_title',
-        description: 'runes_api_down_risk_description'
+        title: 'dunes_api_down_risk_title',
+        description: 'dunes_api_down_risk_description'
       };
     case RiskType.Charms_BURNING:
       return {
@@ -160,7 +160,7 @@ export const SignPsbtWithRisksPopover = ({
       );
     } else if (detailRisk.type === RiskType.CHANGING_INSCRIPTION) {
       return <ChangingInscription decodedPsbt={decodedPsbt} onClose={() => setDetailRisk(null)} />;
-    } else if (detailRisk.type === RiskType.RUNES_BURNING) {
+    } else if (detailRisk.type === RiskType.DUNES_BURNING) {
       return <DunesBurningList decodedPsbt={decodedPsbt} onClose={() => setDetailRisk(null)} />;
     }
   }
@@ -182,7 +182,8 @@ export const SignPsbtWithRisksPopover = ({
                 key={'risk_' + index}
                 style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10 }}
                 px="md"
-                py="sm">
+                py="sm"
+              >
                 <Row justifyBetween justifyCenter mt="sm">
                   <Text text={title} color={risk.level === 'warning' ? 'warning' : 'danger'} />
                   {visibleRiskDetailTypes.includes(risk.type) ? (
@@ -248,5 +249,3 @@ export const SignPsbtWithRisksPopover = ({
     </Popover>
   );
 };
-
-

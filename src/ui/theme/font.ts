@@ -19,5 +19,3 @@ export const fontSizes = {
   iconLarge: 32,
   iconEmpty: 104
 };
-
-

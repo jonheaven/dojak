@@ -1,9 +1,8 @@
 import React from 'react';
+
 import AnimatedBackground from '@/ui/components/AnimatedBackground';
 
-export const AppLayout: React.FC<{ children: React.ReactNode }> = ({
-  children
-}) => {
+export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <>
       <AnimatedBackground />
@@ -13,7 +12,8 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({
           zIndex: 1,
           width: '100%',
           height: '100%'
-        }}>
+        }}
+      >
         {children}
       </div>
     </>

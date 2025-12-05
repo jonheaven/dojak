@@ -76,5 +76,3 @@ export const getCurrentTab = async () => {
   const tabs = await browserTabsQuery({ active: true, currentWindow: true });
   return tabs[0];
 };
-
-

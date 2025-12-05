@@ -27,7 +27,8 @@ export default function AddKeyringScreen() {
             justifyCenter
             onClick={(e) => {
               navigate('CreateHDWalletScreen', { isImport: false });
-            }}>
+            }}
+          >
             <Column full justifyCenter>
               <Text text={t('create_with_mnemonics_12words')} size="sm" />
             </Column>
@@ -39,7 +40,8 @@ export default function AddKeyringScreen() {
             justifyCenter
             onClick={(e) => {
               navigate('CreateHDWalletScreen', { isImport: true });
-            }}>
+            }}
+          >
             <Column full justifyCenter>
               <Text text={t('restore_from_mnemonics_12words24words')} size="sm" />
             </Column>
@@ -49,7 +51,8 @@ export default function AddKeyringScreen() {
             justifyCenter
             onClick={(e) => {
               navigate('CreateSimpleWalletScreen');
-            }}>
+            }}
+          >
             <Column full justifyCenter>
               <Text text={t('restore_from_single_private_key')} size="sm" />
             </Column>
@@ -65,7 +68,8 @@ export default function AddKeyringScreen() {
               } else {
                 window.open('#/account/create-keystone-wallet');
               }
-            }}>
+            }}
+          >
             <Column full justifyCenter>
               <Text text={t('keystone_wallet')} size="sm" />
             </Column>
@@ -79,7 +83,8 @@ export default function AddKeyringScreen() {
                 justifyCenter
                 onClick={() => {
                   navigate('CreateColdWalletScreen');
-                }}>
+                }}
+              >
                 <Column full justifyCenter>
                   <Text text={t('create_cold_wallet')} size="sm" />
                 </Column>
@@ -91,5 +96,3 @@ export default function AddKeyringScreen() {
     </Layout>
   );
 }
-
-

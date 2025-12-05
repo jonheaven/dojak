@@ -68,7 +68,8 @@ function SortableContactItem({ contact, index }: { contact: ContactBookItem; ind
           cursor: isDragging ? 'grabbing' : 'default',
           border: isDragging ? `1px solid ${colors.gold}` : 'none',
           boxShadow: isDragging ? '0 0 10px rgba(0, 0, 0, 0.3)' : 'none'
-        }}>
+        }}
+      >
         <Row full justifyBetween itemsCenter>
           <Row itemsCenter gap="md">
             <Image src={chainInfo.icon} size={30} />
@@ -125,7 +126,8 @@ function SortableContactItem({ contact, index }: { contact: ContactBookItem; ind
                   touchAction: 'none',
                   backgroundColor: 'transparent',
                   borderRadius: '4px'
-                }}>
+                }}
+              >
                 <Icon icon="sortTop" size={20} color="textDim" />
               </div>
             )}
@@ -141,7 +143,8 @@ function SortableContactItem({ contact, index }: { contact: ContactBookItem; ind
                 touchAction: 'none',
                 backgroundColor: isDragging ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                 borderRadius: '4px'
-              }}>
+              }}
+            >
               <Icon icon="sortDrag" size={20} color="textDim" />
             </div>
           </Row>
@@ -414,14 +417,16 @@ export default function ContactsScreen() {
           navigate(`/settings/contact/${contact.address}/${contact.chain}`, {
             state: { selectedNetworkFilter }
           })
-        }>
+        }
+      >
         <Card
           mt="md"
           style={{
             backgroundColor: '#1A1A1A',
             borderRadius: 12,
             padding: '12px 16px'
-          }}>
+          }}
+        >
           <Row full justifyBetween itemsCenter>
             <Row itemsCenter gap="md">
               <Image src={CHAINS_MAP[contact.chain].icon} size={30} />
@@ -470,7 +475,8 @@ export default function ContactsScreen() {
         style={{
           padding: '0 16px',
           background: isSidePanel ? 'black' : 'transparent'
-        }}>
+        }}
+      >
         <Row
           style={{
             border: `1px solid ${colors.gold}`,
@@ -480,7 +486,8 @@ export default function ContactsScreen() {
             opacity: 1
           }}
           onClick={isSortingMode ? undefined : () => setShowNetworkModal(true)}
-          itemsCenter>
+          itemsCenter
+        >
           <Image src={CHAINS_MAP[selectedNetworkFilter].icon} size={20} style={{ marginRight: 8 }} />
           <Text text={CHAINS_MAP[selectedNetworkFilter].label} color="gold" size="sm" />
           <Icon icon="down" size={14} color="gold" style={{ marginLeft: 8 }} />
@@ -498,7 +505,8 @@ export default function ContactsScreen() {
               cursor: 'pointer',
               backgroundColor: 'rgba(255, 255, 255, 0.06)'
             }}
-            onClick={toggleSortDirection}>
+            onClick={toggleSortDirection}
+          >
             <Icon icon="sortAddress" size={16} color="textDim" />
           </Row>
         ) : isSortingMode ? (
@@ -506,7 +514,8 @@ export default function ContactsScreen() {
             style={{
               height: 36,
               alignItems: 'center'
-            }}>
+            }}
+          >
             <Text
               text={t('cancel')}
               style={{
@@ -547,7 +556,8 @@ export default function ContactsScreen() {
                 height: 48,
                 width: '100%',
                 opacity: isSortingMode ? 0.5 : 1
-              }}>
+              }}
+            >
               <SearchOutlined style={{ color: '#888', marginRight: 8, fontSize: 20, display: 'flex' }} />
               <input
                 type="text"
@@ -583,10 +593,12 @@ export default function ContactsScreen() {
                     x: 0,
                     y: 0.2 // Start scrolling when drag target is at 20% of the viewport
                   }
-                }}>
+                }}
+              >
                 <SortableContext
                   items={orderedContacts.map((contact) => getContactId(contact))}
-                  strategy={verticalListSortingStrategy}>
+                  strategy={verticalListSortingStrategy}
+                >
                   <div
                     className="contacts-sortable-container"
                     style={{
@@ -594,7 +606,8 @@ export default function ContactsScreen() {
                       position: 'relative',
                       marginTop: spacing.small,
                       paddingBottom: spacing.large
-                    }}>
+                    }}
+                  >
                     {orderedContacts.map((contact, index) => (
                       <SortableContactItem key={getContactId(contact)} contact={contact} index={index} />
                     ))}
@@ -682,5 +695,3 @@ export default function ContactsScreen() {
     </Layout>
   );
 }
-
-

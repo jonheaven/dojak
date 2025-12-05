@@ -57,7 +57,7 @@ function PaymentItem({ channel, onClick }: { channel: DogeChannelItem; onClick: 
   );
 }
 
-export const BuyPEPModal = ({ onClose }: { onClose: () => void }) => {
+export const BuyDOGEModal = ({ onClose }: { onClose: () => void }) => {
   const [disclaimerModalVisible, setDisclaimerModalVisible] = useState(false);
   const [channelType, setChannelType] = useState<PaymentChannelType>(PaymentChannelType.AlchemyPay);
   const { t } = useI18n();
@@ -88,7 +88,8 @@ export const BuyPEPModal = ({ onClose }: { onClose: () => void }) => {
           <Row
             onClick={() => {
               onClose();
-            }}>
+            }}
+          >
             <CloseOutlined />
           </Row>
         </Row>
@@ -126,5 +127,3 @@ export const BuyPEPModal = ({ onClose }: { onClose: () => void }) => {
     </BottomModal>
   );
 };
-
-

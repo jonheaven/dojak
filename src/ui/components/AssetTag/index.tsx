@@ -4,7 +4,7 @@ import { Row } from '../Row';
 import { Text } from '../Text';
 
 export interface AssetTagProps {
-  type: 'DRC20' | 'ARC20' | 'Inscription' | 'Unconfirmed' | 'RUNES' | 'Charms';
+  type: 'DRC20' | 'ARC20' | 'Inscription' | 'Unconfirmed' | 'DUNES' | 'Charms';
   small?: boolean;
 }
 
@@ -13,7 +13,7 @@ const colors = {
   ARC20: '#2B4E8B',
   Inscription: '#62A759',
   Unconfirmed: '#BC9238',
-  RUNES: '#A14419',
+  DUNES: '#A14419',
   Charms: '#A14419'
 };
 
@@ -22,8 +22,8 @@ export default function AssetTag(props: AssetTagProps) {
   const { t } = useI18n();
 
   const displayText = () => {
-    if (type === 'RUNES') {
-      return t('runes');
+    if (type === 'DUNES') {
+      return t('dunes');
     } else if (type === 'Unconfirmed') {
       return t('unconfirmed');
     } else if (type === 'Inscription') {
@@ -37,10 +37,9 @@ export default function AssetTag(props: AssetTagProps) {
       style={{ backgroundColor: colors[type], borderRadius: small ? 4 : 5 }}
       px={small ? 'sm' : 'md'}
       py={small ? 'zero' : 'xs'}
-      itemsCenter>
+      itemsCenter
+    >
       <Text text={displayText()} size={small ? 'xxs' : 'xs'} />
     </Row>
   );
 }
-
-

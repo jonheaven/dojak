@@ -33,5 +33,3 @@ export type Size = keyof typeof sizes;
 export type Gap = keyof typeof spacingGap;
 
 export type Spacing = keyof typeof spacing;
-
-

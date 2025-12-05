@@ -53,7 +53,8 @@ export default function MultiQRDisplay({
             justifyContent: 'center',
             border: '2px dashed #ccc',
             borderRadius: '8px'
-          }}>
+          }}
+        >
           <Text text={`Part ${index + 1}\nData too long`} textCenter color="red" size="sm" />
         </div>
       );
@@ -97,7 +98,8 @@ export default function MultiQRDisplay({
           display: 'flex',
           gap: '4px',
           justifyContent: 'center'
-        }}>
+        }}
+      >
         {parts.map((_, index) => (
           <div
             key={index}
@@ -131,5 +133,3 @@ export default function MultiQRDisplay({
     </Column>
   );
 }
-
-

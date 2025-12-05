@@ -143,4 +143,3 @@ declare module 'bitcore-lib-doge' {
     preconditions: any;
   };
 }
-

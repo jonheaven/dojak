@@ -13,5 +13,3 @@ export const wait = (fn: () => void, ms = 1000) => {
     }, ms);
   });
 };
-
-

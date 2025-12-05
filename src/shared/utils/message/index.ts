@@ -81,5 +81,3 @@ abstract class Message extends EventEmitter {
 }
 
 export default Message;
-
-

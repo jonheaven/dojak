@@ -34,8 +34,8 @@ export interface Doginal {
 }
 
 export type DoginalProtocolTag =
-  | 'pepinal'
-  | 'pepemap'
+  | 'doginal'
+  | 'dogemap'
   | 'dns'
   | 'charms-token'
   | 'charms-nft'
@@ -61,7 +61,7 @@ export interface DoginalInsights {
 }
 
 export interface DoginalViewModel {
-  pepinal: Doginal;
+  doginal: Doginal;
   insights: DoginalInsights;
   pairedVideo?: Doginal;
 }
@@ -87,5 +87,3 @@ export interface DNSResolution {
   avatar?: string;
   config?: any;
 }
-
-

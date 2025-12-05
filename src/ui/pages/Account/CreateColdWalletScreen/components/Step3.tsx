@@ -193,7 +193,8 @@ export default function Step3({ onBack, contextData }: Step3Props) {
                 style={{
                   padding: '16px 12px 8px 12px',
                   borderBottom: `1px solid ${colors.line}`
-                }}>
+                }}
+              >
                 <Text
                   text={getAddressTypeLabel()}
                   size="xs"
@@ -236,5 +237,3 @@ export default function Step3({ onBack, contextData }: Step3Props) {
     </Layout>
   );
 }
-
-

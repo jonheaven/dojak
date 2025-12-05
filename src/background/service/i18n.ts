@@ -20,5 +20,3 @@ const i18nCompatObject = {
 export { getCurrentLocale, t };
 
 export default i18nCompatObject;
-
-

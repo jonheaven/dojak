@@ -83,5 +83,3 @@ const InputsList = ({ txInfo, t, address, btcUnit, dunesPriceMap, setContractPop
 };
 
 export default InputsList;
-
-

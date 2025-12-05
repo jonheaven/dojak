@@ -54,9 +54,7 @@ export function Switch({
           borderRadius: '50%',
           position: 'absolute',
           top: '50%',
-          left: checked
-            ? `${config.width - config.dotSize - 2}px`
-            : '2px',
+          left: checked ? `${config.width - config.dotSize - 2}px` : '2px',
           transform: 'translateY(-50%)',
           transition: 'left 0.3s ease',
           boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
@@ -69,5 +67,3 @@ export function Switch({
 export function Skeleton(props: any) {
   return <div />;
 }
-
-

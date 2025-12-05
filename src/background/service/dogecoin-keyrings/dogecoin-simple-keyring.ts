@@ -1,29 +1,27 @@
 /**
  * Dojak Wallet - Dogecoin Simple Keyring
  * Native Dogecoin simple keyring for direct private key management
- * 
- * This is a purpose-built Dogecoin keyring using bitcore-lib-doge
- * for correct WIF encoding and address derivation.
+ *
+ * Uses bitcoinjs-lib for address derivation (service worker compatible)
+ * and bitcore-lib-doge only for message signing/WIF export
  */
-
-import { EventEmitter } from 'events';
 import * as bitcoin from 'bitcoinjs-lib';
 import { ECPairFactory, ECPairInterface } from 'ecpair';
+import { EventEmitter } from 'events';
 import * as ecc from 'tiny-secp256k1';
 
-import {
-  KeyringInterface,
-  SerializedSimpleKeyring,
-  ToSignInput,
-  DogecoinNetworkType,
-  KEYRING_TYPE,
-} from './types';
 import { dogecoinMainnet, dogecoinTestnet } from '@/shared/lib/dogecoin-network';
+
+import { KeyringInterface, SerializedSimpleKeyring, ToSignInput, DogecoinNetworkType, KEYRING_TYPE } from './types';
+
+// Initialize bitcoinjs-lib with the ECC library (required for v6+)
+bitcoin.initEccLib(ecc);
 
 // Initialize ECPair with secp256k1
 const ECPair = ECPairFactory(ecc);
 
-// Lazy load bitcore-lib-doge
+// Lazy load bitcore-lib-doge ONLY for message signing and WIF export
+// (it requires DOM access so can't be used for address derivation in service workers)
 let bitcoreLibDoge: any = null;
 
 async function getBitcoreLibDoge() {
@@ -48,11 +46,10 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
   private wallets: WalletEntry[] = [];
   private networkType: DogecoinNetworkType = 'mainnet';
 
-  constructor(privateKeys?: string[]) {
+  constructor() {
     super();
-    if (privateKeys && privateKeys.length > 0) {
-      this.deserialize({ type: KEYRING_TYPE.SimpleKeyring, privateKeys });
-    }
+    // Note: Don't deserialize in constructor - it's async!
+    // Caller must explicitly call: await keyring.deserialize(opts)
   }
 
   /**
@@ -79,7 +76,7 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
   async serialize(): Promise<SerializedSimpleKeyring> {
     return {
       type: KEYRING_TYPE.SimpleKeyring,
-      privateKeys: this.wallets.map(w => w.privateKeyHex),
+      privateKeys: this.wallets.map((w) => w.privateKeyHex)
     };
   }
 
@@ -99,6 +96,7 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
   /**
    * Add a private key to the keyring
    * Supports: Dogecoin WIF, Bitcoin WIF (converted), or raw hex
+   * Uses bitcoinjs-lib for address derivation (service worker compatible)
    */
   private async _addPrivateKey(privateKey: string): Promise<WalletEntry> {
     const network = this.getNetwork();
@@ -118,7 +116,7 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
         messagePrefix: '\x18Bitcoin Signed Message:\n',
         pubKeyHash: 0x00,
         scriptHash: 0x05,
-        bech32: 'bc',
+        bech32: 'bc'
       };
       const tempKeyPair = ECPair.fromWIF(privateKey, bitcoinNetwork);
       privateKeyHex = tempKeyPair.privateKey!.toString('hex');
@@ -131,14 +129,14 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
     } else {
       throw new Error(
         'Invalid private key format. Provide a Dogecoin WIF (starts with Q), ' +
-        'Bitcoin WIF (starts with 5/K/L), or 64-character hex string.'
+          'Bitcoin WIF (starts with 5/K/L), or 64-character hex string.'
       );
     }
 
-    // Derive Dogecoin address
+    // Use bitcoinjs-lib for address derivation (service worker compatible)
     const { address } = bitcoin.payments.p2pkh({
       pubkey: keyPair.publicKey,
-      network,
+      network
     });
 
     if (!address) {
@@ -149,11 +147,11 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
       publicKey: keyPair.publicKey.toString('hex'),
       keyPair,
       address,
-      privateKeyHex,
+      privateKeyHex
     };
 
     // Check for duplicates
-    const existing = this.wallets.find(w => w.publicKey === entry.publicKey);
+    const existing = this.wallets.find((w) => w.publicKey === entry.publicKey);
     if (existing) {
       return existing;
     }
@@ -164,19 +162,20 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
 
   /**
    * Refresh addresses when network changes
+   * Uses bitcore-lib-doge for address derivation (matches dogemarketplace)
    */
   private _refreshAddresses(): void {
     const network = this.getNetwork();
-    
+
     for (const wallet of this.wallets) {
       // Re-create keyPair with new network
       const privateKeyBuffer = Buffer.from(wallet.privateKeyHex, 'hex');
       wallet.keyPair = ECPair.fromPrivateKey(privateKeyBuffer, { network });
 
-      // Re-derive address
+      // Re-derive address using bitcoinjs-lib (service worker compatible)
       const { address } = bitcoin.payments.p2pkh({
         pubkey: wallet.keyPair.publicKey,
-        network,
+        network
       });
 
       if (address) {
@@ -191,8 +190,7 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
   private _isDogecoinWIF(str: string): boolean {
     // Dogecoin mainnet WIF: starts with Q (compressed) or 6 (uncompressed)
     // Dogecoin testnet WIF: starts with c (compressed) or 9 (uncompressed)
-    return /^[Q6][a-km-zA-HJ-NP-Z1-9]{50,51}$/.test(str) ||
-           /^[c9][a-km-zA-HJ-NP-Z1-9]{50,51}$/.test(str);
+    return /^[Q6][a-km-zA-HJ-NP-Z1-9]{50,51}$/.test(str) || /^[c9][a-km-zA-HJ-NP-Z1-9]{50,51}$/.test(str);
   }
 
   /**
@@ -212,6 +210,7 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
 
   /**
    * Add accounts (generates random keys - not typically used)
+   * Uses bitcore-lib-doge for address derivation (matches dogemarketplace)
    */
   async addAccounts(numberOfAccounts: number = 1): Promise<string[]> {
     const network = this.getNetwork();
@@ -221,9 +220,10 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
       const keyPair = ECPair.makeRandom({ network });
       const privateKeyHex = keyPair.privateKey!.toString('hex');
 
+      // Use bitcoinjs-lib for address derivation (service worker compatible)
       const { address } = bitcoin.payments.p2pkh({
         pubkey: keyPair.publicKey,
-        network,
+        network
       });
 
       if (!address) {
@@ -234,7 +234,7 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
         publicKey: keyPair.publicKey.toString('hex'),
         keyPair,
         address,
-        privateKeyHex,
+        privateKeyHex
       };
 
       this.wallets.push(entry);
@@ -248,17 +248,15 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
    * Get all account public keys
    */
   async getAccounts(): Promise<string[]> {
-    return this.wallets.map(w => w.publicKey);
+    return this.wallets.map((w) => w.publicKey);
   }
 
   /**
    * Remove an account by address or public key
    */
   removeAccount(addressOrPubkey: string): void {
-    const index = this.wallets.findIndex(
-      w => w.address === addressOrPubkey || w.publicKey === addressOrPubkey
-    );
-    
+    const index = this.wallets.findIndex((w) => w.address === addressOrPubkey || w.publicKey === addressOrPubkey);
+
     if (index !== -1) {
       this.wallets.splice(index, 1);
     }
@@ -268,7 +266,7 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
    * Export private key as WIF
    */
   async exportAccount(publicKeyHex: string): Promise<string> {
-    const wallet = this.wallets.find(w => w.publicKey === publicKeyHex);
+    const wallet = this.wallets.find((w) => w.publicKey === publicKeyHex);
     if (!wallet) {
       throw new Error('Account not found');
     }
@@ -276,10 +274,8 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
     // Use bitcore-lib-doge for correct WIF encoding
     const bitcore = await getBitcoreLibDoge();
     const { PrivateKey, Networks } = bitcore;
-    
-    Networks.defaultNetwork = this.networkType === 'testnet' 
-      ? Networks.testnet 
-      : Networks.mainnet;
+
+    Networks.defaultNetwork = this.networkType === 'testnet' ? Networks.testnet : Networks.mainnet;
 
     const privKey = new PrivateKey(wallet.privateKeyHex);
     return privKey.toWIF();
@@ -290,7 +286,7 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
    */
   async signTransaction(psbt: bitcoin.Psbt, inputs: ToSignInput[]): Promise<bitcoin.Psbt> {
     for (const input of inputs) {
-      const wallet = this.wallets.find(w => w.publicKey === input.publicKey);
+      const wallet = this.wallets.find((w) => w.publicKey === input.publicKey);
       if (!wallet) {
         throw new Error(`No key found for input ${input.index}`);
       }
@@ -305,21 +301,19 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
    * Sign a message
    */
   async signMessage(publicKeyHex: string, message: string): Promise<string> {
-    const wallet = this.wallets.find(w => w.publicKey === publicKeyHex);
+    const wallet = this.wallets.find((w) => w.publicKey === publicKeyHex);
     if (!wallet) {
       throw new Error('Account not found');
     }
 
     const bitcore = await getBitcoreLibDoge();
     const { PrivateKey, Message, Networks } = bitcore;
-    
-    Networks.defaultNetwork = this.networkType === 'testnet' 
-      ? Networks.testnet 
-      : Networks.mainnet;
+
+    Networks.defaultNetwork = this.networkType === 'testnet' ? Networks.testnet : Networks.mainnet;
 
     const privKey = new PrivateKey(wallet.privateKeyHex);
     const messageObj = new Message(message);
-    
+
     return messageObj.sign(privKey);
   }
 
@@ -330,10 +324,8 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
     try {
       const bitcore = await getBitcoreLibDoge();
       const { Message, Networks } = bitcore;
-      
-      Networks.defaultNetwork = this.networkType === 'testnet' 
-        ? Networks.testnet 
-        : Networks.mainnet;
+
+      Networks.defaultNetwork = this.networkType === 'testnet' ? Networks.testnet : Networks.mainnet;
 
       const messageObj = new Message(message);
       return messageObj.verify(address, signature);
@@ -346,18 +338,18 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
    * Get address for a public key
    */
   getAddressFromPublicKey(publicKeyHex: string): string {
-    const wallet = this.wallets.find(w => w.publicKey === publicKeyHex);
+    const wallet = this.wallets.find((w) => w.publicKey === publicKeyHex);
     if (wallet) {
       return wallet.address;
     }
 
-    // Derive address from public key if not in wallet
+    // Derive address from public key using bitcoinjs-lib (service worker compatible)
     const network = this.getNetwork();
     const publicKeyBuffer = Buffer.from(publicKeyHex, 'hex');
-    
+
     const { address } = bitcoin.payments.p2pkh({
       pubkey: publicKeyBuffer,
-      network,
+      network
     });
 
     if (!address) {
@@ -369,4 +361,3 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
 }
 
 export default DogecoinSimpleKeyring;
-

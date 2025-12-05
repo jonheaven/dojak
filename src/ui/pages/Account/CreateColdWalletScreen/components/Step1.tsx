@@ -133,5 +133,3 @@ export default function Step1({ onNext }: Step1Props) {
     </Layout>
   );
 }
-
-

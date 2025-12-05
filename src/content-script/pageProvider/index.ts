@@ -3,19 +3,19 @@ import { ethErrors, serializeError } from 'eth-rpc-errors';
 import { EventEmitter } from 'events';
 
 import {
-    RequestMethodGetBitcoinUtxosParams,
-    RequestMethodGetInscriptionsParams,
-    RequestMethodInscribeTransferParams,
-    RequestMethodSendBitcoinParams,
-    RequestMethodSendDunesParams,
-    RequestMethodSendInscriptionParams,
-    RequestMethodSignMessageParams,
-    RequestMethodSignMessagesParams,
-    TxType
+  RequestMethodGetBitcoinUtxosParams,
+  RequestMethodGetInscriptionsParams,
+  RequestMethodInscribeTransferParams,
+  RequestMethodSendBitcoinParams,
+  RequestMethodSendDunesParams,
+  RequestMethodSendInscriptionParams,
+  RequestMethodSignMessageParams,
+  RequestMethodSignMessagesParams,
+  TxType
 } from '@/shared/types';
 import { objToUint8Array } from '@/shared/utils';
 import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMessage';
-import { CosmosChainInfo } from '@unisat/PepStake-service';
+import { CosmosChainInfo } from '@unisat/Steak-service';
 
 import PushEventHandlers from './pushEventHandlers';
 import ReadyPromise from './readyPromise';
@@ -373,7 +373,7 @@ export class dojakProvider extends EventEmitter {
         amount,
         feeRate: options?.feeRate
       },
-      type: TxType.SEND_RUNES
+      type: TxType.SEND_DUNES
     };
     return this[requestMethodKey]({
       method: 'sendDunes',
@@ -604,7 +604,7 @@ class DojakEthereumProvider extends dojakProvider {
       const result = await super.request(args);
       if (result && Array.isArray(result)) {
         // Filter to only P... addresses (Dogecoin addresses)
-        return result.filter(addr => typeof addr === 'string' && addr.startsWith('P'));
+        return result.filter((addr) => typeof addr === 'string' && addr.startsWith('P'));
       }
       return result;
     }
@@ -638,5 +638,3 @@ if (!window.ethereum) {
 }
 
 window.dispatchEvent(new Event('dojak#initialized'));
-
-

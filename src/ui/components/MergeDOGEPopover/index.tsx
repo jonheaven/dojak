@@ -5,10 +5,10 @@ import { useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChain } from '@/ui/state/settings/hooks';
 import {
-    useFetchUtxosCallback,
-    usePrepareSendPEPCallback,
-    useSafeBalance,
-    useUtxos
+  useFetchUtxosCallback,
+  usePrepareSendDOGECallback,
+  useSafeBalance,
+  useUtxos
 } from '@/ui/state/transactions/hooks';
 import { amountToSatoshis } from '@/ui/utils';
 
@@ -20,8 +20,8 @@ import { Popover } from '../Popover';
 import { Row } from '../Row';
 import { Text } from '../Text';
 
-export const MergePEPPopover = ({ onClose }: { onClose: () => void }) => {
-  const prepareSendPEP = usePrepareSendPEPCallback();
+export const MergeDOGEPopover = ({ onClose }: { onClose: () => void }) => {
+  const prepareSendDOGE = usePrepareSendDOGECallback();
   const { t } = useI18n();
 
   const currentAccount = useCurrentAccount();
@@ -46,7 +46,7 @@ export const MergePEPPopover = ({ onClose }: { onClose: () => void }) => {
   const navigate = useNavigate();
   const onConfirm = async () => {
     try {
-      const rawTxInfo = await prepareSendPEP({
+      const rawTxInfo = await prepareSendDOGE({
         toAddressInfo: {
           address: currentAccount.address
         },
@@ -109,5 +109,3 @@ export const MergePEPPopover = ({ onClose }: { onClose: () => void }) => {
     </Popover>
   );
 };
-
-

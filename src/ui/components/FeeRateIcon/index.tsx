@@ -58,11 +58,13 @@ export function FeeRateIcon() {
         borderRadius: 8,
         padding: '2px 4px',
         gap: 2
-      }}>
+      }}
+    >
       <Row
         onClick={() => {
           setFeeOptionVisible(true);
-        }}>
+        }}
+      >
         <Icon icon="gas" />
         <Text text={feeRate > 0 ? feeRate : '-'} size="xxs" color={color as any} />
       </Row>
@@ -100,7 +102,8 @@ function FeeOptionsPopover({ feeOptions, onClose }: { feeOptions: FeeOption[]; o
                 backgroundColor: 'rgba(255,255,255,0.08)',
                 borderBottomColor: colors.transparent,
                 borderBottomWidth: 0.2
-              }}>
+              }}
+            >
               <Row justifyBetween full itemsCenter>
                 <Column>
                   <Text color={'textDim'} size="sm" text={t(FEE_TITLES[i] || v.title)}></Text>
@@ -118,5 +121,3 @@ function FeeOptionsPopover({ feeOptions, onClose }: { feeOptions: FeeOption[]; o
     </Popover>
   );
 }
-
-

@@ -8,13 +8,7 @@ export interface SpinProps {
   className?: string;
 }
 
-export function Spin({
-  size = 'default',
-  spinning = true,
-  children,
-  style,
-  className
-}: SpinProps) {
+export function Spin({ size = 'default', spinning = true, children, style, className }: SpinProps) {
   // Size configurations
   const sizeConfig = {
     small: { size: 16, strokeWidth: 2 },
@@ -62,9 +56,7 @@ export function Spin({
   if (children) {
     return (
       <div style={{ position: 'relative', ...style }}>
-        <div style={{ opacity: spinning ? 0.5 : 1 }}>
-          {children}
-        </div>
+        <div style={{ opacity: spinning ? 0.5 : 1 }}>{children}</div>
         {spinning && (
           <div
             style={{
@@ -93,5 +85,3 @@ export function Spin({
 
   return spinnerElement;
 }
-
-

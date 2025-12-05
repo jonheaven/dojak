@@ -52,5 +52,3 @@ export const objToUint8Array = (obj) => {
   }
   return Uint8Array.from(arr);
 };
-
-

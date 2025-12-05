@@ -7,7 +7,7 @@ import { AppState } from '..';
 import { useCurrentAccount, useCurrentAddress } from '../accounts/hooks';
 import { useAppDispatch, useAppSelector } from '../hooks';
 import { useChainType, useNetworkType } from '../settings/hooks';
-import { AssetTabKey, uiActions } from './reducer';
+import { AssetTabKey, InscriptionFilterKey, uiActions } from './reducer';
 
 export function useUIState(): AppState['ui'] {
   return useAppSelector((state) => state.ui);
@@ -18,19 +18,14 @@ export function useAssetTabKey() {
   return uiState.assetTabKey;
 }
 
-export function useDoginalsAssetTabKey() {
+export function useInscriptionFilter() {
   const uiState = useUIState();
-  return uiState.doginalsAssetTabKey;
+  return uiState.inscriptionFilter;
 }
 
-export function usePepStakeAssetTabKey() {
+export function useSteakAssetTabKey() {
   const uiState = useUIState();
-  return uiState.pepStakeAssetTabKey;
-}
-
-export function useCharmsAssetTabKey() {
-  const uiState = useUIState();
-  return uiState.charmsAssetTabKey;
+  return uiState.steakAssetTabKey;
 }
 
 export function useUiTxCreateScreen() {
@@ -64,34 +59,24 @@ export function useResetUiTxCreateScreen() {
 
 export function useSupportedAssets() {
   const chainType = useChainType();
-  const currentAddress = useCurrentAddress();
-  const networkType = useNetworkType();
-  const currentAccount = useCurrentAccount();
 
   const assetTabKeys: AssetTabKey[] = [];
   const assets = {
-    doginals: false,
-    dunes: false,
-    Charms: false,
-    PepStake: false,
-    Feels: false
+    inscriptions: true, // Always show inscriptions tab
+    steak: false,
+    woof: true // Woof is always available
   };
 
-  assets.doginals = true;
-  assetTabKeys.push(AssetTabKey.doginals);
+  // Inscriptions tab is always available (contains Doginals, DRC20, Dunes, Charms)
+  assetTabKeys.push(AssetTabKey.INSCRIPTIONS);
 
-  assets.dunes = true;
-  assetTabKeys.push(AssetTabKey.RUNES);
+  // Woof is always available
+  assetTabKeys.push(AssetTabKey.WOOF);
 
-  assets.Feels = true;
-  assetTabKeys.push(AssetTabKey.FEELS);
-
+  // Steak is only available on mainnet
   if (chainType === ChainType.BITCOIN_MAINNET) {
-    assets.Charms = true;
-    assetTabKeys.push(AssetTabKey.Charms);
-
-    assets.PepStake = true;
-    assetTabKeys.push(AssetTabKey.PEPSTAKE);
+    assets.steak = true;
+    assetTabKeys.push(AssetTabKey.STEAK);
   }
 
   return {
@@ -99,6 +84,25 @@ export function useSupportedAssets() {
     assets,
     key: assetTabKeys.join(',')
   };
+}
+
+// Get available inscription filter options based on chain
+export function useSupportedInscriptionFilters() {
+  const chainType = useChainType();
+
+  const filters: InscriptionFilterKey[] = [
+    InscriptionFilterKey.ALL,
+    InscriptionFilterKey.DOGINALS,
+    InscriptionFilterKey.DRC20,
+    InscriptionFilterKey.DUNES
+  ];
+
+  // Charms only on mainnet
+  if (chainType === ChainType.BITCOIN_MAINNET) {
+    filters.push(InscriptionFilterKey.CHARMS);
+  }
+
+  return filters;
 }
 
 export const useIsInExpandView = () => {
@@ -110,5 +114,3 @@ export const useIsInExpandView = () => {
     }
   }, [window.innerWidth]);
 };
-
-

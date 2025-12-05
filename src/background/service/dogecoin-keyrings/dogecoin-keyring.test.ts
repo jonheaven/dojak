@@ -1,22 +1,22 @@
 /**
  * Dojak Wallet - Dogecoin Keyring Tests
- * 
+ *
  * These tests verify that our native Dogecoin keyring implementation
  * produces the same addresses and WIF keys as the working dogemarketplace
  * browser wallet implementation.
- * 
+ *
  * Test Methodology:
  * 1. Use the same mnemonic phrase
  * 2. Derive using the same HD path (m/44'/3'/0'/0/0)
  * 3. Compare resulting addresses and WIF keys
  */
-
 import * as bip39 from 'bip39';
 import * as bitcoin from 'bitcoinjs-lib';
 import { ECPairFactory } from 'ecpair';
 import * as ecc from 'tiny-secp256k1';
 
 import { dogecoinMainnet, dogecoinTestnet } from '@/shared/lib/dogecoin-network';
+
 import { DogecoinHdKeyring } from './dogecoin-hd-keyring';
 import { DogecoinSimpleKeyring } from './dogecoin-simple-keyring';
 
@@ -34,7 +34,7 @@ describe('Dogecoin HD Keyring', () => {
         mnemonic: TEST_MNEMONIC,
         hdPath: TEST_HD_PATH,
         passphrase: '',
-        activeIndexes: [0],
+        activeIndexes: [0]
       });
       keyring.setNetwork('mainnet');
 
@@ -46,7 +46,7 @@ describe('Dogecoin HD Keyring', () => {
 
       // Address should start with 'D' for Dogecoin mainnet
       expect(address).toMatch(/^D[a-km-zA-HJ-NP-Z1-9]{33}$/);
-      
+
       console.log('Derived address from mnemonic:', address);
       console.log('Public key:', publicKey);
     });
@@ -57,7 +57,7 @@ describe('Dogecoin HD Keyring', () => {
         mnemonic: TEST_MNEMONIC,
         hdPath: TEST_HD_PATH,
         passphrase: '',
-        activeIndexes: [0],
+        activeIndexes: [0]
       });
       keyring.setNetwork('mainnet');
 
@@ -66,7 +66,7 @@ describe('Dogecoin HD Keyring', () => {
 
       // Dogecoin mainnet compressed WIF starts with 'Q'
       expect(wif).toMatch(/^Q[a-km-zA-HJ-NP-Z1-9]{51}$/);
-      
+
       console.log('Exported WIF:', wif);
     });
 
@@ -76,7 +76,7 @@ describe('Dogecoin HD Keyring', () => {
         mnemonic: TEST_MNEMONIC,
         hdPath: TEST_HD_PATH,
         passphrase: '',
-        activeIndexes: [0, 1, 2],
+        activeIndexes: [0, 1, 2]
       });
       keyring.setNetwork('mainnet');
 
@@ -84,11 +84,11 @@ describe('Dogecoin HD Keyring', () => {
       expect(accounts).toHaveLength(3);
 
       // All addresses should be unique and start with 'D'
-      const addresses = accounts.map(pk => keyring.getAddressFromPublicKey(pk));
+      const addresses = accounts.map((pk) => keyring.getAddressFromPublicKey(pk));
       const uniqueAddresses = new Set(addresses);
       expect(uniqueAddresses.size).toBe(3);
-      
-      addresses.forEach(addr => {
+
+      addresses.forEach((addr) => {
         expect(addr).toMatch(/^D[a-km-zA-HJ-NP-Z1-9]{33}$/);
       });
 
@@ -101,7 +101,7 @@ describe('Dogecoin HD Keyring', () => {
         mnemonic: TEST_MNEMONIC,
         hdPath: TEST_HD_PATH,
         passphrase: '',
-        activeIndexes: [0],
+        activeIndexes: [0]
       });
       keyringWithoutPassphrase.setNetwork('mainnet');
 
@@ -110,7 +110,7 @@ describe('Dogecoin HD Keyring', () => {
         mnemonic: TEST_MNEMONIC,
         hdPath: TEST_HD_PATH,
         passphrase: 'test passphrase',
-        activeIndexes: [0],
+        activeIndexes: [0]
       });
       keyringWithPassphrase.setNetwork('mainnet');
 
@@ -129,7 +129,7 @@ describe('Dogecoin HD Keyring', () => {
         mnemonic: TEST_MNEMONIC,
         hdPath: TEST_HD_PATH,
         passphrase: '',
-        activeIndexes: [0],
+        activeIndexes: [0]
       });
       keyring.setNetwork('testnet');
 
@@ -138,7 +138,7 @@ describe('Dogecoin HD Keyring', () => {
 
       // Testnet addresses start with 'n' or 'm'
       expect(address).toMatch(/^[nm][a-km-zA-HJ-NP-Z1-9]{33}$/);
-      
+
       console.log('Testnet address:', address);
     });
 
@@ -148,7 +148,7 @@ describe('Dogecoin HD Keyring', () => {
         mnemonic: TEST_MNEMONIC,
         hdPath: TEST_HD_PATH,
         passphrase: '',
-        activeIndexes: [0],
+        activeIndexes: [0]
       });
       keyring.setNetwork('testnet');
 
@@ -157,7 +157,7 @@ describe('Dogecoin HD Keyring', () => {
 
       // Dogecoin testnet compressed WIF starts with 'c'
       expect(wif).toMatch(/^c[a-km-zA-HJ-NP-Z1-9]{51}$/);
-      
+
       console.log('Testnet WIF:', wif);
     });
   });
@@ -169,12 +169,12 @@ describe('Dogecoin HD Keyring', () => {
         mnemonic: TEST_MNEMONIC,
         hdPath: TEST_HD_PATH,
         passphrase: '',
-        activeIndexes: [0, 1],
+        activeIndexes: [0, 1]
       });
       keyring.setNetwork('mainnet');
 
       const serialized = await keyring.serialize();
-      
+
       // Create new keyring from serialized data
       const restoredKeyring = new DogecoinHdKeyring();
       await restoredKeyring.deserialize(serialized);
@@ -195,11 +195,11 @@ describe('Dogecoin Simple Keyring', () => {
       const privateKeyHex = '1234567890123456789012345678901234567890123456789012345678901234';
       const privateKeyBuffer = Buffer.from(privateKeyHex, 'hex');
       const keyPair = ECPair.fromPrivateKey(privateKeyBuffer, { network: dogecoinMainnet });
-      
+
       // Get the address for verification
       const { address: expectedAddress } = bitcoin.payments.p2pkh({
         pubkey: keyPair.publicKey,
-        network: dogecoinMainnet,
+        network: dogecoinMainnet
       });
 
       // Create keyring from hex private key
@@ -220,7 +220,7 @@ describe('Dogecoin Simple Keyring', () => {
       // Bitcoin mainnet WIF (starts with 5, K, or L)
       // This is a made-up test key - don't use in production
       const bitcoinWif = '5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ';
-      
+
       // This should convert the Bitcoin WIF to Dogecoin
       const keyring = new DogecoinSimpleKeyring([bitcoinWif]);
       keyring.setNetwork('mainnet');
@@ -230,13 +230,13 @@ describe('Dogecoin Simple Keyring', () => {
 
       // Should produce a Dogecoin address
       expect(address).toMatch(/^D/);
-      
+
       console.log('Converted Bitcoin WIF to Dogecoin address:', address);
     });
 
     it('should export WIF with correct Dogecoin prefix', async () => {
       const privateKeyHex = '1234567890123456789012345678901234567890123456789012345678901234';
-      
+
       const keyring = new DogecoinSimpleKeyring([privateKeyHex]);
       keyring.setNetwork('mainnet');
 
@@ -245,7 +245,7 @@ describe('Dogecoin Simple Keyring', () => {
 
       // Should be a Dogecoin mainnet WIF (Q prefix for compressed)
       expect(wif).toMatch(/^Q/);
-      
+
       console.log('Exported Dogecoin WIF:', wif);
     });
   });
@@ -253,12 +253,12 @@ describe('Dogecoin Simple Keyring', () => {
   describe('Serialization', () => {
     it('should serialize and deserialize correctly', async () => {
       const privateKeyHex = '1234567890123456789012345678901234567890123456789012345678901234';
-      
+
       const keyring = new DogecoinSimpleKeyring([privateKeyHex]);
       keyring.setNetwork('mainnet');
 
       const serialized = await keyring.serialize();
-      
+
       const restoredKeyring = new DogecoinSimpleKeyring();
       await restoredKeyring.deserialize(serialized);
       restoredKeyring.setNetwork('mainnet');
@@ -292,7 +292,7 @@ describe('Network Configuration', () => {
     const keyPair = ECPair.makeRandom({ network: dogecoinMainnet });
     const { address } = bitcoin.payments.p2pkh({
       pubkey: keyPair.publicKey,
-      network: dogecoinMainnet,
+      network: dogecoinMainnet
     });
 
     expect(address).toMatch(/^D/);
@@ -302,7 +302,7 @@ describe('Network Configuration', () => {
     const keyPair = ECPair.makeRandom({ network: dogecoinTestnet });
     const { address } = bitcoin.payments.p2pkh({
       pubkey: keyPair.publicKey,
-      network: dogecoinTestnet,
+      network: dogecoinTestnet
     });
 
     expect(address).toMatch(/^[nm]/);
@@ -314,17 +314,16 @@ describe('Comparison with Known Values', () => {
     // This test uses a known Dogecoin WIF and its expected address
     // WIF: QSqwEtXQmnS35xKZPfaKCnnHAuKRL4FbcXAAfceQkDjsBfmgZTWP
     // Expected address: DNvgXMDbV3uB9cD4MNqbFhWqAQvokTekJp
-    
+
     const wif = 'QSqwEtXQmnS35xKZPfaKCnnHAuKRL4FbcXAAfceQkDjsBfmgZTWP';
     const expectedAddress = 'DNvgXMDbV3uB9cD4MNqbFhWqAQvokTekJp';
 
     const keyPair = ECPair.fromWIF(wif, dogecoinMainnet);
     const { address } = bitcoin.payments.p2pkh({
       pubkey: keyPair.publicKey,
-      network: dogecoinMainnet,
+      network: dogecoinMainnet
     });
 
     expect(address).toBe(expectedAddress);
   });
 });
-

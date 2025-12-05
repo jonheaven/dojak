@@ -35,7 +35,8 @@ export const VersionNotice = ({ notice, onClose }: VersionNoticeProps) => {
         flexDirection: 'column',
         justifyContent: 'space-between',
         padding: 0
-      }}>
+      }}
+    >
       <Column style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'center' }} gap="md">
         <div
           style={{
@@ -45,7 +46,8 @@ export const VersionNotice = ({ notice, onClose }: VersionNoticeProps) => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center'
-          }}>
+          }}
+        >
           <Icon icon="version-notice" size={90} />
         </div>
         <div
@@ -63,12 +65,14 @@ export const VersionNotice = ({ notice, onClose }: VersionNoticeProps) => {
             fontWeight: 500,
             lineHeight: 'normal',
             margin: '0 auto'
-          }}>
+          }}
+        >
           {title}
         </div>
         <Column
           gap="sm"
-          style={{ width: '100%', margin: '16px 0 24px 0', alignItems: 'center', height: 72, overflowY: 'auto' }}>
+          style={{ width: '100%', margin: '16px 0 24px 0', alignItems: 'center', height: 72, overflowY: 'auto' }}
+        >
           {features.map((f, i) => (
             <div
               key={i}
@@ -86,7 +90,8 @@ export const VersionNotice = ({ notice, onClose }: VersionNoticeProps) => {
                 lineHeight: '20px',
                 textAlign: 'left',
                 margin: '0 auto'
-              }}>
+              }}
+            >
               <span
                 style={{
                   display: 'inline-block',
@@ -110,5 +115,3 @@ export const VersionNotice = ({ notice, onClose }: VersionNoticeProps) => {
     </Popover>
   );
 };
-
-

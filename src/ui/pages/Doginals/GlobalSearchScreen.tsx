@@ -1,13 +1,13 @@
-import { AppstoreOutlined, DollarOutlined, GlobalOutlined, SearchOutlined } from '@ant-design/icons';
 import { Avatar, Button, Card, Empty, Input, List, Spin, Tabs, Tag } from 'antd';
 import { useState } from 'react';
 
 import { useWallet } from '@/ui/utils';
+import { AppstoreOutlined, DollarOutlined, GlobalOutlined, SearchOutlined } from '@ant-design/icons';
 
 const { TabPane } = Tabs;
 
 interface SearchResult {
-  type: 'pepinal' | 'token' | 'domain' | 'charm';
+  type: 'doginal' | 'token' | 'domain' | 'charm';
   data: any;
 }
 
@@ -69,34 +69,29 @@ export const GlobalSearchScreen = () => {
     }
   };
 
-  const renderDoginalResult = (pepinal: any) => (
+  const renderDoginalResult = (doginal: any) => (
     <List.Item
-      key={pepinal.id}
+      key={doginal.id}
       className="hover:bg-[#1a1a1a] cursor-pointer"
-      onClick={() => window.open(`https://pepeblocks.com/inscription/${pepinal.inscriptionId}`, '_blank')}
+      onClick={() => window.open(`https://dojak.com/inscription/${doginal.inscriptionId}`, '_blank')}
     >
       <List.Item.Meta
         avatar={
-          <Avatar
-            src={pepinal.content}
-            shape="square"
-            size={48}
-            style={{ background: '#262222' }}
-          >
+          <Avatar src={doginal.content} shape="square" size={48} style={{ background: '#262222' }}>
             🐸
           </Avatar>
         }
         title={
           <div className="flex items-center gap-2">
-            <span className="text-white">Doginal #{pepinal.id}</span>
-            <Tag color={getRarityColor(pepinal.rarity)} size="small">
-              {pepinal.rarity}
+            <span className="text-white">Doginal #{doginal.id}</span>
+            <Tag color={getRarityColor(doginal.rarity)} size="small">
+              {doginal.rarity}
             </Tag>
           </div>
         }
         description={
           <div className="text-gray-400 text-sm">
-            {pepinal.contentType} • Score: {pepinal.rarityScore}
+            {doginal.contentType} • Score: {doginal.rarityScore}
           </div>
         }
       />
@@ -107,9 +102,7 @@ export const GlobalSearchScreen = () => {
     <List.Item key={token.ticker}>
       <List.Item.Meta
         avatar={<DollarOutlined className="text-[#069420] text-xl" />}
-        title={
-          <span className="text-white font-medium">{token.name || token.ticker}</span>
-        }
+        title={<span className="text-white font-medium">{token.name || token.ticker}</span>}
         description={
           <div className="text-gray-400 text-sm">
             Ticker: {token.ticker} • Supply: {token.supply || 'N/A'}
@@ -123,14 +116,8 @@ export const GlobalSearchScreen = () => {
     <List.Item key={domain.name}>
       <List.Item.Meta
         avatar={<GlobalOutlined className="text-[#2196F3] text-xl" />}
-        title={
-          <span className="text-white font-medium">{domain.name}.pepe</span>
-        }
-        description={
-          <div className="text-gray-400 text-sm font-mono">
-            {domain.address}
-          </div>
-        }
+        title={<span className="text-white font-medium">{domain.name}.doge</span>}
+        description={<div className="text-gray-400 text-sm font-mono">{domain.address}</div>}
       />
     </List.Item>
   );
@@ -142,7 +129,9 @@ export const GlobalSearchScreen = () => {
         title={
           <div className="flex items-center gap-2">
             <span className="text-white">{charm.name}</span>
-            <Tag color="orange" size="small">{charm.app}</Tag>
+            <Tag color="orange" size="small">
+              {charm.app}
+            </Tag>
           </div>
         }
         description={
@@ -156,12 +145,18 @@ export const GlobalSearchScreen = () => {
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
-      case 'common': return 'default';
-      case 'uncommon': return 'yellow';
-      case 'rare': return 'blue';
-      case 'epic': return 'purple';
-      case 'legendary': return 'orange';
-      default: return 'default';
+      case 'common':
+        return 'default';
+      case 'uncommon':
+        return 'yellow';
+      case 'rare':
+        return 'blue';
+      case 'epic':
+        return 'purple';
+      case 'legendary':
+        return 'orange';
+      default:
+        return 'default';
     }
   };
 
@@ -199,58 +194,65 @@ export const GlobalSearchScreen = () => {
         </div>
       ) : (
         <Tabs defaultActiveKey="all" className="search-results-tabs">
-          <TabPane tab={`All (${results.doginals.length + results.tokens.length + results.domains.length + results.charms.length})`} key="all">
+          <TabPane
+            tab={`All (${
+              results.doginals.length + results.tokens.length + results.domains.length + results.charms.length
+            })`}
+            key="all"
+          >
             <div className="space-y-4">
               {results.doginals.length > 0 && (
-                <Card title={`🐸 Doginals (${results.doginals.length})`} size="small" className="bg-[#262222] border-[#333]">
-                  <List
-                    dataSource={results.doginals.slice(0, 5)}
-                    renderItem={renderDoginalResult}
-                  />
+                <Card
+                  title={`🐸 Doginals (${results.doginals.length})`}
+                  size="small"
+                  className="bg-[#262222] border-[#333]"
+                >
+                  <List dataSource={results.doginals.slice(0, 5)} renderItem={renderDoginalResult} />
                 </Card>
               )}
 
               {results.tokens.length > 0 && (
-                <Card title={`💰 Tokens (${results.tokens.length})`} size="small" className="bg-[#262222] border-[#333]">
-                  <List
-                    dataSource={results.tokens.slice(0, 5)}
-                    renderItem={renderTokenResult}
-                  />
+                <Card
+                  title={`💰 Tokens (${results.tokens.length})`}
+                  size="small"
+                  className="bg-[#262222] border-[#333]"
+                >
+                  <List dataSource={results.tokens.slice(0, 5)} renderItem={renderTokenResult} />
                 </Card>
               )}
 
               {results.domains.length > 0 && (
-                <Card title={`🌐 Domains (${results.domains.length})`} size="small" className="bg-[#262222] border-[#333]">
-                  <List
-                    dataSource={results.domains}
-                    renderItem={renderDomainResult}
-                  />
+                <Card
+                  title={`🌐 Domains (${results.domains.length})`}
+                  size="small"
+                  className="bg-[#262222] border-[#333]"
+                >
+                  <List dataSource={results.domains} renderItem={renderDomainResult} />
                 </Card>
               )}
 
               {results.charms.length > 0 && (
-                <Card title={`✨ Charms (${results.charms.length})`} size="small" className="bg-[#262222] border-[#333]">
-                  <List
-                    dataSource={results.charms.slice(0, 5)}
-                    renderItem={renderCharmResult}
-                  />
+                <Card
+                  title={`✨ Charms (${results.charms.length})`}
+                  size="small"
+                  className="bg-[#262222] border-[#333]"
+                >
+                  <List dataSource={results.charms.slice(0, 5)} renderItem={renderCharmResult} />
                 </Card>
               )}
 
-              {results.doginals.length === 0 && results.tokens.length === 0 &&
-               results.domains.length === 0 && results.charms.length === 0 && searchTerm && (
-                <Empty description="No results found" className="text-gray-400" />
-              )}
+              {results.doginals.length === 0 &&
+                results.tokens.length === 0 &&
+                results.domains.length === 0 &&
+                results.charms.length === 0 &&
+                searchTerm && <Empty description="No results found" className="text-gray-400" />}
             </div>
           </TabPane>
 
           <TabPane tab={`🐸 Doginals (${results.doginals.length})`} key="doginals">
             <Card className="bg-[#262222] border-[#333]">
               {results.doginals.length > 0 ? (
-                <List
-                  dataSource={results.doginals}
-                  renderItem={renderDoginalResult}
-                />
+                <List dataSource={results.doginals} renderItem={renderDoginalResult} />
               ) : (
                 <Empty description="No Doginals found" className="text-gray-400" />
               )}
@@ -260,10 +262,7 @@ export const GlobalSearchScreen = () => {
           <TabPane tab={`💰 Tokens (${results.tokens.length})`} key="tokens">
             <Card className="bg-[#262222] border-[#333]">
               {results.tokens.length > 0 ? (
-                <List
-                  dataSource={results.tokens}
-                  renderItem={renderTokenResult}
-                />
+                <List dataSource={results.tokens} renderItem={renderTokenResult} />
               ) : (
                 <Empty description="No tokens found" className="text-gray-400" />
               )}
@@ -273,10 +272,7 @@ export const GlobalSearchScreen = () => {
           <TabPane tab={`🌐 Domains (${results.domains.length})`} key="domains">
             <Card className="bg-[#262222] border-[#333]">
               {results.domains.length > 0 ? (
-                <List
-                  dataSource={results.domains}
-                  renderItem={renderDomainResult}
-                />
+                <List dataSource={results.domains} renderItem={renderDomainResult} />
               ) : (
                 <Empty description="No domains found" className="text-gray-400" />
               )}
@@ -286,10 +282,7 @@ export const GlobalSearchScreen = () => {
           <TabPane tab={`✨ Charms (${results.charms.length})`} key="charms">
             <Card className="bg-[#262222] border-[#333]">
               {results.charms.length > 0 ? (
-                <List
-                  dataSource={results.charms}
-                  renderItem={renderCharmResult}
-                />
+                <List dataSource={results.charms} renderItem={renderCharmResult} />
               ) : (
                 <Empty description="No charms found" className="text-gray-400" />
               )}

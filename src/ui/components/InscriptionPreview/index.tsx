@@ -144,9 +144,10 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
       return true;
     }
     // Check content type or other metadata
-    return data.contentType === 'application/json' &&
-           (data.content?.includes?.('"protocol": "charms"') ||
-            data.content?.includes?.('"type": "charms"'));
+    return (
+      data.contentType === 'application/json' &&
+      (data.content?.includes?.('"protocol": "charms"') || data.content?.includes?.('"type": "charms"'))
+    );
   };
 
   const handleBeam = () => {
@@ -204,7 +205,8 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
       <Column
         gap="zero"
         onClick={onClick}
-        style={Object.assign({ position: 'relative', width: '100%' }, $containerPresets[preset])}>
+        style={Object.assign({ position: 'relative', width: '100%' }, $containerPresets[preset])}
+      >
         {isVisible ? (
           <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', fontSize: 0, lineHeight: 0 }}>
             <Iframe preview={preview} style={$iframePresets[preset]} onLoad={handleIframeLoaded} />
@@ -219,7 +221,8 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
-                }}>
+                }}
+              >
                 <LoadingOutlined />
               </div>
             )}
@@ -234,7 +237,8 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
               justifyContent: 'center',
               fontSize: 0,
               lineHeight: 0
-            }}></div>
+            }}
+          ></div>
         )}
 
         {data.outputValue && !hideValue ? (
@@ -302,7 +306,8 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
                   title={`${t('the_utxo_containing_this_inscription_has')} ${data.outputValue} sats`}
                   overlayStyle={{
                     fontSize: fontSizes.xs
-                  }}>
+                  }}
+                >
                   <div>
                     <Text
                       text={valueText}
@@ -335,7 +340,8 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
               width: '100%',
               marginTop: -1,
               fontSize: 0
-            }}>
+            }}
+          >
             <Text text={numberStr} color="gold" size={$numberPresets[preset] as any} max1Lines />
             {isUnconfirmed == false && data.timestamp && (
               <Text text={time} preset="sub" size={$timePresets[preset] as any} />
@@ -344,13 +350,7 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
         )}
       </Column>
 
-      <BeamCharmModal
-        inscription={data}
-        visible={showBeamModal}
-        onClose={() => setShowBeamModal(false)}
-      />
+      <BeamCharmModal inscription={data} visible={showBeamModal} onClose={() => setShowBeamModal(false)} />
     </div>
   );
 }
-
-

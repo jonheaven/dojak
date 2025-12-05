@@ -341,7 +341,7 @@ class ProviderController extends BaseController {
   getBitcoinUtxos = async () => {
     const account = await wallet.getCurrentAccount();
     if (!account) return [];
-    const utxos = await wallet.getPEPUtxos()
+    const utxos = await wallet.getDOGEUtxos()
     return utxos;
   };
 

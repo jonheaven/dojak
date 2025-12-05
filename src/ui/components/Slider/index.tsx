@@ -1,4 +1,5 @@
 import React, { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+
 import { colors } from '@/ui/theme/colors';
 
 interface SliderProps {
@@ -117,37 +118,49 @@ export function Slider({
   }, [value]);
 
   // Normalize value to percentage (0-1)
-  const normalizeValue = useCallback((val: number) => {
-    return Math.max(0, Math.min(1, (val - min) / (max - min)));
-  }, [min, max]);
+  const normalizeValue = useCallback(
+    (val: number) => {
+      return Math.max(0, Math.min(1, (val - min) / (max - min)));
+    },
+    [min, max]
+  );
 
   // Denormalize percentage to actual value
-  const denormalizeValue = useCallback((percentage: number) => {
-    const val = min + percentage * (max - min);
-    return Math.round(val / step) * step;
-  }, [min, max, step]);
+  const denormalizeValue = useCallback(
+    (percentage: number) => {
+      const val = min + percentage * (max - min);
+      return Math.round(val / step) * step;
+    },
+    [min, max, step]
+  );
 
   // Get value from mouse position
-  const getValueFromPosition = useCallback((clientX: number) => {
-    if (!trackRef.current) return internalValue;
+  const getValueFromPosition = useCallback(
+    (clientX: number) => {
+      if (!trackRef.current) return internalValue;
 
-    const rect = trackRef.current.getBoundingClientRect();
-    const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    return denormalizeValue(percentage);
-  }, [denormalizeValue, internalValue]);
+      const rect = trackRef.current.getBoundingClientRect();
+      const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      return denormalizeValue(percentage);
+    },
+    [denormalizeValue, internalValue]
+  );
 
   // Handle mouse events
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (disabled) return;
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (disabled) return;
 
-    e.preventDefault();
-    setIsDragging(true);
-    setShowTooltip(true);
+      e.preventDefault();
+      setIsDragging(true);
+      setShowTooltip(true);
 
-    const newValue = getValueFromPosition(e.clientX);
-    setInternalValue(newValue);
-    onChange?.(newValue);
-  }, [disabled, getValueFromPosition, onChange]);
+      const newValue = getValueFromPosition(e.clientX);
+      setInternalValue(newValue);
+      onChange?.(newValue);
+    },
+    [disabled, getValueFromPosition, onChange]
+  );
 
   // Global mouse move and up handlers
   useEffect(() => {
@@ -175,14 +188,17 @@ export function Slider({
   }, [isDragging, getValueFromPosition, onChange, onAfterChange, internalValue]);
 
   // Handle track click
-  const handleTrackClick = useCallback((e: React.MouseEvent) => {
-    if (disabled || isDragging) return;
+  const handleTrackClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (disabled || isDragging) return;
 
-    const newValue = getValueFromPosition(e.clientX);
-    setInternalValue(newValue);
-    onChange?.(newValue);
-    onAfterChange?.(newValue);
-  }, [disabled, isDragging, getValueFromPosition, onChange, onAfterChange]);
+      const newValue = getValueFromPosition(e.clientX);
+      setInternalValue(newValue);
+      onChange?.(newValue);
+      onAfterChange?.(newValue);
+    },
+    [disabled, isDragging, getValueFromPosition, onChange, onAfterChange]
+  );
 
   const percentage = normalizeValue(internalValue);
   const thumbPosition = `${percentage * 100}%`;
@@ -197,11 +213,7 @@ export function Slider({
         ...style
       }}
     >
-      <div
-        ref={trackRef}
-        style={$sliderTrack}
-        onClick={handleTrackClick}
-      >
+      <div ref={trackRef} style={$sliderTrack} onClick={handleTrackClick}>
         <div
           style={{
             ...$sliderFilled,
@@ -218,30 +230,25 @@ export function Slider({
           onMouseEnter={() => setShowTooltip(tooltipVisible)}
           onMouseLeave={() => !isDragging && setShowTooltip(false)}
         >
-          {(showTooltip || tooltipVisible) && (
-            <div style={$sliderTooltip}>
-              {tooltipFormatter(internalValue)}
-            </div>
-          )}
+          {(showTooltip || tooltipVisible) && <div style={$sliderTooltip}>{tooltipFormatter(internalValue)}</div>}
         </div>
       </div>
 
-      {marks && Object.entries(marks).map(([markValue, label]) => {
-        const markPercentage = normalizeValue(Number(markValue));
-        return (
-          <div
-            key={markValue}
-            style={{
-              ...$sliderMark,
-              left: `${markPercentage * 100}%`
-            }}
-          >
-            {typeof label === 'string' ? label : label}
-          </div>
-        );
-      })}
+      {marks &&
+        Object.entries(marks).map(([markValue, label]) => {
+          const markPercentage = normalizeValue(Number(markValue));
+          return (
+            <div
+              key={markValue}
+              style={{
+                ...$sliderMark,
+                left: `${markPercentage * 100}%`
+              }}
+            >
+              {typeof label === 'string' ? label : label}
+            </div>
+          );
+        })}
     </div>
   );
 }
-
-

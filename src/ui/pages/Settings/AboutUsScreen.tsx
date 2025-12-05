@@ -86,7 +86,8 @@ export default function AboutUsScreen() {
                   whiteSpace: 'nowrap',
                   gap: 0
                 }}
-                onClick={() => window.open('https://dojak.dog/extension/update')}>
+                onClick={() => window.open('https://dojak.dog/extension/update')}
+              >
                 <Icon icon="arrowUp" size={14} />
                 <Text
                   text={t('new_update_available')}
@@ -106,7 +107,8 @@ export default function AboutUsScreen() {
                 borderRadius: '12px',
                 background: 'rgba(255, 255, 255, 0.06)',
                 margin: '0 auto'
-              }}>
+              }}
+            >
               <Row
                 style={{
                   width: '100%',
@@ -115,7 +117,8 @@ export default function AboutUsScreen() {
                   cursor: 'pointer',
                   height: '52px'
                 }}
-                onClick={() => window.open(TERMS_OF_SERVICE_URL)}>
+                onClick={() => window.open(TERMS_OF_SERVICE_URL)}
+              >
                 <Row style={{ justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                   <Text text={t('terms_of_service')} preset="regular" size="sm" style={{ color: 'white' }} />
                   <Icon icon="arrow-right" size={20} color="textDim" />
@@ -128,7 +131,8 @@ export default function AboutUsScreen() {
                   cursor: 'pointer',
                   height: '52px'
                 }}
-                onClick={() => window.open(PRIVACY_POLICY_URL)}>
+                onClick={() => window.open(PRIVACY_POLICY_URL)}
+              >
                 <Row style={{ justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                   <Text text={t('privacy_policy')} preset="regular" size="sm" style={{ color: 'white' }} />
                   <Icon icon="arrow-right" size={20} color="textDim" />
@@ -141,5 +145,3 @@ export default function AboutUsScreen() {
     </Layout>
   );
 }
-
-

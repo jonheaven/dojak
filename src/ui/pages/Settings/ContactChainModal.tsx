@@ -39,7 +39,8 @@ function ChainItem(props: {
         }
         props.onSelect(props.chainType);
         props.onClose();
-      }}>
+      }}
+    >
       <Row fullX justifyBetween itemsCenter>
         <Row itemsCenter>
           <Image src={chain.icon} size={30} style={{ opacity: chain.disable ? 0.7 : 1 }} />
@@ -81,7 +82,8 @@ function ChainGroup(props: {
           mt="lg"
           onClick={() => {
             setFolded(!folded);
-          }}>
+          }}
+        >
           <Column fullX gap="zero">
             <Row fullX justifyBetween itemsCenter>
               <Row itemsCenter>
@@ -149,7 +151,8 @@ export const ContactChainModal = ({
           <Row
             onClick={() => {
               onClose();
-            }}>
+            }}
+          >
             <CloseOutlined />
           </Row>
         </Row>
@@ -167,7 +170,8 @@ export const ContactChainModal = ({
                 backgroundColor: 'rgba(255,255,255,0.1)',
                 marginTop: 12
               }}
-              onClick={handleSelectAll}>
+              onClick={handleSelectAll}
+            >
               <Row fullX justifyBetween itemsCenter>
                 <Row itemsCenter>
                   <Icon icon="bitcoin" size={30} color="gold" />
@@ -191,5 +195,3 @@ export const ContactChainModal = ({
     </BottomModal>
   );
 };
-
-

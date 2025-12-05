@@ -5,7 +5,7 @@ import { CopyableAddress } from '@/ui/components/CopyableAddress';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { AmountItem, HistoryItem } from '@/ui/pages/Wallet/HistoryScreen/index';
 import { useChain } from '@/ui/state/settings/hooks';
-import { satoshisToPEP } from '@/ui/utils';
+import { satoshisToDOGE } from '@/ui/utils';
 
 interface HistoryDetailProps {
   detail: HistoryItem;
@@ -23,7 +23,8 @@ export function HistoryDetail({ detail, close }: HistoryDetailProps) {
         top: 0,
         left: 0,
         backgroundColor: 'black'
-      }}>
+      }}
+    >
       <Header onBack={close} title="Transaction Details" />
       <Content>
         <Card style={{ justifyContent: 'stretch' }} mt={'lg'}>
@@ -75,7 +76,7 @@ export function HistoryDetail({ detail, close }: HistoryDetailProps) {
               {/*  <Text text={'Outputs'} color={'textDim'} />*/}
               {/*  <Row>*/}
               {/*    <Text*/}
-              {/*      text={`${Number(Math.abs(satoshisToPEP(detail.outputValue))).toLocaleString('en', { minimumFractionDigits: 8 })}`}*/}
+              {/*      text={`${Number(Math.abs(satoshisToDOGE(detail.outputValue))).toLocaleString('en', { minimumFractionDigits: 8 })}`}*/}
               {/*    ></Text>*/}
               {/*    <Text text={'DOGE'} color={'textDim'} />*/}
               {/*  </Row>*/}
@@ -84,9 +85,10 @@ export function HistoryDetail({ detail, close }: HistoryDetailProps) {
                 <Text text={'Network fee'} color={'textDim'} />
                 <Row>
                   <Text
-                    text={`${Number(Math.abs(satoshisToPEP(detail.fee))).toLocaleString('en', {
+                    text={`${Number(Math.abs(satoshisToDOGE(detail.fee))).toLocaleString('en', {
                       minimumFractionDigits: 8
-                    })}`}></Text>
+                    })}`}
+                  ></Text>
                   <Text text={'DOGE'} color={'textDim'} />
                 </Row>
               </Row>
@@ -138,5 +140,3 @@ export function HistoryDetail({ detail, close }: HistoryDetailProps) {
     </Layout>
   );
 }
-
-

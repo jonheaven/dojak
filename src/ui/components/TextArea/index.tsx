@@ -30,5 +30,3 @@ export function TextArea(props: TextAreaProps) {
     </BaseView>
   );
 }
-
-

@@ -29,5 +29,3 @@ export function Grid(props: GridProps) {
   );
   return <div style={$style}>{children}</div>;
 }
-
-

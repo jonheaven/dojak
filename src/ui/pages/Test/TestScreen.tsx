@@ -5,7 +5,7 @@ import { NetworkType, ToAddressInfo, TxType } from '@/shared/types';
 import { Card, Column, Content, Input, Layout, Text } from '@/ui/components';
 import { AddressDetailPopover } from '@/ui/components/AddressDetailPopover';
 import { AddressText } from '@/ui/components/AddressText';
-import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
+import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { RemoveWalletPopover } from '@/ui/components/RemoveWalletPopover';
 import { SignPsbtWithRisksPopover } from '@/ui/components/SignPsbtWithRisksPopover';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
@@ -39,28 +39,32 @@ export default function TestScreen() {
           <Card
             onClick={() => {
               navigateOrigin('/test-cosmos-sign');
-            }}>
+            }}
+          >
             <Text text="Cosmos Sign Demo" />
           </Card>
 
           <Card
             onClick={() => {
               setTestComponent('signPsbt');
-            }}>
+            }}
+          >
             <Text text="Test Approval Sign PSBT" />
           </Card>
 
           <Card
             onClick={() => {
               setTestComponent('multiSignMessage');
-            }}>
+            }}
+          >
             <Text text="Test Multi Sign Message" />
           </Card>
 
           <Card
             onClick={() => {
               setTestComponent('CharmsSign');
-            }}>
+            }}
+          >
             <Text text="Test Charms Sign" />
           </Card>
         </Column>
@@ -148,7 +152,8 @@ function TestButton() {
     <Card
       onClick={() => {
         //tpdp
-      }}>
+      }}
+    >
       <Text text="HELLO" />
       <Text text="WORLD" />
     </Card>
@@ -336,17 +341,17 @@ function TestTxFailed() {
 
 function TestAddressTypeCard() {
   const items = [
-    { address: 'bc1qm72q6wrjy05h9fhu9gury67356nrcnvdd6853x', path: 'm/84\'/0\'/0\'/0/0', satoshis: 100 }
+    { address: 'bc1qm72q6wrjy05h9fhu9gury67356nrcnvdd6853x', path: "m/84'/0'/0'/0/0", satoshis: 100 }
     // { address: 'bc1qug97mq778xeusw66z559uuwcyt7kxsmarrvl90', path: "m/84'/0'/0'/0/1" }
   ];
   return (
     <Layout>
       <Content>
         <Column my="md" mt="md">
-          <AddressTypeCard2 label="Native Segwit (P2WPKH)" items={items} checked />
-          <AddressTypeCard2 label="Nested Segwit (P2SH-P2WPKH)" items={items} checked={false} />
-          <AddressTypeCard2 label="Taproot (P2TR)" items={items} checked={false} />
-          <AddressTypeCard2 label="Legacy (P2PKH)" items={items} checked={false} />
+          <AddressTypeCard label="Native Segwit (P2WPKH)" items={items} checked />
+          <AddressTypeCard label="Nested Segwit (P2SH-P2WPKH)" items={items} checked={false} />
+          <AddressTypeCard label="Taproot (P2TR)" items={items} checked={false} />
+          <AddressTypeCard label="Legacy (P2PKH)" items={items} checked={false} />
         </Column>
       </Content>
     </Layout>
@@ -613,5 +618,3 @@ function TestCharmsSign() {
     />
   );
 }
-
-

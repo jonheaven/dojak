@@ -9,5 +9,3 @@ export enum KeystoneConnectionType {
   USB = 'USB',
   QR = 'QR'
 }
-
-

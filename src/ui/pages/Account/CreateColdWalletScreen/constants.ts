@@ -5,7 +5,7 @@ export const MIN_ACCOUNT_COUNT = 1;
 export const MAX_ACCOUNT_COUNT = 20;
 export const DEFAULT_DISPLAY_COUNT = 20;
 export const LOAD_MORE_BATCH_SIZE = 20;
-export const DEFAULT_HD_PATH = 'm/84\'/0\'/0\'';
+export const DEFAULT_HD_PATH = "m/84'/0'/0'";
 export const QR_SCANNER_SIZE = 360;
 
 // Styles
@@ -27,5 +27,3 @@ export const bitcoinIconStyle = {
   backgroundColor: '#f4b62c',
   borderRadius: '50%'
 } as const;
-
-

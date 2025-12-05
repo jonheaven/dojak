@@ -15,5 +15,3 @@ export default function KeystoneDisplay(props: { type: string; cbor: string }) {
     </div>
   );
 }
-
-

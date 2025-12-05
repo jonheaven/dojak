@@ -14,5 +14,3 @@ export function useCurrentKeyring() {
   const keyringsState = useKeyringsState();
   return keyringsState.current;
 }
-
-

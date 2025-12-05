@@ -13,7 +13,8 @@ const PsbtDataSection = ({ txInfo, t, tools }) => {
           copyToClipboard(txInfo.psbtHex).then(() => {
             tools.toastSuccess(t('copied'));
           });
-        }}>
+        }}
+      >
         <Text text={`${txInfo.psbtHex.length / 2} bytes`} color="textDim" />
         <Icon icon="copy" color="textDim" />
       </Row>
@@ -22,5 +23,3 @@ const PsbtDataSection = ({ txInfo, t, tools }) => {
 };
 
 export default PsbtDataSection;
-
-

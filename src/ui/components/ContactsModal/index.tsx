@@ -71,7 +71,8 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({ onClose, onSelect,
             style={{
               width: '100%',
               height: 1,
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              // Theme-aware divider
+              backgroundColor: 'var(--theme-border)',
               marginTop: 5,
               marginBottom: 10
             }}
@@ -79,16 +80,25 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({ onClose, onSelect,
 
           <div
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              // Theme-aware search field background and border
+              backgroundColor: 'var(--theme-surface)',
+              border: '1px solid var(--theme-border2)',
               borderRadius: 8,
               padding: '0 16px',
               display: 'flex',
               alignItems: 'center',
               height: 48,
               width: '100%'
-            }}>
-            <SearchOutlined style={{ color: '#888', marginRight: 8, fontSize: 20, display: 'flex' }} />
+            }}
+          >
+            <SearchOutlined
+              style={{
+                color: 'var(--theme-text-dim)',
+                marginRight: 8,
+                fontSize: 20,
+                display: 'flex'
+              }}
+            />
             <input
               type="text"
               placeholder={t('search_address_or_name')}
@@ -98,7 +108,8 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({ onClose, onSelect,
                 backgroundColor: 'transparent',
                 border: 'none',
                 outline: 'none',
-                color: '#fff',
+                // Theme-aware text color
+                color: 'var(--theme-text)',
                 fontSize: 16,
                 width: '100%',
                 height: '100%'
@@ -135,12 +146,14 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({ onClose, onSelect,
                   key={contact.address}
                   mt="md"
                   style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    // Theme-aware contact card background
+                    backgroundColor: 'var(--theme-card)',
                     borderRadius: 12,
                     padding: '12px 16px',
                     cursor: 'pointer'
                   }}
-                  onClick={() => onSelect(contact)}>
+                  onClick={() => onSelect(contact)}
+                >
                   <Row full justifyBetween itemsCenter>
                     <Row itemsCenter gap="md">
                       <Image src={CHAINS_MAP[contact.chain].icon} size={30} />
@@ -175,5 +188,3 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({ onClose, onSelect,
     </BottomModal>
   );
 };
-
-

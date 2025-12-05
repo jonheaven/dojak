@@ -63,7 +63,8 @@ const $baseContainerStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'row',
   alignItems: 'center',
-  backgroundColor: '#f8f9fa',
+  // Theme-aware container background so inputs look correct in both light and dark modes
+  backgroundColor: 'var(--theme-surface)',
   paddingLeft: 15.2,
   paddingRight: 15.2,
   paddingTop: 11,
@@ -72,7 +73,7 @@ const $baseContainerStyle: CSSProperties = {
   minHeight: '56.5px',
   alignSelf: 'stretch',
   borderWidth: 1,
-  borderColor: 'rgba(0, 0, 0, 0.2)'
+  borderColor: 'var(--theme-border)'
 };
 
 const $baseInputStyle: CSSProperties = Object.assign({}, $textPresets.regular, {
@@ -80,9 +81,10 @@ const $baseInputStyle: CSSProperties = Object.assign({}, $textPresets.regular, {
   flex: 1,
   borderWidth: 0,
   outlineWidth: 0,
-  backgroundColor: 'rgba(0,0,0,0)',
+  backgroundColor: 'transparent',
   alignSelf: 'stretch',
-  color: '#000000'
+  // Use theme text color
+  color: 'var(--theme-text)'
 });
 
 const $baseTextareaStyle: CSSProperties = Object.assign({}, $baseInputStyle, {
@@ -352,7 +354,8 @@ export const AddressInput = (props: InputProps) => {
           minHeight: '56.5px',
           paddingTop: 0,
           paddingBottom: 0
-        })}>
+        })}
+      >
         <Row full itemsCenter>
           <textarea
             placeholder={inputAddressPlaceholder}
@@ -402,7 +405,8 @@ export const AddressInput = (props: InputProps) => {
             borderRadius: 12,
             border: '1px solid rgba(245, 84, 84, 0.35)',
             background: 'rgba(245, 84, 84, 0.08)'
-          }}>
+          }}
+        >
           <Text text={addressTip} preset="regular" color="warning" />
         </Column>
       )}
@@ -518,7 +522,8 @@ function SearchInput(props: InputProps) {
           alignSelf: 'stretch'
         },
         containerStyle
-      )}>
+      )}
+    >
       <Row py={'md'} px={'lg'} full itemsCenter>
         <SearchOutlined style={{ color: '#888' }} />
         <input
@@ -540,7 +545,8 @@ function SearchInput(props: InputProps) {
           height: 42.5,
           width: 42.5,
           borderLeft: '1px solid #C08F23'
-        }}>
+        }}
+      >
         <ArrowRightOutlined style={{ color: 'rgba(255,255,255,.85)' }} />
       </Row>
     </Row>
@@ -581,5 +587,3 @@ export function Input(props: InputProps) {
     return <TextInput {...props} />;
   }
 }
-
-

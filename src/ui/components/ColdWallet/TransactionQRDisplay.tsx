@@ -126,7 +126,8 @@ export default function TransactionQRDisplay({ psbtHex, onSuccess, onCancel, hea
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto'
-              }}>
+              }}
+            >
               {currentQRData ? (
                 <>
                   <QRCode
@@ -149,7 +150,8 @@ export default function TransactionQRDisplay({ psbtHex, onSuccess, onCancel, hea
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '16px'
-                  }}>
+                  }}
+                >
                   <LoadingOutlined
                     style={{
                       fontSize: '32px',
@@ -187,5 +189,3 @@ export default function TransactionQRDisplay({ psbtHex, onSuccess, onCancel, hea
     </div>
   );
 }
-
-

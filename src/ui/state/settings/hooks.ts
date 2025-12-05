@@ -104,7 +104,7 @@ export function useChangeChainTypeCallback() {
   );
 }
 
-export function usePEPUnit() {
+export function useDOGEUnit() {
   const chainType = useChainType();
   return CHAINS_MAP[chainType].unit;
 }
@@ -146,7 +146,6 @@ export function useAddressExplorerUrl(address: string) {
     return `${chain.dojakExplorerUrl}/address/${address}`;
   }
 }
-
 
 export function usedojakWebsite() {
   const chainType = useChainType();
@@ -264,8 +263,6 @@ export function useDunesMarketPlaceWebsite(ticker: string) {
   return `${CHAINS_MAP[chainType].dojakUrl}/dunes/market?tick=${ticker}`;
 }
 
-
-
 export function useIsMainnetChain() {
   const chainType = useChainType();
   return chainType === ChainType.BITCOIN_MAINNET;
@@ -312,5 +309,3 @@ export function useSetThemeCallback() {
     [dispatch, wallet]
   );
 }
-
-

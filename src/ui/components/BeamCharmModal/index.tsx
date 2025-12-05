@@ -79,93 +79,97 @@ export function BeamCharmModal({ inscription, visible, onClose }: BeamCharmModal
     <BottomModal onClose={handleClose}>
       <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
         <Text text="🚀 Beam Charm" preset="title-bold" style={{ marginBottom: '20px', textAlign: 'center' }} />
-      <Column gap="lg">
-        <Text text={`Beam Charm: ${inscription.inscriptionId}`} preset="sub" />
+        <Column gap="lg">
+          <Text text={`Beam Charm: ${inscription.inscriptionId}`} preset="sub" />
 
-        {!beamStatus && (
-          <>
-            <Column gap="sm">
-              <Text text="Destination Chain" size="sm" />
-              <Row>
-                {['bitcoin', 'dogecoin', 'litecoin'].map((chain) => (
-                  <Button
-                    key={chain}
-                    text={chain.charAt(0).toUpperCase() + chain.slice(1)}
-                    preset={toChain === chain ? 'primary' : 'default'}
-                    onClick={() => setToChain(chain as any)}
-                    style={{ marginRight: 8 }}
-                  />
-                ))}
+          {!beamStatus && (
+            <>
+              <Column gap="sm">
+                <Text text="Destination Chain" size="sm" />
+                <Row>
+                  {['bitcoin', 'dogecoin', 'litecoin'].map((chain) => (
+                    <Button
+                      key={chain}
+                      text={chain.charAt(0).toUpperCase() + chain.slice(1)}
+                      preset={toChain === chain ? 'primary' : 'default'}
+                      onClick={() => setToChain(chain as any)}
+                      style={{ marginRight: 8 }}
+                    />
+                  ))}
+                </Row>
+              </Column>
+
+              <Column gap="sm">
+                <Text text={`Destination ${toChain.charAt(0).toUpperCase() + toChain.slice(1)} Address`} size="sm" />
+                <Input
+                  placeholder={`Enter ${toChain} address`}
+                  value={destAddress}
+                  onChange={(e) => setDestAddress(e.target.value)}
+                />
+              </Column>
+
+              <Row justifyCenter gap="md">
+                <Button text="Cancel" preset="default" onClick={handleClose} />
+                <Button
+                  text={isLoading ? 'Preparing...' : 'Prepare Beam'}
+                  preset="primary"
+                  onClick={handleBeam}
+                  disabled={isLoading || !destAddress}
+                />
               </Row>
-            </Column>
+            </>
+          )}
 
-            <Column gap="sm">
-              <Text text={`Destination ${toChain.charAt(0).toUpperCase() + toChain.slice(1)} Address`} size="sm" />
-              <Input
-                placeholder={`Enter ${toChain} address`}
-                value={destAddress}
-                onChange={(e) => setDestAddress(e.target.value)}
+          {beamStatus && !beamStatus.executed && (
+            <>
+              <Column gap="sm">
+                <Text text="Beam Prepared Successfully!" color="green" />
+                <Text text={`Beam ID: ${beamStatus.beamId}`} size="sm" />
+                <Text text={`From: Dogecoin → To: ${beamStatus.destChain}`} size="sm" />
+                <Text text={`Asset: ${beamStatus.asset}`} size="sm" />
+              </Column>
+
+              <Text
+                text="⚠️ This will lock your Charm on Dogecoin and mint it on the destination chain."
+                size="xs"
+                color="orange"
               />
-            </Column>
 
-            <Row justifyCenter gap="md">
-              <Button text="Cancel" preset="default" onClick={handleClose} />
-              <Button
-                text={isLoading ? "Preparing..." : "Prepare Beam"}
-                preset="primary"
-                onClick={handleBeam}
-                disabled={isLoading || !destAddress}
-              />
-            </Row>
-          </>
-        )}
+              <Row justifyCenter gap="md">
+                <Button text="Cancel" preset="default" onClick={handleClose} />
+                <Button
+                  text={isLoading ? 'Executing...' : 'Execute Beam'}
+                  preset="primary"
+                  onClick={handleExecuteBeam}
+                  disabled={isLoading}
+                />
+              </Row>
+            </>
+          )}
 
-        {beamStatus && !beamStatus.executed && (
-          <>
-            <Column gap="sm">
-              <Text text="Beam Prepared Successfully!" color="green" />
-              <Text text={`Beam ID: ${beamStatus.beamId}`} size="sm" />
-              <Text text={`From: Dogecoin → To: ${beamStatus.destChain}`} size="sm" />
-              <Text text={`Asset: ${beamStatus.asset}`} size="sm" />
-            </Column>
+          {beamStatus?.executed && (
+            <>
+              <Column gap="sm">
+                <Text text="🎉 Beam Completed Successfully!" color="green" />
+                <Text text={`Transaction ID: ${beamStatus.txid}`} size="sm" />
+                <Text text="Your Charm has been beamed to the destination chain!" size="sm" />
+              </Column>
 
-            <Text text="⚠️ This will lock your Charm on Dogecoin and mint it on the destination chain." size="xs" color="orange" />
+              <Row justifyCenter>
+                <Button text="Close" preset="primary" onClick={handleClose} />
+              </Row>
+            </>
+          )}
 
-            <Row justifyCenter gap="md">
-              <Button text="Cancel" preset="default" onClick={handleClose} />
-              <Button
-                text={isLoading ? "Executing..." : "Execute Beam"}
-                preset="primary"
-                onClick={handleExecuteBeam}
-                disabled={isLoading}
-              />
-            </Row>
-          </>
-        )}
-
-        {beamStatus?.executed && (
-          <>
-            <Column gap="sm">
-              <Text text="🎉 Beam Completed Successfully!" color="green" />
-              <Text text={`Transaction ID: ${beamStatus.txid}`} size="sm" />
-              <Text text="Your Charm has been beamed to the destination chain!" size="sm" />
-            </Column>
-
-            <Row justifyCenter>
-              <Button text="Close" preset="primary" onClick={handleClose} />
-            </Row>
-          </>
-        )}
-
-        {beamStatus?.error && (
-          <>
-            <Text text={`❌ Error: ${beamStatus.error}`} color="red" />
-            <Row justifyCenter>
-              <Button text="Close" preset="default" onClick={handleClose} />
-            </Row>
-          </>
-        )}
-      </Column>
+          {beamStatus?.error && (
+            <>
+              <Text text={`❌ Error: ${beamStatus.error}`} color="red" />
+              <Row justifyCenter>
+                <Button text="Close" preset="default" onClick={handleClose} />
+              </Row>
+            </>
+          )}
+        </Column>
       </div>
     </BottomModal>
   );

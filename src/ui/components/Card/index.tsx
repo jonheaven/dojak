@@ -54,5 +54,3 @@ export function Card(props: CardProps) {
   const $style = Object.assign({}, $viewPresets[preset || 'auto'], $styleOverride);
   return <BaseView style={$style} {...rest} />;
 }
-
-

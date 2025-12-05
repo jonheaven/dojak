@@ -21,5 +21,3 @@ const FeaturesSection = ({ txInfo, t }) => {
 };
 
 export default FeaturesSection;
-
-

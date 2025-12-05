@@ -24,7 +24,7 @@
   "atomicals": {
     "message": "Atomicals"
   },
-  "runes": {
+  "dunes": {
     "message": "符文"
   },
   "doginals": {
@@ -251,7 +251,7 @@
     "message": "啟用未確認餘額"
   },
   "enable_unconfirmed_balance_warning": {
-    "message": "如果檢測到給定地址中存在 Runes 資產，未確認的 UTXOs 將不允許花費，直到它被確認。強制花費這些未確認的 UTXOs 會有損失資產的風險。"
+    "message": "如果檢測到給定地址中存在 Dunes 資產，未確認的 UTXOs 將不允許花費，直到它被確認。強制花費這些未確認的 UTXOs 會有損失資產的風險。"
   },
   "allow_using_unconfirmed_balance": {
     "message": "允許使用未確認餘額"
@@ -392,7 +392,7 @@
     "message": "活躍地址數 (24小時)"
   },
   "go_to_unisat_explorer": {
-    "message": "前往 Pepeblocks"
+    "message": "前往 SoChain"
   },
   "search_address_and_txids": {
     "message": "搜尋地址和交易 ID"
@@ -630,8 +630,8 @@
   "tx_fee": {
     "message": "交易手續費："
   },
-  "t_baby": {
-    "message": "tBABY"
+  "t_jawn": {
+    "message": "tJAWN"
   },
   "send_to": {
     "message": "發送到"
@@ -639,8 +639,8 @@
   "send_amount": {
     "message": "發送金額"
   },
-  "how_to_import_baby": {
-    "message": "如何匯入 BABY"
+  "how_to_import_jawn": {
+    "message": "如何匯入 JAWN"
   },
   "click_the_account_on_the_main_page": {
     "message": "點擊主頁上的帳戶。"
@@ -648,17 +648,17 @@
   "tap_the_more_menu_then_select_the_export_private_key_option": {
     "message": "點擊「更多」選單，然後選擇「匯出私鑰」選項。"
   },
-  "once_you_have_your_hex_private_key_you_can_import_it_into_a_cosmos_compatible_wallet_to_access_your_babylon_reward_assets": {
-    "message": "獲得您的十六進位私鑰 (Hex) 後，您可以將其匯入與 COSMOS 相容的錢包，以存取您的 Babylon 獎勵資產。"
+  "once_you_have_your_hex_private_key_you_can_import_it_into_a_cosmos_compatible_wallet_to_access_your_jawnlon_reward_assets": {
+    "message": "獲得您的十六進位私鑰 (Hex) 後，您可以將其匯入與 COSMOS 相容的錢包，以存取您的 Jawntype 獎勵資產。"
   },
-  "babylon_bitcoin_staking": {
-    "message": "Babylon 比特幣質押"
+  "jawntype_bitcoin_staking": {
+    "message": "Jawntype 比特幣質押"
   },
-  "babylon_bitcoin_staking_phase1": {
-    "message": "Babylon 比特幣質押 第一階段"
+  "jawntype_bitcoin_staking_phase1": {
+    "message": "Jawntype 比特幣質押 第一階段"
   },
-  "babylon_bitcoin_staking_stats": {
-    "message": "Babylon 比特幣質押統計"
+  "jawntype_bitcoin_staking_stats": {
+    "message": "Jawntype 比特幣質押統計"
   },
   "closed": {
     "message": "已關閉"
@@ -669,8 +669,8 @@
   "staked": {
     "message": "已質押"
   },
-  "learn_how_to_import_your_babylon_reward_assets_into_a_cosmos_compatible_wallet": {
-    "message": "了解如何將您的 Babylon 獎勵資產匯入與 COSMOS 相容的錢包。"
+  "learn_how_to_import_your_jawnlon_reward_assets_into_a_cosmos_compatible_wallet": {
+    "message": "了解如何將您的 Jawntype 獎勵資產匯入與 COSMOS 相容的錢包。"
   },
   "unstake": {
     "message": "解除質押"
@@ -678,8 +678,8 @@
   "claimable": {
     "message": "可領取"
   },
-  "baby_rewards": {
-    "message": "BABY 獎勵"
+  "jawn_rewards": {
+    "message": "JAWN 獎勵"
   },
   "claim": {
     "message": "領取"
@@ -790,8 +790,8 @@
   "total": {
     "message": "總計"
   },
-  "baby_balance": {
-    "message": "BABY 餘額"
+  "jawn_balance": {
+    "message": "JAWN 餘額"
   },
   "failed_to_handle_signature": {
     "message": "處理簽章失敗"
@@ -1100,7 +1100,7 @@
   "sending_out_assets": {
     "message": "發送資產"
   },
-  "runes_burn_risk_list": {
+  "dunes_burn_risk_list": {
     "message": "符文銷毀風險清單"
   },
   "inscription_burn_risk_list": {
@@ -1178,7 +1178,7 @@
   "for_doginals_assets": {
     "message": "對於 Ordinals 資產，"
   },
-  "rare_sats": {
+  "rare_koinu": {
     "message": "稀有聰 (Rare sats)"
   },
   "are_not_supported": {
@@ -1361,7 +1361,7 @@
   "continue_to": {
     "message": "繼續前往"
   },
-  "send_runes": {
+  "send_dunes": {
     "message": "發送符文"
   },
   "send_atomicals_inscription": {
@@ -1373,8 +1373,8 @@
   "ordinals_inscriptions": {
     "message": "Ordinals 銘文"
   },
-  "babylon_staking": {
-    "message": "Babylon 質押"
+  "jawntype_staking": {
+    "message": "Jawntype 質押"
   },
   "confirmed_tvl": {
     "message": "已確認"
@@ -1472,7 +1472,7 @@
   "amount_must_be_at_least": {
     "message": "金額必須至少為"
   },
-  "includes_inscriptions_runes_and_unconfirmed_utxos": {
+  "includes_inscriptions_dunes_and_unconfirmed_utxos": {
     "message": "包含銘文、符文和未確認的 UTXO 資產。"
   },
   "future_versions_will_support_spending_these_assets": {
@@ -1556,7 +1556,7 @@
   "script": {
     "message": "腳本"
   },
-  "this_message_serves_as_a_notice_that_if_runes_assets_are_detected_in_your_address_your": {
+  "this_message_serves_as_a_notice_that_if_dunes_assets_are_detected_in_your_address_your": {
     "message": "此訊息用於通知，如果在您的地址中偵測到符文資產，您的未確認餘額將無法花費。您無需執行任何操作。"
   },
   "in_the_current_version_only_the_confirmed_balance_can_be_used_once_atomicals_enabled": {
@@ -1652,7 +1652,7 @@
   "address_or_name_fb": {
     "message": "地址或域名 (.fb)"
   },
-  "address_or_name_sats_unisat_etc": {
+  "address_or_name_dotdoge_dotdogecoin_etc": {
     "message": "地址或域名 (.sats, .unisat, ...)"
   },
   "does_not_exist": {
@@ -1919,50 +1919,50 @@
   "about_10_minutes": {
     "message": "約10分鐘"
   },
-  "babylon_bitcoin_staking_phase2": {
-    "message": "Babylon比特幣質押第二階段"
+  "jawntype_bitcoin_staking_phase2": {
+    "message": "Jawntype比特幣質押第二階段"
   },
-  "go_to_babylon": {
-    "message": "前往Babylon质押网站"
+  "go_to_jawnlon": {
+    "message": "前往Jawntype质押网站"
   },
-  "closed_babylon": {
+  "closed_jawnlon": {
     "message": "已關閉"
   },
-  "open_babylon": {
+  "open_jawnlon": {
     "message": "已開啟"
   },
-  "pending_babylon": {
+  "pending_jawnlon": {
     "message": "待開啟"
   },
-  "convert_baby_to_drc20": {
-    "message": "將 $BABY 轉換為 drc-20"
+  "convert_jawn_to_drc20": {
+    "message": "將 $JAWN 轉換為 drc-20"
   },
-  "you_are_about_to_convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "您即將把原生 BABY 轉換為 BTC drc-20 BABY。"
+  "you_are_about_to_convert_your_native_jawn_to_btc_drc20_jawn": {
+    "message": "您即將把原生 JAWN 轉換為 BTC drc-20 JAWN。"
   },
-  "once_the_conversion_is_complete_your_native_baby_cannot_be_restored": {
-    "message": "轉換完成後，您的原生 BABY 將無法恢復。"
+  "once_the_conversion_is_complete_your_native_jawn_cannot_be_restored": {
+    "message": "轉換完成後，您的原生 JAWN 將無法恢復。"
   },
   "do_you_confirm_the_conversion": {
     "message": "您確認要進行轉換嗎？"
   },
-  "transfer_baby_to_cosmos_wallet": {
-    "message": "將 $BABY 轉移到 Cosmos 錢包"
+  "transfer_jawn_to_cosmos_wallet": {
+    "message": "將 $JAWN 轉移到 Cosmos 錢包"
   },
   "do_you_confirm_the_transfer": {
     "message": "您確認要進行轉移嗎？"
   },
-  "you_are_about_to_transfer_your_native_baby_to_your_cosmos_wallet": {
-    "message": "您即將把原生 BABY 轉移到您的 Cosmos 錢包。"
+  "you_are_about_to_transfer_your_native_jawn_to_your_cosmos_wallet": {
+    "message": "您即將把原生 JAWN 轉移到您的 Cosmos 錢包。"
   },
-  "click_baby_to_drc20_coming_soon": {
-    "message": "點擊將 $BABY 轉換為 drc-20（即將推出）"
+  "click_jawn_to_drc20_coming_soon": {
+    "message": "點擊將 $JAWN 轉換為 drc-20（即將推出）"
   },
-  "convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "將您的原生 $BABY 代幣轉換為比特幣上的 drc-20 BABY。"
+  "convert_your_native_jawn_to_btc_drc20_jawn": {
+    "message": "將您的原生 $JAWN 代幣轉換為比特幣上的 drc-20 JAWN。"
   },
-  "transfer_your_baby_to_your_cosmos_wallet": {
-    "message": "將您的 $BABY 轉移到您的 Cosmos 錢包。"
+  "transfer_your_jawn_to_your_cosmos_wallet": {
+    "message": "將您的 $JAWN 轉移到您的 Cosmos 錢包。"
   },
   "password_error": {
     "message": "密碼錯誤"
@@ -2318,17 +2318,17 @@
   "changing_inscription_risk_description": {
     "message": "此交易涉及銘文更改。請確保您了解此操作的影響，然後再繼續。"
   },
-  "runes_burning_risk_title": {
-    "message": "偵測到Runes銷毀"
+  "dunes_burning_risk_title": {
+    "message": "偵測到Dunes銷毀"
   },
-  "runes_burning_risk_description": {
-    "message": "此交易涉及Runes銷毀。請確保您了解此操作的影響，然後再繼續。"
+  "dunes_burning_risk_description": {
+    "message": "此交易涉及Dunes銷毀。請確保您了解此操作的影響，然後再繼續。"
   },
-  "runes_multiple_assets_risk_title": {
-    "message": "偵測到多種Runes資產"
+  "dunes_multiple_assets_risk_title": {
+    "message": "偵測到多種Dunes資產"
   },
-  "runes_multiple_assets_risk_description": {
-    "message": "此交易涉及多種Runes資產。請確保您了解此操作的影響，然後再繼續。"
+  "dunes_multiple_assets_risk_description": {
+    "message": "此交易涉及多種Dunes資產。請確保您了解此操作的影響，然後再繼續。"
   },
   "indexer_api_down_risk_title": {
     "message": "索引器API已離線"
@@ -2336,11 +2336,11 @@
   "indexer_api_down_risk_description": {
     "message": "索引器API目前處於離線狀態。這可能影響交易詳情和資產餘額的準確性。請謹慎操作並獨立驗證所有資訊。"
   },
-  "runes_api_down_risk_title": {
-    "message": "Runes API已離線"
+  "dunes_api_down_risk_title": {
+    "message": "Dunes API已離線"
   },
-  "runes_api_down_risk_description": {
-    "message": "Runes API目前處於離線狀態。這可能影響交易詳情和Runes資產餘額的準確性。請謹慎操作並獨立驗證所有資訊。"
+  "dunes_api_down_risk_description": {
+    "message": "Dunes API目前處於離線狀態。這可能影響交易詳情和Dunes資產餘額的準確性。請謹慎操作並獨立驗證所有資訊。"
   },
   "charms_burning_risk_title": {
     "message": "偵測到Charms銷毀"

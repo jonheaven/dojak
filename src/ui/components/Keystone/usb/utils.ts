@@ -30,5 +30,3 @@ export function handleKeystoneUSBError(error) {
 
   return 'communication_with_the_keystone_device_failed_please_ensure_the_keystone_is_connected_and_try_again';
 }
-
-

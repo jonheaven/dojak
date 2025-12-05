@@ -215,5 +215,3 @@ if (MANIFEST_VERSION === 'mv3') {
     }
   }, 5000);
 }
-
-

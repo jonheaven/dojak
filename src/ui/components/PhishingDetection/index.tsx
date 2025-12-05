@@ -21,5 +21,3 @@ export function PhishingDetection({ handleCancel }: { handleCancel: () => void }
     </Layout>
   );
 }
-
-

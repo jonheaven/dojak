@@ -37,7 +37,8 @@ export default function CharmsNFTScreen() {
       <Header
         onBack={() => {
           window.history.go(-1);
-        }}>
+        }}
+      >
         <Row>
           <Text text={`${CharmsInfo.name} `} />
         </Row>
@@ -66,10 +67,9 @@ export default function CharmsNFTScreen() {
             navigate('SendCharmsNFTScreen', {
               CharmsInfo: CharmsInfo
             });
-          }}></Button>
+          }}
+        ></Button>
       </Content>
     </Layout>
   );
 }
-
-

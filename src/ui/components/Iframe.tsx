@@ -13,7 +13,8 @@ const Iframe = ({ preview, style, ref, onLoad }: IframeProps) => {
         onLoad={onLoad}
         sandbox="allow-scripts allow-same-origin allow-forms"
         scrolling="no"
-        loading="lazy"></iframe>
+        loading="lazy"
+      ></iframe>
     ),
     [preview]
   );
@@ -22,5 +23,3 @@ const Iframe = ({ preview, style, ref, onLoad }: IframeProps) => {
 export default memo(Iframe, (p, n) => {
   return p.preview === n.preview;
 });
-
-

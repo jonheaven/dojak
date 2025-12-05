@@ -96,8 +96,8 @@ export function Tooltip({
     }
 
     // Final boundary checks with auto adjustment
-    const shouldAdjustX = autoAdjustOverflow && (align.overflow?.adjustX !== false);
-    const shouldAdjustY = autoAdjustOverflow && (align.overflow?.adjustY !== false);
+    const shouldAdjustX = autoAdjustOverflow && align.overflow?.adjustX !== false;
+    const shouldAdjustY = autoAdjustOverflow && align.overflow?.adjustY !== false;
 
     if (shouldAdjustX) {
       if (left < 8) left = 8;
@@ -167,7 +167,8 @@ export function Tooltip({
         ref={triggerRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        style={{ display: 'inline-block' }}>
+        style={{ display: 'inline-block' }}
+      >
         {children}
       </div>
       {visible && !destroyTooltipOnHide && (
@@ -183,5 +184,3 @@ export function Tooltip({
     </>
   );
 }
-
-

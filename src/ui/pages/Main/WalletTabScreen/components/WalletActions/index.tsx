@@ -6,7 +6,7 @@ import { Button } from '@/ui/components/Button';
 import { Icon } from '@/ui/components/Icon';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { useUtxoTools } from '@/ui/hooks/useUtxoTools';
-import { BuyPEPModal } from '@/ui/pages/BuyDOGE/BuyDOGEModal';
+import { BuyDOGEModal } from '@/ui/pages/BuyDOGE/BuyDOGEModal';
 import { FaucetModal } from '@/ui/pages/Faucet/FaucetModal';
 import { useNavigate } from '@/ui/pages/MainRoute';
 import { useAddressExplorerUrl, useChainType, useWalletConfig } from '@/ui/state/settings/hooks';
@@ -85,7 +85,8 @@ export const WalletActions = ({ chain, address }: WalletActionsProps) => {
         borderRadius: 4,
         backgroundColor: 'rgba(176, 37, 37, 0.25)',
         zIndex: 10
-      }}>
+      }}
+    >
       <Text text={t('new')} color="red_light2" size="xxs" />
     </div>
   );
@@ -167,7 +168,8 @@ export const WalletActions = ({ chain, address }: WalletActionsProps) => {
                 cursor: 'pointer',
                 position: 'relative'
               }}
-              onClick={() => setMoreExpanded(!moreExpanded)}>
+              onClick={() => setMoreExpanded(!moreExpanded)}
+            >
               {!moreExpanded && (
                 <>
                   {!utxoClicked && <NewBadge />}
@@ -178,7 +180,8 @@ export const WalletActions = ({ chain, address }: WalletActionsProps) => {
                       top: -12,
                       right: -12,
                       zIndex: 5
-                    }}>
+                    }}
+                  >
                     <Icon icon="utxobg" size={32} />
                   </div>
                 </>
@@ -224,7 +227,7 @@ export const WalletActions = ({ chain, address }: WalletActionsProps) => {
       )}
 
       {buyBtcModalVisible && (
-        <BuyPEPModal
+        <BuyDOGEModal
           onClose={() => {
             setBuyBtcModalVisible(false);
           }}
@@ -243,5 +246,3 @@ export const WalletActions = ({ chain, address }: WalletActionsProps) => {
     </>
   );
 };
-
-

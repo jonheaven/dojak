@@ -56,5 +56,3 @@ export function Toast(props: ToastProps) {
     </div>
   );
 }
-
-

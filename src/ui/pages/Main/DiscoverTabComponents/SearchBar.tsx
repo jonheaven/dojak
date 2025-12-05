@@ -179,11 +179,10 @@ export function SearchBar() {
         style={{
           borderRadius: 8,
           overflow: 'hidden'
-        }}>
+        }}
+      >
         {searchContent}
       </Column>
     </Column>
   );
 }
-
-

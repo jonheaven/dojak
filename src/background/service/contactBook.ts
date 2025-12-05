@@ -36,5 +36,3 @@ class ContactBookService extends ContactBook {
 const contactBookService = new ContactBookService();
 
 export default contactBookService;
-
-

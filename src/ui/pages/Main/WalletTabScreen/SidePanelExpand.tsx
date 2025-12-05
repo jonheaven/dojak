@@ -40,19 +40,22 @@ export function SidePanelExpand() {
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative'
-      }}>
+      }}
+    >
       <Tooltip
         title={isInSidePanel ? t('open_as_popup') : t('open_as_side_bar')}
         overlayStyle={{
           minWidth: '70px',
           fontSize: '12px'
         }}
-        placement="bottom">
+        placement="bottom"
+      >
         <div
           onClick={toggleSidePanel}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          style={{ display: 'inline-block', cursor: 'pointer' }}>
+          style={{ display: 'inline-block', cursor: 'pointer' }}
+        >
           <Icon
             icon={isInSidePanel ? 'side-panel-logo-close' : 'side-panel-logo'}
             size={20}
@@ -66,5 +69,3 @@ export function SidePanelExpand() {
     </Row>
   );
 }
-
-

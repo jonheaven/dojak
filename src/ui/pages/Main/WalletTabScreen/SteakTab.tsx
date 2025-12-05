@@ -3,31 +3,32 @@ import { useMemo } from 'react';
 import { Column, Row } from '@/ui/components';
 import { TabBar } from '@/ui/components/TabBar';
 import { useAppDispatch } from '@/ui/state/hooks';
-import { usePepStakeAssetTabKey } from '@/ui/state/ui/hooks';
-import { PepStakeAssetTabKey, uiActions } from '@/ui/state/ui/reducer';
+import { useSteakAssetTabKey } from '@/ui/state/ui/hooks';
+import { SteakAssetTabKey, uiActions } from '@/ui/state/ui/reducer';
 
-export function PepStakeTab() {
-  const tabKey = usePepStakeAssetTabKey();
+export function SteakTab() {
+  const tabKey = useSteakAssetTabKey();
 
   const dispatch = useAppDispatch();
 
   const tabItems = useMemo(() => {
     const items = [
       {
-        key: PepStakeAssetTabKey.DASHBOARD,
+        key: SteakAssetTabKey.DASHBOARD,
         label: 'Dashboard',
         children: (
           <Column justifyCenter itemsCenter style={{ minHeight: 200 }}>
             <div className="text-4xl mb-4">🔒</div>
-            <div className="text-white text-lg font-semibold mb-2">PepStake Coming Soon</div>
+            <div className="text-white text-lg font-semibold mb-2">Steak Coming Soon</div>
             <div className="text-gray-400 text-center max-w-md">
-              Dogecoin staking functionality will be available soon. Stake your DOGE to earn rewards and secure the network.
+              Dogecoin staking functionality will be available soon. Stake your DOGE to earn rewards and secure the
+              network.
             </div>
           </Column>
         )
       },
       {
-        key: PepStakeAssetTabKey.STAKES,
+        key: SteakAssetTabKey.STAKES,
         label: 'My Stakes',
         children: (
           <Column justifyCenter itemsCenter style={{ minHeight: 200 }}>
@@ -40,7 +41,7 @@ export function PepStakeTab() {
         )
       },
       {
-        key: PepStakeAssetTabKey.HISTORY,
+        key: SteakAssetTabKey.HISTORY,
         label: 'History',
         children: (
           <Column justifyCenter itemsCenter style={{ minHeight: 200 }}>
@@ -66,7 +67,7 @@ export function PepStakeTab() {
           items={tabItems}
           preset="style2"
           onTabClick={(key) => {
-            dispatch(uiActions.updateAssetTabScreen({ pepStakeAssetTabKey: key }));
+            dispatch(uiActions.updateAssetTabScreen({ steakAssetTabKey: key }));
           }}
         />
       </Row>

@@ -1,157 +1,111 @@
 import React, { useEffect, useRef } from 'react';
+
 import { useThemeContext } from '@/ui/app/contexts/ThemeContext';
 
 interface Star {
-  X: number;
-  Y: number;
-  SX: number;
-  SY: number;
-  W: number;
-  H: number;
-  age: number;
-  dies: number;
-  ID: number;
-  C: string;
-  Draw: () => void;
+  x: number;
+  y: number;
+  z: number;
 }
 
 export const AnimatedBackground: React.FC = () => {
   const { theme } = useThemeContext();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const starsRef = useRef<Record<number, Star>>({});
-  const starIndexRef = useRef(0);
-  const numStarsRef = useRef(0);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    // Set initial dimensions
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    let width = 0;
+    let height = 0;
+    let devicePixelRatio = window.devicePixelRatio || 1;
 
-    // Configuration based on theme
-    const isDark = theme === 'dark';
-    const starColor = isDark ? '#ffffff' : '#000000';
-    const bgColor = isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)';
-    const acceleration = 0.1; // Much slower acceleration (90% slower than original)
-    // Reduce star count significantly for small extension viewport
-    const starsToDraw = Math.min(50, (canvas.width * canvas.height) / 1000);
+    const STAR_COUNT = 140;
+    const SPEED = 0.0015; // Slow, gentle drift
+    const DEPTH = 1.5; // Controls perspective depth
 
-    // Star constructor
-    const createStar = (): Star => {
-      const star: Star = {
-        X: canvas.width / 2,
-        Y: canvas.height / 2,
-        SX: Math.random() * 10 - 5,
-        SY: Math.random() * 10 - 5,
-        W: 1,
-        H: 1,
-        age: 0,
-        dies: 500,
-        ID: 0,
-        C: starColor,
-        Draw: function () {
-          this.X += this.SX;
-          this.Y += this.SY;
+    let stars: Star[] = [];
 
-          this.SX += this.SX / (50 / acceleration);
-          this.SY += this.SY / (50 / acceleration);
+    const resize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      devicePixelRatio = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(width * devicePixelRatio);
+      canvas.height = Math.floor(height * devicePixelRatio);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    };
 
-          this.age++;
+    const randomStar = (): Star => ({
+      x: (Math.random() - 0.5) * 2, // -1..1
+      y: (Math.random() - 0.5) * 2,
+      z: Math.random() * DEPTH + 0.1
+    });
 
-          if (
-            this.age === Math.floor(50 / acceleration) ||
-            this.age === Math.floor(150 / acceleration) ||
-            this.age === Math.floor(300 / acceleration)
-          ) {
-            this.W++;
-            this.H++;
-          }
+    const init = () => {
+      stars = new Array(STAR_COUNT).fill(0).map(randomStar);
+    };
 
-          if (
-            this.X + this.W < 0 ||
-            this.X > canvas.width ||
-            this.Y + this.H < 0 ||
-            this.Y > canvas.height
-          ) {
-            delete starsRef.current[this.ID];
-            numStarsRef.current--;
-          }
-
-          ctx.fillStyle = this.C;
-          ctx.fillRect(this.X, this.Y, this.W, this.H);
-        }
+    const project = (star: Star) => {
+      const fov = Math.min(width, height) * 0.8;
+      const scale = fov / (star.z * fov);
+      return {
+        x: star.x * scale * fov + width / 2,
+        y: star.y * scale * fov + height / 2,
+        r: Math.max(0.6, 2.2 - star.z * 1.6)
       };
-
-      // Position star
-      const start =
-        canvas.width > canvas.height ? canvas.width : canvas.height;
-      star.X += star.SX * (start / 10);
-      star.Y += star.SY * (start / 10);
-
-      starIndexRef.current++;
-      star.ID = starIndexRef.current;
-      starsRef.current[star.ID] = star;
-
-      return star;
     };
 
-    const draw = () => {
-      // Handle window resizing
-      if (canvas.width !== window.innerWidth) {
-        canvas.width = window.innerWidth;
-      }
-      if (canvas.height !== window.innerHeight) {
-        canvas.height = window.innerHeight;
+    const step = () => {
+      const isDark = theme === 'dark';
+      // Fill solid background
+      ctx.fillStyle = isDark ? '#000000' : '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      const starColor = isDark ? '#ffffff' : '#000000';
+
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i];
+        // Move star towards viewer
+        s.z -= SPEED;
+        if (s.z <= 0.02) {
+          stars[i] = randomStar();
+          continue;
+        }
+        const p = project(s);
+        if (p.x < -50 || p.x > width + 50 || p.y < -50 || p.y > height + 50) {
+          stars[i] = randomStar();
+          continue;
+        }
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = starColor;
+        ctx.globalAlpha = 0.9;
+        ctx.fill();
+        ctx.globalAlpha = 1;
       }
 
-      // Clear canvas with semi-transparent background
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Create new stars
-      for (let i = numStarsRef.current; i < starsToDraw; i++) {
-        createStar();
-        numStarsRef.current++;
-      }
-
-      // Draw all stars
-      for (const star in starsRef.current) {
-        starsRef.current[star].Draw();
-      }
+      animationRef.current = requestAnimationFrame(step);
     };
 
-    // Animation loop using requestAnimationFrame for smooth 60fps rendering
-    const animate = () => {
-      draw();
-      animationRef.current = requestAnimationFrame(animate);
+    const onResize = () => {
+      resize();
+      init();
     };
 
-    // Handle window resize
-    const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    // Start animation loop
-    animationRef.current = requestAnimationFrame(animate);
+    resize();
+    // Ensure canvas has solid background immediately
+    canvas.style.backgroundColor = theme === 'dark' ? '#000000' : '#ffffff';
+    init();
+    animationRef.current = requestAnimationFrame(step);
+    window.addEventListener('resize', onResize);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      // Reset animation state
-      starsRef.current = {};
-      starIndexRef.current = 0;
-      numStarsRef.current = 0;
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      window.removeEventListener('resize', onResize);
     };
   }, [theme]);
 

@@ -27,5 +27,3 @@ export interface SettingsItemType {
   icon?: IconTypes;
   badge?: string;
 }
-
-

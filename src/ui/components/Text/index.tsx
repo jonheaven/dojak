@@ -143,5 +143,3 @@ export function Text(props: TextProps) {
     </BaseView>
   );
 }
-
-

@@ -121,5 +121,3 @@ export const getSettingsList = (): SettingsItemType[] => [
     right: false
   }
 ];
-
-

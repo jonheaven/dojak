@@ -185,7 +185,7 @@ export default function SendDunesScreen() {
           <TickUsdWithoutPrice
             tick={duneInfo.spacedDune}
             balance={dunesUtils.toDecimalAmount(duneBalance.amount, duneBalance.divisibility)}
-            type={TokenType.RUNES}
+            type={TokenType.DUNES}
             size={'md'}
           />
         </Row>
@@ -205,12 +205,13 @@ export default function SendDunesScreen() {
         <Column mt="lg">
           <Row justifyBetween>
             <Text text={t('balance')} color="textDim" />
-            <TickUsdWithoutPrice tick={duneInfo.spacedDune} balance={inputAmount} type={TokenType.RUNES} />
+            <TickUsdWithoutPrice tick={duneInfo.spacedDune} balance={inputAmount} type={TokenType.DUNES} />
             <Row
               itemsCenter
               onClick={() => {
                 setInputAmount(dunesUtils.toDecimalAmount(availableBalance, duneBalance.divisibility));
-              }}>
+              }}
+            >
               <Text text={t('max')} preset="sub" style={{ color: colors.white_muted }} />
               <Text
                 text={`${showLongNumber(dunesUtils.toDecimalAmount(availableBalance, duneBalance.divisibility))} ${
@@ -273,10 +274,9 @@ export default function SendDunesScreen() {
           text={t('next')}
           onClick={(e) => {
             navigate('TxConfirmScreen', { rawTxInfo });
-          }}></Button>
+          }}
+        ></Button>
       </Content>
     </Layout>
   );
 }
-
-

@@ -105,5 +105,3 @@ export default function AccountUpdater() {
 
   return null;
 }
-
-

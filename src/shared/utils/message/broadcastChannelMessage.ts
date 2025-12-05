@@ -48,5 +48,3 @@ export default class BroadcastChannelMessage extends Message {
     this._channel.close();
   };
 }
-
-

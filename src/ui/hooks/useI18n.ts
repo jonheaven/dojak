@@ -51,5 +51,3 @@ export const getSpecialLocale = async () => {
   const isSpecialLocale = specialLocales.includes(currentLocale);
   return { currentLocale, isSpecialLocale };
 };
-
-

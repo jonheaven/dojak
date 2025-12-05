@@ -17,10 +17,9 @@ export default function ContractSection(props: {
       }}
       onClick={() => {
         setContractPopoverData(contract);
-      }}>
+      }}
+    >
       <Text text={contract.name + ' >'} style={{ color: 'rgba(244, 182, 44, 0.85)' }} size="xs" />
     </Row>
   );
 }
-
-

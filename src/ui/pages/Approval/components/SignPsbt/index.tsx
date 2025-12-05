@@ -12,12 +12,12 @@ import WebsiteBar from '@/ui/components/WebsiteBar';
 import { useI18n } from '@/ui/hooks/useI18n';
 import KeystoneSignScreen from '@/ui/pages/Wallet/KeystoneSignScreen';
 import { useAccountAddress, useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { usePEPUnit } from '@/ui/state/settings/hooks';
+import { useDOGEUnit } from '@/ui/state/settings/hooks';
 import {
-    usePrepareSendCharmsCallback,
-    usePrepareSendDoginalsInscriptionCallback,
-    usePrepareSendDunesCallback,
-    usePrepareSendPEPCallback
+  usePrepareSendCharmsCallback,
+  usePrepareSendDoginalsInscriptionCallback,
+  usePrepareSendDunesCallback,
+  usePrepareSendDOGECallback
 } from '@/ui/state/transactions/hooks';
 import { satoshisToAmount, useApproval, useWallet } from '@/ui/utils';
 import { KeyringType, KeystoneSignEnum } from '@unisat/keyring-service/types';
@@ -66,10 +66,10 @@ export default function SignPsbt({
   const tools = useTools();
   const address = useAccountAddress();
   const currentAccount = useCurrentAccount();
-  const btcUnit = usePEPUnit();
+  const btcUnit = useDOGEUnit();
   const { t } = useI18n();
 
-  const prepareSendPEP = usePrepareSendPEPCallback();
+  const prepareSendDOGE = usePrepareSendDOGECallback();
   const prepareSendDoginalsInscription = usePrepareSendDoginalsInscriptionCallback();
   const prepareSendDunes = usePrepareSendDunesCallback();
   const prepareSendCharms = usePrepareSendCharmsCallback();
@@ -92,7 +92,7 @@ export default function SignPsbt({
       session,
       currentAccount,
       wallet,
-      prepareSendPEP,
+      prepareSendDOGE,
       prepareSendDoginalsInscription,
       prepareSendDunes,
       prepareSendCharms
@@ -367,5 +367,3 @@ export default function SignPsbt({
     </Layout>
   );
 }
-
-

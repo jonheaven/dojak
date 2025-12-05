@@ -83,7 +83,7 @@ export const ellipsisOverflowedText = (str: string, length = 5, removeLastComma 
   return `${cut}...`;
 };
 
-export const satoshisToPEP = (amount: number) => {
+export const satoshisToDOGE = (amount: number) => {
   return amount / 100000000;
 };
 
@@ -228,5 +228,3 @@ export function isValidBech32Address(address: string) {
     return false;
   }
 }
-
-

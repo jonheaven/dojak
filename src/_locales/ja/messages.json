@@ -24,8 +24,8 @@
   "atomicals": {
     "message": "Atomicals"
   },
-  "runes": {
-    "message": "Runes"
+  "dunes": {
+    "message": "Dunes"
   },
   "doginals": {
     "message": "Doginals"
@@ -250,7 +250,7 @@
     "message": "未確認残高を有効にする"
   },
   "enable_unconfirmed_balance_warning": {
-    "message": "指定されたアドレスに Runes アセットが存在する場合、未確認の UTXO は確認されるまで使用できません。未確認の UTXO を強制的に使用すると、アセットを失うリスクがあります。"
+    "message": "指定されたアドレスに Dunes アセットが存在する場合、未確認の UTXO は確認されるまで使用できません。未確認の UTXO を強制的に使用すると、アセットを失うリスクがあります。"
   },
   "allow_using_unconfirmed_balance": {
     "message": "未確認残高の使用を許可する"
@@ -391,7 +391,7 @@
     "message": "アクティブアドレス (24時間)"
   },
   "go_to_unisat_explorer": {
-    "message": "Pepeblocksへ移動"
+    "message": "SoChainへ移動"
   },
   "search_address_and_txids": {
     "message": "アドレスとTXIDを検索"
@@ -630,8 +630,8 @@
   "tx_fee": {
     "message": "Tx手数料:"
   },
-  "t_baby": {
-    "message": "tBABY"
+  "t_jawn": {
+    "message": "tJAWN"
   },
   "send_to": {
     "message": "送信先"
@@ -639,8 +639,8 @@
   "send_amount": {
     "message": "送信額"
   },
-  "how_to_import_baby": {
-    "message": "BABYのインポート方法"
+  "how_to_import_jawn": {
+    "message": "JAWNのインポート方法"
   },
   "click_the_account_on_the_main_page": {
     "message": "メインページでアカウントをクリックします。"
@@ -648,17 +648,17 @@
   "tap_the_more_menu_then_select_the_export_private_key_option": {
     "message": "「その他」メニューをタップし、「秘密鍵をエクスポート」オプションを選択します。"
   },
-  "once_you_have_your_hex_private_key_you_can_import_it_into_a_cosmos_compatible_wallet_to_access_your_babylon_reward_assets": {
-    "message": "Hex秘密鍵を取得したら、COSMOS互換ウォレットにインポートしてBabylonリワードアセットにアクセスできます。"
+  "once_you_have_your_hex_private_key_you_can_import_it_into_a_cosmos_compatible_wallet_to_access_your_jawnlon_reward_assets": {
+    "message": "Hex秘密鍵を取得したら、COSMOS互換ウォレットにインポートしてJawntypeリワードアセットにアクセスできます。"
   },
-  "babylon_bitcoin_staking": {
-    "message": "Babylonビットコインステーキング"
+  "jawntype_bitcoin_staking": {
+    "message": "Jawntypeビットコインステーキング"
   },
-  "babylon_bitcoin_staking_phase1": {
-    "message": "Babylonビットコインステーキング フェーズ1"
+  "jawntype_bitcoin_staking_phase1": {
+    "message": "Jawntypeビットコインステーキング フェーズ1"
   },
-  "babylon_bitcoin_staking_stats": {
-    "message": "Babylonビットコインステーキング統計"
+  "jawntype_bitcoin_staking_stats": {
+    "message": "Jawntypeビットコインステーキング統計"
   },
   "closed": {
     "message": "終了"
@@ -669,8 +669,8 @@
   "staked": {
     "message": "ステーク済み"
   },
-  "learn_how_to_import_your_babylon_reward_assets_into_a_cosmos_compatible_wallet": {
-    "message": "BabylonリワードアセットをCOSMOS互換ウォレットにインポートする方法を学ぶ。"
+  "learn_how_to_import_your_jawnlon_reward_assets_into_a_cosmos_compatible_wallet": {
+    "message": "JawntypeリワードアセットをCOSMOS互換ウォレットにインポートする方法を学ぶ。"
   },
   "unstake": {
     "message": "アンステーク"
@@ -678,8 +678,8 @@
   "claimable": {
     "message": "請求可能"
   },
-  "baby_rewards": {
-    "message": "BABYリワード"
+  "jawn_rewards": {
+    "message": "JAWNリワード"
   },
   "claim": {
     "message": "請求"
@@ -789,8 +789,8 @@
   "total": {
     "message": "合計"
   },
-  "baby_balance": {
-    "message": "BABY残高"
+  "jawn_balance": {
+    "message": "JAWN残高"
   },
   "failed_to_handle_signature": {
     "message": "署名の処理に失敗しました"
@@ -1098,8 +1098,8 @@
   "sending_out_assets": {
     "message": "アセットを送信中"
   },
-  "runes_burn_risk_list": {
-    "message": "Runesバーンリスクリスト"
+  "dunes_burn_risk_list": {
+    "message": "Dunesバーンリスクリスト"
   },
   "inscription_burn_risk_list": {
     "message": "インスクリプションバーンリスクリスト"
@@ -1176,7 +1176,7 @@
   "for_doginals_assets": {
     "message": "Ordinalsアセットについては、"
   },
-  "rare_sats": {
+  "rare_koinu": {
     "message": "レアsat"
   },
   "are_not_supported": {
@@ -1219,7 +1219,7 @@
     "message": "未確認残高の使用を有効にするには、設定の詳細オプションにアクセスしてください。"
   },
   "unconfirmed_balance_not_spendable_warning": {
-    "message": "アセットを保護するため、Runesアセットを保有している場合、確認済みの残高のみが使用可能です。これは意図しないアセットのバーンを防ぐためです。"
+    "message": "アセットを保護するため、Dunesアセットを保有している場合、確認済みの残高のみが使用可能です。これは意図しないアセットのバーンを防ぐためです。"
   },
   "mandatory_use_of_unconfirmed_balance": {
     "message": "未確認残高の強制使用"
@@ -1359,8 +1359,8 @@
   "continue_to": {
     "message": "へ進む"
   },
-  "send_runes": {
-    "message": "Runesを送信"
+  "send_dunes": {
+    "message": "Dunesを送信"
   },
   "send_atomicals_inscription": {
     "message": "Atomicalsインスクリプションを送信"
@@ -1371,8 +1371,8 @@
   "ordinals_inscriptions": {
     "message": "Ordinalsインスクリプション"
   },
-  "babylon_staking": {
-    "message": "Babylonステーキング"
+  "jawntype_staking": {
+    "message": "Jawntypeステーキング"
   },
   "confirmed_tvl": {
     "message": "確認済み"
@@ -1470,8 +1470,8 @@
   "amount_must_be_at_least": {
     "message": "金額は少なくとも"
   },
-  "includes_inscriptions_runes_and_unconfirmed_utxos": {
-    "message": "インスクリプション、Runes、および未確認のUTXOアセットを含みます。"
+  "includes_inscriptions_dunes_and_unconfirmed_utxos": {
+    "message": "インスクリプション、Dunes、および未確認のUTXOアセットを含みます。"
   },
   "future_versions_will_support_spending_these_assets": {
     "message": "将来のバージョンではこれらのアセットの使用がサポートされます。"
@@ -1554,8 +1554,8 @@
   "script": {
     "message": "スクリプト"
   },
-  "this_message_serves_as_a_notice_that_if_runes_assets_are_detected_in_your_address_your": {
-    "message": "このメッセージは、あなたのアドレスでRunesアセットが検出された場合、未確認の残高は使用できなくなるという通知です。何もする必要はありません。"
+  "this_message_serves_as_a_notice_that_if_dunes_assets_are_detected_in_your_address_your": {
+    "message": "このメッセージは、あなたのアドレスでDunesアセットが検出された場合、未確認の残高は使用できなくなるという通知です。何もする必要はありません。"
   },
   "in_the_current_version_only_the_confirmed_balance_can_be_used_once_atomicals_enabled": {
     "message": "現在のバージョンでは、Atomicalsが有効になると確認済みの残高のみが使用できます。"
@@ -1650,7 +1650,7 @@
   "address_or_name_fb": {
     "message": "アドレスまたは名前 (.fb)"
   },
-  "address_or_name_sats_unisat_etc": {
+  "address_or_name_dotdoge_dotdogecoin_etc": {
     "message": "アドレスまたは名前 (.sats, .unisat, ...)"
   },
   "does_not_exist": {
@@ -1908,50 +1908,50 @@
   "about_10_minutes": {
     "message": "約10分"
   },
-  "babylon_bitcoin_staking_phase2": {
-    "message": "Babylon ビットコインステーキング フェーズ2"
+  "jawntype_bitcoin_staking_phase2": {
+    "message": "Jawntype ビットコインステーキング フェーズ2"
   },
-  "go_to_babylon": {
-    "message": "Babylonへ移動"
+  "go_to_jawnlon": {
+    "message": "Jawntypeへ移動"
   },
-  "closed_babylon": {
+  "closed_jawnlon": {
     "message": "閉鎖"
   },
-  "open_babylon": {
+  "open_jawnlon": {
     "message": "開放"
   },
-  "pending_babylon": {
+  "pending_jawnlon": {
     "message": "保留中"
   },
-  "convert_baby_to_drc20": {
-    "message": "$BABYをdrc-20に変換"
+  "convert_jawn_to_drc20": {
+    "message": "$JAWNをdrc-20に変換"
   },
-  "you_are_about_to_convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "ネイティブBABYをBTC drc-20 BABYに変換しようとしています。"
+  "you_are_about_to_convert_your_native_jawn_to_btc_drc20_jawn": {
+    "message": "ネイティブJAWNをBTC drc-20 JAWNに変換しようとしています。"
   },
-  "once_the_conversion_is_complete_your_native_baby_cannot_be_restored": {
-    "message": "変換が完了すると、ネイティブBABYは復元できません。"
+  "once_the_conversion_is_complete_your_native_jawn_cannot_be_restored": {
+    "message": "変換が完了すると、ネイティブJAWNは復元できません。"
   },
   "do_you_confirm_the_conversion": {
     "message": "変換を確認しますか？"
   },
-  "transfer_baby_to_cosmos_wallet": {
-    "message": "$BABYをCosmosウォレットに転送"
+  "transfer_jawn_to_cosmos_wallet": {
+    "message": "$JAWNをCosmosウォレットに転送"
   },
   "do_you_confirm_the_transfer": {
     "message": "転送を確認しますか？"
   },
-  "you_are_about_to_transfer_your_native_baby_to_your_cosmos_wallet": {
-    "message": "ネイティブBABYをCosmosウォレットに転送しようとしています。"
+  "you_are_about_to_transfer_your_native_jawn_to_your_cosmos_wallet": {
+    "message": "ネイティブJAWNをCosmosウォレットに転送しようとしています。"
   },
-  "click_baby_to_drc20_coming_soon": {
-    "message": "$BABYをdrc-20に変換（近日公開）"
+  "click_jawn_to_drc20_coming_soon": {
+    "message": "$JAWNをdrc-20に変換（近日公開）"
   },
-  "convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "ネイティブ$BABYトークンをビットコイン上のdrc-20 BABYに変換します。"
+  "convert_your_native_jawn_to_btc_drc20_jawn": {
+    "message": "ネイティブ$JAWNトークンをビットコイン上のdrc-20 JAWNに変換します。"
   },
-  "transfer_your_baby_to_your_cosmos_wallet": {
-    "message": "$BABYをCosmosウォレットに転送します。"
+  "transfer_your_jawn_to_your_cosmos_wallet": {
+    "message": "$JAWNをCosmosウォレットに転送します。"
   },
   "password_error": {
     "message": "パスワードが間違っています"
@@ -2310,17 +2310,17 @@
   "changing_inscription_risk_description": {
     "message": "このトランザクションにはインスクリプションの変更が含まれています。続行する前に、この操作の影響を理解していることを確認してください。"
   },
-  "runes_burning_risk_title": {
-    "message": "Runesの燃焼が検出されました"
+  "dunes_burning_risk_title": {
+    "message": "Dunesの燃焼が検出されました"
   },
-  "runes_burning_risk_description": {
-    "message": "このトランザクションにはRunesの燃焼が含まれています。続行する前に、この操作の影響を理解していることを確認してください。"
+  "dunes_burning_risk_description": {
+    "message": "このトランザクションにはDunesの燃焼が含まれています。続行する前に、この操作の影響を理解していることを確認してください。"
   },
-  "runes_multiple_assets_risk_title": {
-    "message": "複数のRunes資産が検出されました"
+  "dunes_multiple_assets_risk_title": {
+    "message": "複数のDunes資産が検出されました"
   },
-  "runes_multiple_assets_risk_description": {
-    "message": "このトランザクションには複数のRunes資産が含まれています。続行する前に、この操作の影響を理解していることを確認してください。"
+  "dunes_multiple_assets_risk_description": {
+    "message": "このトランザクションには複数のDunes資産が含まれています。続行する前に、この操作の影響を理解していることを確認してください。"
   },
   "indexer_api_down_risk_title": {
     "message": "インデクサーAPIがダウンしています"
@@ -2328,11 +2328,11 @@
   "indexer_api_down_risk_description": {
     "message": "インデクサーAPIが現在ダウンしています。これによりトランザクション詳細と資産残高の精度に影響が出る可能性があります。注意して進め、すべての情報を独立して確認してください。"
   },
-  "runes_api_down_risk_title": {
-    "message": "Runes APIがダウンしています"
+  "dunes_api_down_risk_title": {
+    "message": "Dunes APIがダウンしています"
   },
-  "runes_api_down_risk_description": {
-    "message": "Runes APIが現在ダウンしています。これによりトランザクション詳細とRunes資産残高の精度に影響が出る可能性があります。注意して進め、すべての情報を独立して確認してください。"
+  "dunes_api_down_risk_description": {
+    "message": "Dunes APIが現在ダウンしています。これによりトランザクション詳細とDunes資産残高の精度に影響が出る可能性があります。注意して進め、すべての情報を独立して確認してください。"
   },
   "charms_burning_risk_title": {
     "message": "Charmsの燃焼が検出されました"

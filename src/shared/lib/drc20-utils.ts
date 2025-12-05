@@ -10,5 +10,3 @@ export const drc20Utils = {
   is4Byte,
   is5Byte
 };
-
-

@@ -22,7 +22,9 @@ interface HeaderProps {
 
 function HeaderContainer(props: { children: React.ReactNode; shotHeight?: boolean }) {
   return (
-    <div style={{ display: 'block', backgroundColor: 'var(--theme-bg2)', borderBottom: '1px solid var(--theme-border)' }}>
+    <div
+      style={{ display: 'block', backgroundColor: 'var(--theme-bg2)', borderBottom: '1px solid var(--theme-border)' }}
+    >
       <Row
         justifyBetween
         itemsCenter
@@ -30,7 +32,8 @@ function HeaderContainer(props: { children: React.ReactNode; shotHeight?: boolea
           height: props.shotHeight ? '44px' : '48px',
           paddingLeft: spacing.medium,
           paddingRight: spacing.medium
-        }}>
+        }}
+      >
         {props.children}
       </Row>
     </div>
@@ -70,10 +73,13 @@ export function Header(props: HeaderProps) {
           {LeftComponent}
           {onBack && (
             <Row
-              onClick={(e) => {
+              onClick={() => {
                 onBack();
-              }}>
-              <Icon>
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              {/* Use theme-aware icon color */}
+              <Icon color="text">
                 <FontAwesomeIcon icon={faArrowLeft} />
               </Icon>
             </Row>
@@ -89,5 +95,3 @@ export function Header(props: HeaderProps) {
     </HeaderContainer>
   );
 }
-
-

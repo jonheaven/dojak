@@ -83,7 +83,8 @@ export function Radio({ value, children, disabled = false, style = {} }: RadioPr
         cursor: disabled ? 'not-allowed' : 'pointer',
         ...style
       }}
-      onClick={handleClick}>
+      onClick={handleClick}
+    >
       <div style={isChecked ? $radioCheckedStyle : $radioStyle}>{isChecked && <div style={$radioInnerStyle} />}</div>
       <Text text={typeof children === 'string' ? children : String(children)} />
     </div>
@@ -102,5 +103,3 @@ export function RadioGroup({ value, onChange, children, style = {} }: RadioGroup
     </RadioContext.Provider>
   );
 }
-
-

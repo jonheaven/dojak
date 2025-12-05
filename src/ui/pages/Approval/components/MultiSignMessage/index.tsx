@@ -209,7 +209,8 @@ export default function MultiSignMessage({
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                   flexWrap: 'wrap'
-                }}>
+                }}
+              >
                 {currentMessage.text}
               </div>
             </Card>
@@ -384,5 +385,3 @@ export default function MultiSignMessage({
     </Layout>
   );
 }
-
-

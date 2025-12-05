@@ -46,5 +46,3 @@ export default function Step2({ parseUR, onSuccess }: KeystoneSignBaseProps) {
     </Column>
   );
 }
-
-

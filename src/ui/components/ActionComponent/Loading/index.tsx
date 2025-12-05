@@ -40,5 +40,3 @@ export function Loading(props: LoadingProps) {
     </div>
   );
 }
-
-

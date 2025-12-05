@@ -1,21 +1,36 @@
 /* eslint-disable quotes */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button, Column, Content, Layout, Logo, Row, Text } from '@/ui/components';
-import { useExtensionIsInTab } from '@/ui/features/browser/tabs';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { useWallet } from '@/ui/utils';
 
 import { useNavigate } from '../MainRoute';
-import { ConnectHardwareModal } from './ConnectHardwareModal';
 
 export default function WelcomeScreen() {
   const navigate = useNavigate();
   const wallet = useWallet();
-  const isInTab = useExtensionIsInTab();
   const { t } = useI18n();
+  const [checkedUnlock, setCheckedUnlock] = useState(false);
 
-  const [connectHardwareModalVisible, setConnectHardwareModalVisible] = useState(false);
+  useEffect(() => {
+    (async () => {
+      const hasVault = await wallet.hasVault();
+      if (!hasVault) {
+        // No vault, so prompt to create password
+        setCheckedUnlock(true);
+        return;
+      }
+      const isUnlocked = await wallet.isUnlocked();
+      if (!isUnlocked) {
+        navigate('UnlockScreen');
+      } else {
+        setCheckedUnlock(true);
+      }
+    })();
+  }, [wallet, navigate]);
+
+  if (!checkedUnlock) return null;
 
   return (
     <Layout>
@@ -32,7 +47,6 @@ export default function WelcomeScreen() {
               preset="sub"
               textCenter
             />
-
             <Button
               text={t('create_new_wallet')}
               preset="primary"
@@ -57,26 +71,10 @@ export default function WelcomeScreen() {
                 }
               }}
             />
-            <Button
-              text={t('connect_to_hardware_wallet')}
-              preset="default"
-              onClick={async () => {
-                setConnectHardwareModalVisible(true);
-              }}
-            />
-
-            {connectHardwareModalVisible && (
-              <ConnectHardwareModal
-                onClose={() => {
-                  setConnectHardwareModalVisible(false);
-                }}
-              />
-            )}
+            {/* TODO: Hardware wallet support - hidden until fully implemented */}
           </Column>
         </Column>
       </Content>
     </Layout>
   );
 }
-
-

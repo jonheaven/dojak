@@ -5,5 +5,3 @@ export interface AddressDetailPopoverProps {
   onClose: () => void;
   inputInfo?: InputInfo;
 }
-
-

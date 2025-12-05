@@ -45,21 +45,24 @@ export default function LanguageScreen() {
             alignItems: 'center',
             marginTop: 16,
             paddingBottom: 16
-          }}>
+          }}
+        >
           <Card
             style={{
               width: '328px',
               borderRadius: '12px',
               backgroundColor: 'rgba(255, 255, 255, 0.06)',
               padding: 0
-            }}>
+            }}
+          >
             <div
               style={{
                 width: '100%',
                 overflow: 'auto',
                 scrollbarWidth: 'none',
                 msOverflowStyle: 'none'
-              }}>
+              }}
+            >
               <Column fullX>
                 {SUPPORTED_LOCALES.map((locale, index) => (
                   <Column key={locale} fullX>
@@ -73,7 +76,8 @@ export default function LanguageScreen() {
                         cursor: 'pointer',
                         minHeight: '34px'
                       }}
-                      full>
+                      full
+                    >
                       <Text
                         color={locale === selectedLocale ? 'white' : 'textDim'}
                         size="sm"
@@ -91,5 +95,3 @@ export default function LanguageScreen() {
     </Layout>
   );
 }
-
-

@@ -368,5 +368,3 @@ document.addEventListener(
   },
   true
 );
-
-

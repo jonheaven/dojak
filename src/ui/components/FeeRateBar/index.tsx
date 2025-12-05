@@ -155,7 +155,8 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
                   cursor: 'pointer'
                 } as CSSProperties,
                 selected ? { backgroundColor: colors.primary } : {}
-              )}>
+              )}
+            >
               <Text
                 text={v.title}
                 textCenter
@@ -203,5 +204,3 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
     </Column>
   );
 }
-
-

@@ -42,5 +42,3 @@ class ReadyPromise {
 }
 
 export default ReadyPromise;
-
-

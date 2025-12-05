@@ -1,5 +1,5 @@
 import { Icon, Row, Text, Tooltip } from '@/ui/components';
-import { BtcUsd } from '@/ui/components/BtcUsd';
+import { DOGEUSD } from '@/ui/components/DOGEUSD';
 import { fontSizes } from '@/ui/theme/font';
 import { amountToSatoshis } from '@/ui/utils';
 
@@ -8,7 +8,7 @@ import Section from './Section';
 const FeeSection = ({ txInfo, t, networkFee, btcUnit }) => {
   return (
     <>
-      <Section title={t('network_fee')} extra={<BtcUsd sats={amountToSatoshis(networkFee)} />}>
+      <Section title={t('network_fee')} extra={<DOGEUSD sats={amountToSatoshis(networkFee)} />}>
         <Text text={networkFee} />
         <Text text={btcUnit} color="textDim" />
       </Section>
@@ -27,7 +27,8 @@ const FeeSection = ({ txInfo, t, networkFee, btcUnit }) => {
             }
             overlayStyle={{
               fontSize: fontSizes.xs
-            }}>
+            }}
+          >
             <div>
               <Row>
                 <Text text={txInfo.decodedPsbt.feeRate.toString()} />
@@ -46,5 +47,3 @@ const FeeSection = ({ txInfo, t, networkFee, btcUnit }) => {
 };
 
 export default FeeSection;
-
-

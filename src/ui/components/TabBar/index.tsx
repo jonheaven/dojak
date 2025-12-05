@@ -57,18 +57,21 @@ export function TabBar(props: TabBarProps) {
                 { width: 20, height: 20 },
                 reach
                   ? {
-                      backgroundColor: colors.gold
+                      // active step uses primary color
+                      backgroundColor: 'var(--theme-primary)'
                     }
                   : {
-                      backgroundColor: colors.bg2
+                      // inactive step uses surface color
+                      backgroundColor: 'var(--theme-bg2)'
                     }
               )}
               justifyCenter
               itemsCenter
               onClick={() => {
                 setTabKey(v.key);
-              }}>
-              <Text text={v.label} color={'white'} />
+              }}
+            >
+              <Text text={v.label} />
             </Column>
           );
         })}
@@ -94,18 +97,14 @@ export function TabBar(props: TabBarProps) {
                 itemsCenter
                 onClick={() => {
                   setTabKey(v.key);
-                }}>
-                <Text
-                  text={v.label}
-                  size={'md'}
-                  preset={isSelected ? 'bold' : 'regular'}
-                  color={isSelected ? 'gold' : 'textDim'}
-                />
+                }}
+              >
+                <Text text={v.label} size={'md'} preset={isSelected ? 'bold' : 'regular'} color={isSelected ? 'gold' : 'textDim'} />
                 <Row
                   style={{
                     width: 40,
                     height: 2,
-                    backgroundColor: isSelected ? 'gold' : 'transparent'
+                    backgroundColor: isSelected ? 'var(--theme-primary)' : 'transparent'
                   }}
                 />
               </Column>
@@ -133,12 +132,24 @@ export function TabBar(props: TabBarProps) {
             return (
               <Column
                 key={v.key}
-                style={{ borderWidth: 1, borderRadius: 20, backgroundColor: '#322D1F' }}
-                color={isSelected ? 'gold' : 'white_muted'}
+                style={{
+                  borderWidth: 1,
+                  borderRadius: 20,
+                  // Theme-aware pill background
+                  backgroundColor: isSelected ? 'var(--theme-primary)' : 'var(--theme-bg2)',
+                  borderColor: 'var(--theme-border)'
+                }}
                 onClick={() => {
                   setTabKey(v.key);
-                }}>
-                <Text text={v.label} size="xs" color={isSelected ? 'gold' : 'white_muted'} mx="md" my="sm" />
+                }}
+              >
+                <Text
+                  text={v.label}
+                  size="xs"
+                  color={isSelected ? 'text' : 'textSecondary'}
+                  mx="md"
+                  my="sm"
+                />
               </Column>
             );
           }
@@ -157,7 +168,8 @@ export function TabBar(props: TabBarProps) {
               key={v.key}
               onClick={() => {
                 setTabKey(v.key);
-              }}>
+              }}
+            >
               <Text text={v.label} color={isSelected ? 'white' : 'textDim'} />
             </Column>
           );
@@ -182,7 +194,8 @@ export function TabBar(props: TabBarProps) {
               classname={isSelected ? 'selected-tab' : ''}
               onClick={() => {
                 setTabKey(v.key);
-              }}>
+              }}
+            >
               <Text text={v.label} color={isSelected ? 'gold' : 'white'} />
             </Column>
           );
@@ -191,5 +204,3 @@ export function TabBar(props: TabBarProps) {
     </Row>
   );
 }
-
-

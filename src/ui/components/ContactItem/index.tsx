@@ -43,12 +43,11 @@ export default function ContactItem({ icon, text, url, iconSize = 20, style, tex
           alignItems: 'center',
           justifyContent: 'center',
           ...style
-        }}>
+        }}
+      >
         <Icon icon={icon} size={iconSize} color="textDim" />
       </div>
       <Text text={text} preset="sub" color="textDim" style={{ textAlign: 'center', ...textStyle }} />
     </Column>
   );
 }
-
-

@@ -134,7 +134,6 @@ export const fetchPhishingList = async (forceRefresh = false): Promise<any> => {
     log.error('[Phishing] Backup source fetch failed:', error);
   }
 
-
   // If at least one source succeeded, save merged data to cache
   if (hasAnySourceSucceeded) {
     await saveToLocalCache(mergedData);
@@ -155,7 +154,6 @@ export const fetchPhishingList = async (forceRefresh = false): Promise<any> => {
   // All sources failed
   throw new Error('Failed to fetch phishing list from all available sources');
 };
-
 
 function mergePhishingData(target: any, source: any): void {
   if (Array.isArray(source.blacklist)) {
@@ -325,5 +323,3 @@ export async function getPhishingCacheStats(): Promise<{
     };
   }
 }
-
-

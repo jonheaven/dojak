@@ -33,7 +33,7 @@ export default function CharmsTokenScreen() {
       divisibility: 0,
       available: ''
     },
-      tokenInfo: {
+    tokenInfo: {
       charmsid: '',
       name: '',
       symbol: '',
@@ -164,7 +164,8 @@ export default function CharmsTokenScreen() {
             style={{
               backgroundColor: 'rgba(255,255,255,0.08)',
               borderRadius: 15
-            }}>
+            }}
+          >
             <Section title={'Charms ID'} value={tokenSummary.tokenBalance.charmsid} />
             <Line />
 
@@ -244,7 +245,8 @@ export default function CharmsTokenScreen() {
         style={{
           borderTopWidth: 1,
           borderColor: colors.border2
-        }}>
+        }}
+      >
         <Column gap="sm" fullX>
           <Row gap="sm" mt="sm" mb="md">
             <Button
@@ -287,5 +289,3 @@ export default function CharmsTokenScreen() {
     </Layout>
   );
 }
-
-

@@ -51,5 +51,3 @@ const queryCurrentActiveTab = async function () {
 export default tabEvent;
 
 export { createTab, openIndexPage, queryCurrentActiveTab };
-
-

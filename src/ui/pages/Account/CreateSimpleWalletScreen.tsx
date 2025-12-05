@@ -115,11 +115,7 @@ export default function CreateSimpleWalletScreen() {
         }}
         title={t('create_single_wallet')}
       />
-      <Content>
-        {renderChildren}
-      </Content>
+      <Content>{renderChildren}</Content>
     </Layout>
   );
 }
-
-

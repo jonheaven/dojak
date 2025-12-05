@@ -317,5 +317,3 @@ class PhishingService {
 }
 
 export default new PhishingService();
-
-

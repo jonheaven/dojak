@@ -1,7 +1,8 @@
-import { LoadingOutlined, UploadOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Modal, Select, Slider, Upload, message } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { LoadingOutlined, UploadOutlined } from '@ant-design/icons';
 
 interface CreateDoginalModalProps {
   visible: boolean;
@@ -12,11 +13,7 @@ interface CreateDoginalModalProps {
 const { Option } = Select;
 const { TextArea } = Input;
 
-export const CreateDoginalModal: React.FC<CreateDoginalModalProps> = ({
-  visible,
-  onCancel,
-  onCreate
-}) => {
+export const CreateDoginalModal: React.FC<CreateDoginalModalProps> = ({ visible, onCancel, onCreate }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -35,15 +32,16 @@ export const CreateDoginalModal: React.FC<CreateDoginalModalProps> = ({
         content = JSON.stringify(values.jsonContent);
       } else if (contentType === 'image') {
         // Handle image upload - for now just use placeholder
-        content = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMDY5NDIwIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTEwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QZXBpbmFsPC90ZXh0Pgo8L3N2Zz4=';
+        content =
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMDY5NDIwIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTEwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QZXBpbmFsPC90ZXh0Pgo8L3N2Zz4=';
       }
 
       await onCreate(content, feeRate);
       form.resetFields();
       message.success('Doginal created successfully!');
     } catch (error) {
-      console.error('Failed to create pepinal:', error);
-      message.error('Failed to create pepinal');
+      console.error('Failed to create doginal:', error);
+      message.error('Failed to create doginal');
     } finally {
       setLoading(false);
     }
@@ -71,11 +69,7 @@ export const CreateDoginalModal: React.FC<CreateDoginalModalProps> = ({
       width={600}
     >
       <Form form={form} layout="vertical">
-        <Form.Item
-          label="Content Type"
-          name="contentType"
-          initialValue="text"
-        >
+        <Form.Item label="Content Type" name="contentType" initialValue="text">
           <Select onChange={setContentType}>
             <Option value="text">Text</Option>
             <Option value="image">Image</Option>
@@ -89,11 +83,7 @@ export const CreateDoginalModal: React.FC<CreateDoginalModalProps> = ({
             name="textContent"
             rules={[{ required: true, message: 'Please enter text content' }]}
           >
-            <TextArea
-              rows={4}
-              placeholder="Enter your Doginal text content..."
-              maxLength={1000}
-            />
+            <TextArea rows={4} placeholder="Enter your Doginal text content..." maxLength={1000} />
           </Form.Item>
         )}
 
@@ -104,13 +94,9 @@ export const CreateDoginalModal: React.FC<CreateDoginalModalProps> = ({
               maxCount={1}
               beforeUpload={() => false} // Prevent auto upload
             >
-              <Button icon={<UploadOutlined />}>
-                Select Image
-              </Button>
+              <Button icon={<UploadOutlined />}>Select Image</Button>
             </Upload>
-            <div className="text-sm text-gray-500 mt-2">
-              Recommended: PNG, JPEG, GIF, SVG (max 1MB)
-            </div>
+            <div className="text-sm text-gray-500 mt-2">Recommended: PNG, JPEG, GIF, SVG (max 1MB)</div>
           </Form.Item>
         )}
 
@@ -149,5 +135,3 @@ export const CreateDoginalModal: React.FC<CreateDoginalModalProps> = ({
     </Modal>
   );
 };
-
-

@@ -12,5 +12,3 @@ export function getSatsName(nameStr: string): { suffix: string; name: string } |
     name
   };
 }
-
-

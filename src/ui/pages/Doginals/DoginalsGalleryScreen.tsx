@@ -1,15 +1,15 @@
-import { PlusOutlined } from '@ant-design/icons';
 import { Button, Empty, Spin, Tag } from 'antd';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 
 import { useWallet } from '@/ui/utils';
-import { useTranslation } from 'react-i18next';
+import { PlusOutlined } from '@ant-design/icons';
 
 import { CreateDoginalModal } from './components/CreateDoginalModal';
 import { DoginalCard } from './components/DoginalCard';
 import { Doginal, DoginalViewModel } from './types';
-import { buildDoginalViewModel, mergeVepePairs } from './utils/inscription-intel';
+import { buildDoginalViewModel } from './utils/inscription-intel';
 
 export const DoginalsGalleryScreen = () => {
   const wallet = useWallet();
@@ -33,7 +33,7 @@ export const DoginalsGalleryScreen = () => {
       const result = await wallet.getDoginals(currentAccount.address);
       const rawList: Doginal[] = result.list || [];
       const enriched = rawList.map(buildDoginalViewModel);
-      setDoginals(mergeVepePairs(enriched));
+      setDoginals();
     } catch (error) {
       console.error('Failed to load doginals:', error);
     } finally {
@@ -47,14 +47,12 @@ export const DoginalsGalleryScreen = () => {
       setCreateModalVisible(false);
       loadDoginals(); // Refresh the list
     } catch (error) {
-      console.error('Failed to create pepinal:', error);
+      console.error('Failed to create doginal:', error);
     }
   };
 
   const toggleFilter = (key: string) => {
-    setActiveFilters((prev) =>
-      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
-    );
+    setActiveFilters((prev) => (prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]));
   };
 
   const matchesFilters = (item: DoginalViewModel) => {
@@ -64,12 +62,14 @@ export const DoginalsGalleryScreen = () => {
       switch (filter) {
         case 'vepe':
           return item.insights.protocolTags.includes('vepe');
-        case 'pepemap':
-          return item.insights.protocolTags.includes('pepemap');
+        case 'dogemap':
+          return item.insights.protocolTags.includes('dogemap');
         case 'dns':
           return item.insights.protocolTags.includes('dns');
         case 'charms':
-          return item.insights.protocolTags.includes('charms-token') || item.insights.protocolTags.includes('charms-nft');
+          return (
+            item.insights.protocolTags.includes('charms-token') || item.insights.protocolTags.includes('charms-nft')
+          );
         case 'collections':
           return item.insights.protocolTags.includes('collection');
         default:
@@ -103,7 +103,13 @@ export const DoginalsGalleryScreen = () => {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
-        {[{ key: 'vepe', label: 'Vepe' }, { key: 'pepemap', label: 'Pepemaps' }, { key: 'dns', label: 'DNS' }, { key: 'charms', label: 'Charms' }, { key: 'collections', label: 'Collections' }].map((filter) => (
+        {[
+          { key: 'vepe', label: 'Vepe' },
+          { key: 'dogemap', label: 'Dogemaps' },
+          { key: 'dns', label: 'DNS' },
+          { key: 'charms', label: 'Charms' },
+          { key: 'collections', label: 'Collections' }
+        ].map((filter) => (
           <Tag.CheckableTag
             key={filter.key}
             checked={activeFilters.includes(filter.key)}
@@ -122,14 +128,11 @@ export const DoginalsGalleryScreen = () => {
       </div>
 
       {filteredDoginals.length === 0 ? (
-        <Empty
-          description="No Doginals found. Create your first Doginal!"
-          className="text-gray-400"
-        />
+        <Empty description="No Doginals found. Create your first Doginal!" className="text-gray-400" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredDoginals.map((pepinal) => (
-            <DoginalCard key={pepinal.pepinal.id} pepinal={pepinal} onRefresh={loadDoginals} />
+          {filteredDoginals.map((doginal) => (
+            <DoginalCard key={doginal.doginal.id} doginal={doginal} onRefresh={loadDoginals} />
           ))}
         </div>
       )}
@@ -142,5 +145,3 @@ export const DoginalsGalleryScreen = () => {
     </div>
   );
 };
-
-

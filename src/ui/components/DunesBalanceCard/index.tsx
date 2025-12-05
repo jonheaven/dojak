@@ -35,7 +35,8 @@ export default function DunesBalanceCard(props: DunesBalanceCardProps) {
       fullX
       onClick={() => {
         onClick && onClick();
-      }}>
+      }}
+    >
       <Column full py="zero" gap="zero">
         <Row fullY justifyBetween justifyCenter>
           <Column fullY justifyCenter>
@@ -57,5 +58,3 @@ export default function DunesBalanceCard(props: DunesBalanceCardProps) {
     </Card>
   );
 }
-
-

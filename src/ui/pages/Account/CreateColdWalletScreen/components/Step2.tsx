@@ -92,7 +92,8 @@ export default function Step2({ onBack, onNext }: Step2Props) {
             justifyContent: 'center',
             alignItems: 'center',
             padding: '20px'
-          }}>
+          }}
+        >
           <Text
             text={t('Scan the QR code displayed by your cold wallet to import its watch-only public key.')}
             style={{
@@ -114,7 +115,8 @@ export default function Step2({ onBack, onNext }: Step2Props) {
               width: '100%',
               display: 'flex',
               justifyContent: 'center'
-            }}>
+            }}
+          >
             <div style={{ position: 'relative' }}>
               <ColdWalletScan onSucceed={onSucceed} size={QR_SCANNER_SIZE} />
 
@@ -127,7 +129,8 @@ export default function Step2({ onBack, onNext }: Step2Props) {
                   right: 0,
                   bottom: 0,
                   pointerEvents: 'none'
-                }}>
+                }}
+              >
                 {/* Top-left corner */}
                 <div
                   style={{
@@ -196,7 +199,8 @@ export default function Step2({ onBack, onNext }: Step2Props) {
                 border: `1px solid ${colors.red}`,
                 textAlign: 'center',
                 marginBottom: '20px'
-              }}>
+              }}
+            >
               <Text
                 text={t('Scan Failed')}
                 style={{
@@ -225,7 +229,8 @@ export default function Step2({ onBack, onNext }: Step2Props) {
                   padding: '8px 16px',
                   fontSize: '13px',
                   color: colors.text
-                }}>
+                }}
+              >
                 {t('Try Again')}
               </Button>
             </div>
@@ -235,5 +240,3 @@ export default function Step2({ onBack, onNext }: Step2Props) {
     </Layout>
   );
 }
-
-

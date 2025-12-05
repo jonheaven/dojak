@@ -37,5 +37,3 @@ export default function DRC20CardStack() {
     </div>
   );
 }
-
-

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { TickPriceItem, TokenBalance } from '@/shared/types';
 import { Column, Row } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import DRC20BalanceCard2 from '@/ui/components/DRC20BalanceCard2';
+import DRC20BalanceCard from '@/ui/components/DRC20BalanceCard';
 import { Empty } from '@/ui/components/Empty';
 import { Pagination } from '@/ui/components/Pagination';
 import { useI18n } from '@/ui/hooks/useI18n';
@@ -70,7 +70,7 @@ export function DRC20List() {
     <Column>
       <Column gap="md">
         {tokens.map((data, index) => (
-          <DRC20BalanceCard2
+          <DRC20BalanceCard
             key={'drc20-' + index + data.ticker}
             tokenBalance={data}
             showPrice={chain.showPrice && priceMap !== undefined}
@@ -94,5 +94,3 @@ export function DRC20List() {
     </Column>
   );
 }
-
-

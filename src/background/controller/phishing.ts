@@ -381,5 +381,3 @@ class PhishingController {
 }
 
 export default new PhishingController();
-
-

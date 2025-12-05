@@ -165,7 +165,7 @@ export default function DunesTokenScreen() {
                   tokenSummary.duneBalance.amount,
                   tokenSummary.duneBalance.divisibility
                 )}
-                type={TokenType.RUNES}
+                type={TokenType.DUNES}
                 size={'md'}
               />
             </Row>
@@ -178,7 +178,8 @@ export default function DunesTokenScreen() {
             style={{
               backgroundColor: 'rgba(255,255,255,0.08)',
               borderRadius: 15
-            }}>
+            }}
+          >
             <Section title={t('duneid')} value={tokenSummary.duneInfo.duneid} />
             <Line />
             <Section title={t('mints')} value={showLongNumber(tokenSummary.duneInfo.mints)} />
@@ -237,7 +238,8 @@ export default function DunesTokenScreen() {
         style={{
           borderTopWidth: 1,
           borderColor: colors.border2
-        }}>
+        }}
+      >
         <Column gap="sm" fullX>
           <Row gap="sm" mt="sm" mb="md">
             <Button
@@ -283,5 +285,3 @@ export default function DunesTokenScreen() {
     </Layout>
   );
 }
-
-

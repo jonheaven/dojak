@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { TickPriceItem } from '@/shared/types';
 import { Row, Text } from '@/ui/components';
-import { BtcUsd } from '@/ui/components/BtcUsd';
+import { DOGEUSD } from '@/ui/components/DOGEUSD';
 import { Sizes, TextProps } from '@/ui/components/Text';
 import type { ColorTypes } from '@/ui/theme/colors';
 import { useWallet } from '@/ui/utils';
@@ -33,7 +33,7 @@ export function TickPriceChange(props: { price: TickPriceItem | undefined; color
 
   return (
     <Row>
-      <BtcUsd sats={price.curPrice} color={color} size={size} {...props} />
+      <DOGEUSD sats={price.curPrice} color={color} size={size} {...props} />
       <PriceChangePercent change={price.changePercent || 0} size={size} />
     </Row>
   );
@@ -57,12 +57,12 @@ export function TickUsd(
     return new BigNumber(balance).multipliedBy(price.curPrice).toNumber();
   }, [balance, price.curPrice]);
 
-  return <BtcUsd sats={sats} color={color} size={size} {...props} />;
+  return <DOGEUSD sats={sats} color={color} size={size} {...props} />;
 }
 
 export enum TokenType {
   DRC20 = 'drc20',
-  RUNES = 'runes',
+  DUNES = 'dunes',
   Charms = 'Charms'
 }
 
@@ -98,7 +98,7 @@ export function TickUsdWithoutPrice(
           .catch(() => {
             setShown(false);
           });
-      } else if (type === TokenType.RUNES) {
+      } else if (type === TokenType.DUNES) {
         wallet
           .getDunesPrice([tick])
           .then((priceMap) => {
@@ -135,7 +135,5 @@ export function TickUsdWithoutPrice(
   // if api call is failed, don't show anything
   if (!shown) return <></>;
 
-  return <BtcUsd sats={sats} color={color} size={size} {...props} />;
+  return <DOGEUSD sats={sats} color={color} size={size} {...props} />;
 }
-
-

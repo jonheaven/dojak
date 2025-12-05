@@ -46,7 +46,8 @@ export function EnableSignDataCard() {
                 setEnableSignDataPopoverVisible(true);
               }
             }}
-            checked={enableSignData}></Switch>
+            checked={enableSignData}
+          ></Switch>
         </Row>
       </Column>
       {enableSignDataPopoverVisible ? (
@@ -94,7 +95,8 @@ function EnableSignDataPopover({ onNext, onCancel }: { onNext: () => void; onCan
                   onChange={() => {
                     setUnderstand(!understand);
                   }}
-                  checked={understand}></Checkbox>
+                  checked={understand}
+                ></Checkbox>
                 <Text text={t('understand_sign_data_warning')} />
               </Row>
             </Row>
@@ -128,5 +130,3 @@ function EnableSignDataPopover({ onNext, onCancel }: { onNext: () => void; onCan
     </Popover>
   );
 }
-
-

@@ -1,23 +1,20 @@
 /**
  * Dojak Wallet - Keyring Service
- * 
+ *
  * This is the main keyring service export. It uses our native Dogecoin
  * keyring implementation instead of the patched @unisat/keyring-service.
- * 
+ *
  * Why native Dogecoin keyrings?
  * - The @unisat/keyring-service hardcodes Bitcoin network parameters
  * - It ignores the network config we pass to it
  * - This causes incorrect address derivation and WIF encoding
  * - Our native implementation uses bitcore-lib-doge for correct Dogecoin support
  */
-
 import logger from 'loglevel';
 
 import { t } from '@unisat/i18n';
-import {
-  DogecoinKeyringService,
-  MemoryStorageAdapter,
-} from './dogecoin-keyrings/dogecoin-keyring-service';
+
+import { DogecoinKeyringService, MemoryStorageAdapter } from './dogecoin-keyrings/dogecoin-keyring-service';
 import type { StorageAdapter, DisplayedKeyring } from './dogecoin-keyrings/dogecoin-keyring-service';
 
 // Re-export types for compatibility
@@ -101,7 +98,7 @@ export class ExtensionStorageAdapter implements StorageAdapter {
 
 /**
  * KeyringServiceWrapper
- * 
+ *
  * Main keyring service instance for the Dojak wallet.
  * Uses native Dogecoin keyring implementation.
  */
@@ -109,7 +106,7 @@ export class KeyringServiceWrapper extends DogecoinKeyringService {
   constructor() {
     // Determine storage adapter based on environment
     let storage: StorageAdapter;
-    
+
     try {
       // Check if we're in a Chrome extension environment
       if (typeof chrome !== 'undefined' && chrome.storage?.local) {
@@ -125,7 +122,7 @@ export class KeyringServiceWrapper extends DogecoinKeyringService {
       storage,
       logger,
       t,
-      network: 'mainnet', // Default to Dogecoin mainnet
+      network: 'mainnet' // Default to Dogecoin mainnet
     });
   }
 

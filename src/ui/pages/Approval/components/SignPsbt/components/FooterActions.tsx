@@ -24,5 +24,3 @@ const FooterActions = ({ txInfo, type, isValid, t, handleCancel, handleConfirm, 
 };
 
 export default FooterActions;
-
-

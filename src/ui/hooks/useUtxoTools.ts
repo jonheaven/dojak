@@ -9,5 +9,3 @@ export const useUtxoTools = (chain: TypeChain) => {
     openUtxoTools
   };
 };
-
-

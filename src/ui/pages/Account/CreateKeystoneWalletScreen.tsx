@@ -5,7 +5,7 @@ import { ADDRESS_TYPES } from '@/shared/constant';
 import KeystoneProductImg from '@/ui/assets/keystone-product.png';
 import { Button, Card, Column, Content, Footer, Header, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
+import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import KeystoneLogo from '@/ui/components/Keystone/Logo';
 import KeystoneLogoWithText from '@/ui/components/Keystone/LogoWithText';
 import KeystonePopover from '@/ui/components/Keystone/Popover';
@@ -51,7 +51,8 @@ function Step1({ onNext, setIsUSB }) {
             background: 'linear-gradient(270deg, rgba(4, 5, 7, 0.00) 0.06%, #040507 8.94%)',
             position: 'relative',
             overflow: 'hidden'
-          }}>
+          }}
+        >
           <img
             src={KeystoneProductImg}
             style={{
@@ -72,7 +73,8 @@ function Step1({ onNext, setIsUSB }) {
               position: 'relative',
               zIndex: 2,
               width: '50%'
-            }}>
+            }}
+          >
             <KeystoneLogo width={64} height={64} />
             <Text text={t('keystone_hardware_wallet')} preset="title" />
             <Text
@@ -98,7 +100,8 @@ function Step1({ onNext, setIsUSB }) {
           onClick={() => {
             setIsUSB(true);
             onNext();
-          }}>
+          }}
+        >
           <UsbOutlined style={{ marginRight: '8px' }} />
           <Text text={t('connect_via_usb')} color="black" />
         </Button>
@@ -108,7 +111,8 @@ function Step1({ onNext, setIsUSB }) {
           onClick={() => {
             setIsUSB(false);
             onNext();
-          }}>
+          }}
+        >
           <ScanOutlined style={{ marginRight: '8px' }} />
           <Text text={t('scan_to_connect')} color="white" />
         </Button>
@@ -416,7 +420,7 @@ function Step3({
             const show = groups.find((v) => v.type === item.value);
             if (show !== undefined && show !== null) {
               return (
-                <AddressTypeCard2
+                <AddressTypeCard
                   key={index}
                   label={item.name}
                   items={getItems(groups, item.value)}
@@ -428,7 +432,7 @@ function Step3({
               );
             }
             // return (
-            //   <AddressTypeCard2
+            //   <AddressTypeCard
             //     key={index}
             //     label={item.name}
             //     items={getItems(groups, item.value)}
@@ -540,5 +544,3 @@ export default function CreateKeystoneWalletScreen() {
   }
   return <></>;
 }
-
-

@@ -93,5 +93,3 @@ export interface TxInfo {
   decodedPsbt: DecodedPsbt;
   contractResults: ContractResult[];
 }
-
-

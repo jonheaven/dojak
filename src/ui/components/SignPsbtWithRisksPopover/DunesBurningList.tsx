@@ -91,7 +91,7 @@ export const DunesBurningList = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
       <Column justifyCenter itemsCenter>
         <Row fullX justifyBetween>
           <Row />
-          <Text text={t('runes_burn_risk_list')} preset="bold" />
+          <Text text={t('dunes_burn_risk_list')} preset="bold" />
           <Icon
             icon="close"
             onClick={() => {
@@ -105,7 +105,7 @@ export const DunesBurningList = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
         {burnList.map((burn, index) => {
           return (
             <Row
-              key={'runes_burn_' + index}
+              key={'dunes_burn_' + index}
               justifyBetween
               fullX
               px="md"
@@ -115,7 +115,8 @@ export const DunesBurningList = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
                 borderRadius: 10,
                 borderWidth: 1,
                 borderColor: '#442326'
-              }}>
+              }}
+            >
               <Row>
                 <Icon icon="burn" color="red" />
                 <Text text={burn.spacedDune} />
@@ -129,5 +130,3 @@ export const DunesBurningList = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
     </Popover>
   );
 };
-
-

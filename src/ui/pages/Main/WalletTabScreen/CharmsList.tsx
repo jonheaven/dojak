@@ -100,5 +100,3 @@ export function CharmsList() {
     </Column>
   );
 }
-
-

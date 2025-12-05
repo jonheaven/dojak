@@ -43,7 +43,10 @@ export default function UnlockScreen() {
       if (!isInNotification) {
         const hasVault = await wallet.hasVault();
         if (!hasVault) {
-          navigate('WelcomeScreen');
+          // Password was set but wallet creation was interrupted
+          // Continue to wallet creation with fromUnlock flag
+          console.log('[UnlockScreen] No vault found, redirecting to wallet creation');
+          navigate('CreateHDWalletScreen', { isImport: false, fromUnlock: true });
           return;
         } else {
           navigate('MainScreen');
@@ -76,7 +79,7 @@ export default function UnlockScreen() {
       <Content preset="middle">
         <Column fullX>
           <Row justifyCenter>
-            <Logo preset="large" />
+            <Logo preset="intrinsic" />
           </Row>
 
           <Column gap="xl" mt="xxl">
@@ -95,5 +98,3 @@ export default function UnlockScreen() {
     </Layout>
   );
 }
-
-

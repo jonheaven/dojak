@@ -21,7 +21,8 @@ export function Footer(props: FooterProps) {
   const footerStyle = useMemo(() => {
     return {
       ...$footerBaseStyle,
-      backgroundColor: isSidePanel ? '#070606' : undefined,
+      // Use theme-aware background so footer works in both light and dark modes
+      backgroundColor: isSidePanel ? 'var(--theme-bg2)' : undefined,
       width: isSidePanel ? '100%' : undefined
     };
   }, [isSidePanel]);
@@ -29,5 +30,3 @@ export function Footer(props: FooterProps) {
   const $style = Object.assign({}, footerStyle, $styleOverride);
   return <BaseView style={$style} {...rest} />;
 }
-
-

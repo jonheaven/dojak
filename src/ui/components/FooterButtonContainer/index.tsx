@@ -8,11 +8,19 @@ export function FooterButtonContainer({ children }: { children: React.ReactNode 
   return (
     <Column>
       <Row style={{ height: 60 }}></Row>
-      <Footer style={{ position: 'absolute', height: 60, left: 0, right: 0, bottom: 0, backgroundColor: '#070606' }}>
+      <Footer
+        style={{
+          position: 'absolute',
+          height: 60,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          // Theme-aware footer background
+          backgroundColor: 'var(--theme-bg2)'
+        }}
+      >
         {children}
       </Footer>
     </Column>
   );
 }
-
-

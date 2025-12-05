@@ -71,5 +71,3 @@ export default function KeystoneSignScreen(props: Props) {
 
   return <KeystoneSignBase {...baseProps} />;
 }
-
-

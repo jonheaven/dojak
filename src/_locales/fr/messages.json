@@ -24,8 +24,8 @@
   "atomicals": {
     "message": "Atomicals"
   },
-  "runes": {
-    "message": "Runes"
+  "dunes": {
+    "message": "Dunes"
   },
   "doginals": {
     "message": "Doginals"
@@ -251,7 +251,7 @@
     "message": "Activer le Solde Non Confirmé"
   },
   "enable_unconfirmed_balance_warning": {
-    "message": "Si des actifs Runes sont détectés dans une adresse donnée, les UTXOs non confirmés ne pourront pas être dépensés jusqu'à leur confirmation. Forcer la dépense de ces UTXOs non confirmés présente un risque de perte d'actifs."
+    "message": "Si des actifs Dunes sont détectés dans une adresse donnée, les UTXOs non confirmés ne pourront pas être dépensés jusqu'à leur confirmation. Forcer la dépense de ces UTXOs non confirmés présente un risque de perte d'actifs."
   },
 
   "allow_using_unconfirmed_balance": {
@@ -393,7 +393,7 @@
     "message": "Adresses Actives (24h)"
   },
   "go_to_unisat_explorer": {
-    "message": "Aller sur Pepeblocks"
+    "message": "Aller sur SoChain"
   },
   "search_address_and_txids": {
     "message": "Rechercher Adresse et TXIDs"
@@ -634,8 +634,8 @@
   "tx_fee": {
     "message": "Frais Tx :"
   },
-  "t_baby": {
-    "message": "tBABY"
+  "t_jawn": {
+    "message": "tJAWN"
   },
   "send_to": {
     "message": "Envoyer à"
@@ -643,8 +643,8 @@
   "send_amount": {
     "message": "Montant à Envoyer"
   },
-  "how_to_import_baby": {
-    "message": "Comment Importer BABY"
+  "how_to_import_jawn": {
+    "message": "Comment Importer JAWN"
   },
   "click_the_account_on_the_main_page": {
     "message": "Cliquez sur le compte sur la page principale."
@@ -652,17 +652,17 @@
   "tap_the_more_menu_then_select_the_export_private_key_option": {
     "message": "Appuyez sur le menu 'Plus', puis sélectionnez l'option 'Exporter la Clé Privée'."
   },
-  "once_you_have_your_hex_private_key_you_can_import_it_into_a_cosmos_compatible_wallet_to_access_your_babylon_reward_assets": {
-    "message": "Une fois que vous avez votre Clé Privée Hex, vous pouvez l'importer dans un portefeuille compatible COSMOS pour accéder à vos actifs de récompense Babylon."
+  "once_you_have_your_hex_private_key_you_can_import_it_into_a_cosmos_compatible_wallet_to_access_your_jawnlon_reward_assets": {
+    "message": "Une fois que vous avez votre Clé Privée Hex, vous pouvez l'importer dans un portefeuille compatible COSMOS pour accéder à vos actifs de récompense Jawntype."
   },
-  "babylon_bitcoin_staking": {
-    "message": "Staking Bitcoin Babylon"
+  "jawntype_bitcoin_staking": {
+    "message": "Staking Bitcoin Jawntype"
   },
-  "babylon_bitcoin_staking_phase1": {
-    "message": "Staking Bitcoin Babylon Phase1"
+  "jawntype_bitcoin_staking_phase1": {
+    "message": "Staking Bitcoin Jawntype Phase1"
   },
-  "babylon_bitcoin_staking_stats": {
-    "message": "Statistiques Staking Bitcoin Babylon"
+  "jawntype_bitcoin_staking_stats": {
+    "message": "Statistiques Staking Bitcoin Jawntype"
   },
   "closed": {
     "message": "Fermé"
@@ -673,8 +673,8 @@
   "staked": {
     "message": "Staké"
   },
-  "learn_how_to_import_your_babylon_reward_assets_into_a_cosmos_compatible_wallet": {
-    "message": "Apprenez comment importer vos actifs de récompense Babylon dans un portefeuille compatible COSMOS."
+  "learn_how_to_import_your_jawnlon_reward_assets_into_a_cosmos_compatible_wallet": {
+    "message": "Apprenez comment importer vos actifs de récompense Jawntype dans un portefeuille compatible COSMOS."
   },
   "unstake": {
     "message": "Déstaker"
@@ -682,8 +682,8 @@
   "claimable": {
     "message": "Réclamable"
   },
-  "baby_rewards": {
-    "message": "Récompenses BABY"
+  "jawn_rewards": {
+    "message": "Récompenses JAWN"
   },
   "claim": {
     "message": "Réclamer"
@@ -794,8 +794,8 @@
   "total": {
     "message": "Total"
   },
-  "baby_balance": {
-    "message": "Solde BABY"
+  "jawn_balance": {
+    "message": "Solde JAWN"
   },
   "failed_to_handle_signature": {
     "message": "Échec du traitement de la signature"
@@ -1104,8 +1104,8 @@
   "sending_out_assets": {
     "message": "Envoi d'Actifs"
   },
-  "runes_burn_risk_list": {
-    "message": "Liste des Risques de Brûlage de Runes"
+  "dunes_burn_risk_list": {
+    "message": "Liste des Risques de Brûlage de Dunes"
   },
   "inscription_burn_risk_list": {
     "message": "Liste des Risques de Brûlage d'Inscriptions"
@@ -1182,7 +1182,7 @@
   "for_doginals_assets": {
     "message": "Pour les actifs Ordinals,"
   },
-  "rare_sats": {
+  "rare_koinu": {
     "message": "Sats rares"
   },
   "are_not_supported": {
@@ -1225,7 +1225,7 @@
     "message": "Pour activer la dépense des soldes non confirmés, veuillez visiter les options avancées dans les paramètres."
   },
   "unconfirmed_balance_not_spendable_warning": {
-    "message": "Pour protéger vos actifs, seuls les soldes confirmés sont dépensables lorsque vous détenez des actifs Runes. Ceci afin d'éviter le brûlage accidentel d'actifs."
+    "message": "Pour protéger vos actifs, seuls les soldes confirmés sont dépensables lorsque vous détenez des actifs Dunes. Ceci afin d'éviter le brûlage accidentel d'actifs."
   },
   "mandatory_use_of_unconfirmed_balance": {
     "message": "Utilisation obligatoire du solde non confirmé"
@@ -1365,8 +1365,8 @@
   "continue_to": {
     "message": "Continuer vers"
   },
-  "send_runes": {
-    "message": "Envoyer des Runes"
+  "send_dunes": {
+    "message": "Envoyer des Dunes"
   },
   "send_atomicals_inscription": {
     "message": "Envoyer une Inscription Atomicals"
@@ -1377,8 +1377,8 @@
   "ordinals_inscriptions": {
     "message": "Inscriptions Ordinals"
   },
-  "babylon_staking": {
-    "message": "Staking Babylon"
+  "jawntype_staking": {
+    "message": "Staking Jawntype"
   },
   "confirmed_tvl": {
     "message": "Confirmé"
@@ -1476,8 +1476,8 @@
   "amount_must_be_at_least": {
     "message": "Le montant doit être d'au moins"
   },
-  "includes_inscriptions_runes_and_unconfirmed_utxos": {
-    "message": "Inclut les Inscriptions, les Runes et les actifs UTXO non confirmés."
+  "includes_inscriptions_dunes_and_unconfirmed_utxos": {
+    "message": "Inclut les Inscriptions, les Dunes et les actifs UTXO non confirmés."
   },
   "future_versions_will_support_spending_these_assets": {
     "message": "Les versions futures prendront en charge la dépense de ces actifs."
@@ -1560,8 +1560,8 @@
   "script": {
     "message": "Script"
   },
-  "this_message_serves_as_a_notice_that_if_runes_assets_are_detected_in_your_address_your": {
-    "message": "Ce message sert d'avis : si des actifs Runes sont détectés dans votre adresse, vos soldes non confirmés ne seront pas dépensables. Vous n'avez rien à faire."
+  "this_message_serves_as_a_notice_that_if_dunes_assets_are_detected_in_your_address_your": {
+    "message": "Ce message sert d'avis : si des actifs Dunes sont détectés dans votre adresse, vos soldes non confirmés ne seront pas dépensables. Vous n'avez rien à faire."
   },
   "in_the_current_version_only_the_confirmed_balance_can_be_used_once_atomicals_enabled": {
     "message": "Dans la version actuelle, seul le solde confirmé peut être utilisé une fois les atomicals activés."
@@ -1656,7 +1656,7 @@
   "address_or_name_fb": {
     "message": "Adresse ou nom (.fb)"
   },
-  "address_or_name_sats_unisat_etc": {
+  "address_or_name_dotdoge_dotdogecoin_etc": {
     "message": "Adresse ou nom (.sats, .unisat, ...)"
   },
   "does_not_exist": {
@@ -1914,50 +1914,50 @@
   "about_10_minutes": {
     "message": "environ 10 minutes"
   },
-  "babylon_bitcoin_staking_phase2": {
-    "message": "Babylon Bitcoin Staking Phase 2"
+  "jawntype_bitcoin_staking_phase2": {
+    "message": "Jawntype Bitcoin Staking Phase 2"
   },
-  "go_to_babylon": {
-    "message": "Aller à Babylon"
+  "go_to_jawnlon": {
+    "message": "Aller à Jawntype"
   },
-  "closed_babylon": {
+  "closed_jawnlon": {
     "message": "Fermé"
   },
-  "open_babylon": {
+  "open_jawnlon": {
     "message": "Ouvert"
   },
-  "pending_babylon": {
+  "pending_jawnlon": {
     "message": "En attente"
   },
-  "convert_baby_to_drc20": {
-    "message": "Convertir $BABY en drc-20"
+  "convert_jawn_to_drc20": {
+    "message": "Convertir $JAWN en drc-20"
   },
-  "you_are_about_to_convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "Vous êtes sur le point de convertir votre BABY natif en BABY drc-20 sur Bitcoin."
+  "you_are_about_to_convert_your_native_jawn_to_btc_drc20_jawn": {
+    "message": "Vous êtes sur le point de convertir votre JAWN natif en JAWN drc-20 sur Bitcoin."
   },
-  "once_the_conversion_is_complete_your_native_baby_cannot_be_restored": {
-    "message": "Une fois la conversion terminée, votre BABY natif ne pourra pas être restauré."
+  "once_the_conversion_is_complete_your_native_jawn_cannot_be_restored": {
+    "message": "Une fois la conversion terminée, votre JAWN natif ne pourra pas être restauré."
   },
   "do_you_confirm_the_conversion": {
     "message": "Confirmez-vous la conversion ?"
   },
-  "transfer_baby_to_cosmos_wallet": {
-    "message": "Transférer $BABY vers le portefeuille Cosmos"
+  "transfer_jawn_to_cosmos_wallet": {
+    "message": "Transférer $JAWN vers le portefeuille Cosmos"
   },
   "do_you_confirm_the_transfer": {
     "message": "Confirmez-vous le transfert ?"
   },
-  "you_are_about_to_transfer_your_native_baby_to_your_cosmos_wallet": {
-    "message": "Vous êtes sur le point de transférer votre BABY natif vers votre portefeuille Cosmos."
+  "you_are_about_to_transfer_your_native_jawn_to_your_cosmos_wallet": {
+    "message": "Vous êtes sur le point de transférer votre JAWN natif vers votre portefeuille Cosmos."
   },
-  "click_baby_to_drc20_coming_soon": {
-    "message": "Cliquez pour convertir $BABY en drc-20 (Bientôt disponible)"
+  "click_jawn_to_drc20_coming_soon": {
+    "message": "Cliquez pour convertir $JAWN en drc-20 (Bientôt disponible)"
   },
-  "convert_your_native_baby_to_btc_drc20_baby": {
-    "message": "Convertir votre jeton $BABY natif en BABY drc-20 sur Bitcoin."
+  "convert_your_native_jawn_to_btc_drc20_jawn": {
+    "message": "Convertir votre jeton $JAWN natif en JAWN drc-20 sur Bitcoin."
   },
-  "transfer_your_baby_to_your_cosmos_wallet": {
-    "message": "Transférer votre $BABY vers votre portefeuille Cosmos."
+  "transfer_your_jawn_to_your_cosmos_wallet": {
+    "message": "Transférer votre $JAWN vers votre portefeuille Cosmos."
   },
   "password_error": {
     "message": "Mot de passe incorrect"
@@ -2313,17 +2313,17 @@
   "changing_inscription_risk_description": {
     "message": "Cette transaction implique la modification d'une inscription. Veuillez vous assurer de comprendre les implications de cette action avant de continuer."
   },
-  "runes_burning_risk_title": {
-    "message": "Destruction de Runes détectée"
+  "dunes_burning_risk_title": {
+    "message": "Destruction de Dunes détectée"
   },
-  "runes_burning_risk_description": {
-    "message": "Cette transaction implique la destruction de Runes. Veuillez vous assurer de comprendre les implications de cette action avant de continuer."
+  "dunes_burning_risk_description": {
+    "message": "Cette transaction implique la destruction de Dunes. Veuillez vous assurer de comprendre les implications de cette action avant de continuer."
   },
-  "runes_multiple_assets_risk_title": {
-    "message": "Actifs Runes multiples détectés"
+  "dunes_multiple_assets_risk_title": {
+    "message": "Actifs Dunes multiples détectés"
   },
-  "runes_multiple_assets_risk_description": {
-    "message": "Cette transaction implique plusieurs actifs Runes. Veuillez vous assurer de comprendre les implications de cette action avant de continuer."
+  "dunes_multiple_assets_risk_description": {
+    "message": "Cette transaction implique plusieurs actifs Dunes. Veuillez vous assurer de comprendre les implications de cette action avant de continuer."
   },
   "indexer_api_down_risk_title": {
     "message": "API d'indexation hors service"
@@ -2331,11 +2331,11 @@
   "indexer_api_down_risk_description": {
     "message": "L'API d'indexation est actuellement hors service. Cela peut affecter la précision des détails de transaction et des soldes d'actifs. Procédez avec prudence et vérifiez toutes les informations de manière indépendante."
   },
-  "runes_api_down_risk_title": {
-    "message": "API Runes hors service"
+  "dunes_api_down_risk_title": {
+    "message": "API Dunes hors service"
   },
-  "runes_api_down_risk_description": {
-    "message": "L'API Runes est actuellement hors service. Cela peut affecter la précision des détails de transaction et des soldes d'actifs Runes. Procédez avec prudence et vérifiez toutes les informations de manière indépendante."
+  "dunes_api_down_risk_description": {
+    "message": "L'API Dunes est actuellement hors service. Cela peut affecter la précision des détails de transaction et des soldes d'actifs Dunes. Procédez avec prudence et vérifiez toutes les informations de manière indépendante."
   },
   "charms_burning_risk_title": {
     "message": "Destruction d'Charms détectée"

@@ -21,5 +21,3 @@ export const typography = {
    */
   primary: fonts.Inter
 };
-
-

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+
 import { useCurrentAccount } from '../state/accounts/hooks';
 import { useWallet } from '../utils';
 
@@ -31,7 +32,7 @@ export const useRealtimeUpdates = (options: UseRealtimeUpdatesOptions = {}) => {
   }, [options]);
 
   const cleanupSubscriptions = useCallback(() => {
-    subscriptionsRef.current.forEach(unsubscribe => {
+    subscriptionsRef.current.forEach((unsubscribe) => {
       if (typeof unsubscribe === 'function') {
         unsubscribe();
       }
@@ -72,14 +73,11 @@ export const useRealtimeUpdates = (options: UseRealtimeUpdatesOptions = {}) => {
 
     // Marketplace events subscription
     if (enableMarketplaceUpdates && onMarketplaceUpdate) {
-      const unsubscribeMarketplace = wallet.subscribeToMarketplaceEvents(
-        (event: RealtimeEvent) => {
-          if (event.type === 'marketplace_update') {
-            onMarketplaceUpdate(event);
-          }
-        },
-        onError
-      );
+      const unsubscribeMarketplace = wallet.subscribeToMarketplaceEvents((event: RealtimeEvent) => {
+        if (event.type === 'marketplace_update') {
+          onMarketplaceUpdate(event);
+        }
+      }, onError);
       if (typeof unsubscribeMarketplace === 'function') {
         subscriptionsRef.current.push(unsubscribeMarketplace);
       }
@@ -87,14 +85,11 @@ export const useRealtimeUpdates = (options: UseRealtimeUpdatesOptions = {}) => {
 
     // New blocks subscription
     if (enableBlockUpdates && onBlockUpdate) {
-      const unsubscribeBlocks = wallet.subscribeToNewBlocks(
-        (event: RealtimeEvent) => {
-          if (event.type === 'new_block') {
-            onBlockUpdate(event);
-          }
-        },
-        onError
-      );
+      const unsubscribeBlocks = wallet.subscribeToNewBlocks((event: RealtimeEvent) => {
+        if (event.type === 'new_block') {
+          onBlockUpdate(event);
+        }
+      }, onError);
       if (typeof unsubscribeBlocks === 'function') {
         subscriptionsRef.current.push(unsubscribeBlocks);
       }

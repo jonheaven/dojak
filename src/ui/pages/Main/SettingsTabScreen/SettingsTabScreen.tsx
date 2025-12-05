@@ -32,7 +32,8 @@ export default function SettingsTabScreen() {
           <Row itemsCenter gap="md">
             <div
               onClick={navigateToLanguageSettings}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
               <Icon icon="language" size={28} color="textDim" />
             </div>
             <SwitchNetworkBar />
@@ -80,5 +81,3 @@ export default function SettingsTabScreen() {
     </Layout>
   );
 }
-
-

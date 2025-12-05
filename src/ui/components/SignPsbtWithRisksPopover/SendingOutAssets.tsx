@@ -267,7 +267,8 @@ export const SendingOutAssets = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
                 borderWidth: 1,
                 borderColor: '#442326'
               }}
-              overflowX>
+              overflowX
+            >
               {inscriptions.map((inscription, index) => {
                 return (
                   <InscriptionPreview key={'inscription_sending_' + index} data={inscription.data} preset="small" />
@@ -293,7 +294,8 @@ export const SendingOutAssets = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
                     borderRadius: 10,
                     borderWidth: 1,
                     borderColor: '#442326'
-                  }}>
+                  }}
+                >
                   <Row>
                     <Text text={burn.ticker} />
                   </Row>
@@ -321,7 +323,8 @@ export const SendingOutAssets = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
                     borderRadius: 10,
                     borderWidth: 1,
                     borderColor: '#442326'
-                  }}>
+                  }}
+                >
                   <Row>
                     <Text text={burn.ticker} />
                   </Row>
@@ -335,11 +338,11 @@ export const SendingOutAssets = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
 
         {dunesList.length > 0 ? (
           <Column fullX>
-            <Text text={`${t('runes')}:`} mt="md"></Text>
+            <Text text={`${t('dunes')}:`} mt="md"></Text>
             {dunesList.map((duneItem, index) => {
               return (
                 <Row
-                  key={'runes_sending_' + index}
+                  key={'dunes_sending_' + index}
                   justifyBetween
                   fullX
                   px="md"
@@ -349,7 +352,8 @@ export const SendingOutAssets = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
                     borderRadius: 10,
                     borderWidth: 1,
                     borderColor: '#442326'
-                  }}>
+                  }}
+                >
                   <Row>
                     <Text text={duneItem.rune.spacedDune || duneItem.rune.dune} />
                     {duneItem.dune.symbol && <Text text={` (${duneItem.dune.symbol})`} />}
@@ -380,7 +384,8 @@ export const SendingOutAssets = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
                     borderRadius: 10,
                     borderWidth: 1,
                     borderColor: '#442326'
-                  }}>
+                  }}
+                >
                   <Row>
                     <Text text={charmItem.charm.name || charmItem.charm.symbol} />
                     {charmItem.charm.symbol && charmItem.charm.name !== charmItem.charm.symbol && (
@@ -400,5 +405,3 @@ export const SendingOutAssets = ({ decodedPsbt, onClose }: { decodedPsbt: Decode
     </Popover>
   );
 };
-
-

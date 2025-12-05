@@ -8,7 +8,7 @@ import { usePrice } from '@/ui/provider/PriceProvider';
 import { useChain, useChainType } from '@/ui/state/settings/hooks';
 import type { ColorTypes } from '@/ui/theme/colors';
 
-export function BtcUsd(
+export function DOGEUSD(
   props: {
     sats: number;
     color?: ColorTypes;
@@ -27,9 +27,7 @@ export function BtcUsd(
   const [showNoValue, setShowNoValue] = useState(false);
 
   useEffect(() => {
-    setShown(
-      chainType === ChainType.BITCOIN_MAINNET
-    );
+    setShown(chainType === ChainType.BITCOIN_MAINNET);
     setShowNoValue(chainType === ChainType.BITCOIN_TESTNET);
   }, [chainType]);
 
@@ -97,5 +95,3 @@ export function BtcUsd(
   }
   return <Text color={color} size={size} text={`$${usd}`} {...props} />;
 }
-
-

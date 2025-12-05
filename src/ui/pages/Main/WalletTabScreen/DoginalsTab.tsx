@@ -1,8 +1,16 @@
-import { AppstoreOutlined, GlobalOutlined, PlusOutlined, SearchOutlined, ShoppingOutlined, StarOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
+import { useTranslation } from 'react-i18next';
 
 import { Column, Content, Text } from '@/ui/components';
-import { useTranslation } from 'react-i18next';
+import {
+  AppstoreOutlined,
+  GlobalOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  ShoppingOutlined,
+  StarOutlined
+} from '@ant-design/icons';
+
 import { useNavigate } from '../../MainRoute';
 
 export function DoginalsTab() {
@@ -40,12 +48,7 @@ export function DoginalsTab() {
         <div className="flex flex-col items-center justify-center py-12">
           <div className="text-6xl mb-6">🐸</div>
           <Text text="Doginals" preset="title-bold" textCenter />
-          <Text
-            text="Create and collect unique Doginals on Dogecoin"
-            color="textDim"
-            textCenter
-            mt="lg"
-          />
+          <Text text="Create and collect unique Doginals on Dogecoin" color="textDim" textCenter mt="lg" />
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8">
             <Button
@@ -118,5 +121,3 @@ export function DoginalsTab() {
     </Column>
   );
 }
-
-

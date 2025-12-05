@@ -107,7 +107,8 @@ export function ScrollableList({
                 justifyContent: 'flex-end',
                 alignItems: 'center',
                 gap: '8px'
-              }}>
+              }}
+            >
               {canScrollToTop && (
                 <BaseView
                   onClick={scrollToTop}
@@ -118,7 +119,8 @@ export function ScrollableList({
                     cursor: 'pointer',
                     textAlign: 'center',
                     whiteSpace: 'nowrap'
-                  }}>
+                  }}
+                >
                   <Text text={t('scroll_to_top')} size="xs" color="white" />
                 </BaseView>
               )}
@@ -133,7 +135,8 @@ export function ScrollableList({
                     cursor: 'pointer',
                     textAlign: 'center',
                     whiteSpace: 'nowrap'
-                  }}>
+                  }}
+                >
                   <Text text={t('scroll_to_bottom')} size="xs" color="white" />
                 </BaseView>
               )}
@@ -157,7 +160,8 @@ export function ScrollableList({
             paddingRight: '4px'
           })
         }}
-        onScroll={handleScroll}>
+        onScroll={handleScroll}
+      >
         <Column gap="lg">
           {items.map((item, index) => (
             <div key={index}>{renderItem(item, index)}</div>
@@ -188,5 +192,3 @@ declare global {
     scrollTimeout: number;
   }
 }
-
-

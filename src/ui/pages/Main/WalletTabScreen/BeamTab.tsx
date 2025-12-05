@@ -57,14 +57,18 @@ export function BeamTab() {
       <Card>
         <Column gap="md">
           <Text text="Beam Charms tokens between Dogecoin and other blockchain networks." size="sm" />
-          <Text text="Note: Only Charms tokens can be beamed. Regular Doginals, Dunes, and DRC-20 tokens must first be wrapped into Charms." size="xs" color="textDim" />
+          <Text
+            text="Note: Only Charms tokens can be beamed. Regular Doginals, Dunes, and DRC-20 tokens must first be wrapped into Charms."
+            size="xs"
+            color="textDim"
+          />
 
           <Column gap="sm">
             <Text text="Charms Token ID" size="sm" />
             <Input
               placeholder="Enter Charms token identifier (e.g., charms:abc123...)"
               value={beamRequest.asset}
-              onChange={(e) => setBeamRequest(prev => ({ ...prev, asset: e.target.value }))}
+              onChange={(e) => setBeamRequest((prev) => ({ ...prev, asset: e.target.value }))}
             />
           </Column>
 
@@ -76,7 +80,7 @@ export function BeamTab() {
                   key={chain}
                   text={chain.charAt(0).toUpperCase() + chain.slice(1)}
                   preset={beamRequest.toChain === chain ? 'primary' : 'default'}
-                  onClick={() => setBeamRequest(prev => ({ ...prev, toChain: chain as any }))}
+                  onClick={() => setBeamRequest((prev) => ({ ...prev, toChain: chain as any }))}
                   style={{ marginRight: 8 }}
                 />
               ))}
@@ -88,7 +92,7 @@ export function BeamTab() {
             <Input
               placeholder="Enter amount to beam"
               value={beamRequest.amount}
-              onChange={(e) => setBeamRequest(prev => ({ ...prev, amount: e.target.value }))}
+              onChange={(e) => setBeamRequest((prev) => ({ ...prev, amount: e.target.value }))}
             />
           </Column>
 
@@ -97,12 +101,12 @@ export function BeamTab() {
             <Input
               placeholder={`Enter ${beamRequest.toChain} address`}
               value={beamRequest.destAddress}
-              onChange={(e) => setBeamRequest(prev => ({ ...prev, destAddress: e.target.value }))}
+              onChange={(e) => setBeamRequest((prev) => ({ ...prev, destAddress: e.target.value }))}
             />
           </Column>
 
           <Button
-            text={isLoading ? "Preparing Beam..." : "Prepare Beam"}
+            text={isLoading ? 'Preparing Beam...' : 'Prepare Beam'}
             preset="primary"
             onClick={handleBeam}
             disabled={isLoading || !beamRequest.asset || !beamRequest.amount || !beamRequest.destAddress}
@@ -126,7 +130,10 @@ export function BeamTab() {
                 <Text text={`Asset: ${beamStatus.asset} (${beamStatus.amount})`} size="sm" />
 
                 {beamStatus.estimatedCompletion && (
-                  <Text text={`Estimated completion: ${new Date(beamStatus.estimatedCompletion).toLocaleTimeString()}`} size="xs" />
+                  <Text
+                    text={`Estimated completion: ${new Date(beamStatus.estimatedCompletion).toLocaleTimeString()}`}
+                    size="xs"
+                  />
                 )}
               </Column>
             )}

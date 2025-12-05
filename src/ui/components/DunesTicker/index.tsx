@@ -18,5 +18,3 @@ export function DunesTicker({ tick, preset }: { tick: string | undefined; preset
   const style = $tickerPresets[preset || 'md'];
   return <Text text={tick} size={style.textSize} color="gold" wrap />;
 }
-
-

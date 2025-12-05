@@ -16,8 +16,8 @@ import '@/ui/styles/global.less';
 import { I18nProvider } from './app/contexts/I18nContext';
 import { ThemeProvider } from './app/contexts/ThemeContext';
 import { ActionComponentProvider } from './components/ActionComponent';
-import AppLayout from './components/AppLayout';
 import AnimatedBackground from './components/AnimatedBackground';
+import AppLayout from './components/AppLayout';
 import { AppDimensions } from './components/Responsive';
 import AsyncMainRoute from './pages/MainRoute';
 import store from './state';
@@ -155,7 +155,8 @@ root.render(
                   <IdleTimerProvider
                     onAction={() => {
                       wallet.setLastActiveTime();
-                    }}>
+                    }}
+                  >
                     <Updaters />
                     <AsyncMainRoute />
                   </IdleTimerProvider>
@@ -168,5 +169,3 @@ root.render(
     </WalletProvider>
   </Provider>
 );
-
-
