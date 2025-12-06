@@ -8,7 +8,7 @@ export function WoofTab() {
     <Column gap="lg">
       <Card preset="style2">
         <Column gap="md">
-          <Text text="Woof Mesh Chat" color="gold" size="lg" weight="bold" />
+          <Text text="Woof Mesh Chat" color="gold" size="lg" />
           <Text
             text="Encrypted swarm chat is almost here. The Woof tab will iframe the mesh so you can share Doginals, Vepe clips, ecash tips, and Charms collectibles without ever leaving Dojak."
             color="textDim"

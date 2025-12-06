@@ -86,23 +86,46 @@ export function useSupportedAssets() {
   };
 }
 
-// Get available inscription filter options based on chain
+// Get available inscription filter options based on current tab and chain
 export function useSupportedInscriptionFilters() {
+  const assetTab = useAssetTabKey();
   const chainType = useChainType();
 
-  const filters: InscriptionFilterKey[] = [
-    InscriptionFilterKey.ALL,
-    InscriptionFilterKey.DOGINALS,
-    InscriptionFilterKey.DRC20,
-    InscriptionFilterKey.DUNES
-  ];
+  if (assetTab === AssetTabKey.COLLECTIBLES) {
+    // Collectibles tab: DNS, Dogemaps, NFTs
+    return [
+      InscriptionFilterKey.ALL_COLLECTIBLES,
+      InscriptionFilterKey.DNS,
+      InscriptionFilterKey.DOGEMAPS,
+      InscriptionFilterKey.NFTS
+    ];
+  } else if (assetTab === AssetTabKey.TOKENS) {
+    // Tokens tab: DRC-20, Dunes, Charms
+    const filters = [
+      InscriptionFilterKey.ALL_TOKENS,
+      InscriptionFilterKey.DRC20,
+      InscriptionFilterKey.DUNES
+    ];
 
-  // Charms only on mainnet
-  if (chainType === ChainType.BITCOIN_MAINNET) {
-    filters.push(InscriptionFilterKey.CHARMS);
+    // Charms only on mainnet
+    if (chainType === ChainType.BITCOIN_MAINNET) {
+      filters.push(InscriptionFilterKey.CHARMS);
+    }
+
+    return filters;
   }
 
-  return filters;
+  // Fallback - return all filters
+  return [
+    InscriptionFilterKey.ALL_COLLECTIBLES,
+    InscriptionFilterKey.DNS,
+    InscriptionFilterKey.DOGEMAPS,
+    InscriptionFilterKey.NFTS,
+    InscriptionFilterKey.ALL_TOKENS,
+    InscriptionFilterKey.DRC20,
+    InscriptionFilterKey.DUNES,
+    ...(chainType === ChainType.BITCOIN_MAINNET ? [InscriptionFilterKey.CHARMS] : [])
+  ];
 }
 
 export const useIsInExpandView = () => {

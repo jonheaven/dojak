@@ -31,7 +31,7 @@ const tooltipStyle = {
   color: '#FFF',
   fontSize: '14px',
   lineHeight: '20px',
-  fontFamily: 'Inter-Regular',
+  fontFamily: 'Satoshi',
   boxShadow: '0px 12px 20px 0px rgba(0, 0, 0, 0.25)',
   marginLeft: '-50px'
 };
@@ -51,6 +51,13 @@ export function BalanceCard({
   const isBtcMainnet = chain.enum === ChainType.BITCOIN_MAINNET;
   const wallet = useWallet();
   const tools = useTools();
+
+  // Check if balance has been loaded from API yet
+  const accountsState = useSelector((state: AppState) => state.accounts);
+  const hasBalanceLoaded = React.useMemo(() => {
+    const currentAddress = address || accountsState.current?.address;
+    return currentAddress && accountsState.balanceV2Map[currentAddress] !== undefined;
+  }, [accountsState.balanceV2Map, accountsState.current?.address, address]);
 
   const [isSpecialLocale, setIsSpecialLocale] = useState(false);
   const [multiAssetBalance, setMultiAssetBalance] = useState<any>(null);
@@ -104,9 +111,15 @@ export function BalanceCard({
     ? './images/artifacts/balance-bg-fb.png'
     : './images/artifacts/balance-bg-btc.png';
 
-  const totalAmount = satoshisToAmount(accountBalance.totalBalance);
-  const availableAmount = satoshisToAmount(accountBalance.availableBalance);
-  const unavailableAmount = satoshisToAmount(accountBalance.unavailableBalance);
+  const totalAmount = hasBalanceLoaded
+    ? satoshisToAmount(accountBalance.totalBalance)
+    : '?';
+  const availableAmount = hasBalanceLoaded
+    ? satoshisToAmount(accountBalance.availableBalance)
+    : '?';
+  const unavailableAmount = hasBalanceLoaded
+    ? satoshisToAmount(accountBalance.unavailableBalance)
+    : '?';
 
   const handleExpandToggle = () => {
     setIsExpanded(!isExpanded);

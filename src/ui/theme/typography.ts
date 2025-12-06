@@ -1,13 +1,8 @@
 const fonts = {
-  ProtoMono: {
-    bold: 'ProtoMono-Bold',
-    regular: 'ProtoMono-Regular',
-    light: 'ProtoMono-Light'
-  },
-  Inter: {
-    bold: 'Inter-Bold',
-    regular: 'Inter-Regular',
-    light: 'Inter-Light'
+  Satoshi: {
+    bold: 'Satoshi',
+    regular: 'Satoshi',
+    light: 'Satoshi'
   }
 };
 
@@ -19,5 +14,5 @@ export const typography = {
   /**
    * The primary font. Used in most places.
    */
-  primary: fonts.Inter
+  primary: fonts.Satoshi
 };

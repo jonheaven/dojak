@@ -88,6 +88,7 @@ export function InscriptionList({ filterType = 'all' }: InscriptionListProps) {
       renderItem={renderInscription}
       onError={handleError}
       emptyText={t('no_inscriptions_found')}
+      errorText={t('Unable to retrieve inscriptions')}
       itemsPerRow={itemsPerRow}
     />
   );

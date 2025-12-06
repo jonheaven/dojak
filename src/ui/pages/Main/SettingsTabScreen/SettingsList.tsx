@@ -84,10 +84,10 @@ export function SettingsList() {
       if (v.action === SettingsAction.ADDRESS_TYPE) {
         const item = ADDRESS_TYPES[currentKeyring.addressType];
         if (item) {
-          const hdPath = currentKeyring.hdPath || item.hdPath;
-          if (currentKeyring.type === KeyringType.SimpleKeyring) {
-            v.value = `${item.name}`;
-          } else {
+        const hdPath = currentKeyring.hdPath || item.hdPath;
+        if (currentKeyring.type === KeyringType.SimpleKeyring) {
+          v.value = `${item.name}`;
+        } else {
             v.value = `${item.name} (${hdPath}/${currentAccount?.index ?? 0})`;
           }
         } else {

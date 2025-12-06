@@ -31,7 +31,8 @@ import { KeyringType } from '@unisat/keyring-service/types';
 
 import { useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/SwitchChainModal';
-import { InscriptionsTab } from './InscriptionsTab';
+import { CollectiblesTab } from './CollectiblesTab';
+import { TokensTab } from './TokensTab';
 import { WoofTab } from './WoofTab';
 import { SidePanelExpand } from './SidePanelExpand';
 import { SteakTab } from './SteakTab';
@@ -131,12 +132,21 @@ export default function WalletTabScreen() {
       children: JSX.Element;
     }[] = [];
 
-    // Inscriptions tab - combines all inscription-based assets with filtering
+    // Collectibles tab - inscription collectibles (DNS, Dogemaps, NFTs)
     if (supportedAssets.assets.inscriptions) {
       items.push({
-        key: AssetTabKey.INSCRIPTIONS,
-        label: t('Inscriptions'),
-        children: <InscriptionsTab key={AssetTabKey.INSCRIPTIONS} />
+        key: AssetTabKey.COLLECTIBLES,
+        label: t('Collectibles'),
+        children: <CollectiblesTab key={AssetTabKey.COLLECTIBLES} />
+      });
+    }
+
+    // Tokens tab - token types (DRC-20, Dunes, Charms)
+    if (supportedAssets.assets.inscriptions) {
+      items.push({
+        key: AssetTabKey.TOKENS,
+        label: t('Tokens'),
+        children: <TokensTab key={AssetTabKey.TOKENS} />
       });
     }
 
@@ -163,7 +173,7 @@ export default function WalletTabScreen() {
 
   const finalAssetTabKey = useMemo(() => {
     if (!supportedAssets.tabKeys.includes(assetTabKey)) {
-      return AssetTabKey.INSCRIPTIONS;
+      return AssetTabKey.COLLECTIBLES;
     }
     return assetTabKey;
   }, [assetTabKey, supportedAssets.key]);

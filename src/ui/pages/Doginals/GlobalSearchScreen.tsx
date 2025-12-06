@@ -84,7 +84,7 @@ export const GlobalSearchScreen = () => {
         title={
           <div className="flex items-center gap-2">
             <span className="text-white">Doginal #{doginal.id}</span>
-            <Tag color={getRarityColor(doginal.rarity)} size="small">
+            <Tag color={getRarityColor(doginal.rarity)}>
               {doginal.rarity}
             </Tag>
           </div>
@@ -129,7 +129,7 @@ export const GlobalSearchScreen = () => {
         title={
           <div className="flex items-center gap-2">
             <span className="text-white">{charm.name}</span>
-            <Tag color="orange" size="small">
+            <Tag color="orange">
               {charm.app}
             </Tag>
           </div>

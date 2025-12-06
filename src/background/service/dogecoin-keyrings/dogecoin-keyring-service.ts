@@ -241,6 +241,8 @@ export class DogecoinKeyringService extends EventEmitter {
     for (const keyring of this.keyrings) {
       keyring.setNetwork(network);
     }
+    // Clear the displayed keyring cache so addresses get re-derived with new network
+    this.cachedDisplayedKeyring = null;
   }
 
   /**

@@ -19,7 +19,7 @@ export function NavTabBar({ tab }: { tab: TabOption }) {
         backgroundColor: colors.bg2
       }}
     >
-      <TabButton tabName="home" icon="dojak-logo" isActive={tab === 'home'} />
+      <TabButton tabName="home" icon="wallet" isActive={tab === 'home'} />
       <TabButton tabName="discover" icon="compass" isActive={tab === 'discover'} />
       <TabButton tabName="settings" icon="settings" isActive={tab === 'settings'} />
     </Grid>

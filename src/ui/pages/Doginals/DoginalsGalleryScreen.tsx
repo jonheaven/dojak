@@ -33,7 +33,7 @@ export const DoginalsGalleryScreen = () => {
       const result = await wallet.getDoginals(currentAccount.address);
       const rawList: Doginal[] = result.list || [];
       const enriched = rawList.map(buildDoginalViewModel);
-      setDoginals();
+      setDoginals(enriched);
     } catch (error) {
       console.error('Failed to load doginals:', error);
     } finally {

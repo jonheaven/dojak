@@ -5,6 +5,7 @@ import { useTools } from '@/ui/components/ActionComponent';
 import { CheckboxChangeEvent } from '@/ui/components/Checkbox';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { useI18n } from '@/ui/hooks/useI18n';
+import { useCreateAccountCallback } from '@/ui/state/global/hooks';
 import { ContextData, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
 import { useNavigate } from '@/ui/pages/MainRoute';
 import { fontSizes } from '@/ui/theme/font';
@@ -22,6 +23,7 @@ export function MnemonicDisplay({
   const wallet = useWallet();
   const tools = useTools();
   const navigate = useNavigate();
+  const createAccount = useCreateAccountCallback();
 
   useEffect(() => {
     if (!contextData.mnemonics) {
@@ -58,16 +60,14 @@ export function MnemonicDisplay({
   }
 
   const btnClick = async () => {
-    // Mark wallet as created before navigating to main screen
     try {
-      await wallet.createKeyringWithMnemonics(
+      await createAccount(
         contextData.mnemonics,
         contextData.hdPath,
         contextData.passphrase,
         contextData.addressType,
         1 // accountCount, default to 1 for new wallet
       );
-      updateContextData({ walletCreated: true });
       navigate('MainScreen');
     } catch (error) {
       const errorMsg = (error as any)?.message || 'Failed to create wallet';

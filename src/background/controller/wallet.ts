@@ -956,6 +956,12 @@ export class WalletController extends BaseController {
     }
 
     preferenceService.setChainType(chainType);
+
+    // Update the dogecoin keyring service network type based on the new chain
+    const networkType = CHAINS_MAP[chainType].networkType;
+    const dogecoinNetwork = networkType === NetworkType.TESTNET ? 'testnet' : 'mainnet';
+    keyringService.setNetworkType(dogecoinNetwork);
+
     walletApiService.setEndpoints(CHAINS_MAP[chainType].endpoints);
 
     const currentAccount = await this.getCurrentAccount();
@@ -2427,6 +2433,21 @@ export class WalletController extends BaseController {
 
   searchByContent = async (searchTerm: string, contentType?: string, limit?: number) => {
     return await walletApiService.query.searchByContent(searchTerm, contentType, limit);
+  };
+
+  // Local RPC configuration
+  getLocalRpcConfig = () => {
+    return preferenceService.getLocalRpcConfig();
+  };
+
+  saveLocalRpcConfig = (config: { host: string; port: string; username: string; password: string; testnet: boolean }) => {
+    preferenceService.setLocalRpcConfig(config);
+    walletApiService.updateLocalRpcProvider(config);
+  };
+
+  clearLocalRpcConfig = () => {
+    preferenceService.setLocalRpcConfig(undefined);
+    walletApiService.updateLocalRpcProvider(undefined);
   };
 }
 export default new WalletController();

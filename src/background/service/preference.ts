@@ -91,6 +91,13 @@ export interface PreferenceStore {
   openInSidePanel: boolean;
   developerMode: boolean;
   theme: 'light' | 'dark';
+  localRpcConfig?: {
+    host: string;
+    port: string;
+    username: string;
+    password: string;
+    testnet: boolean;
+  };
 }
 
 const SUPPORTED_LOCALES = ['en', 'zh_TW', 'fr', 'es', 'ru', 'ja'];
@@ -597,6 +604,14 @@ class PreferenceService {
 
   setTheme = (theme: 'light' | 'dark') => {
     this.store.theme = theme;
+  };
+
+  getLocalRpcConfig = () => {
+    return this.store.localRpcConfig;
+  };
+
+  setLocalRpcConfig = (config: { host: string; port: string; username: string; password: string; testnet: boolean } | undefined) => {
+    this.store.localRpcConfig = config;
   };
 }
 

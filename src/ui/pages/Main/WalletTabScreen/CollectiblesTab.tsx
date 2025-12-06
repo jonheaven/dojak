@@ -8,10 +8,8 @@ import { useChainType } from '@/ui/state/settings/hooks';
 import { useInscriptionFilter, useSupportedInscriptionFilters } from '@/ui/state/ui/hooks';
 import { InscriptionFilterKey, uiActions } from '@/ui/state/ui/reducer';
 
-import { CharmsTab } from './CharmsTab';
 import { DNSTab } from './DNSTab';
-import { DRC20List } from './DRC20List';
-import { DunesList } from './DunesList';
+import { DogemapsTab } from './DogemapsTab';
 import { InscriptionList } from './InscriptionList';
 
 const COLLECTIBLES_FILTER_LABELS: Record<InscriptionFilterKey, string> = {
@@ -28,7 +26,7 @@ const TOKENS_FILTER_LABELS: Record<InscriptionFilterKey, string> = {
   [InscriptionFilterKey.CHARMS]: 'Charms'
 };
 
-export function InscriptionsTab() {
+export function CollectiblesTab() {
   const { t } = useI18n();
   const dispatch = useAppDispatch();
   const currentFilter = useInscriptionFilter();
@@ -45,22 +43,23 @@ export function InscriptionsTab() {
   // Render content based on active filter
   const renderContent = () => {
     switch (currentFilter) {
-      case InscriptionFilterKey.ALL:
+      case InscriptionFilterKey.ALL_COLLECTIBLES:
         return <InscriptionList />;
-      case InscriptionFilterKey.DOGINALS:
-        return <InscriptionList filterType="doginals" />;
-      case InscriptionFilterKey.DRC20:
-        return <DRC20List />;
-      case InscriptionFilterKey.DUNES:
-        return <DunesList />;
-      case InscriptionFilterKey.CHARMS:
-        return chainType === ChainType.BITCOIN_MAINNET ? <CharmsTab /> : <InscriptionList />;
       case InscriptionFilterKey.DNS:
         return <DNSTab />;
+      case InscriptionFilterKey.DOGEMAPS:
+        return <DogemapsTab />;
+      case InscriptionFilterKey.NFTS:
+        return <InscriptionList filterType="doginals" />; // For now, show all doginals as NFTs
       default:
         return <InscriptionList />;
     }
   };
+
+  // Filter to only show collectibles filters
+  const collectiblesFilters = supportedFilters.filter(filter =>
+    [InscriptionFilterKey.ALL_COLLECTIBLES, InscriptionFilterKey.DNS, InscriptionFilterKey.DOGEMAPS, InscriptionFilterKey.NFTS].includes(filter)
+  );
 
   return (
     <Column gap="md">
@@ -72,7 +71,7 @@ export function InscriptionsTab() {
           padding: '8px 0'
         }}
       >
-        {supportedFilters.map((filter) => {
+        {collectiblesFilters.map((filter) => {
           const isActive = currentFilter === filter;
           return (
             <div
@@ -90,7 +89,7 @@ export function InscriptionsTab() {
               }}
             >
               <Text
-                text={FILTER_LABELS[filter]}
+                text={COLLECTIBLES_FILTER_LABELS[filter]}
                 size="sm"
                 style={{
                   color: isActive ? '#000' : 'rgba(255, 255, 255, 0.7)',

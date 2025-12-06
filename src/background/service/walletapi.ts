@@ -1,4 +1,29 @@
 import axios, { AxiosInstance } from 'axios';
+import {
+  isMyDogeClient,
+  myDogeGetAddressBalance,
+  myDogeGetAddressBalanceV2,
+  myDogeGetAddressUtxo,
+  myDogeGetMarketBalance
+} from './providers/mydoge';
+import { isNintondoMainClient, nintondoGetAddressBalance, nintondoGetAddressBalanceV2 } from './providers/nintondo';
+import {
+  isLocalRpcClient,
+  localRpcGetBalance,
+  localRpcGetBalanceV2,
+  localRpcGetUtxo,
+  localRpcGetAddressInscriptions,
+  localRpcPushTx,
+  localRpcGetTransaction
+} from './providers/localRpc';
+import {
+  isTatumClient,
+  tatumGetAddressBalance,
+  tatumGetAddressBalanceV2,
+  tatumGetAddressUtxo,
+  tatumGetAddressInscriptions,
+  tatumGetTransaction
+} from './providers/tatum';
 import randomstring from 'randomstring';
 
 import { createPersistStore } from '@/background/utils';
@@ -21,76 +46,68 @@ interface ProviderConfig {
   };
 }
 
-const PROVIDER_CONFIGS: ProviderConfig[] = [
-  // Local development providers (highest priority when available)
-  {
-    name: 'dojaker',
-    endpoint: 'http://localhost:3000',
-    priority: 0, // Highest priority for local indexer
-    supports: ['dogecoin']
-  },
-  {
-    name: 'local-rpc',
-    endpoint: 'http://localhost:33889', // Default Dogecoin RPC port
-    priority: 3, // Lower priority than indexer
-    supports: ['dogecoin']
-  },
-  {
-    name: 'faucet-rpc',
-    endpoint: 'http://localhost:33889', // Use same RPC server for faucet
-    priority: 0, // Highest priority for faucet operations
-    supports: ['dogecoin']
-  },
-  // MyDoge API - Primary public provider for balance, UTXOs, inscriptions, DRC20
-  {
-    name: 'mydoge',
-    endpoint: 'https://api.mydoge.com',
-    priority: 1, // High priority public API
-    supports: ['dogecoin'],
-    rateLimit: {
-      requests: 60,
-      windowMs: 60000 // 1 minute
+const getProviderConfigs = (): ProviderConfig[] => {
+  const configs: ProviderConfig[] = [
+    // Local development providers (highest priority when available)
+    {
+      name: 'dojaker',
+      endpoint: 'http://localhost:3000',
+      priority: 0, // Highest priority for local indexer
+      supports: ['dogecoin']
+    },
+    // MyDoge API - Primary public provider for balance, UTXOs, inscriptions, DRC20
+    {
+      name: 'mydoge',
+      endpoint: 'https://api.mydoge.com',
+      priority: 1, // Will be adjusted if local-rpc is added
+      supports: ['dogecoin'],
+      rateLimit: {
+        requests: 60,
+        windowMs: 60000 // 1 minute
+      }
+    },
+    // Nintondo APIs - Secondary providers
+    {
+      name: 'nintondo',
+      endpoint: 'https://doge-mainnet-api.nintondo.io',
+      priority: 2, // Will be adjusted if local-rpc is added
+      supports: ['dogecoin', 'bellscoin'],
+      rateLimit: {
+        requests: 100,
+        windowMs: 60000 // 1 minute
+      }
+    },
+    {
+      name: 'nintondo-tokens',
+      endpoint: 'https://doge-mainnet-tokens.nintondo.io',
+      priority: 3, // Will be adjusted if local-rpc is added
+      supports: ['dogecoin'],
+      rateLimit: {
+        requests: 100,
+        windowMs: 60000 // 1 minute
+      }
+    },
+    {
+      name: 'nintondo-search',
+      endpoint: 'https://doge-mainnet-search.nintondo.io',
+      priority: 3, // Will be adjusted if local-rpc is added
+      supports: ['dogecoin'],
+      rateLimit: {
+        requests: 100,
+        windowMs: 60000 // 1 minute
+      }
+    },
+    // Tatum API - Testnet provider
+    {
+      name: 'tatum-testnet',
+      endpoint: 'https://dogecoin-testnet.gateway.tatum.io',
+      priority: 1, // High priority for testnet
+      supports: ['dogecoin-testnet']
     }
-  },
-  // Nintondo APIs - Secondary providers
-  {
-    name: 'nintondo',
-    endpoint: 'https://doge-mainnet-api.nintondo.io',
-    priority: 2,
-    supports: ['dogecoin', 'bellscoin'],
-    rateLimit: {
-      requests: 100,
-      windowMs: 60000 // 1 minute
-    }
-  },
-  {
-    name: 'nintondo-tokens',
-    endpoint: 'https://doge-mainnet-tokens.nintondo.io',
-    priority: 3,
-    supports: ['dogecoin'],
-    rateLimit: {
-      requests: 100,
-      windowMs: 60000 // 1 minute
-    }
-  },
-  {
-    name: 'nintondo-search',
-    endpoint: 'https://doge-mainnet-search.nintondo.io',
-    priority: 3,
-    supports: ['dogecoin'],
-    rateLimit: {
-      requests: 100,
-      windowMs: 60000 // 1 minute
-    }
-  }
-  // Future: Dojak API will be added here with priority 1
-  // {
-  //   name: 'dojak',
-  //   endpoint: 'https://api.dojak.dog',
-  //   priority: 1,
-  //   supports: ['dogecoin']
-  // }
-];
+  ];
+
+  return configs;
+};
 
 class ProviderManager {
   private providers: Map<string, AxiosInstance> = new Map();
@@ -98,27 +115,42 @@ class ProviderManager {
   private lastHealthCheck: Map<string, number> = new Map();
 
   constructor() {
-    console.log('[ProviderManager] Initializing providers...');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[ProviderManager] Initializing providers...');
+    }
     // Initialize providers
-    PROVIDER_CONFIGS.forEach((config) => {
+    getProviderConfigs().forEach((config) => {
       try {
-        console.log(`[ProviderManager] Creating client for ${config.name} at ${config.endpoint}`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[ProviderManager] Creating client for ${config.name} at ${config.endpoint}`);
+        }
+        const headers: any = {
+          'Content-Type': 'application/json'
+        };
+
+        // Add Tatum API key for testnet provider
+        if (config.name === 'tatum-testnet') {
+          headers['x-api-key'] = 't-6888afb36692767ef96a3a01-326177f2e73148aa85696a91';
+        }
+
         const client = axios.create({
           baseURL: config.endpoint,
           timeout: 10000, // Shorter timeout for faster failover
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers
         });
         this.providers.set(config.name, client);
         this.healthStatus.set(config.name, true); // Assume healthy initially
-        console.log(`[ProviderManager] Successfully initialized provider ${config.name}`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[ProviderManager] Successfully initialized provider ${config.name}`);
+        }
       } catch (error) {
         console.warn(`[ProviderManager] Failed to initialize provider ${config.name}:`, error);
         this.healthStatus.set(config.name, false);
       }
     });
-    console.log('[ProviderManager] Provider initialization complete');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[ProviderManager] Provider initialization complete');
+    }
   }
 
   private async checkHealth(providerName: string): Promise<boolean> {
@@ -135,7 +167,9 @@ class ProviderManager {
     // Instead, we optimistically treat them as healthy and let the actual
     // operation failure drive any fallback logic.
     if (providerName === 'mydoge') {
-      console.log('[WalletAPI] Skipping network health check for public provider mydoge; assuming healthy');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[WalletAPI] Skipping network health check for public provider mydoge; assuming healthy');
+      }
       this.healthStatus.set(providerName, true);
       this.lastHealthCheck.set(providerName, now);
       return true;
@@ -148,11 +182,21 @@ class ProviderManager {
         return false;
       }
 
-      console.log(`[WalletAPI] Checking health for ${providerName} at ${client.defaults.baseURL}`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[WalletAPI] Checking health for ${providerName} at ${client.defaults.baseURL}`);
+      }
 
       // Try a simple health check based on provider type
       if (providerName === 'local-rpc') {
         // For local RPC, try a basic RPC call
+        const config = preferenceService.getLocalRpcConfig();
+        if (config) {
+          // Set up basic auth for RPC calls
+          client.defaults.auth = {
+            username: config.username,
+            password: config.password
+          };
+        }
         await client.post('/', {
           jsonrpc: '2.0',
           id: 1,
@@ -161,7 +205,9 @@ class ProviderManager {
         });
       } else if (providerName === 'mydoge') {
         // For MyDoge, try a simple wallet info endpoint
-        console.log(`[WalletAPI] Trying ${providerName} health check`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[WalletAPI] Trying ${providerName} health check`);
+        }
         // MyDoge uses /wallet/info?route=... format, but we can check if the API responds
         await client.get('/').catch(async () => {
           // If root fails, the API might still work for specific endpoints
@@ -169,7 +215,9 @@ class ProviderManager {
         });
       } else if (providerName === 'nintondo') {
         // For Nintondo, try a known working endpoint
-        console.log(`[WalletAPI] Trying ${providerName} /blocks/tip/height endpoint`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[WalletAPI] Trying ${providerName} /blocks/tip/height endpoint`);
+        }
         await client.get('/blocks/tip/height').catch(async (blocksError) => {
           console.log(
             `[WalletAPI] /blocks/tip/height failed, trying /address/test/stats for ${providerName}`,
@@ -179,18 +227,24 @@ class ProviderManager {
         });
       } else if (providerName === 'dojak') {
         // For future Dojak API, try the health endpoint
-        console.log(`[WalletAPI] Trying ${providerName} /health endpoint`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[WalletAPI] Trying ${providerName} /health endpoint`);
+        }
         await client.get('/health').catch(async () => {
           console.log(`[WalletAPI] Dojak health check failed, trying root /`);
           await client.get('/');
         });
       } else if (providerName === 'dojaker' || providerName === 'local-rpc') {
         // For local services, assume they're not running and mark as unhealthy
-        console.log(`[WalletAPI] Skipping health check for local provider ${providerName}`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[WalletAPI] Skipping health check for local provider ${providerName}`);
+        }
         return false;
       } else if (providerName === 'nintondo-tokens' || providerName === 'nintondo-search') {
         // For Nintondo sub-services, try a simple endpoint
-        console.log(`[WalletAPI] Trying root / endpoint for ${providerName}`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[WalletAPI] Trying root / endpoint for ${providerName}`);
+        }
         await client.get('/');
       } else {
         // For other API providers, try the root endpoint
@@ -198,7 +252,9 @@ class ProviderManager {
         await client.get('/');
       }
 
-      console.log(`[WalletAPI] Provider ${providerName} health check passed`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[WalletAPI] Provider ${providerName} health check passed`);
+      }
       this.healthStatus.set(providerName, true);
       this.lastHealthCheck.set(providerName, now);
       return true;
@@ -210,29 +266,71 @@ class ProviderManager {
     }
   }
 
+  // Update local RPC provider configuration
+  updateLocalRpcProvider(config?: { host: string; port: string; username: string; password: string; testnet: boolean }) {
+    if (config) {
+      // Add or update local RPC provider
+      const endpoint = `http://${config.host}:${config.port}`;
+      const client = axios.create({
+        baseURL: endpoint,
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        auth: {
+          username: config.username,
+          password: config.password
+        }
+      });
+      this.providers.set('local-rpc', client);
+      this.healthStatus.set('local-rpc', true); // Assume healthy initially
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[ProviderManager] Added local RPC provider at ${endpoint}`);
+      }
+    } else {
+      // Remove local RPC provider
+      this.providers.delete('local-rpc');
+      this.healthStatus.delete('local-rpc');
+      this.lastHealthCheck.delete('local-rpc');
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[ProviderManager] Removed local RPC provider');
+      }
+    }
+  }
+
   async executeWithFailover<T>(
     operation: (client: AxiosInstance) => Promise<T>,
     supportedChains: string[] = ['dogecoin']
   ): Promise<T> {
-    const sortedProviders = PROVIDER_CONFIGS.filter((config) =>
+    const sortedProviders = getProviderConfigs().filter((config) =>
       config.supports.some((chain) => supportedChains.includes(chain))
     ).sort((a, b) => a.priority - b.priority);
 
-    console.log(
-      `[ProviderManager] Trying providers in order:`,
-      sortedProviders.map((p) => p.name)
-    );
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(
+        `[ProviderManager] Trying providers in order:`,
+        sortedProviders.map((p) => p.name)
+      );
+    }
 
     for (const config of sortedProviders) {
-      console.log(`[ProviderManager] Checking health for ${config.name}...`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[ProviderManager] Checking health for ${config.name}...`);
+      }
       const isHealthy = await this.checkHealth(config.name);
-      console.log(`[ProviderManager] Provider ${config.name} health status:`, isHealthy);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[ProviderManager] Provider ${config.name} health status:`, isHealthy);
+      }
 
       if (isHealthy) {
         try {
           const client = this.providers.get(config.name);
           if (client) {
-            console.log(`[ProviderManager] Executing operation with ${config.name}`);
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[ProviderManager] Executing operation with ${config.name}`);
+            }
             return await operation(client);
           } else {
             console.warn(`[ProviderManager] No client found for ${config.name}`);
@@ -241,7 +339,7 @@ class ProviderManager {
           console.warn(`[ProviderManager] Provider ${config.name} operation failed:`, error);
           this.healthStatus.set(config.name, false);
         }
-      } else {
+      } else if (process.env.NODE_ENV !== 'production') {
         console.log(`[ProviderManager] Skipping unhealthy provider ${config.name}`);
       }
     }
@@ -315,6 +413,16 @@ export class WalletApiService {
     if (!this.store.deviceId) {
       this.store.deviceId = this.generateDeviceId();
     }
+
+    // Initialize local RPC provider if configured
+    const localRpcConfig = preferenceService.getLocalRpcConfig();
+    if (localRpcConfig) {
+      this.providerManager.updateLocalRpcProvider(localRpcConfig);
+    }
+  };
+
+  updateLocalRpcProvider = (config?: { host: string; port: string; username: string; password: string; testnet: boolean }) => {
+    this.providerManager.updateLocalRpcProvider(config);
   };
 
   setClientAddress = async (address: string, flag: number) => {
@@ -353,65 +461,155 @@ export class WalletApiService {
   // Proxy common methods for convenience with provider failover
   get bitcoin() {
     return {
-      getAddressBalance: (address: string) =>
+      /**
+       * Aggregated address summary used for UI stats.
+       * NOTE: Field names keep the historical "btc*" naming but values are DOGE satoshis.
+       */
+      getAddressSummary: (address: string) =>
         this.providerManager.executeWithFailover(async (client) => {
-          if (client.defaults.baseURL?.includes('doge-mainnet-api.nintondo.io')) {
-            // Nintondo address stats endpoint
+          const baseURL = client.defaults.baseURL || '';
+
+          const summary = {
+            address,
+            totalSatoshis: 0,
+            btcSatoshis: 0,
+            assetSatoshis: 0,
+            inscriptionCount: 0,
+            drc20Count: 0,
+            drc20Count5Byte: 0,
+            drc20Count6Byte: 0,
+            dunesCount: 0,
+            loading: false
+          };
+
+          // MyDoge API
+          if (isMyDogeClient(client)) {
+            // Balance from wallet/info
+            const encodedRoute = encodeURIComponent(`/address/${address}?page=1&pageSize=10`);
+            const infoRes = await client.get(`/wallet/info?route=${encodedRoute}`);
+            const balanceSatoshis = infoRes.data?.balance || 0;
+
+            summary.totalSatoshis = balanceSatoshis;
+            summary.btcSatoshis = balanceSatoshis;
+
+            // DRC-20 count
+            try {
+              const drcRes = await client.get(`/DRC20/${address}`);
+              const tokens = Array.isArray(drcRes.data) ? drcRes.data : [];
+              summary.drc20Count = tokens.length;
+            } catch {
+              // Ignore DRC20 errors in summary; counts stay 0
+            }
+
+            // Inscription count
+            try {
+              const insRes = await client.get(`/inscriptions/${address}`);
+              const list = Array.isArray(insRes.data?.inscriptions)
+                ? insRes.data.inscriptions
+                : Array.isArray(insRes.data)
+                ? insRes.data
+                : [];
+              summary.inscriptionCount = list.length;
+            } catch {
+              // Ignore inscription errors in summary; counts stay 0
+            }
+
+            return summary;
+          }
+
+          // Nintondo main API
+          if (isNintondoMainClient(client)) {
             const res = await client.get(`/address/${address}/stats`);
+            const balanceSatoshis = res.data?.balance || 0;
+
+            summary.totalSatoshis = balanceSatoshis;
+            summary.btcSatoshis = balanceSatoshis;
+
+            // We don't currently derive token/inscription counts from Nintondo here.
+            return summary;
+          }
+
+          // Future: Dojak API
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/address/${address}/summary`);
             return {
-              confirmed: (res.data?.balance || 0) / 100000000, // Convert satoshis to DOGE
-              unconfirmed: 0
+              ...summary,
+              ...res.data
             };
           }
-          // Fallback for other providers
-          const res = await client.get(`/api/v1/address/${address}/balance`);
-          return res.data;
+
+          // If we reach here, the provider doesn't support a known summary API
+          throw new Error(`[WalletAPI] Unsupported address summary endpoint for provider: ${baseURL}`);
+        }),
+      getAddressBalance: (address: string) =>
+        this.providerManager.executeWithFailover(async (client) => {
+          const baseURL = client.defaults.baseURL || '';
+
+          if (isMyDogeClient(client)) {
+            return myDogeGetAddressBalance(client, address);
+          }
+
+          if (isNintondoMainClient(client)) {
+            return nintondoGetAddressBalance(client, address);
+          }
+
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/address/${address}/balance`);
+            return res.data;
+          }
+
+          // If we reach here, the provider doesn't support a known balance API
+          throw new Error(`[WalletAPI] Unsupported balance endpoint for provider: ${baseURL}`);
         }),
       getAddressBalanceV2: (address: string) =>
         this.providerManager.executeWithFailover(async (client) => {
-          if (client.defaults.baseURL?.includes('doge-mainnet-api.nintondo.io')) {
-            // Nintondo address stats endpoint
-            const res = await client.get(`/address/${address}/stats`);
-            const confirmedBalance = (res.data?.balance || 0) / 100000000; // Convert satoshis to DOGE
+          const baseURL = client.defaults.baseURL || '';
+
+          if (isMyDogeClient(client)) {
+            return myDogeGetAddressBalanceV2(client, address);
+          }
+
+          if (isNintondoMainClient(client)) {
+            return nintondoGetAddressBalanceV2(client, address);
+          }
+
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/address/${address}/balance`);
+            const confirmedBalance = res.data?.confirmed || 0;
+            const unconfirmedBalance = res.data?.unconfirmed || 0;
+
             return {
               availableBalance: confirmedBalance,
-              unavailableBalance: 0,
-              totalBalance: confirmedBalance
+              unavailableBalance: unconfirmedBalance,
+              totalBalance: confirmedBalance + unconfirmedBalance
             };
           }
-          // Fallback for other providers
-          const res = await client.get(`/api/v1/address/${address}/balance`);
-          const confirmedBalance = res.data?.confirmed || 0;
-          const unconfirmedBalance = res.data?.unconfirmed || 0;
-          return {
-            availableBalance: confirmedBalance,
-            unavailableBalance: unconfirmedBalance,
-            totalBalance: confirmedBalance + unconfirmedBalance
-          };
+
+          // If we reach here, the provider doesn't support a known balance API
+          throw new Error(`[WalletAPI] Unsupported balance endpoint for provider: ${baseURL}`);
         }),
       getAddressUtxo: (address: string) =>
         this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          // MyDoge API - GET /UTXOS/{address}
-          if (baseURL.includes('api.mydoge.com')) {
-            const res = await client.get(`/UTXOS/${address}`);
-            // Transform MyDoge response to standard format
-            const utxos = res.data || [];
-            return utxos.map((utxo: any) => ({
-              txid: utxo.txid,
-              vout: utxo.vout,
-              value: utxo.value,
-              confirmations: utxo.confirmations,
-              scriptPubKey: utxo.scriptPubKey,
-              inscriptions: utxo.inscriptions || []
-            }));
+          // Local RPC provider
+          if (isLocalRpcClient(client)) {
+            return localRpcGetUtxo(client, address);
+          }
+
+          if (isMyDogeClient(client)) {
+            return myDogeGetAddressUtxo(client, address);
           }
 
           // Nintondo API
           if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
             const res = await client.get(`/address/${address}/utxo`);
             return res.data || [];
+          }
+
+          // Tatum testnet provider
+          if (isTatumClient(client)) {
+            return tatumGetAddressUtxo(client, address);
           }
 
           // Future: Dojak API
@@ -1480,6 +1678,10 @@ export class WalletApiService {
 
       getBalance: async (address: string) => {
         try {
+          const chainType = preferenceService.getChainType();
+          const isTestnet = CHAINS_MAP[chainType].networkType === NetworkType.TESTNET;
+          const supportedChains = isTestnet ? ['dogecoin-testnet', 'dogecoin'] : ['dogecoin'];
+
           // Use provider manager for failover support
           return await this.providerManager.executeWithFailover(
             async (client) => {
@@ -1494,6 +1696,16 @@ export class WalletApiService {
                   console.warn('[WalletAPI] Dojaker balance API failed, falling back:', indexerError);
                   throw indexerError; // Let provider manager try next provider
                 }
+              }
+
+              // Tatum testnet provider (highest priority for testnet)
+              if (isTatumClient(client) && isTestnet) {
+                return await tatumGetAddressBalance(client, address);
+              }
+
+              // Local RPC provider (highest priority when configured)
+              if (isLocalRpcClient(client)) {
+                return await localRpcGetBalance(client, address);
               }
 
               // MyDoge API - Primary public provider
@@ -1535,7 +1747,7 @@ export class WalletApiService {
               const res = await client.get(`/api/v1/address/${address}/balance`);
               return res.data;
             },
-            ['dogecoin']
+            supportedChains
           );
         } catch (error) {
           console.error('[WalletAPI] Balance API error:', error);
@@ -1652,13 +1864,16 @@ export class WalletApiService {
                 // MyDoge API
                 if (baseURL.includes('api.mydoge.com')) {
                   const res = await client.get(`/inscriptions/${address}`);
-                  return { list: (res.data || []).slice(0, 20) };
+                  // MyDoge returns a structured object; inscriptions are under `inscriptions`
+                  const list = Array.isArray(res.data?.inscriptions) ? res.data.inscriptions : [];
+                  return { list: list.slice(0, 20) };
                 }
 
                 // Nintondo search API
                 if (baseURL.includes('doge-mainnet-search.nintondo.io')) {
                   const res = await client.get(`/pub/collections/${address}`);
-                  return { list: (res.data?.inscriptions || []).slice(0, 20) };
+                  const list = Array.isArray(res.data?.inscriptions) ? res.data.inscriptions : [];
+                  return { list: list.slice(0, 20) };
                 }
 
                 // Future: Dojak API

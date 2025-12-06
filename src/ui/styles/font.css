@@ -1,62 +1,54 @@
+/* Satoshi font family (variable + static fallbacks)
+ *
+ * Place the following files into:
+ *   src/ui/styles/fonts/
+ *
+ * Recommended files from your Satoshi_Complete folder (TTF only, which you have now):
+ *   - Satoshi-Variable.ttf
+ *   - Satoshi-Light.ttf
+ *   - Satoshi-Regular.ttf
+ *   - Satoshi-Medium.ttf
+ *   - Satoshi-Bold.ttf
+ */
+
+/* Variable font (modern browsers) */
 @font-face {
-  font-family: ProtoMono-Bold;
-  src: url('./fonts/ProtoMono-Bold.otf');
+  font-family: 'Satoshi';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./fonts/Satoshi-Variable.ttf') format('truetype-variations');
 }
 
+/* Static fallbacks for older engines */
 @font-face {
-  font-family: ProtoMono-Regular;
-  src: url('./fonts/ProtoMono-Regular.otf');
-}
-
-@font-face {
-  font-family: ProtoMono-Light;
-  src: url('./fonts/ProtoMono-Light.otf');
-}
-
-@font-face {
-  font-family: Inter-Light;
+  font-family: 'Satoshi';
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url('./fonts/Inter-Light.woff2') format('woff2');
+  src: url('./fonts/Satoshi-Light.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: Inter-Regular;
+  font-family: 'Satoshi';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('./fonts/Inter-Regular.woff2') format('woff2');
+  src: url('./fonts/Satoshi-Regular.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: Inter-Bold;
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('./fonts/Inter-SemiBold.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: DIN-Bold;
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/DIN-Bold.otf') format('opentype');
-}
-
-@font-face {
-  font-family: DIN-Medium;
+  font-family: 'Satoshi';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('./fonts/DIN-Medium.otf') format('opentype');
+  src: url('./fonts/Satoshi-Medium.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: DIN-Regular;
+  font-family: 'Satoshi';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 700;
   font-display: swap;
-  src: url('./fonts/DIN-Pro-Regular.otf') format('opentype');
+  src: url('./fonts/Satoshi-Bold.ttf') format('truetype');
 }

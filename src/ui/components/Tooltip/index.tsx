@@ -147,7 +147,7 @@ export function Tooltip({
     color: '#FFF',
     fontSize: '14px',
     lineHeight: '20px',
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi',
     borderRadius: '8px',
     padding: '12px 16px',
     boxShadow: '0px 12px 20px 0px rgba(0, 0, 0, 0.25)',

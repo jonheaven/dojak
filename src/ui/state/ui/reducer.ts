@@ -25,20 +25,27 @@ export interface UIState {
   isBalanceHidden: boolean;
 }
 
-// Main asset tabs - simplified to 3 categories
+// Main asset tabs - reorganized for better UX
 export enum AssetTabKey {
-  INSCRIPTIONS = 0, // All inscription-based assets (Doginals, DRC20, Dunes, Charms)
-  STEAK = 1,
-  WOOF = 2
+  COLLECTIBLES = 0, // Inscription collectibles (DNS domains, Dogemaps, NFTs)
+  TOKENS = 1,       // Token types (DRC-20, Charms, Dunes)
+  STEAK = 2,
+  WOOF = 3
 }
 
-// Filter for inscription types within the Inscriptions tab
+// Filter for inscription types within Collectibles and Tokens tabs
 export enum InscriptionFilterKey {
-  ALL = 0, // Show all inscriptions
-  DOGINALS = 1, // Generic doginals/images
-  DRC20 = 2, // DRC-20 tokens
-  DUNES = 3, // Dunes (runes-like)
-  CHARMS = 4 // Charms metaprotocol
+  // Collectibles filters
+  ALL_COLLECTIBLES = 0,    // Show all collectibles
+  DNS = 1,                 // Doge Name Service domains
+  DOGEMAPS = 2,           // Dogemaps (block.land claims)
+  NFTS = 3,               // Official NFT collections
+
+  // Tokens filters
+  ALL_TOKENS = 4,         // Show all tokens
+  DRC20 = 5,              // DRC-20 tokens
+  DUNES = 6,              // Dunes (runes-like)
+  CHARMS = 7              // Charms metaprotocol
 }
 
 export enum SteakAssetTabKey {
@@ -53,7 +60,7 @@ export enum NavigationSource {
 }
 
 export const initialState: UIState = {
-  assetTabKey: AssetTabKey.INSCRIPTIONS,
+  assetTabKey: AssetTabKey.COLLECTIBLES,
   inscriptionFilter: InscriptionFilterKey.ALL,
   steakAssetTabKey: SteakAssetTabKey.DASHBOARD,
   uiTxCreateScreen: {

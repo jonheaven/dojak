@@ -2,10 +2,8 @@ import { Avatar, Button, Card, Empty, Input, List, message, Spin } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
-
 import { useWallet } from '@/ui/utils';
 import { GlobalOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
-
 import { DNSDomain, DNSResolution } from './types';
 
 export const DNSDomainsScreen = () => {
@@ -164,8 +162,8 @@ export const DNSDomainsScreen = () => {
           <GlobalOutlined className="text-4xl text-[#069420] mb-4" />
           <h3 className="text-lg font-bold text-white mb-2">What is DNS?</h3>
           <p className="text-gray-400 text-sm">
-            DNS (Dogecoin Name System) allows you to register human-readable domain names ending in .pepe that resolve
-            to Dogecoin addresses. Perfect for easy sharing and identity on the Pepe blockchain.
+            DNS (Dogecoin Name System) allows you to register human-readable domain names ending in .doge that resolve
+            to Dogecoin addresses. Perfect for easy sharing and identity on the Dogecoin blockchain.
           </p>
         </div>
       </Card>

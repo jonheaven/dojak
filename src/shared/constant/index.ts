@@ -179,7 +179,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
     label: 'Dogecoin Mainnet',
     // For compact UI (e.g. SwitchNetworkBar), just show the network name
     iconLabel: 'Mainnet',
-    icon: './images/logo/logo@128x.png',
+    icon: './images/logo/dogecoin-logo-128.png',
     unit: 'DOGE',
     networkType: NetworkType.MAINNET,
     endpoints: [
@@ -200,7 +200,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
     enum: ChainType.BITCOIN_TESTNET,
     label: 'Dogecoin Testnet',
     iconLabel: 'Testnet',
-    icon: './images/logo/logo@128x.png',
+    icon: './images/logo/dogecoin-logo-128.png',
     unit: 'tDOGE',
     networkType: NetworkType.TESTNET,
     endpoints: ['https://dogecoin-testnet-rpc.allthatnode.com'], // Dogecoin testnet RPC (AllThatNode)
@@ -216,7 +216,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
     enum: ChainType.BITCOIN_TESTNET4,
     label: 'Dogecoin Testnet4 (Beta)',
     iconLabel: 'Testnet4',
-    icon: './images/logo/logo@128x.png',
+    icon: './images/logo/dogecoin-logo-128.png',
     unit: 'tDOGE',
     networkType: NetworkType.TESTNET,
     endpoints: ['https://dogecoin-testnet4-rpc.allthatnode.com'], // Dogecoin testnet4 RPC
@@ -248,7 +248,7 @@ export const CHAIN_GROUPS: TypeChainGroup[] = [
   {
     type: 'list',
     label: 'Dogecoin Testnet',
-    icon: './images/logo/logo@128x.png',
+    icon: './images/logo/dogecoin-logo-128.png',
     items: [CHAINS_MAP[ChainType.BITCOIN_TESTNET], CHAINS_MAP[ChainType.BITCOIN_TESTNET4]]
   }
 ];

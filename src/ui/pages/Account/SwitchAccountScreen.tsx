@@ -110,12 +110,15 @@ export function MyItem({ account, autoNav }: MyItemProps, ref) {
         {optionsVisible && (
           <Column
             style={{
-              backgroundColor: colors.black,
+              backgroundColor: 'var(--theme-card)',
+              border: '1px solid var(--theme-border)',
               width: 160,
               position: 'absolute',
               right: 0,
               padding: 5,
-              zIndex: 10
+              zIndex: 10,
+              borderRadius: 8,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
             }}
           >
             <Row

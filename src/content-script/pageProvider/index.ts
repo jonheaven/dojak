@@ -86,6 +86,8 @@ let cache_origin = '';
 const requestMethodKey = Symbol('requestMethod');
 
 export class dojakProvider extends EventEmitter {
+  isDojak = true;
+
   constructor({ maxListeners = 100 } = {}) {
     super();
     this.setMaxListeners(maxListeners);
@@ -205,6 +207,115 @@ export class dojakProvider extends EventEmitter {
       '[Dojak] Directly accessing _request method is deprecated and will be removed in future versions. Please use the public API instead.'
     );
     return this[requestMethodKey](data);
+  };
+
+  // Public request method for dApp compatibility (similar to MetaMask/EIP-1193 pattern)
+  request = async (args: { method: string; params?: any }): Promise<any> => {
+    const { method, params } = args;
+
+    // Map dApp method names to native wallet methods
+    switch (method) {
+      // Account methods
+      case 'dojak_requestAccounts':
+      case 'requestAccounts':
+        return this.requestAccounts();
+
+      case 'dojak_getAccounts':
+      case 'getAccounts':
+        return this.getAccounts();
+
+      case 'dojak_disconnect':
+      case 'disconnect':
+        return this.disconnect();
+
+      // Network methods
+      case 'dojak_getNetwork':
+      case 'getNetwork':
+        return this.getNetwork();
+
+      case 'dojak_switchNetwork':
+      case 'switchNetwork':
+        return this.switchNetwork(params?.network);
+
+      case 'dojak_getChain':
+      case 'getChain':
+        return this.getChain();
+
+      case 'dojak_switchChain':
+      case 'switchChain':
+        return this.switchChain(params?.chain || params?.chainId);
+
+      // Signing methods
+      case 'dojak_signMessage':
+      case 'signMessage':
+        return this.signMessage(params?.message || params?.text, params?.type || 'ecdsa');
+
+      case 'dojak_signPsbt':
+      case 'signPsbt':
+        return this.signPsbt(params?.psbtHex || params?.psbt, params?.options);
+
+      case 'dojak_signTransaction':
+        return this.signPsbt(params?.tx?.psbtHex || params?.tx, params?.options);
+
+      // Transaction methods
+      case 'dojak_sendBitcoin':
+      case 'dojak_sendDogecoin':
+      case 'dojak_sendDoge':
+      case 'sendBitcoin':
+      case 'sendDogecoin':
+      case 'sendDoge':
+        return this.sendBitcoin(params?.toAddress, params?.satoshis, params);
+
+      case 'dojak_sendInscription':
+      case 'sendInscription':
+        return this.sendInscription(params?.toAddress, params?.inscriptionId, params);
+
+      case 'dojak_pushTx':
+      case 'pushTx':
+        return this.pushTx(params?.rawtx);
+
+      case 'dojak_pushPsbt':
+      case 'pushPsbt':
+        return this.pushPsbt(params?.psbtHex);
+
+      // Query methods
+      case 'dojak_getPublicKey':
+      case 'getPublicKey':
+        return this.getPublicKey();
+
+      case 'dojak_getBalance':
+      case 'getBalance':
+        return this.getBalance();
+
+      case 'dojak_getBalanceV2':
+      case 'getBalanceV2':
+        return this.getBalanceV2();
+
+      case 'dojak_getInscriptions':
+      case 'getInscriptions':
+        return this.getInscriptions(params?.cursor, params?.size);
+
+      case 'dojak_getBitcoinUtxos':
+      case 'getBitcoinUtxos':
+        return this.getBitcoinUtxos(params?.cursor, params?.size);
+
+      case 'dojak_getVersion':
+      case 'getVersion':
+        return this.getVersion();
+
+      // DRC-20 / Dunes methods
+      case 'dojak_inscribeTransfer':
+      case 'inscribeTransfer':
+        return this.inscribeTransfer(params?.ticker, params?.amount);
+
+      case 'dojak_sendDunes':
+      case 'sendDunes':
+        return this.sendDunes(params?.toAddress, params?.runeid, params?.amount, params);
+
+      default:
+        // For any unrecognized methods, pass through to the internal request
+        return this[requestMethodKey]({ method, params });
+    }
   };
 
   // Modify all public methods to use Symbol method
@@ -348,6 +459,23 @@ export class dojakProvider extends EventEmitter {
       method: 'sendBitcoin',
       params
     });
+  };
+
+  // Dogecoin-specific aliases for clarity
+  sendDogecoin = async (
+    toAddress: string,
+    satoshis: number,
+    options?: { feeRate: number; memo?: string; memos?: string[] }
+  ) => {
+    return this.sendBitcoin(toAddress, satoshis, options);
+  };
+
+  sendDoge = async (
+    toAddress: string,
+    satoshis: number,
+    options?: { feeRate: number; memo?: string; memos?: string[] }
+  ) => {
+    return this.sendBitcoin(toAddress, satoshis, options);
   };
 
   sendInscription = async (toAddress: string, inscriptionId: string, options?: { feeRate: number }) => {
@@ -597,11 +725,14 @@ defineUnwritablePropertyIfPossible(window, 'dojak_wallet', providerProxy);
 // EIP-1193 Smart Bridge: Inject window.ethereum with P... address filtering
 class DojakEthereumProvider extends dojakProvider {
   isMetaMask = true; // Compatible with MetaMask detection
+  isDojak = true; // Also identify as Dojak
 
   async request(args: { method: string; params?: any[] }) {
+    const { method, params = [] } = args;
+
     // Filter addresses to only allow P... (Dogecoin) addresses
-    if (args.method === 'eth_requestAccounts' || args.method === 'eth_accounts') {
-      const result = await super.request(args);
+    if (method === 'eth_requestAccounts' || method === 'eth_accounts') {
+      const result = await super.request({ method: 'requestAccounts' });
       if (result && Array.isArray(result)) {
         // Filter to only P... addresses (Dogecoin addresses)
         return result.filter((addr) => typeof addr === 'string' && addr.startsWith('P'));
@@ -609,28 +740,222 @@ class DojakEthereumProvider extends dojakProvider {
       return result;
     }
 
-    // Convert BTC methods to DOGE equivalents where possible
-    if (args.method === 'eth_sendTransaction') {
-      // This would need more complex conversion, for now just pass through
-      return super.request(args);
-    }
+    // BorkStarter specific methods and enhanced EIP-1193 support
+    switch (method) {
+      // Standard EIP-1193 methods
+      case 'eth_chainId':
+        return await this.chainId();
 
-    return super.request(args);
+      case 'net_version':
+        return await this.net_version();
+
+      // BorkStarter wallet connection methods
+      case 'dojak_connect':
+      case 'borkstarter_connect':
+        return await super.request({ method: 'requestAccounts' });
+
+      case 'dojak_disconnect':
+      case 'borkstarter_disconnect':
+        return await super.request({ method: 'disconnect' });
+
+      // BorkStarter balance methods
+      case 'dojak_getBalance':
+      case 'borkstarter_getBalance':
+        return await super.request({ method: 'getBalanceV2' });
+
+      // BorkStarter signing methods
+      case 'dojak_signMessage':
+      case 'borkstarter_signMessage':
+        return await super.request({
+          method: 'signMessage',
+          params: {
+            message: params[0] || params.message,
+            type: params[1] || params.type || 'ecdsa'
+          }
+        });
+
+      case 'personal_sign':
+        // Support MetaMask-style personal_sign
+        return await super.request({
+          method: 'signMessage',
+          params: {
+            message: params[0],
+            type: 'ecdsa'
+          }
+        });
+
+      // BorkStarter transaction methods
+      case 'dojak_sendTransaction':
+      case 'dojak_sendDogecoin':
+      case 'borkstarter_sendTransaction':
+      case 'borkstarter_sendDogecoin':
+        const txParams = params[0] || params;
+        return await super.request({
+          method: 'sendBitcoin',
+          params: {
+            toAddress: txParams.to,
+            satoshis: Math.floor(parseFloat(txParams.value) * 100000000), // Convert DOGE to satoshis
+            options: {
+              feeRate: txParams.gasPrice ? Math.floor(txParams.gasPrice / 1000) : undefined,
+              memo: txParams.data
+            }
+          }
+        });
+
+      case 'eth_sendTransaction':
+        // Basic eth_sendTransaction support for compatibility
+        const ethTx = params[0];
+        if (ethTx && ethTx.to && ethTx.value) {
+          return await super.request({
+            method: 'sendBitcoin',
+            params: {
+              toAddress: ethTx.to,
+              satoshis: Math.floor(parseFloat(ethTx.value) * 100000000),
+              options: {
+                feeRate: ethTx.gasPrice ? Math.floor(ethTx.gasPrice / 1000) : undefined
+              }
+            }
+          });
+        }
+        throw new Error('Invalid transaction parameters');
+
+      // BorkStarter utility methods
+      case 'dojak_getNetwork':
+      case 'borkstarter_getNetwork':
+        return await super.request({ method: 'getNetwork' });
+
+      case 'dojak_getInscriptions':
+      case 'borkstarter_getInscriptions':
+        return await super.request({
+          method: 'getInscriptions',
+          params: {
+            cursor: params[0] || 0,
+            size: params[1] || 20
+          }
+        });
+
+      default:
+        // For unsupported methods, try to pass through to the main provider
+        try {
+          return await super.request(args);
+        } catch (error) {
+          throw new Error(`Unsupported method: ${method}`);
+        }
+    }
   }
 
-  // Override chain ID to report as a custom chain
+  // Enhanced chain ID to report Dogecoin mainnet
   async chainId() {
-    return '0x1234'; // Custom chain ID for Dogecoin
+    return '0x1e240'; // Dogecoin mainnet chain ID (77160 in decimal)
   }
 
   // Override network version
   async net_version() {
-    return '1'; // Mainnet
+    return '77160'; // Dogecoin mainnet
+  }
+
+  // BorkStarter specific methods
+  async borkstarter_connect() {
+    return this.request({ method: 'borkstarter_connect' });
+  }
+
+  async borkstarter_disconnect() {
+    return this.request({ method: 'borkstarter_disconnect' });
+  }
+
+  async borkstarter_signVerification() {
+    const message = `Verify wallet ownership for BorkStarter\\nTimestamp: ${Date.now()}`;
+    return this.request({
+      method: 'borkstarter_signMessage',
+      params: [message, 'ecdsa']
+    });
+  }
+
+  async borkstarter_getLaunchpadBalance() {
+    return this.request({ method: 'borkstarter_getBalance' });
   }
 }
 
 const ethereumProvider = new DojakEthereumProvider();
 const ethereumProxy = new Proxy(ethereumProvider, providerProxy);
+
+// BorkStarter-specific provider with enhanced Dogecoin features
+class BorkStarterProvider extends dojakProvider {
+  isBorkStarter = true;
+  isDojak = true;
+
+  // Enhanced connection specifically for BorkStarter
+  async connect() {
+    const accounts = await this.requestAccounts();
+    if (accounts && accounts.length > 0) {
+      // Auto-sign verification message for BorkStarter
+      const verification = await this.signVerificationMessage();
+      return {
+        accounts,
+        verification
+      };
+    }
+    throw new Error('Failed to connect wallet');
+  }
+
+  // BorkStarter verification message signing
+  async signVerificationMessage(customMessage?: string) {
+    const message = customMessage || `Verify wallet ownership for BorkStarter\\nTimestamp: ${Date.now()}\\nPurpose: Launchpad participation`;
+    const signature = await this.signMessage(message, 'ecdsa');
+    const address = (await this.getAccounts())[0];
+
+    return {
+      address,
+      message,
+      signature,
+      timestamp: Date.now(),
+      purpose: 'launchpad'
+    };
+  }
+
+  // Get balance formatted for BorkStarter UI
+  async getLaunchpadBalance() {
+    const balance = await this.getBalanceV2();
+    return {
+      address: (await this.getAccounts())[0],
+      availableDoge: balance.availableBalance / 100000000,
+      totalDoge: balance.totalBalance / 100000000,
+      availableSatoshis: balance.availableBalance,
+      totalSatoshis: balance.totalBalance,
+      network: await this.getNetwork()
+    };
+  }
+
+  // Enhanced DOGE sending for launchpad contributions
+  async contributeToLaunchpad(projectId: string, amountDoge: number, memo?: string) {
+    // This would be enhanced to include project-specific logic
+    // For now, it's a wrapper around sendBitcoin
+    const satoshis = Math.floor(amountDoge * 100000000);
+
+    // In a real implementation, you'd look up the project's contribution address
+    // For now, this is a placeholder
+    throw new Error('Project-specific contribution logic needs to be implemented');
+  }
+}
+
+const borkStarterProvider = new BorkStarterProvider();
+const borkStarterProxy = new Proxy(borkStarterProvider, {
+  deleteProperty: () => true,
+  get: (target, prop) => {
+    if (prop === '_events' || prop === '_eventsCount' || prop === '_maxListeners') {
+      return target[prop];
+    }
+
+    if ((typeof prop === 'string' && prop.startsWith('_')) || prop === requestMethodKey) {
+      console.warn(`[BorkStarter] Attempted access to private method: ${String(prop)} is not allowed`);
+      return undefined;
+    }
+    return target[prop];
+  }
+});
+
+// Inject BorkStarter-specific provider
+defineUnwritablePropertyIfPossible(window, 'borkStarter', borkStarterProxy);
 
 // Only inject ethereum if it doesn't already exist (don't override existing wallets)
 if (!window.ethereum) {
@@ -638,3 +963,4 @@ if (!window.ethereum) {
 }
 
 window.dispatchEvent(new Event('dojak#initialized'));
+window.dispatchEvent(new Event('borkStarter#ready'));

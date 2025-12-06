@@ -22,8 +22,12 @@ export interface VirtualListProps<T> {
   onError?: (error: Error) => void;
   // Empty state message
   emptyText?: string;
+  // Error state message
+  errorText?: string;
   // Container height (undefined means auto height)
   containerHeight?: number;
+  // Timeout for loading (in milliseconds)
+  loadingTimeout?: number;
 }
 
 export function VirtualList<T>({
@@ -34,10 +38,14 @@ export function VirtualList<T>({
   itemsPerRow = 2,
   pageSize,
   onError,
-  emptyText = 'Empty'
+  emptyText = 'Empty',
+  errorText,
+  loadingTimeout = 30000 // 30 second timeout
 }: VirtualListProps<T>) {
   const [items, setItems] = useState<T[]>([]);
   const [total, setTotal] = useState(-1);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const isInTab = useExtensionIsInTab();
   const effectivePageSize = pageSize || (isInTab ? 50 : 20);
   const [pagination, setPagination] = useState({ currentPage: 1, pageSize: effectivePageSize });
@@ -48,6 +56,7 @@ export function VirtualList<T>({
   const containerRef = useRef<HTMLDivElement>(null);
   const prevChainTypeRef = useRef<string | null>(null);
   const chainChangedRef = useRef(false);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const hasViewModeChanged = prevIsInTabRef.current !== isInTab;
@@ -93,12 +102,51 @@ export function VirtualList<T>({
 
     isLoadingRef.current = true;
     setIsLoading(true);
+    setHasError(false);
+    setErrorMessage('');
+
+    // Set loading timeout
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
+
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (isLoadingRef.current) {
+        setHasError(true);
+        setErrorMessage(errorText || 'Unable to retrieve data. Please check your connection and try again.');
+        setIsLoading(false);
+        isLoadingRef.current = false;
+
+        if (onError) {
+          onError(new Error('Loading timeout'));
+        }
+      }
+    }, loadingTimeout);
 
     try {
       const { list, total } = await fetchData(fetchParams, pagination.currentPage, pagination.pageSize);
+
+      // Clear timeout on success
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+
       setItems(list);
       setTotal(total);
+      setHasError(false);
     } catch (e) {
+      console.error('VirtualList fetchData error:', e);
+
+      // Clear timeout on error
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+
+      setHasError(true);
+      setErrorMessage(errorText || 'Unable to retrieve data. Please check your connection and try again.');
+
       if (onError && e instanceof Error) {
         onError(e);
       }
@@ -155,6 +203,14 @@ export function VirtualList<T>({
     }
     return rows;
   }, [items, itemsPerRow]);
+
+  if (hasError) {
+    return (
+      <Column style={{ minHeight: 150 }} itemsCenter justifyCenter>
+        <Empty text={errorMessage} />
+      </Column>
+    );
+  }
 
   if (total === -1) {
     return (

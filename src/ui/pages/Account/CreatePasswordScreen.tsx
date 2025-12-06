@@ -77,10 +77,10 @@ export default function CreatePasswordScreen() {
     return (
       <Column>
         <Row>
-          <Text size="xs" text={t('password_strength')} />
-          <Text size="xs" text={text} style={{ color: color }} />
+          <Text size="s" text={t('password_strength')} />
+          <Text size="s" text={text} style={{ color: color }} />
         </Row>
-        {tip ? <Text size="xs" preset="sub" text={tip} /> : null}
+        {tip ? <Text size="s" preset="sub" text={tip} /> : null}
       </Column>
     );
   }, [newPassword]);
@@ -93,7 +93,7 @@ export default function CreatePasswordScreen() {
     if (newPassword !== confirmPassword) {
       return (
         <Row>
-          <Text size="xs" text={t('passwords_dont_match')} color="red" />
+          <Text size="s" text={t('passwords_dont_match')} color="red" />
         </Row>
       );
     } else {
@@ -112,8 +112,8 @@ export default function CreatePasswordScreen() {
       <Content preset="middle">
         <Column fullX fullY>
           <Column gap="xl" style={{ marginTop: 200 }}>
-            <Text text={t('create_a_password')} preset="title-bold" textCenter />
-            <Text text={t('you_will_use_this_to_unlock_your_wallet')} preset="sub" textCenter />
+            <Text text={t('create_a_password')} preset="title-bold" size="xxxl" textCenter />
+            <Text text={t('you_will_use_this_to_unlock_your_wallet')} preset="sub" size="lg" textCenter />
             <Column>
               <Input
                 preset="password"

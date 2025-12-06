@@ -21,6 +21,8 @@ export interface Doginal {
     mouth?: string;
     hat?: string;
     accessories?: string[];
+    // Some indexers encode collection name inside attributes
+    collection?: string;
   };
   owner: string;
   price?: number;
