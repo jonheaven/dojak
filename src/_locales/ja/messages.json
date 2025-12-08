@@ -390,7 +390,7 @@
   "active_addresses_24h": {
     "message": "アクティブアドレス (24時間)"
   },
-  "go_to_unisat_explorer": {
+  "go_to_dojak_explorer": {
     "message": "SoChainへ移動"
   },
   "search_address_and_txids": {
@@ -825,7 +825,7 @@
   "your_access_to_this_page_has_been_restricted_by_un": {
     "message": "安全でない可能性があるため、このページへのアクセスはUniSat Walletによって制限されています。"
   },
-  "reject_blocked_by_unisat_wallet": {
+  "reject_blocked_by_dojak_wallet": {
     "message": "拒否 (UniSat Walletによりブロック)"
   },
   "warning": {
@@ -834,7 +834,7 @@
   "i_am_aware_of_the_risks": {
     "message": "リスクを承知しています"
   },
-  "connect_with_unisat_wallet": {
+  "connect_with_dojak_wallet": {
     "message": "UniSat Walletに接続"
   },
   "select_the_account_to_use_on_this_site": {
@@ -1338,7 +1338,7 @@
   "danger_potential_phishing_website_detected": {
     "message": "危険！潜在的なフィッシングウェブサイトが検出されました"
   },
-  "this_website_has_been_identified_as_malicious_by_unisat_and_may": {
+  "this_website_has_been_identified_as_malicious_by_dojak_and_may": {
     "message": "このウェブサイトはUniSatによって悪意があると特定されており、以下の可能性があります："
   },
   "steal_your_private_keys_or_seed_phrases": {
@@ -1494,7 +1494,7 @@
   "date": {
     "message": "日付"
   },
-  "view_on_unisat_explorer": {
+  "view_on_dojak_explorer": {
     "message": "UniSat Explorerで表示"
   },
   "view_on_okx_explorer": {
@@ -2244,7 +2244,7 @@
   "i_have_signed_scan_result": {
     "message": "署名完了、結果をスキャン"
   },
-  "linked_to_unisat_cold_wallet": {
+  "linked_to_dojak_cold_wallet": {
     "message": "UniSat コールドウォレットに接続済み"
   },
   "signature_successful": {

@@ -28,6 +28,7 @@ import randomstring from 'randomstring';
 
 import { createPersistStore } from '@/background/utils';
 import { CHAINS_MAP, CHANNEL, VERSION } from '@/shared/constant';
+import { NetworkType } from '@unisat/wallet-types';
 
 import preferenceService from './preference';
 
@@ -730,6 +731,58 @@ export class WalletApiService {
           return res.data;
         });
       },
+      getDoginalsInscriptions: async (address: string, cursor = 0, size = 20) => {
+        return this.providerManager.executeWithFailover(async (client) => {
+          const baseURL = client.defaults.baseURL || '';
+
+          // MyDoge API - GET /inscriptions/{address}
+          if (baseURL.includes('api.mydoge.com')) {
+            const res = await client.get(`/inscriptions/${address}`);
+            // Transform MyDoge response to standard format
+            const inscriptions = res.data || [];
+            const startIndex = cursor;
+            const endIndex = startIndex + size;
+            return {
+              list: inscriptions
+                .slice(startIndex, endIndex)
+                .map((insc: any) => ({
+                  inscriptionId: insc.inscriptionId || insc.id,
+                  inscriptionNumber: insc.inscriptionNumber || insc.number,
+                  contentType: insc.contentType,
+                  contentBody: insc.contentBody || insc.body,
+                  genesisTxid: insc.genesisTxid || insc.genesisTransaction,
+                  location: insc.location,
+                  outputValue: insc.outputValue,
+                  timestamp: insc.timestamp,
+                  blockHeight: insc.blockHeight
+                })),
+              total: inscriptions.length
+            };
+          }
+
+          // Nintondo Search API
+          if (baseURL.includes('doge-mainnet-search.nintondo.io')) {
+            const res = await client.get(`/pub/collections/${address}`);
+            const inscriptions = res.data?.inscriptions || [];
+            const startIndex = cursor;
+            const endIndex = startIndex + size;
+            return {
+              list: inscriptions.slice(startIndex, endIndex),
+              total: res.data?.total || inscriptions.length
+            };
+          }
+
+          // Future: Dojak API
+          if (baseURL.includes('api.dojak.dog')) {
+            const res = await client.get(`/api/v1/address/${address}/doginals?cursor=${cursor}&size=${size}`);
+            return res.data;
+          }
+
+          // Generic fallback
+          const res = await client.get(`/api/v1/address/${address}/doginals?cursor=${cursor}&size=${size}`);
+          return res.data;
+        });
+      },
       getInscriptionInfo: async (inscriptionId: string) => {
         return this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
@@ -1213,8 +1266,51 @@ export class WalletApiService {
     };
   }
   get utility() {
-    // TODO: Implement Dogecoin utility service
-    throw new Error('Utility service not implemented for Dogecoin');
+    return {
+      getAppSummary: async () => {
+        // Return basic app summary for Dogecoin wallet
+        return {
+          apps: [],
+          totalCount: 0
+        };
+      },
+      checkWebsite: async (website: string) => {
+        // Basic website check - for now just return safe
+        return {
+          isSafe: true,
+          riskLevel: 'low'
+        };
+      },
+      getAppList: async () => {
+        // Return empty app list for Dogecoin
+        return {
+          apps: [],
+          totalCount: 0
+        };
+      },
+      getBannerList: async () => {
+        // Return empty banner list for Dogecoin
+        return {
+          banners: [],
+          totalCount: 0
+        };
+      },
+      getBlockActiveInfo: () => {
+        // Return basic block info for Dogecoin
+        return {
+          active: true,
+          network: 'dogecoin'
+        };
+      },
+      getBuyCoinChannelList: async (coin: string) => {
+        // Return empty buy channels for Dogecoin (not implemented yet)
+        return [];
+      },
+      createBuyCoinPaymentUrl: (coin: string, address: string, channel: string) => {
+        // Return null for Dogecoin buy functionality (not implemented yet)
+        return null;
+      }
+    };
   }
   get config() {
     // TODO: Implement Dogecoin config service

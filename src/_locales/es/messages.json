@@ -388,7 +388,7 @@
   "active_addresses_24h": {
     "message": "Direcciones Activas (24h)"
   },
-  "go_to_unisat_explorer": {
+  "go_to_dojak_explorer": {
     "message": "Ir al SoChain"
   },
   "search_address_and_txids": {
@@ -826,7 +826,7 @@
   "your_access_to_this_page_has_been_restricted_by_un": {
     "message": "Tu acceso a esta página ha sido restringido por UniSat Wallet ya que podría ser inseguro."
   },
-  "reject_blocked_by_unisat_wallet": {
+  "reject_blocked_by_dojak_wallet": {
     "message": "Rechazar (bloqueado por UniSat Wallet)"
   },
   "warning": {
@@ -835,7 +835,7 @@
   "i_am_aware_of_the_risks": {
     "message": "Soy consciente de los riesgos"
   },
-  "connect_with_unisat_wallet": {
+  "connect_with_dojak_wallet": {
     "message": "Conectar con UniSat Wallet"
   },
   "select_the_account_to_use_on_this_site": {
@@ -1340,7 +1340,7 @@
   "danger_potential_phishing_website_detected": {
     "message": "¡Peligro! Detectado sitio web de phishing potencial"
   },
-  "this_website_has_been_identified_as_malicious_by_unisat_and_may": {
+  "this_website_has_been_identified_as_malicious_by_dojak_and_may": {
     "message": "Este sitio web ha sido identificado como malicioso por UniSat y puede:"
   },
   "steal_your_private_keys_or_seed_phrases": {
@@ -1496,7 +1496,7 @@
   "date": {
     "message": "Fecha"
   },
-  "view_on_unisat_explorer": {
+  "view_on_dojak_explorer": {
     "message": "Ver en Explorador UniSat"
   },
   "view_on_okx_explorer": {
@@ -2234,7 +2234,7 @@
   "i_have_signed_scan_result": {
     "message": "He Firmado, Escanear Resultado"
   },
-  "linked_to_unisat_cold_wallet": {
+  "linked_to_dojak_cold_wallet": {
     "message": "Vinculado a UniSat Cold Wallet"
   },
   "signature_successful": {

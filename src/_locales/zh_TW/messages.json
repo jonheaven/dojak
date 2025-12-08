@@ -391,7 +391,7 @@
   "active_addresses_24h": {
     "message": "活躍地址數 (24小時)"
   },
-  "go_to_unisat_explorer": {
+  "go_to_dojak_explorer": {
     "message": "前往 SoChain"
   },
   "search_address_and_txids": {
@@ -826,7 +826,7 @@
   "your_access_to_this_page_has_been_restricted_by_un": {
     "message": "由於此頁面可能不安全，UniSat 錢包已限制您對其的存取。"
   },
-  "reject_blocked_by_unisat_wallet": {
+  "reject_blocked_by_dojak_wallet": {
     "message": "拒絕 (已被 UniSat 錢包阻擋)"
   },
   "warning": {
@@ -835,7 +835,7 @@
   "i_am_aware_of_the_risks": {
     "message": "我已了解相關風險"
   },
-  "connect_with_unisat_wallet": {
+  "connect_with_dojak_wallet": {
     "message": "連接 UniSat 錢包"
   },
   "select_the_account_to_use_on_this_site": {
@@ -1340,7 +1340,7 @@
   "danger_potential_phishing_website_detected": {
     "message": "危險！偵測到潛在的釣魚網站"
   },
-  "this_website_has_been_identified_as_malicious_by_unisat_and_may": {
+  "this_website_has_been_identified_as_malicious_by_dojak_and_may": {
     "message": "此網站已被 UniSat 識別為惡意網站，可能："
   },
   "steal_your_private_keys_or_seed_phrases": {
@@ -1496,7 +1496,7 @@
   "date": {
     "message": "日期"
   },
-  "view_on_unisat_explorer": {
+  "view_on_dojak_explorer": {
     "message": "在 UniSat 瀏覽器上查看"
   },
   "view_on_okx_explorer": {
@@ -2252,7 +2252,7 @@
   "cold_wallet": {
     "message": "連接 UniSat 冷錢包"
   },
-  "linked_to_unisat_cold_wallet": {
+  "linked_to_dojak_cold_wallet": {
     "message": "已連接至 UniSat 冷錢包"
   },
   "signature_successful": {

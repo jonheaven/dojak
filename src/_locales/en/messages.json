@@ -395,7 +395,7 @@
   "active_addresses_24h": {
     "message": "Active Addresses (24h)"
   },
-  "go_to_unisat_explorer": {
+  "go_to_dojak_explorer": {
     "message": "Go to SoChain"
   },
   "search_address_and_txids": {
@@ -841,7 +841,7 @@
   "your_access_to_this_page_has_been_restricted_by_un": {
     "message": "Your access to this page has been restricted by UniSat Wallet as it might be unsafe."
   },
-  "reject_blocked_by_unisat_wallet": {
+  "reject_blocked_by_dojak_wallet": {
     "message": "Reject (blocked by Dojak Wallet)"
   },
   "warning": {
@@ -850,7 +850,7 @@
   "i_am_aware_of_the_risks": {
     "message": "I am aware of the risks"
   },
-  "connect_with_unisat_wallet": {
+  "connect_with_dojak_wallet": {
     "message": "Connect with Dojak Wallet"
   },
   "select_the_account_to_use_on_this_site": {
@@ -1269,7 +1269,7 @@
     "message": "Latest Version"
   },
   "inscribe_and_store_your_inscriptions_in_the_worlds_first_open_source_chrome_wallet_for_doginals": {
-    "message": "Inscribe and store your Doginals in the world's first Open Source Chrome wallet for Dogecoin!"
+    "message": "Inscribe and store your Doginals in the world's best Chrome wallet for Dogecoin!"
   },
   "the_broadcastchannel_name_is_missing": {
     "message": "the broadcastChannel name is missing"
@@ -2264,7 +2264,7 @@
   "cold_wallet": {
     "message": "Link UniSat Cold Wallet"
   },
-  "linked_to_unisat_cold_wallet": {
+  "linked_to_dojak_cold_wallet": {
     "message": "Linked to UniSat Cold Wallet"
   },
   "signature_successful": {

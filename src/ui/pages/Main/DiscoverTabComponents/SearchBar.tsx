@@ -133,7 +133,7 @@ export function SearchBar() {
             {!info ? <Spin size={'small'} /> : <Text text={info.allAddrs} digital />}{' '}
           </Row>
           <Text
-            text={t('go_to_unisat_explorer')}
+            text={t('go_to_dojak_explorer')}
             size={'xs'}
             selfItemsCenter
             color={'primary'}

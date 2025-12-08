@@ -50,3 +50,5 @@ export const tatumGetTransaction = async (client: AxiosInstance, txid: string) =
   const response = await client.get(`/v3/dogecoin/transaction/${txid}`);
   return response.data;
 };
+
+
