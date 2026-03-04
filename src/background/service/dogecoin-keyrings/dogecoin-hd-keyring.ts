@@ -34,7 +34,6 @@ async function getHdKey(): Promise<any> {
 
     // Verify the module loaded correctly
     if (!hdkeyModule || typeof hdkeyModule.fromMasterSeed !== 'function') {
-      console.error('[DogecoinHdKeyring] hdkey module structure:', mod);
       throw new Error('Failed to load hdkey module correctly');
     }
   }
@@ -111,11 +110,6 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
    * Deserialize and restore the keyring from storage
    */
   async deserialize(opts: Partial<SerializedHdKeyring>): Promise<void> {
-    console.log('[DogecoinHdKeyring] deserialize called, opts:', {
-      hasMnemonic: !!opts.mnemonic,
-      hdPath: opts.hdPath,
-      activeIndexes: opts.activeIndexes
-    });
 
     if (this.root) {
       throw new Error('Dogecoin HD Keyring: Already initialized');
@@ -128,25 +122,19 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
     this.passphrase = opts.passphrase || '';
 
     if (opts.mnemonic) {
-      console.log('[DogecoinHdKeyring] calling initFromMnemonic...');
       await this.initFromMnemonic(opts.mnemonic);
-      console.log('[DogecoinHdKeyring] initFromMnemonic completed');
     }
 
     if (opts.activeIndexes && opts.activeIndexes.length > 0) {
-      console.log('[DogecoinHdKeyring] calling activeAccounts with indexes:', opts.activeIndexes);
       await this.activeAccounts(opts.activeIndexes);
-      console.log('[DogecoinHdKeyring] activeAccounts completed');
     }
 
-    console.log('[DogecoinHdKeyring] deserialize completed');
   }
 
   /**
    * Initialize the keyring from a mnemonic phrase
    */
   async initFromMnemonic(mnemonic: string): Promise<void> {
-    console.log('[DogecoinHdKeyring] initFromMnemonic called');
 
     if (this.root) {
       throw new Error('Dogecoin HD Keyring: Already initialized');
@@ -161,23 +149,13 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
 
     // Generate seed from mnemonic
     const seed = bip39.mnemonicToSeedSync(mnemonic, this.passphrase);
-    console.log('[DogecoinHdKeyring] seed generated, length:', seed.length);
 
     // Create HD wallet from seed (lazy load hdkey for CommonJS compatibility)
     const HDKey = await getHdKey();
-    console.log(
-      '[DogecoinHdKeyring] HDKey loaded:',
-      typeof HDKey,
-      HDKey ? 'has fromMasterSeed: ' + typeof HDKey.fromMasterSeed : 'null'
-    );
-
     this.hdWallet = HDKey.fromMasterSeed(seed);
-    console.log('[DogecoinHdKeyring] hdWallet created:', this.hdWallet ? 'OK' : 'null');
 
     // Derive to the HD path (account level)
-    console.log('[DogecoinHdKeyring] deriving path:', this.hdPath);
     this.root = this.hdWallet.derive(this.hdPath);
-    console.log('[DogecoinHdKeyring] root derived:', this.root ? 'OK' : 'null');
   }
 
   /**
@@ -223,20 +201,16 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
    * Activate specific account indexes
    */
   async activeAccounts(indexes: number[]): Promise<string[]> {
-    console.log('[DogecoinHdKeyring] activeAccounts called with indexes:', indexes);
     const accounts: string[] = [];
 
     for (const index of indexes) {
-      console.log('[DogecoinHdKeyring] activeAccounts: processing index', index);
       const { publicKey } = await this._deriveAccount(index);
-      console.log('[DogecoinHdKeyring] activeAccounts: got publicKey for index', index);
       if (!this.activeIndexes.includes(index)) {
         this.activeIndexes.push(index);
       }
       accounts.push(publicKey);
     }
 
-    console.log('[DogecoinHdKeyring] activeAccounts completed, accounts:', accounts.length);
     return accounts;
   }
 
@@ -391,12 +365,10 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
   private async _deriveAccount(
     index: number
   ): Promise<{ publicKey: string; keyPair: ECPairInterface; address: string }> {
-    console.log('[DogecoinHdKeyring] _deriveAccount called, index:', index);
 
     // Check cache first
     const cached = this._indexCache.get(index);
     if (cached) {
-      console.log('[DogecoinHdKeyring] returning cached entry');
       return cached;
     }
 
@@ -405,32 +377,24 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
     }
 
     // Derive child key at index
-    console.log('[DogecoinHdKeyring] deriving child at index:', index);
     const child = this.root.deriveChild(index);
-    console.log('[DogecoinHdKeyring] child derived:', child ? 'OK' : 'null');
 
     if (!child.privateKey) {
       throw new Error('Failed to derive private key at index ' + index);
     }
-    console.log('[DogecoinHdKeyring] privateKey length:', child.privateKey.length);
 
     const network = this.getNetwork();
-    console.log('[DogecoinHdKeyring] network:', network.pubKeyHash);
 
     // Create ECPair from derived private key
-    console.log('[DogecoinHdKeyring] creating ECPair...');
     const keyPair = ECPair.fromPrivateKey(child.privateKey, { network });
-    console.log('[DogecoinHdKeyring] ECPair created, publicKey length:', keyPair.publicKey.length);
     const publicKey = keyPair.publicKey.toString('hex');
 
     // Use bitcoinjs-lib for address derivation (service worker compatible)
     // The ECC library is already initialized at module load time
-    console.log('[DogecoinHdKeyring] deriving address with p2pkh...');
     const { address } = bitcoin.payments.p2pkh({
       pubkey: keyPair.publicKey,
       network
     });
-    console.log('[DogecoinHdKeyring] address derived:', address);
 
     if (!address || typeof address !== 'string') {
       throw new Error('Failed to derive address: address is undefined or not a string');
@@ -439,7 +403,6 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
     // Cache the result
     const entry = { publicKey, keyPair, address };
     this._indexCache.set(index, entry);
-    console.log('[DogecoinHdKeyring] _deriveAccount completed successfully');
 
     return entry;
   }

@@ -249,9 +249,7 @@ export class DogecoinKeyringService extends EventEmitter {
    * Boot the wallet with a password
    */
   async boot(password: string): Promise<void> {
-    console.log('[DogecoinKeyringService] boot() called');
     this.password = password;
-    console.log('[DogecoinKeyringService] password set, length:', password.length);
     const encryptBooted = await this.encryptor.encrypt(password, 'true');
 
     if (!this.store) {
@@ -268,7 +266,6 @@ export class DogecoinKeyringService extends EventEmitter {
     await this.storage.set('keyring', this.store.getState());
     this.setUnlocked();
     this.fullUpdate();
-    console.log('[DogecoinKeyringService] boot() completed');
   }
 
   isBooted(): boolean {
@@ -384,8 +381,6 @@ export class DogecoinKeyringService extends EventEmitter {
    * Generate and encrypt pre-mnemonic for wallet creation flow
    */
   async generatePreMnemonic(): Promise<string> {
-    console.log('[DogecoinKeyringService] generatePreMnemonic() called');
-    console.log('[DogecoinKeyringService] password:', this.password ? 'SET' : 'NOT SET');
     if (!this.password) {
       const error = new Error(this.t('you_need_to_unlock_wallet_first'));
       console.error('[DogecoinKeyringService] generatePreMnemonic() error - no password');
@@ -393,7 +388,6 @@ export class DogecoinKeyringService extends EventEmitter {
     }
 
     const mnemonic = this.generateMnemonic();
-    console.log('[DogecoinKeyringService] generated mnemonic, words:', mnemonic.split(' ').length);
     const preMnemonics = await this.encryptor.encrypt(this.password, mnemonic);
     this.memStore.updateState({ preMnemonics });
 

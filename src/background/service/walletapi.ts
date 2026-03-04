@@ -110,6 +110,11 @@ const getProviderConfigs = (): ProviderConfig[] => {
   return configs;
 };
 
+const getTatumApiKey = (): string | null => {
+  const key = process.env.TATUM_API_KEY;
+  return key && key.trim().length > 0 ? key : null;
+};
+
 class ProviderManager {
   private providers: Map<string, AxiosInstance> = new Map();
   private healthStatus: Map<string, boolean> = new Map();
@@ -131,7 +136,12 @@ class ProviderManager {
 
         // Add Tatum API key for testnet provider
         if (config.name === 'tatum-testnet') {
-          headers['x-api-key'] = 't-6888afb36692767ef96a3a01-326177f2e73148aa85696a91';
+          const tatumApiKey = getTatumApiKey();
+          if (tatumApiKey) {
+            headers['x-api-key'] = tatumApiKey;
+          } else {
+            console.warn('[ProviderManager] TATUM_API_KEY is not configured; tatum-testnet requests may fail.');
+          }
         }
 
         const client = axios.create({

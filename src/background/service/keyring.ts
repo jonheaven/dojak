@@ -130,9 +130,7 @@ export class KeyringServiceWrapper extends DogecoinKeyringService {
    * Override init for extension-specific initialization
    */
   async init(): Promise<void> {
-    console.log('[DogecoinKeyringService] Starting initialization...');
     await super.init();
-    console.log('[DogecoinKeyringService] Initialization complete');
   }
 }
 
