@@ -29,6 +29,19 @@ export enum CosmosSignDataType {
   COSMOS_DIRECT = 2
 }
 
+/**
+ * Doginals Rarity Tier
+ * Based on satoshi/koinu position in blockchain
+ */
+export enum RarityTier {
+  MYTHIC = 'mythic',
+  LEGENDARY = 'legendary',
+  EPIC = 'epic',
+  RARE = 'rare',
+  UNCOMMON = 'uncommon',
+  COMMON = 'common'
+}
+
 export interface Chain {
   name: string;
   logo: string;
@@ -106,6 +119,12 @@ export interface Inscription {
   sameOffset?: boolean;
   children?: string[];
   parents?: string[];
+  rarity?: {
+    tier: RarityTier;
+    blockHeight?: number;
+    koinuStart?: number;
+    percentageOfSupply?: number;
+  };
 }
 
 export interface Atomical {

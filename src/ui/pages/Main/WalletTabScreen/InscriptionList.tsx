@@ -6,6 +6,7 @@ import InscriptionPreview from '@/ui/components/InscriptionPreview';
 import { VirtualList } from '@/ui/components/VirtualList';
 import { useExtensionIsInTab } from '@/ui/features/browser/tabs';
 import { useI18n } from '@/ui/hooks/useI18n';
+import { useRarityEnrichment } from '@/ui/hooks/useRarityEnrichment';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
 import { useWallet } from '@/ui/utils';
@@ -25,6 +26,7 @@ export function InscriptionList({ filterType = 'all' }: InscriptionListProps) {
   const isInTab = useExtensionIsInTab();
   const [isMobile, setIsMobile] = useState(false);
   const { t } = useI18n();
+  const { enrichInscriptions } = useRarityEnrichment();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -43,9 +45,16 @@ export function InscriptionList({ filterType = 'all' }: InscriptionListProps) {
   const fetchInscriptions = useCallback(
     async (fetchParams: { address: string }, page: number, pageSize: number) => {
       // Fetch inscriptions - filterType can be used for future server-side filtering
-      return wallet.getDoginalsInscriptions(fetchParams.address, page, pageSize);
+      const result = await wallet.getDoginalsInscriptions(fetchParams.address, page, pageSize);
+      
+      // Enrich inscriptions with rarity data
+      if (result && Array.isArray(result)) {
+        return enrichInscriptions(result);
+      }
+      
+      return result;
     },
-    [wallet, filterType]
+    [wallet, filterType, enrichInscriptions]
   );
 
   const renderInscription = useCallback(

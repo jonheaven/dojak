@@ -11,6 +11,7 @@ import { LoadingOutlined } from '@ant-design/icons';
 import { BeamCharmModal } from '../BeamCharmModal';
 import { Button } from '../Button';
 import { Column } from '../Column';
+import { RarityBadge } from '../RarityBadge';
 import Iframe from '../Iframe';
 import { Row } from '../Row';
 import { Text } from '../Text';
@@ -299,6 +300,11 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
                           </div>
                         </div>
                       )}
+                    </div>
+                  )}
+                  {data.rarity && (
+                    <div style={{ marginRight: 6 }}>
+                      <RarityBadge tier={data.rarity.tier} size="sm" compact={true} />
                     </div>
                   )}
                 </Row>
