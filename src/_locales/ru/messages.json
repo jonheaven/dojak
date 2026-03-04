@@ -351,6 +351,18 @@
   "etching": {
     "message": "гравюра"
   },
+  "mint_cap": {
+    "message": "Лимит Минтов"
+  },
+  "mint_amount": {
+    "message": "Сумма Минта"
+  },
+  "mint_height_range": {
+    "message": "Диапазон Высоты Минта"
+  },
+  "remaining_mints": {
+    "message": "Оставшиеся Минты"
+  },
   "parent": {
     "message": "родительский"
   },

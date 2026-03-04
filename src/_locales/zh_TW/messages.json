@@ -352,6 +352,18 @@
   "etching": {
     "message": "蝕刻 (Etching)"
   },
+  "mint_cap": {
+    "message": "鑄造上限"
+  },
+  "mint_amount": {
+    "message": "鑄造數量"
+  },
+  "mint_height_range": {
+    "message": "鑄造高度範圍"
+  },
+  "remaining_mints": {
+    "message": "剩餘鑄造"
+  },
   "parent": {
     "message": "父級"
   },

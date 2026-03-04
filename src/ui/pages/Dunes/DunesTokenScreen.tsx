@@ -215,6 +215,46 @@ export default function DunesTokenScreen() {
             <Section title={t('symbol')} value={tokenSummary.duneInfo.symbol} />
             <Line />
 
+            {tokenSummary.duneInfo.terms && tokenSummary.duneInfo.terms.cap !== '0' ? (
+              <>
+                <Section 
+                  title={t('mint_cap')} 
+                  value={`${showLongNumber(tokenSummary.duneInfo.terms.cap)} ${t('mints')}`}
+                />
+                <Line />
+                
+                <Section 
+                  title={t('mint_amount')} 
+                  value={`${showLongNumber(
+                    dunesUtils.toDecimalAmount(tokenSummary.duneInfo.terms.amount, tokenSummary.duneInfo.divisibility)
+                  )} ${tokenSummary.duneInfo.symbol} ${t('per_mint')}`}
+                />
+                <Line />
+                
+                {tokenSummary.duneInfo.terms.heightStart > 0 || tokenSummary.duneInfo.terms.heightEnd > 0 ? (
+                  <>
+                    <Section 
+                      title={t('mint_height_range')} 
+                      value={`${tokenSummary.duneInfo.terms.heightStart || 0} - ${tokenSummary.duneInfo.terms.heightEnd || '∞'}`}
+                    />
+                    <Line />
+                  </>
+                ) : null}
+                
+                {tokenSummary.duneInfo.remaining !== '0' ? (
+                  <>
+                    <Section 
+                      title={t('remaining_mints')} 
+                      value={showLongNumber(
+                        dunesUtils.toDecimalAmount(tokenSummary.duneInfo.remaining, tokenSummary.duneInfo.divisibility)
+                      )}
+                    />
+                    <Line />
+                  </>
+                ) : null}
+              </>
+            ) : null}
+
             <Section title={t('holders')} value={showLongNumber(tokenSummary.duneInfo.holders)} />
             <Line />
 

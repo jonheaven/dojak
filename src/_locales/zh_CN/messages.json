@@ -363,6 +363,18 @@
   "etching": {
     "message": "铭刻"
   },
+  "mint_cap": {
+    "message": "铸造上限"
+  },
+  "mint_amount": {
+    "message": "铸造数量"
+  },
+  "mint_height_range": {
+    "message": "铸造高度范围"
+  },
+  "remaining_mints": {
+    "message": "剩余铸造"
+  },
   "parent": {
     "message": "父级"
   },

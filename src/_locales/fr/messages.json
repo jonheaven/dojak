@@ -353,6 +353,18 @@
   "etching": {
     "message": "gravure"
   },
+  "mint_cap": {
+    "message": "Limite de Frappe"
+  },
+  "mint_amount": {
+    "message": "Montant de Frappe"
+  },
+  "mint_height_range": {
+    "message": "Plage de Hauteur de Frappe"
+  },
+  "remaining_mints": {
+    "message": "Frappes Restantes"
+  },
   "parent": {
     "message": "parent"
   },

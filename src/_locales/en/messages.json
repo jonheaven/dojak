@@ -356,6 +356,18 @@
   "etching": {
     "message": "etching"
   },
+  "mint_cap": {
+    "message": "Mint Cap"
+  },
+  "mint_amount": {
+    "message": "Mint Amount"
+  },
+  "mint_height_range": {
+    "message": "Mint Height Range"
+  },
+  "remaining_mints": {
+    "message": "Remaining Mints"
+  },
   "parent": {
     "message": "parent"
   },

@@ -351,6 +351,18 @@
   "etching": {
     "message": "エッチング"
   },
+  "mint_cap": {
+    "message": "ミント上限"
+  },
+  "mint_amount": {
+    "message": "ミント量"
+  },
+  "mint_height_range": {
+    "message": "ミント高さ範囲"
+  },
+  "remaining_mints": {
+    "message": "残りミント数"
+  },
   "parent": {
     "message": "親"
   },

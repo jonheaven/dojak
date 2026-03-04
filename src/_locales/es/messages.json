@@ -349,6 +349,18 @@
   "etching": {
     "message": "grabado"
   },
+  "mint_cap": {
+    "message": "Límite de Mintas"
+  },
+  "mint_amount": {
+    "message": "Cantidad de Minta"
+  },
+  "mint_height_range": {
+    "message": "Rango de Altura de Minta"
+  },
+  "remaining_mints": {
+    "message": "Mintas Restantes"
+  },
   "parent": {
     "message": "padre"
   },
