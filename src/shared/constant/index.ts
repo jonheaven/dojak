@@ -131,8 +131,7 @@ export const getRestoreWallets = (): {
   {
     value: RestoreWalletType.dojak,
     name: 'Mnemonic Phrase (12/24 words)',
-    addressTypes: [AddressType.P2PKH],
-    recommended: true
+    addressTypes: [AddressType.P2PKH]
   },
   {
     value: RestoreWalletType.OTHERS,
@@ -142,6 +141,11 @@ export const getRestoreWallets = (): {
   {
     value: RestoreWalletType.OW,
     name: 'Hardware Wallet',
+    addressTypes: [AddressType.P2PKH]
+  },
+  {
+    value: 'qr-scan' as any,
+    name: 'Scan QR',
     addressTypes: [AddressType.P2PKH]
   }
 ];

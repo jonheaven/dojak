@@ -14,6 +14,7 @@ import { Input } from './Input';
 import { Layout } from './Layout';
 import { Logo } from './Logo';
 import { Progress } from './Progress';
+import QRCodeComponent from './QRCode';
 import { Radio, RadioGroup } from './Radio';
 import { Row } from './Row';
 import { ScrollableList } from './ScrollableList';
@@ -23,9 +24,12 @@ import { Switch } from './Switch';
 import { Text } from './Text';
 import { TextArea } from './TextArea';
 import { Tooltip } from './Tooltip';
+import { BottomModal } from './BottomModal';
+import QRScanner from './QRScanner';
 
 export {
   AddressBar,
+  BottomModal,
   Button,
   Card,
   Carousel,
@@ -41,6 +45,7 @@ export {
   Layout,
   Logo,
   Progress,
+  QRCodeComponent,
   Radio,
   RadioGroup,
   Row,
@@ -50,5 +55,6 @@ export {
   Switch,
   Text,
   TextArea,
-  Tooltip
+  Tooltip,
+  QRScanner
 };

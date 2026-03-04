@@ -5,6 +5,7 @@ import { AddressType, RestoreWalletType } from '@/shared/types';
 import { Content, Header, Layout, Row } from '@/ui/components';
 import { TabBar } from '@/ui/components/TabBar';
 import { useI18n } from '@/ui/hooks/useI18n';
+import { ImportOptions } from '@/ui/pages/Account/createHDWalletComponents/ImportOptions';
 import { MnemonicDisplay } from '@/ui/pages/Account/createHDWalletComponents/MnemonicDisplay';
 import { Step0 } from '@/ui/pages/Account/createHDWalletComponents/Step0';
 import { Step1_Import } from '@/ui/pages/Account/createHDWalletComponents/Step1_Import';
@@ -23,10 +24,14 @@ export default function CreateHDWalletScreen() {
   const { t } = useI18n();
   const wallet = useWallet();
   const { state } = useLocation();
-  const { isImport, fromUnlock } = state as {
+  const { isImport, fromUnlock, scannedData, fromQRScan, directImport, walletType } = (state as {
     isImport: boolean;
     fromUnlock: boolean;
-  };
+    scannedData?: string;
+    fromQRScan?: boolean;
+    directImport?: boolean;
+    walletType?: string;
+  }) || {};
 
   // Check if wallet is booted but not unlocked (interrupted flow)
   useEffect(() => {
@@ -47,19 +52,61 @@ export default function CreateHDWalletScreen() {
     checkUnlockStatus();
   }, [wallet, fromUnlock, navigate]);
 
+  // Update contextData when location state changes or sessionStorage has QR scan results
+  useEffect(() => {
+    // Check location state first (for direct navigation)
+    if (scannedData && fromQRScan) {
+      console.log('[CreateHDWalletScreen] Updating contextData with QR scan result from location state:', scannedData);
+      const words = scannedData.split(/\s+/);
+      setContextData(prev => ({
+        ...prev,
+        mnemonics: scannedData,
+        tabType: TabType.STEP2,
+        wordsType: words.length === 12 ? WordsType.WORDS_12 : WordsType.WORDS_24
+      }));
+      return;
+    }
+
+    // Check sessionStorage for QR scan results (when using history.back())
+    const qrResult = sessionStorage.getItem('qr_scan_result');
+    if (qrResult) {
+      try {
+        const parsedResult = JSON.parse(qrResult);
+        // Only use recent results (within last 30 seconds)
+        if (Date.now() - parsedResult.timestamp < 30000) {
+          console.log('[CreateHDWalletScreen] Updating contextData with QR scan result from sessionStorage:', parsedResult.scannedData);
+          const words = parsedResult.scannedData.split(/\s+/);
+          setContextData(prev => ({
+            ...prev,
+            mnemonics: parsedResult.scannedData,
+            tabType: TabType.STEP2,
+            wordsType: words.length === 12 ? WordsType.WORDS_12 : WordsType.WORDS_24
+          }));
+          // Clean up the sessionStorage
+          sessionStorage.removeItem('qr_scan_result');
+        }
+      } catch (error) {
+        console.error('Error parsing QR scan result from sessionStorage:', error);
+        sessionStorage.removeItem('qr_scan_result');
+      }
+    }
+  }, [scannedData, fromQRScan]);
+
   const [contextData, setContextData] = useState<ContextData>({
-    mnemonics: '',
-    hdPath: '',
+    mnemonics: scannedData || '',
+    hdPath: "m/44'/3'/0'/0", // Default Dogecoin HD path
     passphrase: '',
-    addressType: AddressType.P2WPKH,
+    addressType: AddressType.P2PKH, // Use P2PKH for Dogecoin addresses starting with 'D'
     mnemonicConfirmed: false,
-    tabType: TabType.MNEMONIC,
-    restoreWalletType: RestoreWalletType.dojak,
+    step1Completed: false,
+    tabType: directImport ? TabType.STEP2 : (fromQRScan ? TabType.STEP2 : TabType.MNEMONIC),
+    restoreWalletType: walletType as RestoreWalletType || RestoreWalletType.dojak,
     isRestore: isImport,
     isCustom: false,
     customHdPath: '',
     addressTypeIndex: 0,
-    wordsType: WordsType.WORDS_12
+    wordsType: scannedData ? (scannedData.split(/\s+/).length === 12 ? WordsType.WORDS_12 : WordsType.WORDS_24) : WordsType.WORDS_12,
+    qrMode: false
   });
 
   const updateContextData = useCallback(
@@ -70,16 +117,26 @@ export default function CreateHDWalletScreen() {
   );
 
   const items = useMemo(() => {
-    if (contextData.isRestore) {
+    if (directImport) {
+      // For direct import, show the import screen directly
+      return [
+        {
+          key: TabType.STEP2,
+          label: '', // No tab label
+          children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
+        }
+      ];
+    } else if (contextData.isRestore) {
+      // For import mode, show both options screen and import screen
       return [
         {
           key: TabType.MNEMONIC,
-          label: t('secret_recovery_phrase'),
-          children: <Step0 contextData={contextData} updateContextData={updateContextData} />
+          label: '', // No tab label
+          children: <ImportOptions contextData={contextData} updateContextData={updateContextData} />
         },
         {
           key: TabType.STEP2,
-          label: t('step_2'),
+          label: '', // No tab label
           children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
         }
       ];
@@ -117,25 +174,27 @@ export default function CreateHDWalletScreen() {
             window.history.go(-1);
           }
         }}
-        title={contextData.isRestore ? t('restore_from_mnemonics') : t('create_a_new_hd_wallet')}
+        title={contextData.isRestore ? t('restore_wallet') : t('create_a_new_hd_wallet')}
       />
       <Content>
-        <Row justifyCenter>
-          <TabBar
-            progressEnabled
-            defaultActiveKey={contextData.tabType}
-            activeKey={contextData.tabType}
-            items={items.map((v) => ({
-              key: v.key,
-              label: v.label
-            }))}
-            onTabClick={(key) => {
-              const toTabType = key as TabType;
-              // Only one step now, so no need to check for step completion
-              updateContextData({ tabType: toTabType });
-            }}
-          />
-        </Row>
+        {!contextData.isRestore && !directImport && (
+          <Row justifyCenter>
+            <TabBar
+              progressEnabled
+              defaultActiveKey={contextData.tabType}
+              activeKey={contextData.tabType}
+              items={items.map((v, index) => ({
+                key: v.key || index,
+                label: v.label
+              }))}
+              onTabClick={(key) => {
+                const toTabType = key as TabType;
+                // Only one step now, so no need to check for step completion
+                updateContextData({ tabType: toTabType });
+              }}
+            />
+          </Row>
+        )}
 
         {currentChildren}
       </Content>

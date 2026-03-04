@@ -22,7 +22,7 @@ export default async (req) => {
   const hasVault = keyringService.hasVault();
   if (!hasVault) {
     throw ethErrors.provider.userRejectedRequest({
-      message: 'wallet must has at least one account'
+      message: 'Wallet must have at least one account.'
     });
   }
   return rpcFlow(req);

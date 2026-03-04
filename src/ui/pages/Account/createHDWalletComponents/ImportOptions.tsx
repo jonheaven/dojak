@@ -4,7 +4,7 @@ import { useI18n } from '@/ui/hooks/useI18n';
 import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
 import { useNavigate } from '@/ui/pages/MainRoute';
 
-export function Step0({
+export function ImportOptions({
   updateContextData
 }: {
   contextData: ContextData;
@@ -14,7 +14,7 @@ export function Step0({
   const navigate = useNavigate();
   return (
     <Column gap="lg">
-      <Text text="Restore Dojak Wallet" preset="title-bold" textCenter mt="xl" />
+      <Text text="Import Dogecoin Wallet" preset="title-bold" textCenter mt="xl" />
       <Text text="Choose how you want to import your Dogecoin wallet" preset="regular" textCenter mb="md" />
       {getRestoreWallets().map((item, index) => {
         return (
@@ -34,8 +34,16 @@ export function Step0({
                 return;
               }
 
-              // For mnemonic options, continue to import step (now STEP2 is removed, so go to STEP1_Import or next relevant step)
+              // Check if this is the QR scan option
+              if (item.value === 'qr-scan') {
+                // Navigate to dedicated QR scan screen with import context
+                navigate('QRScanScreen', { context: 'import' });
+                return;
+              }
+
+              // For mnemonic options, switch to import screen directly
               updateContextData({
+                tabType: TabType.STEP2,
                 restoreWalletType: item.value
               });
             }}

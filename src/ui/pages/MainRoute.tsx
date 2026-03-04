@@ -18,6 +18,7 @@ import CreateHDWalletScreen from './Account/CreateHDWalletScreen';
 import CreateKeystoneWalletScreen from './Account/CreateKeystoneWalletScreen';
 import CreatePasswordScreen from './Account/CreatePasswordScreen';
 import CreateSimpleWalletScreen from './Account/CreateSimpleWalletScreen';
+import { QRScanScreen } from './Account/createHDWalletComponents/QRScanScreen';
 import SwitchAccountScreen from './Account/SwitchAccountScreen';
 import SwitchKeyringScreen from './Account/SwitchKeyringScreen';
 import UnlockScreen from './Account/UnlockScreen';
@@ -214,6 +215,10 @@ export const routes = {
   CreateSimpleWalletScreen: {
     path: '/account/create-simple-wallet',
     element: <CreateSimpleWalletScreen />
+  },
+  QRScanScreen: {
+    path: '/account/qr-scan',
+    element: <QRScanScreen />
   },
   CreateKeystoneWalletScreen: {
     path: '/account/create-keystone-wallet',

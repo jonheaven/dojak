@@ -1,15 +1,20 @@
+import { useState } from 'react';
+
 import { Card, Column, Content, Header, Layout, Text } from '@/ui/components';
 import { useExtensionIsInTab } from '@/ui/features/browser/tabs';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { useDeveloperMode } from '@/ui/state/settings/hooks';
+import { useWallet } from '@/ui/utils';
 
 import { useNavigate } from '../MainRoute';
 
 export default function AddKeyringScreen() {
   const navigate = useNavigate();
+  const wallet = useWallet();
   const isInTab = useExtensionIsInTab();
   const { t } = useI18n();
   const developerMode = useDeveloperMode();
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
   return (
     <Layout>
@@ -28,6 +33,14 @@ export default function AddKeyringScreen() {
             onClick={(e) => {
               navigate('CreateHDWalletScreen', { isImport: false });
             }}
+            onMouseEnter={() => setHoveredCard('create')}
+            onMouseLeave={() => setHoveredCard(null)}
+            style={{
+              border: hoveredCard === 'create' ? '3px solid #C9822A' : '1px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: hoveredCard === 'create' ? '0 0 8px rgba(201, 130, 42, 0.3)' : 'none',
+              transition: 'all 0.2s ease',
+              backgroundColor: hoveredCard === 'create' ? 'rgba(20, 20, 20, 0.9)' : undefined
+            }}
           >
             <Column full justifyCenter>
               <Text text={t('create_with_mnemonics_12words')} size="sm" />
@@ -41,6 +54,14 @@ export default function AddKeyringScreen() {
             onClick={(e) => {
               navigate('CreateHDWalletScreen', { isImport: true });
             }}
+            onMouseEnter={() => setHoveredCard('restore-mnemonic')}
+            onMouseLeave={() => setHoveredCard(null)}
+            style={{
+              border: hoveredCard === 'restore-mnemonic' ? '3px solid #C9822A' : '1px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: hoveredCard === 'restore-mnemonic' ? '0 0 8px rgba(201, 130, 42, 0.3)' : 'none',
+              transition: 'all 0.2s ease',
+              backgroundColor: hoveredCard === 'restore-mnemonic' ? 'rgba(20, 20, 20, 0.9)' : undefined
+            }}
           >
             <Column full justifyCenter>
               <Text text={t('restore_from_mnemonics_12words24words')} size="sm" />
@@ -52,9 +73,36 @@ export default function AddKeyringScreen() {
             onClick={(e) => {
               navigate('CreateSimpleWalletScreen');
             }}
+            onMouseEnter={() => setHoveredCard('restore-private')}
+            onMouseLeave={() => setHoveredCard(null)}
+            style={{
+              border: hoveredCard === 'restore-private' ? '3px solid #C9822A' : '1px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: hoveredCard === 'restore-private' ? '0 0 8px rgba(201, 130, 42, 0.3)' : 'none',
+              transition: 'all 0.2s ease',
+              backgroundColor: hoveredCard === 'restore-private' ? 'rgba(20, 20, 20, 0.9)' : undefined
+            }}
           >
             <Column full justifyCenter>
               <Text text={t('restore_from_single_private_key')} size="sm" />
+            </Column>
+          </Card>
+
+          <Card
+            justifyCenter
+            onClick={(e) => {
+              navigate('QRScanScreen', { context: 'import' });
+            }}
+            onMouseEnter={() => setHoveredCard('restore-qr')}
+            onMouseLeave={() => setHoveredCard(null)}
+            style={{
+              border: hoveredCard === 'restore-qr' ? '3px solid #C9822A' : '1px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: hoveredCard === 'restore-qr' ? '0 0 8px rgba(201, 130, 42, 0.3)' : 'none',
+              transition: 'all 0.2s ease',
+              backgroundColor: hoveredCard === 'restore-qr' ? 'rgba(20, 20, 20, 0.9)' : undefined
+            }}
+          >
+            <Column full justifyCenter>
+              <Text text="Restore via QR" size="sm" />
             </Column>
           </Card>
 
@@ -62,12 +110,29 @@ export default function AddKeyringScreen() {
 
           <Card
             justifyCenter
-            onClick={() => {
-              if (isInTab) {
+            onClick={async () => {
+              const isBooted = await wallet.isBooted();
+              if (!isInTab) {
+                if (isBooted) {
+                  window.open('#/account/create-keystone-wallet');
+                } else {
+                  window.open('#/account/create-password?isKeystone=true');
+                }
+                return;
+              }
+              if (isBooted) {
                 navigate('CreateKeystoneWalletScreen');
               } else {
-                window.open('#/account/create-keystone-wallet');
+                navigate('CreatePasswordScreen', { isKeystone: true });
               }
+            }}
+            onMouseEnter={() => setHoveredCard('keystone')}
+            onMouseLeave={() => setHoveredCard(null)}
+            style={{
+              border: hoveredCard === 'keystone' ? '3px solid #C9822A' : '1px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: hoveredCard === 'keystone' ? '0 0 8px rgba(201, 130, 42, 0.3)' : 'none',
+              transition: 'all 0.2s ease',
+              backgroundColor: hoveredCard === 'keystone' ? 'rgba(20, 20, 20, 0.9)' : undefined
             }}
           >
             <Column full justifyCenter>
@@ -83,6 +148,14 @@ export default function AddKeyringScreen() {
                 justifyCenter
                 onClick={() => {
                   navigate('CreateColdWalletScreen');
+                }}
+                onMouseEnter={() => setHoveredCard('cold')}
+                onMouseLeave={() => setHoveredCard(null)}
+                style={{
+                  border: hoveredCard === 'cold' ? '3px solid #C9822A' : '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: hoveredCard === 'cold' ? '0 0 8px rgba(201, 130, 42, 0.3)' : 'none',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: hoveredCard === 'cold' ? 'rgba(20, 20, 20, 0.9)' : undefined
                 }}
               >
                 <Column full justifyCenter>

@@ -110,8 +110,8 @@ export default function CreatePasswordScreen() {
   return (
     <Layout>
       <Content preset="middle">
-        <Column fullX fullY>
-          <Column gap="xl" style={{ marginTop: 200 }}>
+        <Column fullX justifyCenter itemsCenter style={{ minHeight: '100%', padding: '20px 0' }}>
+          <Column gap="xl" style={{ width: '100%', maxWidth: '400px' }}>
             <Text text={t('create_a_password')} preset="title-bold" size="xxxl" textCenter />
             <Text text={t('you_will_use_this_to_unlock_your_wallet')} preset="sub" size="lg" textCenter />
             <Column>

@@ -2,6 +2,8 @@ import { AddressType, RestoreWalletType } from '@/shared/types';
 
 export enum TabType {
   MNEMONIC = 'MNEMONIC',
+  STEP1 = 'STEP1',
+  STEP2 = 'STEP2',
   STEP3 = 'STEP3'
 }
 
@@ -16,6 +18,7 @@ export interface ContextData {
   passphrase: string;
   addressType: AddressType;
   mnemonicConfirmed: boolean;
+  step1Completed: boolean;
   tabType: TabType;
   restoreWalletType: RestoreWalletType;
   isRestore: boolean;
@@ -23,6 +26,7 @@ export interface ContextData {
   customHdPath: string;
   addressTypeIndex: number;
   wordsType: WordsType;
+  qrMode?: boolean;
 }
 
 export interface UpdateContextDataParams {
@@ -31,10 +35,12 @@ export interface UpdateContextDataParams {
   passphrase?: string;
   addressType?: AddressType;
   mnemonicConfirmed?: boolean;
+  step1Completed?: boolean;
   tabType?: TabType;
   restoreWalletType?: RestoreWalletType;
   isCustom?: boolean;
   customHdPath?: string;
   addressTypeIndex?: number;
   wordsType?: WordsType;
+  qrMode?: boolean;
 }
