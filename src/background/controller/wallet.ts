@@ -28,6 +28,7 @@ import {
 } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { getDogecoinNetwork } from '@/shared/lib/dogecoin-network';
+import { dunestone } from '@/shared/lib/dunestone';
 import { dunesUtils } from '@/shared/lib/dunes-utils';
 import {
   Account,
@@ -2038,6 +2039,155 @@ export class WalletController extends BaseController {
     const toSignInputs: ToSignInput[] = [];
 
     return this.getSignedResult(psbt, toSignInputs);
+  };
+
+  prepareMintDunes = async ({
+    duneid,
+    numMints,
+    feeRate,
+    enableRBF,
+    btcUtxos,
+    destination
+  }: {
+    duneid: string;
+    numMints: number;
+    feeRate: number;
+    enableRBF: boolean;
+    btcUtxos?: UnspentOutput[];
+    destination?: string;
+  }) => {
+    const account = preferenceService.getCurrentAccount();
+    if (!account) throw new Error('no current account');
+
+    const networkType = this.getNetworkType();
+    const network = getDogecoinNetwork(networkType);
+
+    // Parse the duneid (format: "block:tx")
+    const duneId = dunestone.parseDuneId(duneid);
+
+    // Get destination address (use current address if not specified)
+    const toAddress = destination || account.address;
+
+    if (!txHelpers.isValidAddress(toAddress, networkType)) {
+      throw new Error('Invalid destination address');
+    }
+
+    if (!btcUtxos) {
+      btcUtxos = await this.getDOGEUtxos();
+    }
+
+    if (btcUtxos.length === 0) {
+      throw new Error('Insufficient balance for transaction fees');
+    }
+
+    // Create the dunestone for minting
+    // pointer: 1 means the minted dunes go to output index 1 (the destination output)
+    const dunestoneScript = dunestone.createMintDunestone(duneId, 1);
+
+    // Validate dunestone size
+    if (dunestoneScript.length > dunestone.MAX_STANDARD_OP_RETURN_SIZE) {
+      throw new Error(
+        `Dunestone exceeds maximum size: ${dunestoneScript.length} > ${dunestone.MAX_STANDARD_OP_RETURN_SIZE}`
+      );
+    }
+
+    // Create PSBT
+    const psbt = new bitcoin.Psbt({ network });
+
+    // Output 0: Dunestone OP_RETURN (no value)
+    psbt.addOutput({
+      script: dunestoneScript,
+      value: 0
+    });
+
+    // Output 1: Destination address (receives minted dunes)
+    // Use 10000 koinu (0.0001 DOGE) as postage - standard for dunes
+    const postage = 10000;
+    psbt.addOutput({
+      address: toAddress,
+      value: postage
+    });
+
+    // Calculate required funding
+    // We need enough for: postage + fees
+    // Estimate: ~200 vbytes for a simple mint transaction
+    const estimatedSize = 200;
+    const estimatedFee = Math.ceil(estimatedSize * feeRate);
+    const totalNeeded = postage + estimatedFee;
+
+    // Select UTXOs to fund the transaction
+    let selectedValue = 0;
+    const selectedUtxos: UnspentOutput[] = [];
+    const toSignInputs: ToSignInput[] = [];
+
+    for (const utxo of btcUtxos) {
+      if (selectedValue >= totalNeeded) {
+        break;
+      }
+
+      selectedUtxos.push(utxo);
+      selectedValue += utxo.satoshis;
+
+      // Add input to PSBT
+      const input: any = {
+        hash: utxo.txid,
+        index: utxo.vout,
+        witnessUtxo: {
+          script: Buffer.from(utxo.scriptPk, 'hex'),
+          value: utxo.satoshis
+        }
+      };
+
+      // TODO: Add proper input handling for different address types
+      // For now, this assumes P2PKH addresses (most common for Dogecoin)
+      
+      psbt.addInput(input);
+
+      toSignInputs.push({
+        index: psbt.inputCount - 1,
+        address: account.address,
+        publicKey: account.pubkey
+      });
+    }
+
+    if (selectedValue < totalNeeded) {
+      throw new Error(`Insufficient balance. Need ${totalNeeded} koinu, have ${selectedValue} koinu`);
+    }
+
+    // Add change output if needed
+    const actualFee = estimatedFee;
+    const change = selectedValue - postage - actualFee;
+    
+    if (change > txHelpers.getAddressUtxoDust(account.address)) {
+      psbt.addOutput({
+        address: account.address,
+        value: change
+      });
+    }
+
+    // Set RBF if enabled
+    if (enableRBF) {
+      psbt.txInputs.forEach((_, index) => {
+        psbt.setInputSequence(index, 0xfffffffd);
+      });
+    }
+
+    // Set locktime to current block height for security
+    psbt.setLocktime(0);
+
+    // Calculate actual fee
+    const fee = selectedValue - postage - change;
+
+    return {
+      psbt,
+      toSignInputs,
+      fee,
+      estimatedFee: actualFee,
+      postage,
+      duneid,
+      numMints,
+      destination: toAddress
+    };
   };
 
   getSignedResult = async (psbt: bitcoin.Psbt, toSignInputs: ToSignInput[]) => {

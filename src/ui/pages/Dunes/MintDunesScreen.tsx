@@ -12,7 +12,7 @@ import { TickUsdWithoutPrice, TokenType } from '@/ui/components/TickUsd';
 import { useI18n } from '@/ui/hooks/useI18n';
 import { useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { useFetchUtxosCallback } from '@/ui/state/transactions/hooks';
+import { useFetchUtxosCallback, usePrepareMintDunesCallback } from '@/ui/state/transactions/hooks';
 import { colors } from '@/ui/theme/colors';
 import { showLongNumber, useWallet } from '@/ui/utils';
 
@@ -37,6 +37,7 @@ export default function MintDunesScreen() {
   const [rawTxInfo, setRawTxInfo] = useState<RawTxInfo>();
 
   const fetchUtxos = useFetchUtxosCallback();
+  const prepareMintDunes = usePrepareMintDunesCallback();
 
   // Calculate mint values
   const mintAmount = useMemo(() => {
@@ -94,23 +95,21 @@ export default function MintDunesScreen() {
       return;
     }
 
-    // TODO: Implement prepareMintDunes in wallet controller
-    // For now, we'll navigate with the intent and let the confirmation screen handle it
-    setDisabled(false);
-
-    // prepareMintDunes({
-    //   duneid: duneInfo.duneid,
-    //   numMints: mints,
-    //   feeRate
-    // })
-    //   .then((data) => {
-    //     setRawTxInfo(data);
-    //     setDisabled(false);
-    //   })
-    //   .catch((e) => {
-    //     console.log(e);
-    //     setError(e.message);
-    //   });
+    // Prepare the mint transaction
+    prepareMintDunes({
+      duneid: duneInfo.duneid,
+      numMints: mints,
+      feeRate,
+      enableRBF: false
+    })
+      .then((data) => {
+        setRawTxInfo(data);
+        setDisabled(false);
+      })
+      .catch((e) => {
+        console.log(e);
+        setError(e.message);
+      });
   }, [numMints, feeRate, maxMints]);
 
   return (
@@ -244,20 +243,14 @@ export default function MintDunesScreen() {
             preset="primary"
             text={t('next')}
             onClick={(e) => {
-              // TODO: Once prepareMintDunes is implemented, use rawTxInfo
-              // For now, open external minting interface
-              const dojakWebsite = 'https://dojak.dog'; // Could use usedojakWebsite() hook
-              window.open(`${dojakWebsite}/dunes/inscribe?tab=mint&dune=${duneInfo.dune}&count=${numMints}`);
-              
-              // Future implementation when wallet minting is ready:
-              // navigate('TxConfirmScreen', { rawTxInfo });
+              navigate('TxConfirmScreen', { rawTxInfo });
             }}
           />
         </Column>
 
         <Row justifyCenter mt="md">
           <Text 
-            text={t('mint_will_open_external')} 
+            text={`${t('minting')} ${numMints} ${numMints === '1' ? t('mint') : t('mints')}`}
             color="textDim" 
             size="xs" 
             textCenter 

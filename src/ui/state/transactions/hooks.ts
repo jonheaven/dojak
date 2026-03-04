@@ -545,6 +545,57 @@ export function useDunesTx() {
   return transactionsState.dunesTx;
 }
 
+export function usePrepareMintDunesCallback() {
+  const wallet = useWallet();
+  const utxos = useUtxos();
+  const fetchUtxos = useFetchUtxosCallback();
+  
+  return useCallback(
+    async ({
+      duneid,
+      numMints,
+      feeRate,
+      enableRBF,
+      destination
+    }: {
+      duneid: string;
+      numMints: number;
+      feeRate: number;
+      enableRBF: boolean;
+      destination?: string;
+    }) => {
+      if (!feeRate || feeRate <= 0) {
+        const summary = await wallet.getFeeSummary();
+        feeRate = summary.list[1].feeRate;
+      }
+
+      let btcUtxos = utxos;
+      if (btcUtxos.length === 0) {
+        btcUtxos = await fetchUtxos();
+      }
+
+      const res = await wallet.prepareMintDunes({
+        duneid,
+        numMints,
+        feeRate,
+        enableRBF,
+        btcUtxos,
+        destination
+      });
+
+      // Return in the same format as other prepare functions
+      const rawTxInfo: RawTxInfo = {
+        psbtHex: res.psbt.toHex(),
+        rawtx: '', // Will be filled after signing
+        fee: res.fee
+      };
+      
+      return rawTxInfo;
+    },
+    [wallet, utxos, fetchUtxos]
+  );
+}
+
 export function usePrepareSendCharmsCallback() {
   const wallet = useWallet();
   const account = useCurrentAccount();
