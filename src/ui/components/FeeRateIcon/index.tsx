@@ -41,11 +41,19 @@ export function FeeRateIcon() {
     wallet
       .getFeeSummary()
       .then((v) => {
-        if (v && v.list) {
-          setFeeOptions(v.list);
-        } else {
-          console.warn('[FeeRateIcon] Unexpected fee summary structure:', v);
-          setError('No fee data');
+        try {
+          if (v && v.list && Array.isArray(v.list)) {
+            setFeeOptions(v.list);
+          } else if (Array.isArray(v)) {
+            // Handle if v itself is an array
+            setFeeOptions(v);
+          } else {
+            console.warn('[FeeRateIcon] Unexpected fee summary structure:', v);
+            setError('No fee data');
+          }
+        } catch (parseErr) {
+          console.error('[FeeRateIcon] Error parsing fee data:', parseErr);
+          setError('Failed to parse fee data');
         }
       })
       .catch((err) => {

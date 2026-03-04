@@ -135,15 +135,18 @@ export default function DiscoverTabScreen() {
     wallet
       .getBannerList()
       .then((data) => {
+        // Ensure data is an array
+        const bannerListData = Array.isArray(data) ? data : [];
         dispatch(
           discoveryActions.setBannerList({
-            bannerList: data,
+            bannerList: bannerListData,
             chainType,
             fetchTime
           })
         );
       })
       .catch((e) => {
+        console.error('[DiscoverTabScreen] Error fetching banner list:', e);
         dispatch(
           discoveryActions.setBannerList({
             bannerList: [],
@@ -156,15 +159,18 @@ export default function DiscoverTabScreen() {
     wallet
       .getAppList()
       .then((data) => {
+        // Ensure data is an array
+        const appListData = Array.isArray(data) ? data : [];
         dispatch(
           discoveryActions.setAppList({
-            appList: data,
+            appList: appListData,
             chainType,
             fetchTime
           })
         );
       })
       .catch((e) => {
+        console.error('[DiscoverTabScreen] Error fetching app list:', e);
         dispatch(
           discoveryActions.setAppList({
             appList: [],
@@ -182,12 +188,12 @@ export default function DiscoverTabScreen() {
   }, [hasNewBanner, dispatch]);
 
   useEffect(() => {
-    if (tabKey > appList.length - 1) {
+    if (Array.isArray(appList) && tabKey > appList.length - 1) {
       setTabKey(0);
     }
   }, [appList, tabKey]);
 
-  const tabItems = appList.map((v, index) => {
+  const tabItems = Array.isArray(appList) ? appList.map((v, index) => {
     return {
       key: index,
       label: v.tab,
@@ -199,7 +205,7 @@ export default function DiscoverTabScreen() {
         </Column>
       )
     };
-  });
+  }) : [];
 
   const hasBanner = bannerList && bannerList.length > 0;
 

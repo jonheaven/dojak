@@ -1292,12 +1292,12 @@ export class WalletApiService {
         };
       },
       getAppList: async () => {
-        // Return empty app list for Dogecoin
-        return [];
+        // Return empty app list for Dogecoin - structured as { tab: string; items: AppInfo[] }[]
+        return [] as { tab: string; items: any[] }[];
       },
       getBannerList: async () => {
-        // Return empty banner list for Dogecoin
-        return [];
+        // Return empty banner list for Dogecoin - structured as { id: string; img: string; link: string }[]
+        return [] as { id: string; img: string; link: string }[];
       },
       getBlockActiveInfo: () => {
         // Return basic block info for Dogecoin
