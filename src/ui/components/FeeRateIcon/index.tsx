@@ -29,14 +29,32 @@ interface FeeOption {
 export function FeeRateIcon() {
   const wallet = useWallet();
   const [feeOptions, setFeeOptions] = useState<FeeOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [feeOptionVisible, setFeeOptionVisible] = useState(false);
 
   const chainType = useChainType();
   useEffect(() => {
-    wallet.getFeeSummary().then((v) => {
-      setFeeOptions(v.list);
-    });
+    setLoading(true);
+    setError(null);
+    wallet
+      .getFeeSummary()
+      .then((v) => {
+        if (v && v.list) {
+          setFeeOptions(v.list);
+        } else {
+          console.warn('[FeeRateIcon] Unexpected fee summary structure:', v);
+          setError('No fee data');
+        }
+      })
+      .catch((err) => {
+        console.error('[FeeRateIcon] Error fetching fees:', err);
+        setError('Failed to fetch fees');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [chainType]);
 
   const feeRate = feeOptions[FeeRateType.AVG] ? feeOptions[FeeRateType.AVG].feeRate : 0;
@@ -48,6 +66,46 @@ export function FeeRateIcon() {
     color = 'yellow';
   } else if (feeRate > 0) {
     color = 'yellow';
+  }
+
+  if (loading) {
+    return (
+      <Card
+        preset="style2"
+        style={{
+          backgroundColor: 'rgba(255,255,255,0.12)',
+          height: 28,
+          borderRadius: 8,
+          padding: '2px 4px',
+          gap: 2
+        }}
+      >
+        <Row>
+          <Icon icon="gas" />
+          <Text text="..." size="xxs" color="textDim" />
+        </Row>
+      </Card>
+    );
+  }
+
+  if (error || feeOptions.length === 0) {
+    return (
+      <Card
+        preset="style2"
+        style={{
+          backgroundColor: 'rgba(255,255,255,0.12)',
+          height: 28,
+          borderRadius: 8,
+          padding: '2px 4px',
+          gap: 2
+        }}
+      >
+        <Row>
+          <Icon icon="gas" />
+          <Text text="-" size="xxs" color="textDim" title={error ? `Error: ${error}` : 'No fee data available'} />
+        </Row>
+      </Card>
+    );
   }
   return (
     <Card
@@ -83,6 +141,20 @@ export function FeeRateIcon() {
 
 function FeeOptionsPopover({ feeOptions, onClose }: { feeOptions: FeeOption[]; onClose: () => void }) {
   const { t } = useI18n();
+
+  if (!feeOptions || feeOptions.length === 0) {
+    return (
+      <Popover onClose={onClose}>
+        <Column style={{ minWidth: 250 }}>
+          <Row style={{ borderBottomWidth: 1, borderColor: colors.border, marginBottom: 10, paddingBottom: 10 }}>
+            <Text text={t('network_fee_2')} preset="bold" />
+          </Row>
+          <Text text="Unable to load network fees. Please try again later." color="textDim" />
+        </Column>
+      </Popover>
+    );
+  }
+
   return (
     <Popover onClose={onClose}>
       <Column>

@@ -72,7 +72,7 @@ export const svgRegistry = {
 
   dojak: './images/icons/dojak.svg',
   'dojak-logo': './images/logo/logo@32x.png',
-  gas: './images/icons/gas.svg',
+  gas: '/images/icons/gas.svg',
   fb: './images/icons/fb.svg',
   trade: './images/icons/trade.svg',
   jawn: './images/icons/jawn.svg',
