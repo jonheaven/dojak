@@ -2,6 +2,7 @@ import { isNull } from 'lodash';
 import React, { CSSProperties, useEffect, useState } from 'react';
 
 import { ChainType, SAFE_DOMAIN_CONFIRMATION } from '@/shared/constant';
+import { isDNSName, resolveDNSName, getDNSErrorMessage } from '@/shared/lib/dns';
 import { getSatsName } from '@/shared/lib/satsname-utils';
 import { Inscription } from '@/shared/types';
 import { Icon, Row, Text } from '@/ui/components';
@@ -229,7 +230,7 @@ export const AddressInput = (props: InputProps) => {
   const chain = useChain();
   const networkType = propsNetworkType || chain.enum;
 
-  let SUPPORTED_DOMAINS = ['sats', 'dojak', 'x', 'btc'];
+  let SUPPORTED_DOMAINS = ['sats', 'dojak', 'x', 'btc', 'doge'];
   let inputAddressPlaceholder = props.addressPlaceholder || t('address_or_name_sats_dojak_etc');
   if (chain.isFractal) {
     SUPPORTED_DOMAINS = ['fb'];
@@ -277,6 +278,47 @@ export const AddressInput = (props: InputProps) => {
     setInputVal(inputAddress);
 
     resetState();
+
+    // Check for .doge DNS names first (dedicated DNS system)
+    if (isDNSName(inputAddress)) {
+      setSearching(true);
+      // TODO: Implement DNS resolution when indexer API is available
+      // For now, show a helpful message
+      setParseError('DNS resolution (.doge names) coming soon! Currently resolving via inscriptions.');
+      
+      // Fall back to inscription-based domain lookup
+      wallet
+        .queryDomainInfo(encodeURIComponent(inputAddress))
+        .then((inscription) => {
+          resetState();
+          if (!inscription) {
+            setParseError(`${inputAddress} ${t('does_not_exist')}`);
+            return;
+          }
+          setInscription(inscription);
+          if (inscription.utxoConfirmation < SAFE_DOMAIN_CONFIRMATION) {
+            setParseError(
+              `${t('this_domain_has_been_transferred_or_inscribed_recently_please_wait_for_block_confirmations')} (${
+                inscription.utxoConfirmation
+              }/${SAFE_DOMAIN_CONFIRMATION}).`
+            );
+            return;
+          }
+
+          const address = inscription.address || '';
+          setParseAddress(address);
+          setValidAddress(address);
+          setParseName(true);
+        })
+        .catch((err: Error) => {
+          const errMsg = getDNSErrorMessage(err, inputAddress);
+          setFormatError(errMsg);
+        })
+        .finally(() => {
+          setSearching(false);
+        });
+      return;
+    }
 
     const teststr = inputAddress.toLowerCase();
     const satsname = getSatsName(teststr);
