@@ -60,8 +60,31 @@ export function DRC20List() {
 
   if (total === 0) {
     return (
-      <Column style={{ minHeight: 150 }} itemsCenter justifyCenter>
+      <Column style={{ minHeight: 200 }} itemsCenter justifyCenter gap="lg">
         <Empty text={t('empty')} />
+        <Column
+          gap="md"
+          style={{
+            maxWidth: 300,
+            padding: '16px',
+            backgroundColor: 'rgba(201, 130, 42, 0.08)',
+            border: '1px solid rgba(201, 130, 42, 0.3)',
+            borderRadius: '8px',
+            textAlign: 'center'
+          }}
+        >
+          <Text text="About DRC-20 Tokens" preset="bold" />
+          <Text
+            text="DRC-20 tokens are inscription-based tokens on Dogecoin. They follow the DRC-20 standard for creating fungible assets."
+            size="sm"
+            color="textDim"
+          />
+          <Text
+            text="You don't have any DRC-20 tokens yet. Receive some or mint them to view them here."
+            size="sm"
+            color="textDim"
+          />
+        </Column>
       </Column>
     );
   }

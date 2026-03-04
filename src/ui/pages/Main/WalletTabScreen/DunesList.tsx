@@ -60,8 +60,31 @@ export function DunesList() {
 
   if (total === 0) {
     return (
-      <Column style={{ minHeight: 150 }} itemsCenter justifyCenter>
+      <Column style={{ minHeight: 200 }} itemsCenter justifyCenter gap="lg">
         <Empty text={t('empty')} />
+        <Column
+          gap="md"
+          style={{
+            maxWidth: 300,
+            padding: '16px',
+            backgroundColor: 'rgba(201, 130, 42, 0.08)',
+            border: '1px solid rgba(201, 130, 42, 0.3)',
+            borderRadius: '8px',
+            textAlign: 'center'
+          }}
+        >
+          <Text text="About Dunes" preset="bold" />
+          <Text
+            text="Dunes are fungible tokens on Dogecoin using the Runes protocol. They're similar to DRC-20 tokens but use a more efficient, native protocol."
+            size="sm"
+            color="textDim"
+          />
+          <Text
+            text="You don't have any Dunes yet. Receive some to view them here."
+            size="sm"
+            color="textDim"
+          />
+        </Column>
       </Column>
     );
   }
