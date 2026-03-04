@@ -365,6 +365,21 @@
   "remaining_mints": {
     "message": "Frappes Restantes"
   },
+  "mint_dunes": {
+    "message": "Frapper Dunes"
+  },
+  "number_of_mints": {
+    "message": "Nombre de Frappes"
+  },
+  "invalid_mint_count": {
+    "message": "Nombre de frappes invalide"
+  },
+  "max_mints_available": {
+    "message": "Max frappes disponibles"
+  },
+  "mint_will_open_external": {
+    "message": "La frappe s'ouvrira dans une interface externe (frappe dans le portefeuille bientôt)"
+  },
   "parent": {
     "message": "parent"
   },

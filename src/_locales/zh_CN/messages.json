@@ -375,6 +375,21 @@
   "remaining_mints": {
     "message": "剩余铸造"
   },
+  "mint_dunes": {
+    "message": "铸造 Dunes"
+  },
+  "number_of_mints": {
+    "message": "铸造次数"
+  },
+  "invalid_mint_count": {
+    "message": "无效的铸造次数"
+  },
+  "max_mints_available": {
+    "message": "最大可用铸造"
+  },
+  "mint_will_open_external": {
+    "message": "铸造将在外部界面中打开（钱包内铸造即将推出）"
+  },
   "parent": {
     "message": "父级"
   },

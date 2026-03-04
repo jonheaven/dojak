@@ -363,6 +363,21 @@
   "remaining_mints": {
     "message": "残りミント数"
   },
+  "mint_dunes": {
+    "message": "Dunesミント"
+  },
+  "number_of_mints": {
+    "message": "ミント数"
+  },
+  "invalid_mint_count": {
+    "message": "無効なミント数"
+  },
+  "max_mints_available": {
+    "message": "最大利用可能ミント数"
+  },
+  "mint_will_open_external": {
+    "message": "ミントは外部インターフェースで開きます（ウォレット内ミントは近日公開）"
+  },
   "parent": {
     "message": "親"
   },

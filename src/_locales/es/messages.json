@@ -361,6 +361,21 @@
   "remaining_mints": {
     "message": "Mintas Restantes"
   },
+  "mint_dunes": {
+    "message": "Mintar Dunes"
+  },
+  "number_of_mints": {
+    "message": "Número de Mintas"
+  },
+  "invalid_mint_count": {
+    "message": "Número de mintas inválido"
+  },
+  "max_mints_available": {
+    "message": "Máx mintas disponibles"
+  },
+  "mint_will_open_external": {
+    "message": "El mintado se abrirá en interfaz externa (mintado en cartera próximamente)"
+  },
   "parent": {
     "message": "padre"
   },

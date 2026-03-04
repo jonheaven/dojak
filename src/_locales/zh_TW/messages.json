@@ -364,6 +364,21 @@
   "remaining_mints": {
     "message": "剩餘鑄造"
   },
+  "mint_dunes": {
+    "message": "鑄造 Dunes"
+  },
+  "number_of_mints": {
+    "message": "鑄造次數"
+  },
+  "invalid_mint_count": {
+    "message": "無效的鑄造次數"
+  },
+  "max_mints_available": {
+    "message": "最大可用鑄造"
+  },
+  "mint_will_open_external": {
+    "message": "鑄造將在外部介面中開啟（錢包內鑄造即將推出）"
+  },
   "parent": {
     "message": "父級"
   },

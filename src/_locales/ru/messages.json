@@ -363,6 +363,21 @@
   "remaining_mints": {
     "message": "Оставшиеся Минты"
   },
+  "mint_dunes": {
+    "message": "Минт Dunes"
+  },
+  "number_of_mints": {
+    "message": "Количество Минтов"
+  },
+  "invalid_mint_count": {
+    "message": "Неверное количество минтов"
+  },
+  "max_mints_available": {
+    "message": "Макс. доступных минтов"
+  },
+  "mint_will_open_external": {
+    "message": "Минт откроется во внешнем интерфейсе (минт в кошельке скоро)"
+  },
   "parent": {
     "message": "родительский"
   },

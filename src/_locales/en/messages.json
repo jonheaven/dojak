@@ -368,6 +368,21 @@
   "remaining_mints": {
     "message": "Remaining Mints"
   },
+  "mint_dunes": {
+    "message": "Mint Dunes"
+  },
+  "number_of_mints": {
+    "message": "Number of Mints"
+  },
+  "invalid_mint_count": {
+    "message": "Invalid mint count"
+  },
+  "max_mints_available": {
+    "message": "Max mints available"
+  },
+  "mint_will_open_external": {
+    "message": "Minting will open in external interface (in-wallet minting coming soon)"
+  },
   "parent": {
     "message": "parent"
   },

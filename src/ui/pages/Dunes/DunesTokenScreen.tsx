@@ -288,7 +288,9 @@ export default function DunesTokenScreen() {
               disabled={!enableMint}
               icon="pencil"
               onClick={(e) => {
-                window.open(`${dojakWebsite}/dunes/inscribe?tab=mint&dune=${tokenSummary.duneInfo.dune}`);
+                navigate('MintDunesScreen', {
+                  duneInfo: tokenSummary.duneInfo
+                });
               }}
               full
             />

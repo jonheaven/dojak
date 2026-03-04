@@ -41,6 +41,7 @@ import { DoginalsGalleryScreen } from './Doginals/DoginalsGalleryScreen';
 // import SignDoginalsTransactionScreen from './Doginals/SignDoginalsTransactionScreen';
 // import SplitDoginalsInscriptionScreen from './Doginals/SplitDoginalsInscriptionScreen';
 import DunesTokenScreen from './Dunes/DunesTokenScreen';
+import MintDunesScreen from './Dunes/MintDunesScreen';
 import SendDunesScreen from './Dunes/SendDunesScreen';
 import AppTabScrren from './Main/AppTabScreen';
 import BoostScreen from './Main/BoostScreen';
@@ -276,6 +277,11 @@ export const routes = {
   SendDunesScreen: {
     path: '/dunes/send-dunes',
     element: <SendDunesScreen />
+  },
+
+  MintDunesScreen: {
+    path: '/dunes/mint-dunes',
+    element: <MintDunesScreen />
   },
 
   DunesTokenScreen: {
