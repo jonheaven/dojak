@@ -8,16 +8,21 @@ import { usePrice } from '@/ui/provider/PriceProvider';
 import { useChain, useChainType } from '@/ui/state/settings/hooks';
 import type { ColorTypes } from '@/ui/theme/colors';
 
+/**
+ * Display USD value of Dogecoin amount
+ * @param koinu - Amount in koinu (smallest unit of DOGE, 1 DOGE = 100,000,000 koinu)
+ * Note: Also accepts 'sats' prop for backwards compatibility
+ */
 export function DOGEUSD(
   props: {
-    sats: number;
+    sats: number; // Amount in koinu (renamed from sats, kept for backwards compatibility)
     color?: ColorTypes;
     size?: Sizes;
     bracket?: boolean; // ()
     isHidden?: boolean;
   } & TextProps
 ) {
-  const { sats, color = 'textDim', size = 'sm', bracket = false, isHidden = false } = props;
+  const { sats: koinu, color = 'textDim', size = 'sm', bracket = false, isHidden = false } = props;
 
   const { coinPrice, refreshCoinPrice, isLoadingCoinPrice } = usePrice();
   const chainType = useChainType();
@@ -42,23 +47,23 @@ export function DOGEUSD(
       price = coinPrice.fb;
     }
 
-    if (isNaN(sats)) {
+    if (isNaN(koinu)) {
       return '-';
     }
     if (price <= 0) {
       return '-';
     }
-    if (sats <= 0) {
+    if (koinu <= 0) {
       return '0.00';
     }
-    const result = new BigNumber(sats).dividedBy(1e8).multipliedBy(price);
+    const result = new BigNumber(koinu).dividedBy(1e8).multipliedBy(price);
 
     if (result.isLessThan('0.01')) {
       return '<0.01';
     }
 
     return result.toFixed(2);
-  }, [chainType, coinPrice.btc, coinPrice.fb, sats]);
+  }, [chainType, coinPrice.btc, coinPrice.fb, koinu]);
 
   if (isHidden) {
     if (bracket) {
@@ -82,7 +87,7 @@ export function DOGEUSD(
     return <></>;
   }
 
-  if (isNaN(sats)) {
+  if (isNaN(koinu)) {
     return <></>;
   }
 

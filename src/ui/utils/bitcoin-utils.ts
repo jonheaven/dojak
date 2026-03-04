@@ -39,7 +39,7 @@ export function isValidAddress(address: string, networkType?: NetworkType) {
 
 export function getAddressUtxoDust(address: string) {
   const addressType = getAddressType(address);
-  // Dogecoin only supports P2PKH addresses with dust amount of 546 satoshis
+  // Dogecoin only supports P2PKH addresses with dust amount of 546 koinu
   if (addressType === AddressType.P2PKH) {
     return 546;
   } else {

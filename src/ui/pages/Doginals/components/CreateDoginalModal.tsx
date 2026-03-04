@@ -113,7 +113,7 @@ export const CreateDoginalModal: React.FC<CreateDoginalModalProps> = ({ visible,
           </Form.Item>
         )}
 
-        <Form.Item label={`Fee Rate: ${feeRate} sat/vB`}>
+        <Form.Item label={`Fee Rate: ${feeRate} koinu/vB`}>
           <Slider
             min={1}
             max={100}

@@ -96,7 +96,7 @@ export function HistoryDetail({ detail, close }: HistoryDetailProps) {
                 <Text text={t('network_fee_rate')} color={'textDim'} />
                 <Row>
                   <Text text={detail.feeRate}></Text>
-                  <Text text={'sats/vB'} color={'textDim'} />
+                  <Text text={'koinu/vB'} color={'textDim'} />
                 </Row>
               </Row>
               <Row justifyBetween>

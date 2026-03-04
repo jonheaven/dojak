@@ -167,7 +167,7 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
               />
               {!isCustomOption(v.title) && (
                 <Text
-                  text={`${v.feeRate} sat/vB`}
+                  text={`${v.feeRate} koinu/vB`}
                   size={fontSize}
                   textCenter
                   style={{ color: selected ? colors.black : colors.white }}
@@ -188,7 +188,7 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
       {feeOptionIndex === FeeRateType.CUSTOM && (
         <Input
           preset="amount"
-          placeholder={'sat/vB'}
+          placeholder={'koinu/vB'}
           value={feeRateInputVal}
           dunesDecimal={1}
           onAmountInputChange={(amount) => {

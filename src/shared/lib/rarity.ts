@@ -1,6 +1,8 @@
 /**
  * Doginals Rarity Tier System
- * Based on the first koinu (satoshi) index of each block
+ * Based on the first koinu (Dogecoin satoshi equivalent) index of each block
+ * 
+ * Koinu is the smallest unit of Dogecoin (1 DOGE = 100,000,000 koinu)
  * 
  * Rarity tiers from highest to lowest:
  * - MYTHIC: First koinu of the genesis block (block 0)
@@ -101,8 +103,8 @@ export function calculateCumulativeKoinuage(upToBlockHeight: number): number {
 }
 
 /**
- * Get the starting koinu (sats) for a given block
- * This is the cumulative total up to that block
+ * Get the starting koinu for a given block
+ * This is the cumulative total koinu up to that block
  */
 export function getBlockStartingKoinu(blockHeight: number): number {
   return calculateCumulativeKoinuage(blockHeight);
@@ -200,6 +202,7 @@ export function calculateRarityTier(
 /**
  * Get total koinuage (approximate, based on halving schedule)
  * Dogecoin total supply is capped at ~131.8 billion DOGE
+ * = ~131,800,000,000,000,000 koinu (131.8 quadrillion koinu)
  */
 export function getTotalKoinuage(): number {
   // This is an approximation - actual total is ~131,800,000,000 DOGE

@@ -20,10 +20,10 @@ const FeeSection = ({ txInfo, t, networkFee, btcUnit }) => {
               txInfo.decodedPsbt.recommendedFeeRate > txInfo.decodedPsbt.feeRate
                 ? `${t('the_fee_rate_is_much_lower_than_recommended_fee_rate')} (${
                     txInfo.decodedPsbt.recommendedFeeRate
-                  } sat/vB)`
+                  } koinu/vB)`
                 : `${t('the_fee_rate_is_much_higher_than_recommended_fee_rate')} (${
                     txInfo.decodedPsbt.recommendedFeeRate
-                  } sat/vB)`
+                  } koinu/vB)`
             }
             overlayStyle={{
               fontSize: fontSizes.xs
@@ -40,7 +40,7 @@ const FeeSection = ({ txInfo, t, networkFee, btcUnit }) => {
           <Text text={txInfo.decodedPsbt.feeRate.toString()} />
         )}
 
-        <Text text="sat/vB" color="textDim" />
+        <Text text="koinu/vB" color="textDim" />
       </Section>
     </>
   );

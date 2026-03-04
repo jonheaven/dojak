@@ -199,7 +199,7 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
     return <Iframe preview={preview} style={$iframePresets[preset]} onLoad={handleIframeLoaded} />;
   }
 
-  const valueText = `${data.outputValue} sats`;
+  const valueText = `${data.outputValue} koinu`;
 
   return (
     <div ref={previewRef} style={{ pointerEvents: 'auto', width: '100%', cursor: onClick ? 'pointer' : 'default' }}>
@@ -309,7 +309,7 @@ export default function InscriptionPreview({ data, onClick, preset, asLogo, hide
                   )}
                 </Row>
                 <Tooltip
-                  title={`${t('the_utxo_containing_this_inscription_has')} ${data.outputValue} sats`}
+                  title={`${t('the_utxo_containing_this_inscription_has')} ${data.outputValue} koinu`}
                   overlayStyle={{
                     fontSize: fontSizes.xs
                   }}
