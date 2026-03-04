@@ -1293,17 +1293,11 @@ export class WalletApiService {
       },
       getAppList: async () => {
         // Return empty app list for Dogecoin
-        return {
-          apps: [],
-          totalCount: 0
-        };
+        return [];
       },
       getBannerList: async () => {
         // Return empty banner list for Dogecoin
-        return {
-          banners: [],
-          totalCount: 0
-        };
+        return [];
       },
       getBlockActiveInfo: () => {
         // Return basic block info for Dogecoin
