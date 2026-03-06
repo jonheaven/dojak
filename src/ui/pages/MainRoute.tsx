@@ -34,6 +34,7 @@ import SendCharmsScreen from './Charms/SendCharmsScreen';
 // import DRC20SendScreen from './DRC20/DRC20SendScreen';
 // import DRC20SingleStepScreen from './DRC20/DRC20SingleStepScreen';
 import DRC20TokenScreen from './DRC20/DRC20TokenScreen';
+import DogemapClaimScreen from './Doginals/DogemapClaimScreen';
 import { DoginalsGalleryScreen } from './Doginals/DoginalsGalleryScreen';
 // Commenting out missing Doginals components for development
 // import DoginalsInscriptionScreen from './Doginals/DoginalsInscriptionScreen';
@@ -53,6 +54,8 @@ import PhishingScreen from './Phishing/PhishingScreen';
 import AboutUsScreen from './Settings/AboutUsScreen';
 import AddressTypeScreen from './Settings/AddressTypeScreen';
 import AdvancedScreen from './Settings/AdvancedScreen';
+import PrivacyPolicyScreen from './Settings/PrivacyPolicyScreen';
+import TermsOfServiceScreen from './Settings/TermsOfServiceScreen';
 import { LockTimePage } from './Settings/AdvancedScreen/LockTimePage';
 import ChangePasswordScreen from './Settings/ChangePasswordScreen';
 import ContactsScreen from './Settings/ContactsScreen';
@@ -269,6 +272,11 @@ export const routes = {
     path: '/doginals/gallery',
     element: <DoginalsGalleryScreen />
   },
+
+  DogemapClaimScreen: {
+    path: '/doginals/dogemap-claim',
+    element: <DogemapClaimScreen />
+  },
   // SplitDoginalsInscriptionScreen: {
   //   path: '/wallet/split-tx/create',
   //   element: <SplitDoginalsInscriptionScreen />
@@ -297,6 +305,16 @@ export const routes = {
   AboutUsScreen: {
     path: '/settings/about-us',
     element: <AboutUsScreen />
+  },
+
+  TermsOfServiceScreen: {
+    path: '/settings/terms-of-service',
+    element: <TermsOfServiceScreen />
+  },
+
+  PrivacyPolicyScreen: {
+    path: '/settings/privacy-policy',
+    element: <PrivacyPolicyScreen />
   },
 
   // DRC20SingleStepScreen: {

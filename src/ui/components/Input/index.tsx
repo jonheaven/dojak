@@ -279,40 +279,47 @@ export const AddressInput = (props: InputProps) => {
 
     resetState();
 
-    // Check for .doge DNS names first (dedicated DNS system)
+    // Check for .doge DNS names — resolved via the dog indexer
     if (isDNSName(inputAddress)) {
       setSearching(true);
-      // TODO: Implement DNS resolution when indexer API is available
-      // For now, show a helpful message
-      setParseError('DNS resolution (.doge names) coming soon! Currently resolving via inscriptions.');
-      
-      // Fall back to inscription-based domain lookup
-      wallet
-        .queryDomainInfo(encodeURIComponent(inputAddress))
-        .then((inscription) => {
+      resolveDNSName(inputAddress)
+        .then((record) => {
           resetState();
-          if (!inscription) {
+          if (!record || !record.address) {
             setParseError(`${inputAddress} ${t('does_not_exist')}`);
             return;
           }
-          setInscription(inscription);
-          if (inscription.utxoConfirmation < SAFE_DOMAIN_CONFIRMATION) {
-            setParseError(
-              `${t('this_domain_has_been_transferred_or_inscribed_recently_please_wait_for_block_confirmations')} (${
-                inscription.utxoConfirmation
-              }/${SAFE_DOMAIN_CONFIRMATION}).`
-            );
-            return;
-          }
-
-          const address = inscription.address || '';
-          setParseAddress(address);
-          setValidAddress(address);
+          setParseAddress(record.address);
+          setValidAddress(record.address);
           setParseName(true);
         })
-        .catch((err: Error) => {
-          const errMsg = getDNSErrorMessage(err, inputAddress);
-          setFormatError(errMsg);
+        .catch(() => {
+          // Indexer unreachable — fall back to inscription-based lookup
+          wallet
+            .queryDomainInfo(encodeURIComponent(inputAddress))
+            .then((inscription) => {
+              resetState();
+              if (!inscription) {
+                setParseError(`${inputAddress} ${t('does_not_exist')}`);
+                return;
+              }
+              setInscription(inscription);
+              if (inscription.utxoConfirmation < SAFE_DOMAIN_CONFIRMATION) {
+                setParseError(
+                  `${t('this_domain_has_been_transferred_or_inscribed_recently_please_wait_for_block_confirmations')} (${
+                    inscription.utxoConfirmation
+                  }/${SAFE_DOMAIN_CONFIRMATION}).`
+                );
+                return;
+              }
+              const address = inscription.address || '';
+              setParseAddress(address);
+              setValidAddress(address);
+              setParseName(true);
+            })
+            .catch((err: Error) => {
+              setFormatError(getDNSErrorMessage(err, inputAddress));
+            });
         })
         .finally(() => {
           setSearching(false);

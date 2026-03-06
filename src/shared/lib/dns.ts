@@ -1,12 +1,14 @@
 /**
  * DNS (Dogecoin Name System) Resolution Service
- * 
- * Resolves .doge names to Dogecoin addresses using the dog indexer
- * 
+ *
+ * Resolves .doge names to Dogecoin addresses using the dog indexer.
+ *
  * Example names:
  * - satoshi.doge → DHrqn6H6ocgbRB1Szu7Q1sn1tVTfkpinnc
  * - wallet.doge → D1234...
  */
+
+import { dogIndexerResolveDNS, IndexerDNSRecord } from '@/background/service/providers/dogIndexer';
 
 export interface DNSRecord {
   name: string;
@@ -31,6 +33,8 @@ export interface DNSResolutionResult {
   inscription_id: string;
   owner: string;
   updatedAt?: number;
+  url?: string;
+  avatar?: string;
 }
 
 /**
@@ -86,18 +90,12 @@ export function parseDNSName(input: string): { name: string; namespace: string }
 }
 
 /**
- * Resolve a .doge DNS name to an address
- * 
- * This function queries the indexer API to resolve DNS names
- * In a full implementation, this would call the dog indexer's DNS endpoint
- * 
+ * Resolve a .doge DNS name to an address via the dog indexer.
+ *
  * @param name - The DNS name to resolve (e.g., "satoshi.doge")
- * @returns Promise resolving to address or null if not found
+ * @returns Resolved record, or null if not found
  */
-export async function resolveDNSName(
-  name: string,
-  apiClient?: any
-): Promise<DNSResolutionResult | null> {
+export async function resolveDNSName(name: string): Promise<DNSResolutionResult | null> {
   if (!isDNSName(name)) {
     throw new Error('Invalid DNS name format');
   }
@@ -107,36 +105,22 @@ export async function resolveDNSName(
     throw new Error('Failed to parse DNS name');
   }
 
-  try {
-    // For now, we'll use the existing wallet API infrastructure
-    // In production, this would call GET /dns/resolve/{name} on the dog indexer
-    
-    // Format: "name.namespace" (e.g., "satoshi.doge")
-    const fullName = `${parsed.name}.${parsed.namespace}`;
+  const fullName = `${parsed.name}.${parsed.namespace}`;
 
-    // TODO: Replace with actual API call to dog indexer
-    // const response = await apiClient.get(`/dns/resolve/${encodeURIComponent(fullName)}`);
-    
-    // Mock response structure for development
-    // const dnsRecord: DNSRecord = response.data;
-    
-    // For now, return null to indicate name not found
-    // This will be implemented when the indexer API is available
-    throw new Error('DNS resolution endpoint not yet available. Coming soon!');
-
-    // When implemented, would return:
-    // return {
-    //   address: dnsRecord.config.address || dnsRecord.resolved_value,
-    //   name: fullName,
-    //   inscription_id: dnsRecord.inscription_id,
-    //   owner: dnsRecord.owner_address,
-    //   updatedAt: dnsRecord.timestamp
-    // };
-  } catch (error) {
-    // If name doesn't exist or API error, return null
-    console.warn(`DNS resolution failed for ${name}:`, error);
-    throw error;
+  const record: IndexerDNSRecord | null = await dogIndexerResolveDNS(fullName);
+  if (!record || !record.address) {
+    return null;
   }
+
+  return {
+    address: record.address,
+    name: record.name,
+    inscription_id: record.ownerInscriptionId,
+    owner: record.address,
+    updatedAt: record.timestamp,
+    url: record.url,
+    avatar: record.avatar,
+  };
 }
 
 /**

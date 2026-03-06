@@ -5,7 +5,7 @@ export interface Doginal {
   contentType: string;
   timestamp: number;
   block: number;
-  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
   rarityScore: number;
   protocol?: string;
   collection?: {

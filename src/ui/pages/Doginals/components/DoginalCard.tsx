@@ -3,29 +3,14 @@ import React from 'react';
 
 import { EyeOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 
+import { RarityBadge } from '@/ui/components/RarityBadge';
+import { RarityTier } from '@/shared/types';
 import { DoginalProtocolTag, DoginalViewModel } from '../types';
 
 interface DoginalCardProps {
   doginal: DoginalViewModel;
   onRefresh: () => void;
 }
-
-const getRarityColor = (rarity: Doginal['rarity']) => {
-  switch (rarity) {
-    case 'common':
-      return '#8B8B8B';
-    case 'uncommon':
-      return '#4CAF50';
-    case 'rare':
-      return '#2196F3';
-    case 'epic':
-      return '#9C27B0';
-    case 'legendary':
-      return '#FF9800';
-    default:
-      return '#8B8B8B';
-  }
-};
 
 const tagColorMap: Record<DoginalProtocolTag, string> = {
   doginal: '#00FF88',
@@ -138,9 +123,7 @@ export const DoginalCard: React.FC<DoginalCardProps> = ({ doginal, onRefresh }) 
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <span className="text-white font-medium">#{base.id}</span>
-          <Tag color={getRarityColor(base.rarity)} className="text-xs">
-            {base.rarity}
-          </Tag>
+          <RarityBadge tier={base.rarity as RarityTier} size="sm" />
         </div>
 
         {base.price && <div className="text-[#069420] font-medium">{base.price} DOGE</div>}

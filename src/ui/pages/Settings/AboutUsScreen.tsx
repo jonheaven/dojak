@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 
-import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL, VERSION } from '@/shared/constant';
+import { VERSION } from '@/shared/constant';
 import { Column, Content, Header, Icon, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useI18n } from '@/ui/hooks/useI18n';
-import { useDeveloperMode, useSetDeveloperModeCallback, useVersionInfo } from '@/ui/state/settings/hooks';
+import { useNavigate } from '@/ui/pages/MainRoute';
+import { useDeveloperMode, useSetDeveloperModeCallback } from '@/ui/state/settings/hooks';
 import { spacing } from '@/ui/theme/spacing';
 
 export default function AboutUsScreen() {
-  const versionInfo = useVersionInfo();
-  const hasUpdate = versionInfo.latestVersion && versionInfo.latestVersion !== versionInfo.currentVesion;
+  const navigate = useNavigate();
+  const hasUpdate = false; // Disabled version checking - always false
   const { t } = useI18n();
   const tools = useTools();
   const developerMode = useDeveloperMode();
@@ -52,7 +53,11 @@ export default function AboutUsScreen() {
         <Column gap="lg" style={{ padding: spacing.small }}>
           {/* Logo Section */}
           <Column itemsCenter style={{ marginTop: spacing.tiny }}>
-            <Icon icon="aboutus" size={82} />
+            <img 
+              src="/images/logo/dojak-logo-full-dark.png" 
+              alt="Dojak Logo" 
+              style={{ width: '160px', height: 'auto' }} 
+            />
           </Column>
 
           {/* App Name */}
@@ -117,7 +122,7 @@ export default function AboutUsScreen() {
                   cursor: 'pointer',
                   height: '52px'
                 }}
-                onClick={() => window.open(TERMS_OF_SERVICE_URL)}
+                onClick={() => navigate('TermsOfServiceScreen')}
               >
                 <Row style={{ justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                   <Text text={t('terms_of_service')} preset="regular" size="sm" style={{ color: 'white' }} />
@@ -131,7 +136,7 @@ export default function AboutUsScreen() {
                   cursor: 'pointer',
                   height: '52px'
                 }}
-                onClick={() => window.open(PRIVACY_POLICY_URL)}
+                onClick={() => navigate('PrivacyPolicyScreen')}
               >
                 <Row style={{ justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                   <Text text={t('privacy_policy')} preset="regular" size="sm" style={{ color: 'white' }} />

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Inscription } from '@/shared/types';
+import { getDogIndexerClient } from '@/background/service/providers/dogIndexer';
 import { useTools } from '@/ui/components/ActionComponent';
 import InscriptionPreview from '@/ui/components/InscriptionPreview';
 import { VirtualList } from '@/ui/components/VirtualList';
@@ -44,14 +45,28 @@ export function InscriptionList({ filterType = 'all' }: InscriptionListProps) {
 
   const fetchInscriptions = useCallback(
     async (fetchParams: { address: string }, page: number, pageSize: number) => {
-      // Fetch inscriptions - filterType can be used for future server-side filtering
+      // Try the dog indexer first — it returns rarity from on-chain charms,
+      // so enrichInscriptions will use that directly without local recalculation.
+      try {
+        const indexer = getDogIndexerClient();
+        const alive = await indexer.ping();
+        if (alive) {
+          const indexerResult = await indexer.getAddressInscriptions(fetchParams.address);
+          // Indexer returns all inscriptions; apply manual pagination to match VirtualList contract
+          const start = page * pageSize;
+          const slice = indexerResult.slice(start, start + pageSize);
+          // rarity is already set from charms — enrichInscriptions will pass them through
+          return enrichInscriptions(slice);
+        }
+      } catch {
+        // Indexer unavailable — fall through to legacy providers
+      }
+
+      // Fallback: existing wallet API (MyDoge / Nintondo / localRpc)
       const result = await wallet.getDoginalsInscriptions(fetchParams.address, page, pageSize);
-      
-      // Enrich inscriptions with rarity data
       if (result && Array.isArray(result)) {
         return enrichInscriptions(result);
       }
-      
       return result;
     },
     [wallet, filterType, enrichInscriptions]

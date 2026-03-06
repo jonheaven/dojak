@@ -24,6 +24,17 @@ import {
   tatumGetAddressInscriptions,
   tatumGetTransaction
 } from './providers/tatum';
+import {
+  DogIndexerClient,
+  getDogIndexerClient,
+  setDogIndexerUrl,
+  dogIndexerGetAddressInscriptions,
+  dogIndexerGetDuneBalances,
+  dogIndexerGetCardinalUTXOs,
+  dogIndexerResolveDNS,
+  dogIndexerHealth,
+  DEFAULT_INDEXER_URL
+} from './providers/dogIndexer';
 import randomstring from 'randomstring';
 
 import { createPersistStore } from '@/background/utils';
@@ -372,8 +383,7 @@ export class WalletApiService {
   async getVersionDetail(
     version: string
   ): Promise<{ latestVersion: string; isUpdateAvailable: boolean; detail?: string }> {
-    // TODO: Replace with real version check (API, Google extension site, etc.)
-    // For now, always return current version as latest
+    // Version checking is disabled - always return current version as latest
     return {
       latestVersion: version,
       isUpdateAvailable: false,
@@ -1321,9 +1331,10 @@ export class WalletApiService {
     return {
       getWalletConfig: async () => {
         // Return basic wallet config for Dogecoin
+        // Version checking disabled - return empty version to prevent updates
         return {
           network: 'dogecoin',
-          version: '1.0.0'
+          version: '' // Empty version to disable update notifications
         };
       }
     };
@@ -1546,60 +1557,91 @@ export class WalletApiService {
 
   get dunes() {
     return {
-      getAddressDunes: async (address: string) => {
+      /**
+       * Returns paginated Dune balances for an address, enriched with full
+       * DuneInfo metadata (symbol, divisibility, etc.) from the dog indexer.
+       */
+      getDunesList: async (address: string, cursor: number, size: number) => {
         try {
-          // Use provider manager for failover support
-          return await this.providerManager.executeWithFailover(
-            async (client) => {
-              const baseURL = client.defaults.baseURL || '';
-
-              // For Dogecoin, dunes (dunes) may not be implemented yet
-              // Try the DRC-20 API first as dunes might be implemented there
-              try {
-                let endpoint: string;
-
-                // MyDoge API - use DRC20 endpoint as fallback for dunes
-                if (baseURL.includes('api.mydoge.com')) {
-                  const res = await client.get(`/DRC20/${address}`);
-                  return { list: res.data || [], total: (res.data || []).length };
-                }
-
-                if (baseURL.includes('doge-mainnet-tokens.nintondo.io')) {
-                  endpoint = `/address/${address}/tokens`;
-                } else if (baseURL.includes('api.dojak.dog')) {
-                  endpoint = `/api/v1/address/${address}/drc20`;
-                } else {
-                  endpoint = `/api/v1/address/${address}/drc20`;
-                }
-                const response = await client.get(endpoint);
-                return response.data;
-              } catch (error) {
-                // DRC20 not supported by this provider
-                return { list: [], total: 0 };
-              }
-              console.log('[WalletAPI] Dunes not yet implemented for Dogecoin');
-              return { list: [], total: 0 };
-            },
-            ['dogecoin']
-          );
+          const indexer = getDogIndexerClient();
+          const all = await indexer.getAddressDuneBalancesFull(address);
+          const list = all.slice(cursor, cursor + size);
+          return { list, total: all.length };
         } catch (error) {
-          console.error('[WalletAPI] Dunes API error:', error);
+          console.error('[WalletAPI] getDunesList error:', error);
           return { list: [], total: 0 };
         }
       },
 
+      /**
+       * Returns full DuneInfo + the address's DuneBalance for a specific dune.
+       * Used by DunesTokenScreen to render the token detail page.
+       */
+      getAddressDunesTokenSummary: async (address: string, duneid: string) => {
+        const indexer = getDogIndexerClient();
+
+        const [duneInfo, rawBalances] = await Promise.all([
+          indexer.getDuneById(duneid),
+          indexer.getAddressDuneBalances(address),
+        ]);
+
+        // Find this dune's balance by matching duneid or spacedDune
+        const amount = rawBalances[duneInfo.spacedDune] ?? '0';
+        const duneBalance: import('@/shared/types').DuneBalance = {
+          duneid: duneInfo.duneid,
+          dune: duneInfo.dune,
+          spacedDune: duneInfo.spacedDune,
+          symbol: duneInfo.symbol,
+          divisibility: duneInfo.divisibility,
+          amount,
+        };
+
+        return { duneInfo, duneBalance } as import('@/shared/types').AddressDunesTokenSummary;
+      },
+
+      /**
+       * Returns UTXOs that hold a specific dune, for use in the send flow.
+       */
+      getDunesUtxos: async (address: string, duneid: string) => {
+        try {
+          const indexer = getDogIndexerClient();
+          const { utxos } = await indexer.getAddressInfo(address);
+          // Filter to UTXOs that contain this dune (by duneid or spacedDune key)
+          return utxos
+            .filter((u) => !u.spent && Object.keys(u.duneBalances).length > 0)
+            .map((u) => ({
+              txid: u.txid,
+              vout: u.vout,
+              satoshis: u.satoshis,
+              scriptPk: u.scriptPubKey,
+              addressType: 0, // P2PKH
+              inscriptions: [],
+              atomicals: [],
+              dunes: Object.entries(u.duneBalances).map(([spacedDune, amount]) => ({
+                runeid: duneid,
+                rune: spacedDune,
+                amount,
+              })),
+            }));
+        } catch (error) {
+          console.error('[WalletAPI] getDunesUtxos error:', error);
+          return [];
+        }
+      },
+
+      /**
+       * Returns full DuneInfo for a dune by ID or name.
+       */
       getDuneInfo: async (duneId: string) => {
         try {
-          // For Dogecoin, dune info may not be implemented yet
-          console.log('[WalletAPI] Dune info not yet implemented for Dogecoin');
-          return null;
+          return await getDogIndexerClient().getDuneById(duneId);
         } catch (error) {
-          console.error('[WalletAPI] Dune info API error:', error);
+          console.error('[WalletAPI] getDuneInfo error:', error);
           return null;
         }
       },
 
-      createDuneEtching: async (params: any) => {
+      createDuneEtching: async (_params: any) => {
         throw new Error('Dune etching not yet implemented for Dogecoin');
       }
     };
@@ -2158,6 +2200,36 @@ export class WalletApiService {
         };
       }
     };
+  }
+
+  // ── Dog Indexer ─────────────────────────────────────────────────────────────
+
+  /**
+   * Direct access to the typed dog indexer client.
+   *
+   * Use this for inscription content, Dune metadata, DNS resolution,
+   * Dogemaps, cardinal UTXO detection, and everything else the dog indexer
+   * exposes. It is intentionally separate from the failover provider manager
+   * because the dog indexer is a first-class data source, not just a fallback.
+   *
+   * Examples:
+   *   const inscriptions = await walletApiService.dogIndexer.getAddressInscriptions(addr);
+   *   const address = await walletApiService.dogIndexer.resolveDNS('satoshi.doge');
+   *   const dune = await walletApiService.dogIndexer.getDune('UNCOMMON•GOODS');
+   *   const cardinals = await walletApiService.dogIndexer.getCardinalUTXOs(addr);
+   *   const health = await walletApiService.dogIndexer.health();
+   *   const dogemap = await walletApiService.dogIndexer.getDogemapEntry(5000000);
+   */
+  get dogIndexer(): DogIndexerClient {
+    return getDogIndexerClient();
+  }
+
+  /**
+   * Reconfigure the dog indexer URL at runtime.
+   * Call this when the user changes the indexer endpoint in Settings.
+   */
+  setDogIndexerUrl(url: string): void {
+    setDogIndexerUrl(url);
   }
 }
 
