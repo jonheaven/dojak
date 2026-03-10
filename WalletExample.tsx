@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDojakWallet, formatDogeAmount } from './useDojakWallet';
 
-const BorkStarterWalletExample: React.FC = () => {
+const WalletExample: React.FC = () => {
   const {
     address,
     isConnected,
@@ -54,7 +54,7 @@ const BorkStarterWalletExample: React.FC = () => {
     return (
       <div className="wallet-notice">
         <h2>Dojak Wallet Required</h2>
-        <p>Please install the Dojak wallet extension to use BorkStarter.</p>
+        <p>Please install the Dojak wallet extension.</p>
         <a
           href="https://github.com/dojak-wallet/extension"
           target="_blank"
@@ -67,8 +67,8 @@ const BorkStarterWalletExample: React.FC = () => {
   }
 
   return (
-    <div className="borkstarter-wallet">
-      <h1>BorkStarter - Launchpad dApp</h1>
+    <div className="wallet">
+      <h1>Launchpad dApp</h1>
 
       {!isConnected ? (
         <div className="connect-section">
@@ -144,7 +144,7 @@ const BorkStarterWalletExample: React.FC = () => {
       )}
 
       <style jsx>{`
-        .borkstarter-wallet {
+        .wallet {
           max-width: 600px;
           margin: 0 auto;
           padding: 20px;
@@ -240,4 +240,4 @@ const BorkStarterWalletExample: React.FC = () => {
   );
 };
 
-export default BorkStarterWalletExample;
+export default WalletExample;

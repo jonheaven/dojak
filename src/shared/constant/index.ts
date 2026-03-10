@@ -28,6 +28,33 @@ export const BRAND_ALIAN_TYPE_TEXT = {
   [KeyringType.ColdWalletKeyring]: 'Account'
 };
 
+// API Endpoints
+export const API_ENDPOINTS = {
+  // Production API
+  PRODUCTION: 'https://api.wzrd.dog',
+  // Local development API
+  LOCAL_INDEXER: 'http://localhost:3000',
+  // Local faucet API
+  LOCAL_FAUCET: 'http://localhost:3001'
+};
+
+// Provider configuration
+export const PROVIDER_CONFIG = {
+  DOJAKER: {
+    name: 'dojaker',
+    endpoint: API_ENDPOINTS.LOCAL_INDEXER,
+    priority: 0,
+    supports: ['dogecoin']
+  },
+  TATUM_TESTNET: {
+    name: 'tatum-testnet',
+    endpoint: 'https://dogecoin-testnet.gateway.tatum.io',
+    priority: 1,
+    supports: ['dogecoin-testnet']
+  }
+};
+
+
 export const KEYRING_TYPES: {
   [key: string]: {
     name: string;

@@ -253,7 +253,7 @@ Added to `package.json`:
 ## Known Issues Fixed
 
 1. **Message Prefix**: Changed from `\x18` to `\x19` (correct length prefix)
-2. **Bech32 HRP**: Changed from `doge` to `dc` (matches MyDoge wallet)
+2. **Bech32 HRP**: Changed from `doge` to `dc` (Dogecoin standard)
 3. **Network Hardcoding**: No longer uses Bitcoin network internally
 4. **WIF Encoding**: Now produces correct Dogecoin WIF (Q prefix)
 5. **Address Derivation**: Now matches dogemarketplace implementation

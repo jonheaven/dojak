@@ -62,7 +62,7 @@ export default function PrivacyPolicyScreen() {
               style={{ marginBottom: spacing.small }}
             />
             <ul style={{ marginLeft: spacing.medium, marginBottom: spacing.medium }}>
-              <li><Text text="Blockchain APIs (MyDoge, Nintondo, etc.) to fetch balance and transaction data" /></li>
+              <li><Text text="Blockchain APIs (Tatum, local RPC, Dojak API) to fetch balance and transaction data" /></li>
               <li><Text text="Indexer services for Doginals, DRC-20, and Dunes token information" /></li>
               <li><Text text="DNS resolver services for .doge names" /></li>
             </ul>

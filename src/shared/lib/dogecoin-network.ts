@@ -3,15 +3,12 @@ import * as bitcoin from 'bitcoinjs-lib';
 /**
  * Dogecoin Mainnet Network Configuration
  * Based on Dogecoin Core specifications
- *
- * IMPORTANT: These values must match bitcore-lib-doge and MyDoge wallet
- * for compatibility with the Dogecoin ecosystem.
  */
 export const dogecoinMainnet: bitcoin.Network = {
   // Message prefix: \x19 = 25 = length of "Dogecoin Signed Message:\n"
   // This is the CORRECT value (not \x18 which was incorrect)
   messagePrefix: '\x19Dogecoin Signed Message:\n',
-  // Bech32 HRP - using 'dc' for compatibility with MyDoge wallet
+  // Bech32 HRP for Dogecoin
   // Note: Dogecoin doesn't actually use bech32/SegWit addresses in practice
   bech32: 'dc',
   bip32: {

@@ -718,7 +718,7 @@ export function setDogIndexerUrl(url: string): void {
   _defaultClient = new DogIndexerClient(url);
 }
 
-// ─── Provider-style helpers (matches the pattern in nintondo.ts / tatum.ts) ──
+// ─── Provider-style helpers (matches the pattern in tatum.ts) ──────────────
 
 export const isDogIndexerClient = (client: AxiosInstance): boolean =>
   !!client.defaults.baseURL &&

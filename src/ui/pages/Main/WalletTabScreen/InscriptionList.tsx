@@ -62,7 +62,7 @@ export function InscriptionList({ filterType = 'all' }: InscriptionListProps) {
         // Indexer unavailable — fall through to legacy providers
       }
 
-      // Fallback: existing wallet API (MyDoge / Nintondo / localRpc)
+      // Fallback: existing wallet API (Tatum / localRpc / Dojak)
       const result = await wallet.getDoginalsInscriptions(fetchParams.address, page, pageSize);
       if (result && Array.isArray(result)) {
         return enrichInscriptions(result);

@@ -34,7 +34,7 @@ Current keyring encryption uses PBKDF2 (100k iterations) + AES-GCM. This is func
 3. Add explicit memory-hard KDF profile for mobile builds.
 
 ### H-02: Provider trust concentration and data integrity risks
-Balances/UTXO/inscription metadata are largely provider-fed (MyDoge/Nintondo/Tatum/local). Missing robust multi-provider consensus checks can create integrity exposure (stale/poisoned state, censorship, inconsistent history).
+Balances/UTXO/inscription metadata are provider-fed (Tatum/local RPC/Dojak API). Missing robust multi-provider consensus checks can create integrity exposure (stale/poisoned state, censorship, inconsistent history).
 
 Recommended:
 1. Add optional quorum verification for critical reads (UTXO set + tx details).

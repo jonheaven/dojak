@@ -1,13 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
 import {
-  isMyDogeClient,
-  myDogeGetAddressBalance,
-  myDogeGetAddressBalanceV2,
-  myDogeGetAddressUtxo,
-  myDogeGetMarketBalance
-} from './providers/mydoge';
-import { isNintondoMainClient, nintondoGetAddressBalance, nintondoGetAddressBalanceV2 } from './providers/nintondo';
-import {
   isLocalRpcClient,
   localRpcGetBalance,
   localRpcGetBalanceV2,
@@ -38,7 +30,7 @@ import {
 import randomstring from 'randomstring';
 
 import { createPersistStore } from '@/background/utils';
-import { CHAINS_MAP, CHANNEL, VERSION } from '@/shared/constant';
+import { CHAINS_MAP, CHANNEL, VERSION, API_ENDPOINTS } from '@/shared/constant';
 import { NetworkType } from '@unisat/wallet-types';
 
 import preferenceService from './preference';
@@ -58,56 +50,29 @@ interface ProviderConfig {
   };
 }
 
+// Helper to check if URL is for production API
+const isProductionAPI = (baseURL: string): boolean => {
+  return baseURL.includes('wzrd.dog');
+};
+
+// Helper to check if URL is for local indexer
+const isLocalIndexer = (baseURL: string): boolean => {
+  return baseURL.includes('localhost:3000') || baseURL === API_ENDPOINTS.LOCAL_INDEXER;
+};
+
+// Helper to check if URL is for Dojak API (production or local)
+const isDojakAPI = (baseURL: string): boolean => {
+  return isProductionAPI(baseURL) || isLocalIndexer(baseURL);
+};
+
 const getProviderConfigs = (): ProviderConfig[] => {
   const configs: ProviderConfig[] = [
     // Local development providers (highest priority when available)
     {
       name: 'dojaker',
-      endpoint: 'http://localhost:3000',
+      endpoint: API_ENDPOINTS.LOCAL_INDEXER,
       priority: 0, // Highest priority for local indexer
       supports: ['dogecoin']
-    },
-    // MyDoge API - Primary public provider for balance, UTXOs, inscriptions, DRC20
-    {
-      name: 'mydoge',
-      endpoint: 'https://api.mydoge.com',
-      priority: 1, // Will be adjusted if local-rpc is added
-      supports: ['dogecoin'],
-      rateLimit: {
-        requests: 60,
-        windowMs: 60000 // 1 minute
-      }
-    },
-    // Nintondo APIs - Secondary providers
-    {
-      name: 'nintondo',
-      endpoint: 'https://doge-mainnet-api.nintondo.io',
-      priority: 2, // Will be adjusted if local-rpc is added
-      supports: ['dogecoin', 'bellscoin'],
-      rateLimit: {
-        requests: 100,
-        windowMs: 60000 // 1 minute
-      }
-    },
-    {
-      name: 'nintondo-tokens',
-      endpoint: 'https://doge-mainnet-tokens.nintondo.io',
-      priority: 3, // Will be adjusted if local-rpc is added
-      supports: ['dogecoin'],
-      rateLimit: {
-        requests: 100,
-        windowMs: 60000 // 1 minute
-      }
-    },
-    {
-      name: 'nintondo-search',
-      endpoint: 'https://doge-mainnet-search.nintondo.io',
-      priority: 3, // Will be adjusted if local-rpc is added
-      supports: ['dogecoin'],
-      rateLimit: {
-        requests: 100,
-        windowMs: 60000 // 1 minute
-      }
     },
     // Tatum API - Testnet provider
     {
@@ -184,19 +149,6 @@ class ProviderManager {
       return this.healthStatus.get(providerName) || false;
     }
 
-    // For some public providers (like MyDoge), we don't want health checks to
-    // aggressively mark them as unhealthy due to transient/network issues.
-    // Instead, we optimistically treat them as healthy and let the actual
-    // operation failure drive any fallback logic.
-    if (providerName === 'mydoge') {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[WalletAPI] Skipping network health check for public provider mydoge; assuming healthy');
-      }
-      this.healthStatus.set(providerName, true);
-      this.lastHealthCheck.set(providerName, now);
-      return true;
-    }
-
     try {
       const client = this.providers.get(providerName);
       if (!client) {
@@ -225,28 +177,6 @@ class ProviderManager {
           method: 'getblockcount',
           params: []
         });
-      } else if (providerName === 'mydoge') {
-        // For MyDoge, try a simple wallet info endpoint
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`[WalletAPI] Trying ${providerName} health check`);
-        }
-        // MyDoge uses /wallet/info?route=... format, but we can check if the API responds
-        await client.get('/').catch(async () => {
-          // If root fails, the API might still work for specific endpoints
-          console.log(`[WalletAPI] MyDoge root check failed, assuming healthy for now`);
-        });
-      } else if (providerName === 'nintondo') {
-        // For Nintondo, try a known working endpoint
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`[WalletAPI] Trying ${providerName} /blocks/tip/height endpoint`);
-        }
-        await client.get('/blocks/tip/height').catch(async (blocksError) => {
-          console.log(
-            `[WalletAPI] /blocks/tip/height failed, trying /address/test/stats for ${providerName}`,
-            blocksError.message
-          );
-          await client.get('/address/test/stats');
-        });
       } else if (providerName === 'dojak') {
         // For future Dojak API, try the health endpoint
         if (process.env.NODE_ENV !== 'production') {
@@ -262,12 +192,6 @@ class ProviderManager {
           console.log(`[WalletAPI] Skipping health check for local provider ${providerName}`);
         }
         return false;
-      } else if (providerName === 'nintondo-tokens' || providerName === 'nintondo-search') {
-        // For Nintondo sub-services, try a simple endpoint
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`[WalletAPI] Trying root / endpoint for ${providerName}`);
-        }
-        await client.get('/');
       } else {
         // For other API providers, try the root endpoint
         console.log(`[WalletAPI] Trying root / endpoint for ${providerName}`);
@@ -392,15 +316,15 @@ export class WalletApiService {
   }
 
   constructor() {
-    // Initialize with MyDoge as default public API
+    // Initialize with local dojaker as preferred, fallback to Tatum
     this.client = axios.create({
-      baseURL: 'https://api.mydoge.com',
+      baseURL: API_ENDPOINTS.LOCAL_INDEXER,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json'
       }
     });
-    this.currentEndpoint = 'https://api.mydoge.com';
+    this.currentEndpoint = API_ENDPOINTS.LOCAL_INDEXER;
     this.providerManager = new ProviderManager();
   }
 
@@ -503,55 +427,8 @@ export class WalletApiService {
             loading: false
           };
 
-          // MyDoge API
-          if (isMyDogeClient(client)) {
-            // Balance from wallet/info
-            const encodedRoute = encodeURIComponent(`/address/${address}?page=1&pageSize=10`);
-            const infoRes = await client.get(`/wallet/info?route=${encodedRoute}`);
-            const balanceSatoshis = infoRes.data?.balance || 0;
-
-            summary.totalSatoshis = balanceSatoshis;
-            summary.btcSatoshis = balanceSatoshis;
-
-            // DRC-20 count
-            try {
-              const drcRes = await client.get(`/DRC20/${address}`);
-              const tokens = Array.isArray(drcRes.data) ? drcRes.data : [];
-              summary.drc20Count = tokens.length;
-            } catch {
-              // Ignore DRC20 errors in summary; counts stay 0
-            }
-
-            // Inscription count
-            try {
-              const insRes = await client.get(`/inscriptions/${address}`);
-              const list = Array.isArray(insRes.data?.inscriptions)
-                ? insRes.data.inscriptions
-                : Array.isArray(insRes.data)
-                ? insRes.data
-                : [];
-              summary.inscriptionCount = list.length;
-            } catch {
-              // Ignore inscription errors in summary; counts stay 0
-            }
-
-            return summary;
-          }
-
-          // Nintondo main API
-          if (isNintondoMainClient(client)) {
-            const res = await client.get(`/address/${address}/stats`);
-            const balanceSatoshis = res.data?.balance || 0;
-
-            summary.totalSatoshis = balanceSatoshis;
-            summary.btcSatoshis = balanceSatoshis;
-
-            // We don't currently derive token/inscription counts from Nintondo here.
-            return summary;
-          }
-
-          // Future: Dojak API
-          if (baseURL.includes('api.dojak.dog')) {
+          // Dojak API
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/address/${address}/summary`);
             return {
               ...summary,
@@ -566,15 +443,11 @@ export class WalletApiService {
         this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          if (isMyDogeClient(client)) {
-            return myDogeGetAddressBalance(client, address);
+          if (isTatumClient(client)) {
+            return tatumGetAddressBalance(client, address);
           }
 
-          if (isNintondoMainClient(client)) {
-            return nintondoGetAddressBalance(client, address);
-          }
-
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/address/${address}/balance`);
             return res.data;
           }
@@ -586,15 +459,11 @@ export class WalletApiService {
         this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          if (isMyDogeClient(client)) {
-            return myDogeGetAddressBalanceV2(client, address);
+          if (isTatumClient(client)) {
+            return tatumGetAddressBalanceV2(client, address);
           }
 
-          if (isNintondoMainClient(client)) {
-            return nintondoGetAddressBalanceV2(client, address);
-          }
-
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/address/${address}/balance`);
             const confirmedBalance = res.data?.confirmed || 0;
             const unconfirmedBalance = res.data?.unconfirmed || 0;
@@ -618,23 +487,13 @@ export class WalletApiService {
             return localRpcGetUtxo(client, address);
           }
 
-          if (isMyDogeClient(client)) {
-            return myDogeGetAddressUtxo(client, address);
-          }
-
-          // Nintondo API
-          if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
-            const res = await client.get(`/address/${address}/utxo`);
-            return res.data || [];
-          }
-
           // Tatum testnet provider
           if (isTatumClient(client)) {
             return tatumGetAddressUtxo(client, address);
           }
 
           // Future: Dojak API
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/address/${address}/utxos`);
             return res.data || [];
           }
@@ -647,21 +506,8 @@ export class WalletApiService {
         this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          // MyDoge - may need to use wallet/info route
-          if (baseURL.includes('api.mydoge.com')) {
-            const encodedRoute = encodeURIComponent(`/tx/${txid}`);
-            const res = await client.get(`/wallet/info?route=${encodedRoute}`);
-            return res.data;
-          }
-
-          // Nintondo API
-          if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
-            const res = await client.get(`/tx/${txid}`);
-            return res.data;
-          }
-
           // Future: Dojak API
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/tx/${txid}`);
             return res.data;
           }
@@ -674,23 +520,8 @@ export class WalletApiService {
         this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          // MyDoge - may need different endpoint for pushing tx
-          if (baseURL.includes('api.mydoge.com')) {
-            // MyDoge might use a broadcast endpoint
-            const res = await client.post('/broadcast', { rawtx });
-            return res.data;
-          }
-
-          // Nintondo API
-          if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
-            const res = await client.post('/tx', rawtx, {
-              headers: { 'Content-Type': 'text/plain' }
-            });
-            return res.data;
-          }
-
           // Future: Dojak API
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.post('/api/v1/tx', { rawtx });
             return res.data;
           }
@@ -708,40 +539,8 @@ export class WalletApiService {
         return this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          // MyDoge API - GET /inscriptions/{address}
-          if (baseURL.includes('api.mydoge.com')) {
-            const res = await client.get(`/inscriptions/${address}`);
-            // Transform MyDoge response to standard format
-            const inscriptions = res.data || [];
-            return {
-              list: inscriptions
-                .map((insc: any) => ({
-                  inscriptionId: insc.inscriptionId || insc.id,
-                  inscriptionNumber: insc.inscriptionNumber || insc.number,
-                  contentType: insc.contentType,
-                  contentBody: insc.contentBody || insc.body,
-                  genesisTxid: insc.genesisTxid || insc.genesisTransaction,
-                  location: insc.location,
-                  outputValue: insc.outputValue,
-                  timestamp: insc.timestamp,
-                  blockHeight: insc.blockHeight
-                }))
-                .slice(0, size),
-              total: inscriptions.length
-            };
-          }
-
-          // Nintondo Search API
-          if (baseURL.includes('doge-mainnet-search.nintondo.io')) {
-            const res = await client.get(`/pub/collections/${address}`);
-            return {
-              list: (res.data?.inscriptions || []).slice(0, size),
-              total: res.data?.total || 0
-            };
-          }
-
           // Future: Dojak API
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/address/${address}/inscriptions?cursor=${cursor || 0}&size=${size}`);
             return res.data;
           }
@@ -755,45 +554,8 @@ export class WalletApiService {
         return this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          // MyDoge API - GET /inscriptions/{address}
-          if (baseURL.includes('api.mydoge.com')) {
-            const res = await client.get(`/inscriptions/${address}`);
-            // Transform MyDoge response to standard format
-            const inscriptions = res.data || [];
-            const startIndex = cursor;
-            const endIndex = startIndex + size;
-            return {
-              list: inscriptions
-                .slice(startIndex, endIndex)
-                .map((insc: any) => ({
-                  inscriptionId: insc.inscriptionId || insc.id,
-                  inscriptionNumber: insc.inscriptionNumber || insc.number,
-                  contentType: insc.contentType,
-                  contentBody: insc.contentBody || insc.body,
-                  genesisTxid: insc.genesisTxid || insc.genesisTransaction,
-                  location: insc.location,
-                  outputValue: insc.outputValue,
-                  timestamp: insc.timestamp,
-                  blockHeight: insc.blockHeight
-                })),
-              total: inscriptions.length
-            };
-          }
-
-          // Nintondo Search API
-          if (baseURL.includes('doge-mainnet-search.nintondo.io')) {
-            const res = await client.get(`/pub/collections/${address}`);
-            const inscriptions = res.data?.inscriptions || [];
-            const startIndex = cursor;
-            const endIndex = startIndex + size;
-            return {
-              list: inscriptions.slice(startIndex, endIndex),
-              total: res.data?.total || inscriptions.length
-            };
-          }
-
           // Future: Dojak API
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/address/${address}/doginals?cursor=${cursor}&size=${size}`);
             return res.data;
           }
@@ -807,25 +569,8 @@ export class WalletApiService {
         return this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          // MyDoge doesn't have a direct inscription info endpoint, skip to fallback
-          if (baseURL.includes('api.mydoge.com')) {
-            throw new Error('MyDoge: Use alternate provider for inscription info');
-          }
-
-          // Nintondo Search API
-          if (baseURL.includes('doge-mainnet-search.nintondo.io')) {
-            const res = await client.get(`/pub/${inscriptionId}/info`);
-            return res.data;
-          }
-
-          // Nintondo API
-          if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
-            const res = await client.get(`/location/${inscriptionId}`);
-            return res.data;
-          }
-
           // Future: Dojak API
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/inscription/${inscriptionId}`);
             return res.data;
           }
@@ -844,33 +589,8 @@ export class WalletApiService {
         this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          // MyDoge API - GET /DRC20/{address}
-          if (baseURL.includes('api.mydoge.com')) {
-            const res = await client.get(`/DRC20/${address}`);
-            // Transform MyDoge response to standard format
-            const tokens = res.data || [];
-            return {
-              list: tokens.map((token: any) => ({
-                ticker: token.ticker,
-                available: token.available || token.availableBalance || 0,
-                transferable: token.transferable || token.transferableBalance || 0,
-                balance: token.balance || token.overallBalance || 0
-              })),
-              total: tokens.length
-            };
-          }
-
-          // Nintondo Tokens API
-          if (baseURL.includes('doge-mainnet-tokens.nintondo.io')) {
-            const res = await client.get(`/address/${address}/tokens?limit=${size || 20}`);
-            return {
-              list: res.data || [],
-              total: res.data?.length || 0
-            };
-          }
-
           // Future: Dojak API
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/address/${address}/drc20?cursor=${cursor || 0}&size=${size || 20}`);
             return res.data;
           }
@@ -883,14 +603,8 @@ export class WalletApiService {
         this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
-          // MyDoge doesn't have a token info endpoint, use fallback
-          if (baseURL.includes('doge-mainnet-tokens.nintondo.io')) {
-            const res = await client.get(`/token/${ticker}`);
-            return res.data;
-          }
-
           // Future: Dojak API
-          if (baseURL.includes('api.dojak.dog')) {
+          if (isDojakAPI(baseURL)) {
             const res = await client.get(`/api/v1/drc20/${ticker}`);
             return res.data;
           }
@@ -909,7 +623,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker Charms API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   // Get charms stats and collections for this address
                   const [statsRes, collectionsRes] = await Promise.all([
@@ -944,7 +658,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker Charms API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/charms/${charmsId}`);
                   return response;
@@ -971,7 +685,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker Charms API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/charms/collections/${address}`);
                   return response;
@@ -998,7 +712,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker Charms API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/charms/collection/${collectionId}/items/${address}`);
                   return response;
@@ -1025,7 +739,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker Charms API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/charms/utxo/${utxo}`);
                   return response;
@@ -1052,7 +766,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker Charms API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/charms/app/${app}?limit=${limit}`);
                   return response;
@@ -1079,7 +793,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker Charms API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get('/charms/stats');
                   return response;
@@ -1116,29 +830,8 @@ export class WalletApiService {
             async (client) => {
               const baseURL = client.defaults.baseURL || '';
 
-              // MyDoge API - Primary public provider
-              if (baseURL.includes('api.mydoge.com')) {
-                const encodedRoute = encodeURIComponent(`/address/${address}?page=1&pageSize=10`);
-                const res = await client.get(`/wallet/info?route=${encodedRoute}`);
-                const balanceSatoshis = res.data?.balance || 0;
-                return {
-                  confirmed: balanceSatoshis / 100000000,
-                  unconfirmed: 0
-                };
-              }
-
-              // Nintondo API
-              if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
-                const res = await client.get(`/address/${address}/stats`);
-                const balance = (res.data?.balance || 0) / 100000000;
-                return {
-                  confirmed: balance,
-                  unconfirmed: 0
-                };
-              }
-
               // Future: Dojak API
-              if (baseURL.includes('api.dojak.dog')) {
+              if (isDojakAPI(baseURL)) {
                 const res = await client.get(`/api/v1/address/${address}/balance`);
                 return res.data;
               }
@@ -1178,7 +871,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/dns/resolve/${name}`);
                   return response;
@@ -1206,7 +899,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/dns/reverse/${address}`);
                   return response;
@@ -1234,7 +927,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/dns/avatar/${name}`);
                   return response.data?.avatar;
@@ -1262,7 +955,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/dns/config/${name}`);
                   return response;
@@ -1450,7 +1143,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker API first (highest priority)
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(
                     `/address/${address}/inscriptions?limit=${size}${cursor ? `&cursor=${cursor}` : ''}`
@@ -1503,7 +1196,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   const response = await client.get(`/doginal/${id}`);
                   return response;
@@ -1532,13 +1225,13 @@ export class WalletApiService {
               const baseURL = client.defaults.baseURL || '';
 
               // Only dojaker supports inscription creation
-              if (baseURL.includes('localhost:3000')) {
+              if (isLocalIndexer(baseURL)) {
                 const res = await client.post('/inscriptions/create', { content, feeRate });
                 return res.data;
               }
 
               // Future: Dojak API
-              if (baseURL.includes('api.dojak.dog')) {
+              if (isProductionAPI(baseURL)) {
                 const res = await client.post('/api/v1/inscriptions/create', { content, feeRate });
                 return res.data;
               }
@@ -1654,7 +1347,7 @@ export class WalletApiService {
           console.log(`[WalletAPI] Claiming ${amount || 0.01} testnet DOGE for ${address}`);
 
           // Call the Dojak API backend server
-          const apiUrl = process.env.NODE_ENV === 'production' ? 'https://api.dojak.dog' : 'http://localhost:3001';
+          const apiUrl = process.env.NODE_ENV === 'production' ? API_ENDPOINTS.PRODUCTION : API_ENDPOINTS.LOCAL_FAUCET;
 
           const response = await axios.post(
             `${apiUrl}/api/v1/faucet/claim`,
@@ -1722,7 +1415,7 @@ export class WalletApiService {
           return await this.providerManager.executeWithFailover(
             async (client) => {
               // Try the dojaker marketplace API first
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 try {
                   let url = `/listings?limit=${size}`;
                   if (cursor) url += `&cursor=${cursor}`;
@@ -1761,7 +1454,7 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 const response = await client.get(`/listings/${listingId}`);
                 return response;
               }
@@ -1779,7 +1472,7 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 const response = await client.post('/list', {
                   doginal_id: doginalId,
                   price_doge: price,
@@ -1801,7 +1494,7 @@ export class WalletApiService {
         try {
           return await this.providerManager.executeWithFailover(
             async (client) => {
-              if (this.currentEndpoint === 'http://localhost:3000') {
+              if (isLocalIndexer(this.currentEndpoint)) {
                 const response = await client.post('/buy', {
                   listing_id: listingId,
                   buyer_addr: buyerAddress
@@ -1830,7 +1523,7 @@ export class WalletApiService {
               const baseURL = client.defaults.baseURL || '';
 
               // Try the dojaker API first (highest priority)
-              if (baseURL.includes('localhost:3000')) {
+              if (isLocalIndexer(baseURL)) {
                 try {
                   const response = await client.get(`/balance/${address}`);
                   return response;
@@ -1850,37 +1543,8 @@ export class WalletApiService {
                 return await localRpcGetBalance(client, address);
               }
 
-              // MyDoge API - Primary public provider
-              if (baseURL.includes('api.mydoge.com')) {
-                try {
-                  // MyDoge uses /wallet/info?route={encodedRoute} format
-                  const encodedRoute = encodeURIComponent(`/address/${address}?page=1&pageSize=10`);
-                  const res = await client.get(`/wallet/info?route=${encodedRoute}`);
-                  const balanceSatoshis = res.data?.balance || 0;
-                  return {
-                    confirmed: balanceSatoshis / 100000000, // Convert satoshis to DOGE
-                    unconfirmed: 0,
-                    total: balanceSatoshis / 100000000
-                  };
-                } catch (mydogeError: any) {
-                  console.warn('[WalletAPI] MyDoge balance API failed:', mydogeError.message);
-                  throw mydogeError;
-                }
-              }
-
-              // Nintondo API
-              if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
-                const res = await client.get(`/address/${address}/stats`);
-                const balance = (res.data?.balance || 0) / 100000000;
-                return {
-                  confirmed: balance,
-                  unconfirmed: 0,
-                  total: balance
-                };
-              }
-
               // Future: Dojak API
-              if (baseURL.includes('api.dojak.dog')) {
+              if (isDojakAPI(baseURL)) {
                 const res = await client.get(`/api/v1/address/${address}/balance`);
                 return res.data;
               }
@@ -1959,27 +1623,8 @@ export class WalletApiService {
                   totals: { dogemaps: 0, dns_legacy: 0, dns_protocol: 0, dunes: 0 }
                 };
 
-                // MyDoge API
-                if (baseURL.includes('api.mydoge.com')) {
-                  const encodedRoute = encodeURIComponent(`/address/${address}?page=1&pageSize=10`);
-                  const res = await client.get(`/wallet/info?route=${encodedRoute}`);
-                  return {
-                    ...defaultResponse,
-                    doge: (res.data?.balance || 0) / 100000000
-                  };
-                }
-
-                // Nintondo API
-                if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
-                  const res = await client.get(`/address/${address}/stats`);
-                  return {
-                    ...defaultResponse,
-                    doge: (res.data?.balance || 0) / 100000000
-                  };
-                }
-
                 // Future: Dojak API
-                if (baseURL.includes('api.dojak.dog')) {
+                if (isDojakAPI(baseURL)) {
                   const res = await client.get(`/api/v1/address/${address}/balance`);
                   return res.data;
                 }
@@ -2003,23 +1648,8 @@ export class WalletApiService {
               .executeWithFailover(async (client) => {
                 const baseURL = client.defaults.baseURL || '';
 
-                // MyDoge API
-                if (baseURL.includes('api.mydoge.com')) {
-                  const res = await client.get(`/inscriptions/${address}`);
-                  // MyDoge returns a structured object; inscriptions are under `inscriptions`
-                  const list = Array.isArray(res.data?.inscriptions) ? res.data.inscriptions : [];
-                  return { list: list.slice(0, 20) };
-                }
-
-                // Nintondo search API
-                if (baseURL.includes('doge-mainnet-search.nintondo.io')) {
-                  const res = await client.get(`/pub/collections/${address}`);
-                  const list = Array.isArray(res.data?.inscriptions) ? res.data.inscriptions : [];
-                  return { list: list.slice(0, 20) };
-                }
-
                 // Future: Dojak API
-                if (baseURL.includes('api.dojak.dog')) {
+                if (isDojakAPI(baseURL)) {
                   const res = await client.get(`/api/v1/address/${address}/doginals`);
                   return res.data;
                 }
@@ -2074,20 +1704,12 @@ export class WalletApiService {
               .executeWithFailover(async (client) => {
                 const baseURL = client.defaults.baseURL || '';
 
-                // MyDoge doesn't have marketplace API
-                if (baseURL.includes('api.mydoge.com')) {
-                  return [];
-                }
-
-                // Nintondo or dojaker might have marketplace
-                if (baseURL.includes('localhost:3000')) {
-                  const res = await client.get('/marketplace/listings?limit=10');
-                  return res.data?.list || [];
-                }
-
-                // Future: Dojak API
-                if (baseURL.includes('api.dojak.dog')) {
-                  const res = await client.get('/api/v1/marketplace/listings?limit=10');
+                // Local or Dojak API might have marketplace
+                if (isDojakAPI(baseURL)) {
+                  const endpoint = isLocalIndexer(baseURL) 
+                    ? '/marketplace/listings?limit=10'
+                    : '/api/v1/marketplace/listings?limit=10';
+                  const res = await client.get(endpoint);
                   return res.data?.list || [];
                 }
 
@@ -2141,23 +1763,8 @@ export class WalletApiService {
               .executeWithFailover(async (client) => {
                 const baseURL = client.defaults.baseURL || '';
 
-                // MyDoge - may not have block height API directly
-                if (baseURL.includes('api.mydoge.com')) {
-                  // MyDoge doesn't expose block height, skip to fallback
-                  throw new Error('MyDoge: Use alternate provider for block height');
-                }
-
-                // Nintondo API for block info
-                if (baseURL.includes('doge-mainnet-api.nintondo.io')) {
-                  const res = await client.get('/blocks/tip/height');
-                  return {
-                    height: res.data?.height || res.data || 0,
-                    hash: res.data?.hash || ''
-                  };
-                }
-
                 // Future: Dojak API
-                if (baseURL.includes('api.dojak.dog')) {
+                if (isDojakAPI(baseURL)) {
                   const res = await client.get('/api/v1/blocks/tip');
                   return res.data;
                 }
