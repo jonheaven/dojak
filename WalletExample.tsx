@@ -143,7 +143,7 @@ const WalletExample: React.FC = () => {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .wallet {
           max-width: 600px;
           margin: 0 auto;
