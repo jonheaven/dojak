@@ -10,7 +10,7 @@ import { useI18n } from '@/ui/hooks/useI18n';
 import { ContextData, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
 import { useNavigate } from '@/ui/pages/MainRoute';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
-import { satoshisToAmount, useWallet } from '@/ui/utils';
+import { koinuToAmount, useWallet } from '@/ui/utils';
 import { isValidHdPath } from '@/ui/utils/bitcoin-utils';
 import { LoadingOutlined } from '@ant-design/icons';
 
@@ -57,7 +57,7 @@ export function Step2({
   >([]);
 
   const [addressAssets, setAddressAssets] = useState<{
-    [key: string]: { total_btc: string; satoshis: number; total_inscription: number };
+    [key: string]: { total_doge: string; koinu: number; total_inscription: number };
   }>({});
 
   const [error, setError] = useState('');
@@ -143,24 +143,24 @@ export function Step2({
     const balances = await wallet.getMultiAddressAssets(addresses.join(','));
     setLoading(false);
 
-    const addressAssets: { [key: string]: { total_btc: string; satoshis: number; total_inscription: number } } = {};
-    let maxSatoshis = 0;
+    const addressAssets: { [key: string]: { total_doge: string; koinu: number; total_inscription: number } } = {};
+    let maxKoinu = 0;
     let recommended = 0;
     for (let i = 0; i < addresses.length; i++) {
       const address = addresses[i];
       const balance = balances[i];
-      const satoshis = balance.totalSatoshis;
+      const koinu = balance.totalKoinu;
       addressAssets[address] = {
-        total_btc: satoshisToAmount(balance.totalSatoshis),
-        satoshis,
+        total_doge: koinuToAmount(balance.totalKoinu),
+        koinu,
         total_inscription: balance.inscriptionCount
       };
-      if (satoshis > maxSatoshis) {
-        maxSatoshis = satoshis;
+      if (koinu > maxKoinu) {
+        maxKoinu = koinu;
         recommended = i;
       }
     }
-    if (maxSatoshis > 0) {
+    if (maxKoinu > 0) {
       setRecommendedTypeIndex(recommended);
     }
 
@@ -282,8 +282,8 @@ export function Step2({
       {hdPathOptions.map((item, index) => {
         const address = previewAddresses[index];
         const assets = addressAssets[address] || {
-          total_btc: '--',
-          satoshis: 0,
+          total_doge: '--',
+          koinu: 0,
           total_inscription: 0
         };
 

@@ -22,9 +22,9 @@ export interface Props {
       options?: SignPsbtOptions;
       rawTxInfo?: RawTxInfo;
 
-      sendBitcoinParams?: {
+      sendDogeParams?: {
         toAddress: string;
-        satoshis: number;
+        koinu: number;
         memo: string;
         memos: string[];
         feeRate: number;

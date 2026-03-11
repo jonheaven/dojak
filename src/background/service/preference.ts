@@ -8,7 +8,7 @@ import {
   Account,
   AddressTokenSummary,
   AppSummary,
-  BitcoinBalance,
+  DogecoinBalance,
   Inscription,
   NetworkType,
   TokenBalance,
@@ -27,7 +27,7 @@ export interface PreferenceStore {
   currentAccount: Account | undefined | null;
   externalLinkAck: boolean;
   balanceMap: {
-    [address: string]: BitcoinBalance;
+    [address: string]: DogecoinBalance;
   };
   historyMap: {
     [address: string]: TxHistoryItem[];
@@ -91,6 +91,7 @@ export interface PreferenceStore {
   openInSidePanel: boolean;
   developerMode: boolean;
   theme: 'light' | 'dark';
+  customIndexerUrl?: string;
   localRpcConfig?: {
     host: string;
     port: string;
@@ -294,7 +295,7 @@ class PreferenceService {
   };
 
   // addressBalance
-  updateAddressBalance = (address: string, data: BitcoinBalance) => {
+  updateAddressBalance = (address: string, data: DogecoinBalance) => {
     const balanceMap = this.store.balanceMap || {};
     this.store.balanceMap = {
       ...balanceMap,
@@ -311,7 +312,7 @@ class PreferenceService {
     }
   };
 
-  getAddressBalance = (address: string): BitcoinBalance | null => {
+  getAddressBalance = (address: string): DogecoinBalance | null => {
     const balanceMap = this.store.balanceMap || {};
     return balanceMap[address] || null;
   };
@@ -612,6 +613,14 @@ class PreferenceService {
 
   setLocalRpcConfig = (config: { host: string; port: string; username: string; password: string; testnet: boolean } | undefined) => {
     this.store.localRpcConfig = config;
+  };
+
+  getCustomIndexerUrl = () => {
+    return this.store.customIndexerUrl;
+  };
+
+  setCustomIndexerUrl = (url: string | undefined) => {
+    this.store.customIndexerUrl = url;
   };
 }
 

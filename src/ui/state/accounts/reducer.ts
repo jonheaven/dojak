@@ -73,9 +73,9 @@ export const initialState: AccountsState = {
     mintedList: []
   },
   addressSummary: {
-    totalSatoshis: 0,
-    btcSatoshis: 0,
-    assetSatoshis: 0,
+    totalKoinu: 0,
+    dogeKoinu: 0,
+    assetKoinu: 0,
     inscriptionCount: 0,
     drc20Count: 0,
     drc20Count5Byte: 0,
@@ -251,9 +251,9 @@ const slice = createSlice({
       // todo
       if (!state.addressSummary) {
         state.addressSummary = {
-          totalSatoshis: 0,
-          btcSatoshis: 0,
-          assetSatoshis: 0,
+          totalKoinu: 0,
+          dogeKoinu: 0,
+          assetKoinu: 0,
           inscriptionCount: 0,
           drc20Count: 0,
           drc20Count5Byte: 0,

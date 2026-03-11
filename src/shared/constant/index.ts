@@ -29,9 +29,18 @@ export const BRAND_ALIAN_TYPE_TEXT = {
 };
 
 // API Endpoints
+const getProductionApiEndpoint = () => {
+  const override = process.env.DOJAK_API_BASE_URL?.trim();
+  if (process.env.NODE_ENV !== 'production' && override) {
+    return override;
+  }
+
+  return 'https://api.wzrd.dog';
+};
+
 export const API_ENDPOINTS = {
   // Production API
-  PRODUCTION: 'https://api.wzrd.dog',
+  PRODUCTION: getProductionApiEndpoint(),
   // Local development API
   LOCAL_INDEXER: 'http://localhost:3000',
   // Local faucet API
@@ -53,7 +62,6 @@ export const PROVIDER_CONFIG = {
     supports: ['dogecoin-testnet']
   }
 };
-
 
 export const KEYRING_TYPES: {
   [key: string]: {

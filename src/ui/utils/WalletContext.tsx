@@ -13,8 +13,8 @@ import {
   AddressTokenSummary,
   AppInfo,
   AppSummary,
-  BitcoinBalance,
-  BitcoinBalanceV2,
+  DogecoinBalance,
+  DogecoinBalanceV2,
   CAT721Balance,
   CharmsBalance,
   CharmsCollection,
@@ -75,13 +75,13 @@ export interface WalletController {
   getIsFirstOpen(): Promise<boolean>;
   updateIsFirstOpen(): Promise<void>;
 
-  getAddressBalanceV2(address: string): Promise<BitcoinBalanceV2>;
-  getAddressBalance(address: string): Promise<BitcoinBalance>;
-  getAddressCacheBalance(address: string): Promise<BitcoinBalance>;
+  getAddressBalanceV2(address: string): Promise<DogecoinBalanceV2>;
+  getAddressBalance(address: string): Promise<DogecoinBalance>;
+  getAddressCacheBalance(address: string): Promise<DogecoinBalance>;
   getMultiAddressAssets(addresses: string): Promise<AddressSummary[]>;
   findGroupAssets(
     groups: { type: number; address_arr: string[]; pubkey_arr: string[] }[]
-  ): Promise<{ type: number; address_arr: string[]; pubkey_arr: string[]; satoshis_arr: number[] }[]>;
+  ): Promise<{ type: number; address_arr: string[]; pubkey_arr: string[]; koinu_arr: number[] }[]>;
 
   getAddressInscriptions(
     address: string,
@@ -498,7 +498,7 @@ export interface WalletController {
   setOpenInSidePanel(openInSidePanel: boolean): Promise<void>;
 
   sendCoinBypassHeadOffsets(
-    tos: { address: string; satoshis: number }[],
+    tos: { address: string; koinu: number }[],
     feeRate: number
   ): Promise<{
     psbtHex: string;

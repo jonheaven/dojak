@@ -62,7 +62,7 @@ export function AddressTypeCard(props: AddressTypeCardProps) {
               <Row justifyBetween bg="bg3" roundedBottom px="md" py="md">
                 <Row justifyCenter>
                   <Image src={chain.icon} size={fontSizes.iconMiddle} />
-                  <Text text={`${props.assets.total_btc} ${btcUnit}`} color="yellow" />
+                  <Text text={`${props.assets.total_doge} ${btcUnit}`} color="yellow" />
                 </Row>
                 <Row>
                   {props.assets.total_inscription > 0 && (

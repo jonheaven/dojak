@@ -32,6 +32,7 @@ import randomstring from 'randomstring';
 import { createPersistStore } from '@/background/utils';
 import { CHAINS_MAP, CHANNEL, VERSION, API_ENDPOINTS } from '@/shared/constant';
 import { NetworkType } from '@unisat/wallet-types';
+import { validateUTXOs, validateBalance, validateTransactions, validateProviderResponse } from './responseValidator';
 
 import preferenceService from './preference';
 
@@ -65,6 +66,20 @@ const isDojakAPI = (baseURL: string): boolean => {
   return isProductionAPI(baseURL) || isLocalIndexer(baseURL);
 };
 
+// Helper to get the effective production endpoint (custom or default)
+const getEffectiveProductionEndpoint = (): string => {
+  if (process.env.NODE_ENV === 'production') {
+    return API_ENDPOINTS.PRODUCTION;
+  }
+
+  try {
+    const customUrl = preferenceService.getCustomIndexerUrl();
+    return customUrl || API_ENDPOINTS.PRODUCTION;
+  } catch {
+    return API_ENDPOINTS.PRODUCTION;
+  }
+};
+
 const getProviderConfigs = (): ProviderConfig[] => {
   const configs: ProviderConfig[] = [
     // Local development providers (highest priority when available)
@@ -74,11 +89,18 @@ const getProviderConfigs = (): ProviderConfig[] => {
       priority: 0, // Highest priority for local indexer
       supports: ['dogecoin']
     },
+    // Production indexer (user-configurable or default api.wzrd.dog)
+    {
+      name: 'production-indexer',
+      endpoint: getEffectiveProductionEndpoint(),
+      priority: 1, // Medium priority for production indexer
+      supports: ['dogecoin']
+    },
     // Tatum API - Testnet provider
     {
       name: 'tatum-testnet',
       endpoint: 'https://dogecoin-testnet.gateway.tatum.io',
-      priority: 1, // High priority for testnet
+      priority: 2, // Higher priority value = lower priority
       supports: ['dogecoin-testnet']
     }
   ];
@@ -213,7 +235,13 @@ class ProviderManager {
   }
 
   // Update local RPC provider configuration
-  updateLocalRpcProvider(config?: { host: string; port: string; username: string; password: string; testnet: boolean }) {
+  updateLocalRpcProvider(config?: {
+    host: string;
+    port: string;
+    username: string;
+    password: string;
+    testnet: boolean;
+  }) {
     if (config) {
       // Add or update local RPC provider
       const endpoint = `http://${config.host}:${config.port}`;
@@ -246,13 +274,31 @@ class ProviderManager {
     }
   }
 
+  // Update production indexer endpoint (when custom URL is changed)
+  updateProductionIndexer() {
+    const endpoint = getEffectiveProductionEndpoint();
+    const client = axios.create({
+      baseURL: endpoint,
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    this.providers.set('production-indexer', client);
+    this.healthStatus.set('production-indexer', true); // Assume healthy initially
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[ProviderManager] Updated production indexer endpoint to ${endpoint}`);
+    }
+  }
+
   async executeWithFailover<T>(
     operation: (client: AxiosInstance) => Promise<T>,
     supportedChains: string[] = ['dogecoin']
   ): Promise<T> {
-    const sortedProviders = getProviderConfigs().filter((config) =>
-      config.supports.some((chain) => supportedChains.includes(chain))
-    ).sort((a, b) => a.priority - b.priority);
+    const sortedProviders = getProviderConfigs()
+      .filter((config) => config.supports.some((chain) => supportedChains.includes(chain)))
+      .sort((a, b) => a.priority - b.priority);
 
     if (process.env.NODE_ENV !== 'production') {
       console.log(
@@ -366,8 +412,18 @@ export class WalletApiService {
     }
   };
 
-  updateLocalRpcProvider = (config?: { host: string; port: string; username: string; password: string; testnet: boolean }) => {
+  updateLocalRpcProvider = (config?: {
+    host: string;
+    port: string;
+    username: string;
+    password: string;
+    testnet: boolean;
+  }) => {
     this.providerManager.updateLocalRpcProvider(config);
+  };
+
+  updateProductionIndexer = () => {
+    this.providerManager.updateProductionIndexer();
   };
 
   setClientAddress = async (address: string, flag: number) => {
@@ -408,7 +464,7 @@ export class WalletApiService {
     return {
       /**
        * Aggregated address summary used for UI stats.
-       * NOTE: Field names keep the historical "btc*" naming but values are DOGE satoshis.
+       * NOTE: Field values are DOGE koinu.
        */
       getAddressSummary: (address: string) =>
         this.providerManager.executeWithFailover(async (client) => {
@@ -416,9 +472,9 @@ export class WalletApiService {
 
           const summary = {
             address,
-            totalSatoshis: 0,
-            btcSatoshis: 0,
-            assetSatoshis: 0,
+            totalKoinu: 0,
+            dogeKoinu: 0,
+            assetKoinu: 0,
             inscriptionCount: 0,
             drc20Count: 0,
             drc20Count5Byte: 0,
@@ -482,25 +538,32 @@ export class WalletApiService {
         this.providerManager.executeWithFailover(async (client) => {
           const baseURL = client.defaults.baseURL || '';
 
+          let utxos: any;
+          let providerName: string;
+
           // Local RPC provider
           if (isLocalRpcClient(client)) {
-            return localRpcGetUtxo(client, address);
-          }
-
-          // Tatum testnet provider
-          if (isTatumClient(client)) {
-            return tatumGetAddressUtxo(client, address);
-          }
-
-          // Future: Dojak API
-          if (isDojakAPI(baseURL)) {
+            providerName = 'local-rpc';
+            utxos = await localRpcGetUtxo(client, address);
+          } else if (isTatumClient(client)) {
+            // Tatum testnet provider
+            providerName = 'tatum-testnet';
+            utxos = await tatumGetAddressUtxo(client, address);
+          } else if (isDojakAPI(baseURL)) {
+            // Future: Dojak API
+            providerName = 'dojak-api';
             const res = await client.get(`/api/v1/address/${address}/utxos`);
-            return res.data || [];
+            utxos = res.data || [];
+          } else {
+            // Generic fallback
+            providerName = 'generic-indexer';
+            const res = await client.get(`/api/v1/address/${address}/utxo`);
+            utxos = res.data || [];
           }
 
-          // Generic fallback
-          const res = await client.get(`/api/v1/address/${address}/utxo`);
-          return res.data || [];
+          // Validate UTXOs before returning
+          const validated = validateProviderResponse(utxos, validateUTXOs, providerName, baseURL);
+          return validated || [];
         }),
       getTx: (txid: string) =>
         this.providerManager.executeWithFailover(async (client) => {
@@ -1275,7 +1338,7 @@ export class WalletApiService {
 
         const [duneInfo, rawBalances] = await Promise.all([
           indexer.getDuneById(duneid),
-          indexer.getAddressDuneBalances(address),
+          indexer.getAddressDuneBalances(address)
         ]);
 
         // Find this dune's balance by matching duneid or spacedDune
@@ -1286,7 +1349,7 @@ export class WalletApiService {
           spacedDune: duneInfo.spacedDune,
           symbol: duneInfo.symbol,
           divisibility: duneInfo.divisibility,
-          amount,
+          amount
         };
 
         return { duneInfo, duneBalance } as import('@/shared/types').AddressDunesTokenSummary;
@@ -1305,7 +1368,7 @@ export class WalletApiService {
             .map((u) => ({
               txid: u.txid,
               vout: u.vout,
-              satoshis: u.satoshis,
+              koinu: u.koinu,
               scriptPk: u.scriptPubKey,
               addressType: 0, // P2PKH
               inscriptions: [],
@@ -1313,8 +1376,8 @@ export class WalletApiService {
               dunes: Object.entries(u.duneBalances).map(([spacedDune, amount]) => ({
                 runeid: duneid,
                 rune: spacedDune,
-                amount,
-              })),
+                amount
+              }))
             }));
         } catch (error) {
           console.error('[WalletAPI] getDunesUtxos error:', error);
@@ -1518,43 +1581,40 @@ export class WalletApiService {
           const supportedChains = isTestnet ? ['dogecoin-testnet', 'dogecoin'] : ['dogecoin'];
 
           // Use provider manager for failover support
-          return await this.providerManager.executeWithFailover(
-            async (client) => {
-              const baseURL = client.defaults.baseURL || '';
+          return await this.providerManager.executeWithFailover(async (client) => {
+            const baseURL = client.defaults.baseURL || '';
 
-              // Try the dojaker API first (highest priority)
-              if (isLocalIndexer(baseURL)) {
-                try {
-                  const response = await client.get(`/balance/${address}`);
-                  return response;
-                } catch (indexerError) {
-                  console.warn('[WalletAPI] Dojaker balance API failed, falling back:', indexerError);
-                  throw indexerError; // Let provider manager try next provider
-                }
+            // Try the dojaker API first (highest priority)
+            if (isLocalIndexer(baseURL)) {
+              try {
+                const response = await client.get(`/balance/${address}`);
+                return response;
+              } catch (indexerError) {
+                console.warn('[WalletAPI] Dojaker balance API failed, falling back:', indexerError);
+                throw indexerError; // Let provider manager try next provider
               }
+            }
 
-              // Tatum testnet provider (highest priority for testnet)
-              if (isTatumClient(client) && isTestnet) {
-                return await tatumGetAddressBalance(client, address);
-              }
+            // Tatum testnet provider (highest priority for testnet)
+            if (isTatumClient(client) && isTestnet) {
+              return await tatumGetAddressBalance(client, address);
+            }
 
-              // Local RPC provider (highest priority when configured)
-              if (isLocalRpcClient(client)) {
-                return await localRpcGetBalance(client, address);
-              }
+            // Local RPC provider (highest priority when configured)
+            if (isLocalRpcClient(client)) {
+              return await localRpcGetBalance(client, address);
+            }
 
-              // Future: Dojak API
-              if (isDojakAPI(baseURL)) {
-                const res = await client.get(`/api/v1/address/${address}/balance`);
-                return res.data;
-              }
-
-              // Generic fallback
+            // Future: Dojak API
+            if (isDojakAPI(baseURL)) {
               const res = await client.get(`/api/v1/address/${address}/balance`);
               return res.data;
-            },
-            supportedChains
-          );
+            }
+
+            // Generic fallback
+            const res = await client.get(`/api/v1/address/${address}/balance`);
+            return res.data;
+          }, supportedChains);
         } catch (error) {
           console.error('[WalletAPI] Balance API error:', error);
           // Note: Toast notifications are handled at the UI level
@@ -1706,7 +1766,7 @@ export class WalletApiService {
 
                 // Local or Dojak API might have marketplace
                 if (isDojakAPI(baseURL)) {
-                  const endpoint = isLocalIndexer(baseURL) 
+                  const endpoint = isLocalIndexer(baseURL)
                     ? '/marketplace/listings?limit=10'
                     : '/api/v1/marketplace/listings?limit=10';
                   const res = await client.get(endpoint);

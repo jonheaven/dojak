@@ -44,7 +44,7 @@ export enum InscriptionFilterKey {
   // Tokens filters
   ALL_TOKENS = 4,         // Show all tokens
   DRC20 = 5,              // DRC-20 tokens
-  DUNES = 6,              // Dunes (runes-like)
+  DUNES = 6,              // Dunes (Dogecoin fungible tokens)
   CHARMS = 7              // Charms metaprotocol
 }
 

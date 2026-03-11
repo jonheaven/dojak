@@ -1,6 +1,6 @@
 import { AxiosInstance } from 'axios';
 
-import { BitcoinBalance, BitcoinBalanceV2 } from '@/shared/types';
+import { DogecoinBalance, DogecoinBalanceV2 } from '@/shared/types';
 
 export const isLocalRpcClient = (client: AxiosInstance) => client.defaults.baseURL?.includes('http://');
 
@@ -14,7 +14,7 @@ export const localRpcCall = async (client: AxiosInstance, method: string, params
   return response.data.result;
 };
 
-export const localRpcGetBalance = async (client: AxiosInstance, address: string): Promise<BitcoinBalance> => {
+export const localRpcGetBalance = async (client: AxiosInstance, address: string): Promise<DogecoinBalance> => {
   try {
     const balance = await localRpcCall(client, 'getbalance', ['', 0, false, address]);
     return {
@@ -34,7 +34,7 @@ export const localRpcGetBalance = async (client: AxiosInstance, address: string)
 export const localRpcGetBalanceV2 = async (
   client: AxiosInstance,
   address: string
-): Promise<BitcoinBalanceV2> => {
+): Promise<DogecoinBalanceV2> => {
   try {
     const balance = await localRpcCall(client, 'getbalance', ['', 0, false, address]);
     return {

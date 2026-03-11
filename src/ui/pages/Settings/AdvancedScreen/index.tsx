@@ -7,6 +7,7 @@ import { useI18n } from '@/ui/hooks/useI18n';
 import { EnableSignDataCard } from './EnableSignData';
 import { LanguageCard } from './Language';
 import { LocalNodeCard } from './LocalNodeCard';
+import { IndexerURLCard } from './IndexerURLCard';
 import { SecurityCard } from './SecurityCard';
 
 export default function AdvancedScreen() {
@@ -34,6 +35,8 @@ export default function AdvancedScreen() {
         <LanguageCard />
 
         <SecurityCard />
+
+        <IndexerURLCard />
 
         <LocalNodeCard />
 

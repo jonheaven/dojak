@@ -11,6 +11,7 @@ import { ECPairFactory, ECPairInterface } from 'ecpair';
 import { EventEmitter } from 'events';
 import * as ecc from 'tiny-secp256k1';
 
+import { signDogecoinMessage, verifyDogecoinMessage } from '@/shared/lib/dogecoin-message';
 import { dogecoinMainnet, dogecoinTestnet } from '@/shared/lib/dogecoin-network';
 
 import { KeyringInterface, SerializedHdKeyring, ToSignInput, DogecoinNetworkType, KEYRING_TYPE } from './types';
@@ -40,8 +41,8 @@ async function getHdKey(): Promise<any> {
   return hdkeyModule;
 }
 
-// Lazy load bitcore-lib-doge ONLY for message signing and WIF export
-// (it requires DOM access so can't be used for address derivation in service workers)
+// Lazy load bitcore-lib-doge ONLY for WIF export.
+// Message signing is handled by the shared Dogecoin message helper.
 let bitcoreLibDoge: any = null;
 
 async function getBitcoreLibDoge() {
@@ -110,7 +111,6 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
    * Deserialize and restore the keyring from storage
    */
   async deserialize(opts: Partial<SerializedHdKeyring>): Promise<void> {
-
     if (this.root) {
       throw new Error('Dogecoin HD Keyring: Already initialized');
     }
@@ -128,14 +128,12 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
     if (opts.activeIndexes && opts.activeIndexes.length > 0) {
       await this.activeAccounts(opts.activeIndexes);
     }
-
   }
 
   /**
    * Initialize the keyring from a mnemonic phrase
    */
   async initFromMnemonic(mnemonic: string): Promise<void> {
-
     if (this.root) {
       throw new Error('Dogecoin HD Keyring: Already initialized');
     }
@@ -317,33 +315,14 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
       throw new Error('Dogecoin HD Keyring: Account not found');
     }
 
-    // Use bitcore-lib-doge for correct message signing
-    const bitcore = await getBitcoreLibDoge();
-    const { PrivateKey, Message, Networks } = bitcore;
-
-    Networks.defaultNetwork = this.networkType === 'testnet' ? Networks.testnet : Networks.mainnet;
-
-    const privKey = new PrivateKey(entry.keyPair.privateKey!.toString('hex'));
-    const messageObj = new Message(message);
-
-    return messageObj.sign(privKey);
+    return signDogecoinMessage(message, entry.keyPair.privateKey!.toString('hex'), this.networkType);
   }
 
   /**
    * Verify a signed message
    */
   async verifyMessage(address: string, message: string, signature: string): Promise<boolean> {
-    try {
-      const bitcore = await getBitcoreLibDoge();
-      const { Message, Networks } = bitcore;
-
-      Networks.defaultNetwork = this.networkType === 'testnet' ? Networks.testnet : Networks.mainnet;
-
-      const messageObj = new Message(message);
-      return messageObj.verify(address, signature);
-    } catch {
-      return false;
-    }
+    return verifyDogecoinMessage(address, message, signature, this.networkType);
   }
 
   /**
@@ -365,7 +344,6 @@ export class DogecoinHdKeyring extends EventEmitter implements KeyringInterface 
   private async _deriveAccount(
     index: number
   ): Promise<{ publicKey: string; keyPair: ECPairInterface; address: string }> {
-
     // Check cache first
     const cached = this._indexCache.get(index);
     if (cached) {

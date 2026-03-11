@@ -9,7 +9,7 @@ export const usePsbtInitializer = (setTxInfo, setLoading, tools) => {
       type,
       psbtHex,
       options,
-      sendBitcoinParams,
+      sendDogeParams,
       sendInscriptionParams,
       sendDunesParams,
       sendCharmsParams,
@@ -31,15 +31,15 @@ export const usePsbtInitializer = (setTxInfo, setLoading, tools) => {
             const toSignInputs = await wallet.formatOptionsToSignInputs(psbtHex, options);
             finalPsbtHex = await wallet.signPsbtWithHex(psbtHex, toSignInputs, false);
           }
-        } else if (type === TxType.SEND_BITCOIN && sendBitcoinParams) {
+        } else if (type === TxType.SEND_BITCOIN && sendDogeParams) {
           if (!psbtHex) {
             const rawTxInfo = await prepareSendDOGE({
-              toAddressInfo: { address: sendBitcoinParams.toAddress, domain: '' },
-              toAmount: sendBitcoinParams.satoshis,
-              feeRate: sendBitcoinParams.feeRate,
+              toAddressInfo: { address: sendDogeParams.toAddress, domain: '' },
+              toAmount: sendDogeParams.koinu,
+              feeRate: sendDogeParams.feeRate,
               enableRBF: false,
-              memo: sendBitcoinParams.memo,
-              memos: sendBitcoinParams.memos,
+              memo: sendDogeParams.memo,
+              memos: sendDogeParams.memos,
               disableAutoAdjust: true
             });
             finalPsbtHex = rawTxInfo.psbtHex;

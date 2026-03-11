@@ -75,7 +75,7 @@ export function DunesList() {
         >
           <Text text="About Dunes" preset="bold" />
           <Text
-            text="Dunes are fungible tokens on Dogecoin using the Runes protocol. They're similar to DRC-20 tokens but use a more efficient, native protocol."
+            text="Dunes are fungible tokens on Dogecoin using the Dunes protocol. They're similar to DRC-20 tokens but use a more efficient, native protocol."
             size="sm"
             color="textDim"
           />

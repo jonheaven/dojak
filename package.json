@@ -198,13 +198,15 @@
       "^(?!.*\\.(js|jsx|mjs|cjs|ts|tsx|css|json)$)": "<rootDir>/config/jest/fileTransform.js"
     },
     "transformIgnorePatterns": [
-      "[/\\\\]node_modules[/\\\\].+\\.(js|jsx|mjs|cjs|ts|tsx)$",
+      "[/\\\\]node_modules[/\\\\](?!(@noble|@scure)[/\\\\]).+\\.(js|jsx|mjs|cjs|ts|tsx)$",
       "^.+\\.module\\.(css|sass|scss)$"
     ],
     "modulePaths": [],
     "moduleNameMapper": {
       "^react-native$": "react-native-web",
-      "^.+\\.module\\.(css|sass|scss)$": "identity-obj-proxy"
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^.+\\.module\\.(css|sass|scss)$": "<rootDir>/config/jest/styleMock.js",
+      "^.+\\.(css|sass|scss)$": "<rootDir>/config/jest/styleMock.js"
     },
     "moduleFileExtensions": [
       "web.js",
@@ -241,6 +243,7 @@
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@notionhq/client": "^1.0.4",
+    "@testing-library/jest-dom": "^6.9.1",
     "@trivago/prettier-plugin-sort-imports": "^4.0.0",
     "@types/less": "^3.0.3",
     "@types/lodash": "^4.14.182",

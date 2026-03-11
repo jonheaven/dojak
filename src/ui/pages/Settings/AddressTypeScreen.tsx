@@ -10,7 +10,7 @@ import { useI18n } from '@/ui/hooks/useI18n';
 import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useAppDispatch } from '@/ui/state/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
-import { satoshisToAmount, useWallet } from '@/ui/utils';
+import { koinuToAmount, useWallet } from '@/ui/utils';
 import { KeyringType } from '@unisat/keyring-service/types';
 import { AddressType } from '@unisat/wallet-types';
 
@@ -29,11 +29,11 @@ export default function AddressTypeScreen() {
   const reloadAccounts = useReloadAccounts();
   const [addresses, setAddresses] = useState<string[]>([]);
   const [addressAssets, setAddressAssets] = useState<{
-    [key: string]: { total_btc: string; satoshis: number; total_inscription: number };
+    [key: string]: { total_doge: string; koinu: number; total_inscription: number };
   }>({});
 
   const selfRef = useRef<{
-    addressAssets: { [key: string]: { total_btc: string; satoshis: number; total_inscription: number } };
+    addressAssets: { [key: string]: { total_doge: string; koinu: number; total_inscription: number } };
   }>({
     addressAssets: {}
   });
@@ -49,10 +49,10 @@ export default function AddressTypeScreen() {
       for (let i = 0; i < _res.length; i++) {
         const address = _res[i];
         const balance = balances[i];
-        const satoshis = balance.totalSatoshis;
+        const koinu = balance.totalKoinu;
         self.addressAssets[address] = {
-          total_btc: satoshisToAmount(balance.totalSatoshis),
-          satoshis,
+          total_doge: koinuToAmount(balance.totalKoinu),
+          koinu,
           total_inscription: balance.inscriptionCount
         };
       }
@@ -85,8 +85,8 @@ export default function AddressTypeScreen() {
           {addressTypes.map((item, index) => {
             const address = addresses[item.value];
             const assets = addressAssets[address] || {
-              total_btc: '--',
-              satoshis: 0,
+              total_doge: '--',
+              koinu: 0,
               total_inscription: 0
             };
             let name = `${item.name} (${item.hdPath}/${account.index})`;

@@ -31,7 +31,7 @@ export enum CosmosSignDataType {
 
 /**
  * Doginals Rarity Tier
- * Based on satoshi/koinu position in blockchain
+ * Based on koinu position in blockchain
  */
 export enum RarityTier {
   MYTHIC = 'mythic',
@@ -49,13 +49,13 @@ export interface Chain {
   network: string;
 }
 
-export interface BitcoinBalance {
+export interface DogecoinBalance {
   confirm_amount: string;
   pending_amount: string;
   amount: string;
-  confirm_btc_amount: string;
-  pending_btc_amount: string;
-  btc_amount: string;
+  confirm_doge_amount: string;
+  pending_doge_amount: string;
+  doge_amount: string;
   confirm_inscription_amount: string;
   pending_inscription_amount: string;
   inscription_amount: string;
@@ -63,8 +63,8 @@ export interface BitcoinBalance {
 }
 
 export interface AddressAssets {
-  total_btc: string;
-  satoshis?: number;
+  total_doge: string;
+  koinu?: number;
   total_inscription: number;
 }
 
@@ -189,14 +189,14 @@ export interface FeeSummary {
 }
 
 export interface CoinPrice {
-  btc: number;
+  doge: number;
   fb: number;
 }
 
 export interface UTXO {
   txid: string;
   vout: number;
-  satoshis: number;
+  koinu: number;
   scriptPk: string;
   addressType: AddressType;
   inscriptions: {
@@ -223,7 +223,7 @@ export interface UTXO {
 export interface UTXO_Detail {
   txId: string;
   outputIndex: number;
-  satoshis: number;
+  koinu: number;
   scriptPk: string;
   addressType: AddressType;
   inscriptions: Inscription[];
@@ -347,7 +347,7 @@ export interface TokenTransfer {
   inscriptionNumber: number;
   timestamp: number;
   confirmations: number;
-  satoshi: number;
+  koinu: number;
 }
 
 export interface AddressTokenSummary {
@@ -450,9 +450,9 @@ export enum WebsiteState {
 
 export interface AddressSummary {
   address: string;
-  totalSatoshis: number;
-  btcSatoshis: number;
-  assetSatoshis: number;
+  totalKoinu: number;
+  dogeKoinu: number;
+  assetKoinu: number;
   inscriptionCount: number;
   drc20Count: number;
   drc20Count5Byte: number;
@@ -610,7 +610,7 @@ export interface AddressCAT721CollectionSummary {
   localIds: string[];
 }
 
-export interface BitcoinBalanceV2 {
+export interface DogecoinBalanceV2 {
   availableBalance: number;
   unavailableBalance: number;
   totalBalance: number;
@@ -641,10 +641,75 @@ export interface ContractResult {
   isOwned: boolean;
 }
 
-export interface RequestMethodSendBitcoinParams {
-  sendBitcoinParams: {
+export type WalletMode = 'dojak' | 'local_browser_wallet';
+
+export type MarketplaceIntentType =
+  | 'listing_buy'
+  | 'offer_create'
+  | 'offer_cancel'
+  | 'bid_place'
+  | 'bid_cancel'
+  | 'auction_settle';
+
+export type MarketplaceIntentNetwork = 'mainnet' | 'testnet' | 'regtest';
+
+export interface MarketplaceIntentSummaryOutput {
+  address: string;
+  valueKoinu?: string;
+  role?: string;
+}
+
+export interface MarketplaceIntentSummary {
+  title: string;
+  intentType: MarketplaceIntentType;
+  address: string;
+  nonce: string;
+  network: MarketplaceIntentNetwork;
+  chainId: string;
+  expiresAt: string;
+  inscriptionId?: string;
+  listingId?: string;
+  offerId?: string;
+  auctionId?: string;
+  collectionId?: string;
+  recipientAddress?: string;
+  priceKoinu?: string;
+  marketplaceFeeKoinu?: string;
+  feePolicy?: string;
+  outputs?: MarketplaceIntentSummaryOutput[];
+}
+
+export interface IntentPayload {
+  intentType: MarketplaceIntentType;
+  nonce: string;
+  expiresAt: string;
+  network: MarketplaceIntentNetwork;
+  chainId: string;
+  address: string;
+  [key: string]: unknown;
+}
+
+export interface SignedIntent {
+  signature: string;
+  signingAddress: string;
+  signedAt: string;
+  payloadHash: string;
+}
+
+export interface MarketplaceSigner {
+  mode: WalletMode;
+  connect(): Promise<{ address: string }>;
+  disconnect(): Promise<void>;
+  getAddress(): Promise<string | null>;
+  signMessage(message: string): Promise<string>;
+  signPSBT(psbtBase64: string): Promise<string>;
+  signIntent<T extends Record<string, unknown>>(intent: T): Promise<string>;
+}
+
+export interface RequestMethodSendDogeParams {
+  sendDogeParams: {
     toAddress: string;
-    satoshis: number;
+    koinu: number;
     feeRate?: number;
     memo?: string;
     memos?: string[];
@@ -690,6 +755,14 @@ export interface RequestMethodSignMessagesParams {
     text: string;
     type: string;
   }[];
+}
+
+export interface RequestMethodSignIntentParams {
+  payload: IntentPayload;
+  text?: string;
+  type?: string;
+  payloadHash?: string;
+  intentSummary?: MarketplaceIntentSummary;
 }
 
 export interface RequestMethodGetInscriptionsParams {

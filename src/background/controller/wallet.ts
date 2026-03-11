@@ -30,14 +30,17 @@ import eventBus from '@/shared/eventBus';
 import { getDogecoinNetwork } from '@/shared/lib/dogecoin-network';
 import { dunestone } from '@/shared/lib/dunestone';
 import { dunesUtils } from '@/shared/lib/dunes-utils';
+import { createSignedMarketplaceIntent, prepareMarketplaceIntent } from '@/shared/lib/marketplace-intents';
 import {
   Account,
   AddressUserToSignInput,
   BitcoinBalance,
   DRC20HistoryItem,
+  IntentPayload,
   NetworkType,
   PublicKeyUserToSignInput,
   SignPsbtOptions,
+  SignedIntent,
   UTXO,
   WalletKeyring
 } from '@/shared/types';
@@ -802,6 +805,26 @@ export class WalletController extends BaseController {
     const account = preferenceService.getCurrentAccount();
     if (!account) throw new Error('no current account');
     return keyringService.signMessage(account.pubkey, account.type, text);
+  };
+
+  getMarketplaceNetwork = () => {
+    return this.getNetworkType() === NetworkType.TESTNET ? 'testnet' : 'mainnet';
+  };
+
+  signIntent = async (payload: IntentPayload): Promise<SignedIntent> => {
+    const account = await this.getCurrentAccount();
+    if (!account) throw new Error('no current account');
+
+    const prepared = prepareMarketplaceIntent(payload, {
+      expectedAddress: account.address,
+      expectedNetwork: this.getMarketplaceNetwork()
+    });
+
+    const signature = await keyringService.signMessage(account.pubkey, account.type, prepared.canonicalJson);
+
+    return createSignedMarketplaceIntent(payload, signature, account.address, {
+      expectedNetwork: this.getMarketplaceNetwork()
+    });
   };
 
   signBIP322Simple = async (text: string) => {
@@ -2068,7 +2091,7 @@ export class WalletController extends BaseController {
     // Get destination address (use current address if not specified)
     const toAddress = destination || account.address;
 
-    if (!txHelpers.isValidAddress(toAddress, networkType)) {
+    if (!isValidAddress(toAddress, networkType)) {
       throw new Error('Invalid destination address');
     }
 
@@ -2140,7 +2163,7 @@ export class WalletController extends BaseController {
 
       // TODO: Add proper input handling for different address types
       // For now, this assumes P2PKH addresses (most common for Dogecoin)
-      
+
       psbt.addInput(input);
 
       toSignInputs.push({
@@ -2157,7 +2180,7 @@ export class WalletController extends BaseController {
     // Add change output if needed
     const actualFee = estimatedFee;
     const change = selectedValue - postage - actualFee;
-    
+
     if (change > txHelpers.getAddressUtxoDust(account.address)) {
       psbt.addOutput({
         address: account.address,
@@ -2590,7 +2613,13 @@ export class WalletController extends BaseController {
     return preferenceService.getLocalRpcConfig();
   };
 
-  saveLocalRpcConfig = (config: { host: string; port: string; username: string; password: string; testnet: boolean }) => {
+  saveLocalRpcConfig = (config: {
+    host: string;
+    port: string;
+    username: string;
+    password: string;
+    testnet: boolean;
+  }) => {
     preferenceService.setLocalRpcConfig(config);
     walletApiService.updateLocalRpcProvider(config);
   };
@@ -2598,6 +2627,16 @@ export class WalletController extends BaseController {
   clearLocalRpcConfig = () => {
     preferenceService.setLocalRpcConfig(undefined);
     walletApiService.updateLocalRpcProvider(undefined);
+  };
+
+  // Custom indexer URL configuration
+  getCustomIndexerUrl = () => {
+    return preferenceService.getCustomIndexerUrl();
+  };
+
+  setCustomIndexerUrl = (url: string | undefined) => {
+    preferenceService.setCustomIndexerUrl(url);
+    walletApiService.updateProductionIndexer();
   };
 }
 export default new WalletController();

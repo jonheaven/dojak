@@ -115,7 +115,6 @@ const BorkStarterWalletConnector = () => {
 
       // Example API call:
       // await verifyWalletOwnership(address, message, signature);
-
     } catch (err) {
       console.error('Message signing failed:', err);
       setError('Failed to verify wallet ownership');
@@ -173,22 +172,13 @@ const BorkStarterWalletConnector = () => {
   return (
     <div className="wallet-connector">
       {!isConnected ? (
-        <button
-          onClick={connectWallet}
-          disabled={isConnecting || !isWalletAvailable()}
-        >
-          {isConnecting ? 'Connecting...' :
-           !isWalletAvailable() ? 'Install Dojak Wallet' :
-           'Connect Dojak Wallet'}
+        <button onClick={connectWallet} disabled={isConnecting || !isWalletAvailable()}>
+          {isConnecting ? 'Connecting...' : !isWalletAvailable() ? 'Install Dojak Wallet' : 'Connect Dojak Wallet'}
         </button>
       ) : (
         <div className="connected-wallet">
           <div>Connected: {walletAddress}</div>
-          {balance && (
-            <div>
-              Balance: {(balance.availableBalance / 100000000).toFixed(8)} DOGE
-            </div>
-          )}
+          {balance && <div>Balance: {(balance.availableBalance / 100000000).toFixed(8)} DOGE</div>}
           <button onClick={disconnectWallet}>Disconnect</button>
         </div>
       )}
@@ -204,6 +194,7 @@ export default BorkStarterWalletConnector;
 ## Available API Methods
 
 ### Account Management
+
 ```javascript
 // Request account access (shows approval popup)
 const accounts = await provider.request({ method: 'requestAccounts' });
@@ -216,6 +207,7 @@ await provider.request({ method: 'disconnect' });
 ```
 
 ### Message Signing
+
 ```javascript
 // Sign a message (shows approval popup)
 const signature = await provider.request({
@@ -227,12 +219,42 @@ const signature = await provider.request({
 });
 
 // Verify BIP322 signature
-const isValid = await provider.verifyMessageOfBIP322Simple(
-  address, message, signature
-);
+const isValid = await provider.verifyMessageOfBIP322Simple(address, message, signature);
+```
+
+### Marketplace Intent Signing
+
+```javascript
+const intentPayload = {
+  intentType: 'offer_create',
+  nonce: crypto.randomUUID(),
+  expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+  network: 'mainnet',
+  chainId: 'doge-mainnet',
+  address,
+  inscriptionId: 'abc123i0',
+  offerPriceKoinu: '2500000000',
+  marketplaceFeeKoinu: '25000000'
+};
+
+// Raw RPC returns the full signed envelope
+const signedIntent = await provider.request({
+  method: 'signIntent',
+  params: {
+    payload: intentPayload
+  }
+});
+
+// signedIntent => {
+//   signature,
+//   signingAddress,
+//   signedAt,
+//   payloadHash
+// }
 ```
 
 ### Balance & Network Info
+
 ```javascript
 // Get balance (v2 includes available/unavailable breakdown)
 const balance = await provider.request({ method: 'getBalanceV2' });
@@ -244,13 +266,24 @@ const chain = await provider.request({ method: 'getChain' });
 ```
 
 ### Transaction Methods
+
 ```javascript
 // Send DOGE
 const txid = await provider.request({
-  method: 'sendBitcoin',
+  method: 'sendDoge',
   params: {
     toAddress: 'P...',
-    satoshis: 100000000, // 1 DOGE
+    koinu: 100000000, // 1 DOGE
+    options: { feeRate: 10000 }
+  }
+});
+
+// Legacy method name (still supported)
+const txid = await provider.request({
+  method: 'sendBitcoin', // Deprecated, use 'sendDoge'
+  params: {
+    toAddress: 'P...',
+    koinu: 100000000, // 1 DOGE
     options: { feeRate: 10000 }
   }
 });
@@ -283,11 +316,7 @@ const verifyWalletOwnership = async (address, message, signature) => {
 
   // Verify the signature matches the address
   const provider = getDojakProvider();
-  const isValid = await provider.verifyMessageOfBIP322Simple(
-    address,
-    verificationMessage,
-    signature
-  );
+  const isValid = await provider.verifyMessageOfBIP322Simple(address, verificationMessage, signature);
 
   if (isValid) {
     // Store verification in your backend
@@ -296,6 +325,28 @@ const verifyWalletOwnership = async (address, message, signature) => {
 
   return isValid;
 };
+```
+
+## Canonical Signer Parity
+
+Use the same canonicalized payload in both Dojak and `dogestash` if you need marketplace signer parity:
+
+```javascript
+import { BrowserWallet, BrowserWalletSigner } from 'dogestash';
+
+const dojakEnvelope = await window.dojak.request({
+  method: 'signIntent',
+  params: { payload: intentPayload }
+});
+
+const browserWallet = new BrowserWallet();
+await browserWallet.saveWallet(importedWalletWithSamePrivateKey);
+
+const dogestashSigner = new BrowserWalletSigner(browserWallet);
+await dogestashSigner.connect();
+const dogestashSignature = await dogestashSigner.signIntent(intentPayload);
+
+console.log(dojakEnvelope.signature === dogestashSignature); // true when both use the same key + payload
 ```
 
 ## Error Handling

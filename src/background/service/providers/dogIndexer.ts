@@ -171,7 +171,7 @@ export interface IndexerHealthStatus {
 export interface IndexerUTXO {
   txid: string;
   vout: number;
-  satoshis: number;
+  koinu: number;
   scriptPubKey: string;
   address: string | null;
   confirmations: number;
@@ -270,7 +270,7 @@ function mapOutput(raw: RawOutput): IndexerUTXO {
   return {
     txid,
     vout: parseInt(voutStr, 10),
-    satoshis: raw.value,
+    koinu: raw.value,
     scriptPubKey: raw.script_pubkey,
     address: raw.address,
     confirmations: raw.confirmations,

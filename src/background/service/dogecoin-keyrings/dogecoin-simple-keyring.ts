@@ -10,6 +10,7 @@ import { ECPairFactory, ECPairInterface } from 'ecpair';
 import { EventEmitter } from 'events';
 import * as ecc from 'tiny-secp256k1';
 
+import { signDogecoinMessage, verifyDogecoinMessage } from '@/shared/lib/dogecoin-message';
 import { dogecoinMainnet, dogecoinTestnet } from '@/shared/lib/dogecoin-network';
 
 import { KeyringInterface, SerializedSimpleKeyring, ToSignInput, DogecoinNetworkType, KEYRING_TYPE } from './types';
@@ -20,8 +21,8 @@ bitcoin.initEccLib(ecc);
 // Initialize ECPair with secp256k1
 const ECPair = ECPairFactory(ecc);
 
-// Lazy load bitcore-lib-doge ONLY for message signing and WIF export
-// (it requires DOM access so can't be used for address derivation in service workers)
+// Lazy load bitcore-lib-doge ONLY for WIF export.
+// Message signing is handled by the shared Dogecoin message helper.
 let bitcoreLibDoge: any = null;
 
 async function getBitcoreLibDoge() {
@@ -306,32 +307,14 @@ export class DogecoinSimpleKeyring extends EventEmitter implements KeyringInterf
       throw new Error('Account not found');
     }
 
-    const bitcore = await getBitcoreLibDoge();
-    const { PrivateKey, Message, Networks } = bitcore;
-
-    Networks.defaultNetwork = this.networkType === 'testnet' ? Networks.testnet : Networks.mainnet;
-
-    const privKey = new PrivateKey(wallet.privateKeyHex);
-    const messageObj = new Message(message);
-
-    return messageObj.sign(privKey);
+    return signDogecoinMessage(message, wallet.privateKeyHex, this.networkType);
   }
 
   /**
    * Verify a signed message
    */
   async verifyMessage(address: string, message: string, signature: string): Promise<boolean> {
-    try {
-      const bitcore = await getBitcoreLibDoge();
-      const { Message, Networks } = bitcore;
-
-      Networks.defaultNetwork = this.networkType === 'testnet' ? Networks.testnet : Networks.mainnet;
-
-      const messageObj = new Message(message);
-      return messageObj.verify(address, signature);
-    } catch {
-      return false;
-    }
+    return verifyDogecoinMessage(address, message, signature, this.networkType);
   }
 
   /**

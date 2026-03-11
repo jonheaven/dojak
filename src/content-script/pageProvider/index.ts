@@ -3,12 +3,14 @@ import { ethErrors, serializeError } from 'eth-rpc-errors';
 import { EventEmitter } from 'events';
 
 import {
+  IntentPayload,
   RequestMethodGetBitcoinUtxosParams,
   RequestMethodGetInscriptionsParams,
   RequestMethodInscribeTransferParams,
-  RequestMethodSendBitcoinParams,
+  RequestMethodSendDogeParams,
   RequestMethodSendDunesParams,
   RequestMethodSendInscriptionParams,
+  RequestMethodSignIntentParams,
   RequestMethodSignMessageParams,
   RequestMethodSignMessagesParams,
   TxType
@@ -87,6 +89,7 @@ const requestMethodKey = Symbol('requestMethod');
 
 export class dojakProvider extends EventEmitter {
   isDojak = true;
+  mode = 'dojak' as const;
 
   constructor({ maxListeners = 100 } = {}) {
     super();
@@ -250,6 +253,13 @@ export class dojakProvider extends EventEmitter {
       case 'signMessage':
         return this.signMessage(params?.message || params?.text, params?.type || 'ecdsa');
 
+      case 'dojak_signIntent':
+      case 'signIntent':
+        return this[requestMethodKey]({
+          method: 'signIntent',
+          params
+        });
+
       case 'dojak_signPsbt':
       case 'signPsbt':
         return this.signPsbt(params?.psbtHex || params?.psbt, params?.options);
@@ -264,7 +274,7 @@ export class dojakProvider extends EventEmitter {
       case 'sendBitcoin':
       case 'sendDogecoin':
       case 'sendDoge':
-        return this.sendBitcoin(params?.toAddress, params?.satoshis, params);
+        return this.sendDoge(params?.toAddress, params?.koinu, params);
 
       case 'dojak_sendInscription':
       case 'sendInscription':
@@ -325,6 +335,17 @@ export class dojakProvider extends EventEmitter {
     });
   };
 
+  connect = async () => {
+    const accounts = await this.requestAccounts();
+    if (!accounts?.[0]) {
+      throw new Error('No account connected');
+    }
+
+    return {
+      address: accounts[0]
+    };
+  };
+
   disconnect = async () => {
     return this[requestMethodKey]({
       method: 'disconnect'
@@ -365,6 +386,11 @@ export class dojakProvider extends EventEmitter {
     return this[requestMethodKey]({
       method: 'getAccounts'
     });
+  };
+
+  getAddress = async () => {
+    const accounts = await this.getAccounts();
+    return accounts?.[0] || null;
   };
 
   getPublicKey = async () => {
@@ -408,6 +434,18 @@ export class dojakProvider extends EventEmitter {
     });
   };
 
+  signIntent = async (payload: IntentPayload) => {
+    const params: RequestMethodSignIntentParams = {
+      payload
+    };
+    const signed = await this[requestMethodKey]({
+      method: 'signIntent',
+      params
+    });
+
+    return signed.signature;
+  };
+
   multiSignMessage = async (messages: { text: string; type: string }[]) => {
     const params: RequestMethodSignMessagesParams = {
       messages
@@ -430,6 +468,10 @@ export class dojakProvider extends EventEmitter {
     });
   };
 
+  signPSBT = async (psbtBase64: string, options?: any) => {
+    return this.signPsbt(psbtBase64, options);
+  };
+
   signData = async (data: string, type: string) => {
     return this[requestMethodKey]({
       method: 'signData',
@@ -440,15 +482,15 @@ export class dojakProvider extends EventEmitter {
     });
   };
 
-  sendBitcoin = async (
+  sendDoge = async (
     toAddress: string,
-    satoshis: number,
+    koinu: number,
     options?: { feeRate: number; memo?: string; memos?: string[] }
   ) => {
-    const params: RequestMethodSendBitcoinParams = {
-      sendBitcoinParams: {
+    const params: RequestMethodSendDogeParams = {
+      sendDogeParams: {
         toAddress,
-        satoshis,
+        koinu,
         feeRate: options?.feeRate,
         memo: options?.memo,
         memos: options?.memos
@@ -461,21 +503,21 @@ export class dojakProvider extends EventEmitter {
     });
   };
 
-  // Dogecoin-specific aliases for clarity
+  // Aliases for compatibility
   sendDogecoin = async (
     toAddress: string,
-    satoshis: number,
+    koinu: number,
     options?: { feeRate: number; memo?: string; memos?: string[] }
   ) => {
-    return this.sendBitcoin(toAddress, satoshis, options);
+    return this.sendDoge(toAddress, koinu, options);
   };
 
-  sendDoge = async (
+  sendBitcoin = async (
     toAddress: string,
-    satoshis: number,
+    koinu: number,
     options?: { feeRate: number; memo?: string; memos?: string[] }
   ) => {
-    return this.sendBitcoin(toAddress, satoshis, options);
+    return this.sendDoge(toAddress, koinu, options);
   };
 
   sendInscription = async (toAddress: string, inscriptionId: string, options?: { feeRate: number }) => {
@@ -794,7 +836,7 @@ class DojakEthereumProvider extends dojakProvider {
           method: 'sendBitcoin',
           params: {
             toAddress: txParams.to,
-            satoshis: Math.floor(parseFloat(txParams.value) * 100000000), // Convert DOGE to satoshis
+            koinu: Math.floor(parseFloat(txParams.value) * 100000000), // Convert DOGE to koinu
             options: {
               feeRate: txParams.gasPrice ? Math.floor(txParams.gasPrice / 1000) : undefined,
               memo: txParams.data
@@ -810,7 +852,7 @@ class DojakEthereumProvider extends dojakProvider {
             method: 'sendBitcoin',
             params: {
               toAddress: ethTx.to,
-              satoshis: Math.floor(parseFloat(ethTx.value) * 100000000),
+              koinu: Math.floor(parseFloat(ethTx.value) * 100000000),
               options: {
                 feeRate: ethTx.gasPrice ? Math.floor(ethTx.gasPrice / 1000) : undefined
               }
@@ -900,7 +942,9 @@ class BorkStarterProvider extends dojakProvider {
 
   // BorkStarter verification message signing
   async signVerificationMessage(customMessage?: string) {
-    const message = customMessage || `Verify wallet ownership for BorkStarter\\nTimestamp: ${Date.now()}\\nPurpose: Launchpad participation`;
+    const message =
+      customMessage ||
+      `Verify wallet ownership for BorkStarter\\nTimestamp: ${Date.now()}\\nPurpose: Launchpad participation`;
     const signature = await this.signMessage(message, 'ecdsa');
     const address = (await this.getAccounts())[0];
 
@@ -920,8 +964,8 @@ class BorkStarterProvider extends dojakProvider {
       address: (await this.getAccounts())[0],
       availableDoge: balance.availableBalance / 100000000,
       totalDoge: balance.totalBalance / 100000000,
-      availableSatoshis: balance.availableBalance,
-      totalSatoshis: balance.totalBalance,
+      availableKoinu: balance.availableBalance,
+      totalKoinu: balance.totalBalance,
       network: await this.getNetwork()
     };
   }
@@ -929,8 +973,8 @@ class BorkStarterProvider extends dojakProvider {
   // Enhanced DOGE sending for launchpad contributions
   async contributeToLaunchpad(projectId: string, amountDoge: number, memo?: string) {
     // This would be enhanced to include project-specific logic
-    // For now, it's a wrapper around sendBitcoin
-    const satoshis = Math.floor(amountDoge * 100000000);
+    // For now, it's a wrapper around sendDoge
+    const koinu = Math.floor(amountDoge * 100000000);
 
     // In a real implementation, you'd look up the project's contribution address
     // For now, this is a placeholder

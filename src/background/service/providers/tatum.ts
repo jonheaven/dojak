@@ -1,14 +1,14 @@
 import { AxiosInstance } from 'axios';
 
-import { BitcoinBalance, BitcoinBalanceV2 } from '@/shared/types';
+import { DogecoinBalance, DogecoinBalanceV2 } from '@/shared/types';
 
 export const isTatumClient = (client: AxiosInstance) => client.defaults.baseURL?.includes('tatum.io');
 
-export const tatumGetAddressBalance = async (client: AxiosInstance, address: string): Promise<BitcoinBalance> => {
+export const tatumGetAddressBalance = async (client: AxiosInstance, address: string): Promise<DogecoinBalance> => {
   const response = await client.get(`/v3/dogecoin/address/${address}/balance`);
   const balance = response.data?.balance || {};
   return {
-    confirmed: (balance.confirmed || 0) / 100000000, // Convert satoshis to DOGE
+    confirmed: (balance.confirmed || 0) / 100000000, // Convert koinu to DOGE
     unconfirmed: (balance.unconfirmed || 0) / 100000000
   };
 };
@@ -16,7 +16,7 @@ export const tatumGetAddressBalance = async (client: AxiosInstance, address: str
 export const tatumGetAddressBalanceV2 = async (
   client: AxiosInstance,
   address: string
-): Promise<BitcoinBalanceV2> => {
+): Promise<DogecoinBalanceV2> => {
   const response = await client.get(`/v3/dogecoin/address/${address}/balance`);
   const balance = response.data?.balance || {};
   const confirmedBalance = (balance.confirmed || 0) / 100000000;

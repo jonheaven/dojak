@@ -53,7 +53,7 @@ export function usePrepareSendDOGECallback() {
       if (_utxos.length === 0) {
         _utxos = await fetchUtxos();
       }
-      const safeBalance = _utxos.filter((v) => v.inscriptions.length == 0).reduce((pre, cur) => pre + cur.satoshis, 0);
+      const safeBalance = _utxos.filter((v) => v.inscriptions.length == 0).reduce((pre, cur) => pre + cur.koinu, 0);
       if (safeBalance < toAmount) {
         throw new Error(t('insufficient_balance'));
       }
@@ -442,8 +442,8 @@ export function useSetSpendUnavailableUtxosCallback() {
 export function useSafeBalance() {
   const utxos = useUtxos();
   return useMemo(() => {
-    const satoshis = utxos.filter((v) => v.inscriptions.length === 0).reduce((pre, cur) => pre + cur.satoshis, 0);
-    return satoshisToDOGE(satoshis);
+    const koinu = utxos.filter((v) => v.inscriptions.length === 0).reduce((pre, cur) => pre + cur.koinu, 0);
+    return koinuToDOGE(koinu);
   }, [utxos]);
 }
 

@@ -83,11 +83,11 @@ export const ellipsisOverflowedText = (str: string, length = 5, removeLastComma 
   return `${cut}...`;
 };
 
-export const satoshisToDOGE = (amount: number) => {
+export const koinuToDOGE = (amount: number) => {
   return amount / 100000000;
 };
 
-export const btcTosatoshis = (amount: number) => {
+export const dogeToKoinu = (amount: number) => {
   return Math.floor(amount * 100000000);
 };
 
@@ -157,15 +157,21 @@ export function formatDate(date: Date, fmt = 'yyyy-MM-dd hh:mm:ss') {
   return fmt;
 }
 
-export function satoshisToAmount(val: number) {
+export function koinuToAmount(val: number) {
   const num = new BigNumber(val);
   return num.dividedBy(100000000).toFixed(8);
 }
 
-export function amountToSatoshis(val: any) {
+export function amountToKoinu(val: any) {
   const num = new BigNumber(val);
   return num.multipliedBy(100000000).toNumber();
 }
+
+// Legacy aliases for compatibility
+export const satoshisToDOGE = koinuToDOGE;
+export const btcTosatoshis = dogeToKoinu;
+export const satoshisToAmount = koinuToAmount;
+export const amountToSatoshis = amountToKoinu;
 
 export function useLocationState<T>() {
   const { state } = useLocation();
