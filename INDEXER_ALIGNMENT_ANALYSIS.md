@@ -392,7 +392,7 @@ Current state: **~70% alignment**. The wallet supports core asset types but is m
 
 ### Dog Supports ✅
 - Precise fixed-point arithmetic (no floating point)
-- Dust handling (minimum satoshi limits)
+- Dust handling (minimum koinu limits)
 - Unconfirmed UTXO tracking
 - Pending transaction accounting
 - Cardinal (regular DOGE) balance separate from inscriptions
