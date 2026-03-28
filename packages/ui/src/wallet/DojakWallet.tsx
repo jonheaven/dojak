@@ -12,9 +12,11 @@ const FALLBACK_TRANSACTIONS: WalletTransaction[] = [
   { txid: 'sample-sent-002', amount: 75, direction: 'sent', timestamp: Date.now() - 172_800_000, status: 'confirmed' }
 ];
 
-const FALLBACK_DOGEOS_DAPPS = [
+const CURATED_DOGEOS_APPS = [
+  { label: 'DogeOS Testnet Faucet', url: 'https://faucet.testnet.dogeos.com' },
   { label: 'DogeOS Testnet Bridge', url: 'https://bridge.testnet.dogeos.com' },
   { label: 'DogeOS Testnet Swap', url: 'https://swap.testnet.dogeos.com' },
+  { label: 'DogeOS Homepage', url: 'https://dogeos.com' },
   { label: 'Blockscout Explorer', url: DOGEOS_ACTIVE_CONFIG.blockExplorerUrl }
 ];
 const DOGEOS_TESTNET_FAUCET = 'https://faucet.testnet.dogeos.com';
@@ -63,9 +65,28 @@ class DogeOsProvider {
       this.emit('chainChanged', this.chainId);
       return [activeAddress];
     }
-    if (method === 'wallet_switchEthereumChain' || method === 'wallet_addEthereumChain') {
-      // DogeOS is the only supported EVM chain in this wallet build.
-      void params;
+    if (method === 'wallet_switchEthereumChain') {
+      const requestedChainId = String(params?.[0]?.chainId ?? '').toLowerCase();
+      if (requestedChainId && requestedChainId !== this.chainId.toLowerCase()) {
+        throw new Error(`Unsupported chain ${requestedChainId}. Please switch to DogeOS Testnet (${this.chainId}).`);
+      }
+      this.emit('chainChanged', this.chainId);
+      return null;
+    }
+    if (method === 'wallet_addEthereumChain') {
+      const requested = params?.[0] ?? {};
+      const requestedChainId = String(requested.chainId ?? '').toLowerCase();
+      const normalizedRpcUrls = Array.isArray(requested.rpcUrls)
+        ? requested.rpcUrls.map((url: string) => url.replace(/\/+$/, '').toLowerCase())
+        : [];
+      const expectedRpcUrl = DOGEOS_ACTIVE_CONFIG.rpcUrl.replace(/\/+$/, '').toLowerCase();
+      // Mainnet/testnet switching must happen by changing DOGEOS_ACTIVE_CONFIG.
+      if (requestedChainId && requestedChainId !== this.chainId.toLowerCase()) {
+        throw new Error(`Unsupported chain ${requestedChainId}. Only DogeOS Testnet (${this.chainId}) is available.`);
+      }
+      if (normalizedRpcUrls.length > 0 && !normalizedRpcUrls.includes(expectedRpcUrl)) {
+        throw new Error(`Unsupported RPC URL. Use ${DOGEOS_ACTIVE_CONFIG.rpcUrl} for DogeOS Testnet.`);
+      }
       this.emit('chainChanged', this.chainId);
       return null;
     }
@@ -130,7 +151,7 @@ export function DojakWallet() {
   const [dogeOsSendAmount, setDogeOsSendAmount] = useState('');
   const [bridgeAmount, setBridgeAmount] = useState('');
   const [bridgeDirection, setBridgeDirection] = useState<'l1-to-dogeos' | 'dogeos-to-l1'>('l1-to-dogeos');
-  const [dappUrl, setDappUrl] = useState(FALLBACK_DOGEOS_DAPPS[0].url);
+  const [dappUrl, setDappUrl] = useState(CURATED_DOGEOS_APPS[0].url);
   const [dappLoading, setDappLoading] = useState(true);
   const [dogeOsLoading, setDogeOsLoading] = useState(false);
   const [dogeOsError, setDogeOsError] = useState<string | null>(null);
@@ -385,6 +406,9 @@ export function DojakWallet() {
               <div className="rounded-xl border border-amber-700/30 bg-amber-500/10 p-3">
                 <p className="text-xs uppercase tracking-wide text-amber-200">DOGE (DogeOS)</p>
                 <p className="mt-1 text-2xl font-bold text-amber-100">{formatDoge(dogeOsBalance)} DOGE</p>
+                <p className="mt-1 inline-flex w-fit rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-200">
+                  Network Status: DogeOS Testnet • Chain 6281971
+                </p>
                 <p className="text-xs text-zinc-400">Same seed, same DOGE — now with smart contracts and dApps on DogeOS.</p>
               </div>
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs">
@@ -428,6 +452,9 @@ export function DojakWallet() {
                 <p className="text-zinc-400">{DOGEOS_ACTIVE_CONFIG.poweredByLabel}</p>
                 <p className="text-zinc-400">Network: {DOGEOS_ACTIVE_CONFIG.name}</p>
                 <p className="text-zinc-500">Chain ID: {DOGEOS_ACTIVE_CONFIG.chainId} • Gas token: DOGE</p>
+                <p className="mt-1 inline-flex w-fit rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-200">
+                  Network Status: DogeOS Testnet • Chain 6281971
+                </p>
               </div>
 
               <form onSubmit={onSendDogeOs} className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
@@ -455,8 +482,15 @@ export function DojakWallet() {
                 <p className="text-sm font-semibold">DApp Browser + WalletConnect v2 fallback</p>
                 <input value={dappUrl} onChange={(event) => setDappUrl(event.target.value)} className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2" />
                 <p className="mt-1 text-zinc-500">Fallback: open WalletConnect v2 QR modal when injected provider is unavailable.</p>
+                <a
+                  href={DOGEOS_TESTNET_FAUCET}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-flex w-full justify-center rounded-lg bg-amber-400 px-3 py-2 text-xs font-semibold text-black">
+                  Open DogeOS testnet faucet
+                </a>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {FALLBACK_DOGEOS_DAPPS.map((dapp) => (
+                  {CURATED_DOGEOS_APPS.map((dapp) => (
                     <button key={dapp.url} type="button" onClick={() => setDappUrl(dapp.url)} className="rounded-lg border border-zinc-700 px-2 py-1 text-[11px] text-amber-300">
                       {dapp.label}
                     </button>
@@ -478,9 +512,6 @@ export function DojakWallet() {
                     />
                   </div>
                 </WalletErrorBoundary>
-                <a href={DOGEOS_TESTNET_FAUCET} target="_blank" rel="noreferrer" className="inline-flex text-amber-300 underline underline-offset-2">
-                  Open DogeOS testnet faucet
-                </a>
               </div>
 
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs">

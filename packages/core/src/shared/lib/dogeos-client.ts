@@ -33,51 +33,62 @@ export function createDogeOsWalletClient(signer: Signer | JsonRpcSigner) {
 }
 
 async function getBlockscoutTransactions(address: string): Promise<DogeOsTransaction[]> {
-  const response = await fetch(`${DOGEOS_ACTIVE_CONFIG.blockExplorerUrl}/api/v2/addresses/${address}/transactions`);
-  if (!response.ok) throw new Error(`Explorer transaction lookup failed (${response.status})`);
+  try {
+    const response = await fetch(`${DOGEOS_ACTIVE_CONFIG.blockExplorerUrl}/api/v2/addresses/${address}/transactions`);
+    if (!response.ok) throw new Error(`Explorer transaction lookup failed (${response.status})`);
 
-  const payload = (await response.json()) as {
-    items?: Array<{
-      hash: string;
-      from?: { hash?: string };
-      to?: { hash?: string };
-      value?: string;
-      timestamp?: string;
-      status?: 'ok' | 'error';
-      confirmations?: number;
-    }>;
-  };
-
-  return (payload.items ?? []).slice(0, 20).map((item) => {
-    const from = item.from?.hash?.toLowerCase();
-    const to = item.to?.hash?.toLowerCase();
-    const normalized = address.toLowerCase();
-    const direction: 'sent' | 'received' = from === normalized ? 'sent' : 'received';
-
-    return {
-      txid: item.hash,
-      amount: Number(formatEther(item.value ?? '0')),
-      direction,
-      timestamp: item.timestamp ? new Date(item.timestamp).getTime() : undefined,
-      to,
-      from,
-      confirmations: item.confirmations,
-      status: item.status === 'error' ? 'failed' : item.confirmations && item.confirmations > 0 ? 'confirmed' : 'pending'
+    const payload = (await response.json()) as {
+      items?: Array<{
+        hash: string;
+        from?: { hash?: string };
+        to?: { hash?: string };
+        value?: string;
+        timestamp?: string;
+        status?: 'ok' | 'error';
+        confirmations?: number;
+      }>;
     };
-  });
+
+    return (payload.items ?? []).slice(0, 20).map((item) => {
+      const from = item.from?.hash?.toLowerCase();
+      const to = item.to?.hash?.toLowerCase();
+      const normalized = address.toLowerCase();
+      const direction: 'sent' | 'received' = from === normalized ? 'sent' : 'received';
+
+      return {
+        txid: item.hash,
+        amount: Number(formatEther(item.value ?? '0')),
+        direction,
+        timestamp: item.timestamp ? new Date(item.timestamp).getTime() : undefined,
+        to,
+        from,
+        confirmations: item.confirmations,
+        status: item.status === 'error' ? 'failed' : item.confirmations && item.confirmations > 0 ? 'confirmed' : 'pending'
+      };
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown explorer error';
+    throw new Error(`DogeOS transactions are temporarily unavailable. Please try again. (${message})`);
+  }
 }
 
 export async function getDogeOsBalance(address: string) {
-  const provider = createDogeOsPublicClient();
-  const balanceWei = await provider.getBalance(address);
-  return formatEther(balanceWei);
+  try {
+    const provider = createDogeOsPublicClient();
+    const balanceWei = await provider.getBalance(address);
+    return formatEther(balanceWei);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown RPC error';
+    throw new Error(`Unable to fetch DogeOS balance right now. Please retry. (${message})`);
+  }
 }
 
 export async function getDogeOsTransactions(address: string): Promise<DogeOsTransaction[]> {
   try {
     return await getBlockscoutTransactions(address);
-  } catch {
-    return [];
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown explorer error';
+    throw new Error(`Unable to load DogeOS transaction history. Please retry. (${message})`);
   }
 }
 
@@ -89,15 +100,20 @@ export async function sendDogeOsTransaction(
     data?: `0x${string}`;
   }
 ): Promise<TransactionResponse> {
-  const wallet = createDogeOsWalletClient(signer);
-  const tx: { to: `0x${string}`; value: bigint; data?: `0x${string}` } = {
-    to: request.to,
-    value: parseEther(request.amount || '0')
-  };
+  try {
+    const wallet = createDogeOsWalletClient(signer);
+    const tx: { to: `0x${string}`; value: bigint; data?: `0x${string}` } = {
+      to: request.to,
+      value: parseEther(request.amount || '0')
+    };
 
-  if (request.data) {
-    tx.data = request.data;
+    if (request.data) {
+      tx.data = request.data;
+    }
+
+    return await wallet.sendTransaction(tx);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown signing error';
+    throw new Error(`DogeOS transaction failed to submit. Please check details and try again. (${message})`);
   }
-
-  return wallet.sendTransaction(tx);
 }
