@@ -21,6 +21,7 @@ type FAQ = {
 
 const navLinks: NavLink[] = [
   { href: '#features', label: 'Features' },
+  { href: '#platforms', label: 'Platforms' },
   { href: '#download', label: 'Download' },
   { href: '#community', label: 'Community' },
   { href: 'https://github.com/dojak-wallet', label: 'GitHub', external: true }
@@ -312,7 +313,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="download" className="border-y border-white/10 bg-zinc-950/70">
+      <section id="platforms" className="border-y border-white/10 bg-zinc-950/70">
         <div className="mx-auto max-w-6xl px-4 py-20">
           <h2 className="text-3xl font-bold md:text-4xl">Download Dojak on every platform</h2>
           <p className="mt-3 max-w-2xl text-zinc-300">
