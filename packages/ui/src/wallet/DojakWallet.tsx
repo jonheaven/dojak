@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { DOGEOS_ACTIVE_CONFIG } from '@dojak/core';
 
 import { isValidAddress } from '../utils/bitcoin-utils';
 import { shortAddress } from '../utils';
@@ -10,6 +11,8 @@ const FALLBACK_TRANSACTIONS: WalletTransaction[] = [
   { txid: 'sample-received-001', amount: 1250, direction: 'received', timestamp: Date.now() - 86_400_000, status: 'confirmed' },
   { txid: 'sample-sent-002', amount: 75, direction: 'sent', timestamp: Date.now() - 172_800_000, status: 'confirmed' }
 ];
+
+const FALLBACK_DOGEOS_DAPPS = ['https://app.uniswap.org', 'https://zapper.xyz'];
 
 function formatDoge(value: number | string) {
   const parsed = typeof value === 'number' ? value : Number(value || 0);
@@ -27,6 +30,15 @@ export function DojakWallet() {
   const [address, setAddress] = useState('D8n4gQ8S4aQszM4xTq3w9fF6xR9H1skGgT');
   const [transactions, setTransactions] = useState<WalletTransaction[]>(FALLBACK_TRANSACTIONS);
   const [usdRate, setUsdRate] = useState(0.12);
+
+  const [dogeOsAddress, setDogeOsAddress] = useState<`0x${string}`>('0x0000000000000000000000000000000000000000');
+  const [dogeOsBalance, setDogeOsBalance] = useState('0');
+  const [dogeOsTransactions, setDogeOsTransactions] = useState<WalletTransaction[]>([]);
+  const [dogeOsSendTo, setDogeOsSendTo] = useState('');
+  const [dogeOsSendAmount, setDogeOsSendAmount] = useState('');
+  const [bridgeAmount, setBridgeAmount] = useState('');
+  const [bridgeDirection, setBridgeDirection] = useState<'l1-to-dogeos' | 'dogeos-to-l1'>('l1-to-dogeos');
+  const [dappUrl, setDappUrl] = useState(FALLBACK_DOGEOS_DAPPS[0]);
 
   const [sendTo, setSendTo] = useState('');
   const [sendAmount, setSendAmount] = useState('');
@@ -51,20 +63,27 @@ export function DojakWallet() {
       try {
         setIsLoading(true);
         setError(null);
-        const [nextBalance, nextAddress, nextTxs, nextRate, nextAccounts, nextVersion] = await Promise.all([
-          walletCore.getBalance?.(),
-          walletCore.getAddress?.(),
-          walletCore.getTransactions?.(),
-          walletCore.getUsdRate?.(),
-          walletCore.getConnectedAccounts?.(),
-          walletCore.getVersion?.()
-        ]);
+        const [nextBalance, nextAddress, nextTxs, nextRate, nextAccounts, nextVersion, nextDogeOsAddress, nextDogeOsBalance, nextDogeOsTxs] =
+          await Promise.all([
+            walletCore.getBalance?.(),
+            walletCore.getAddress?.(),
+            walletCore.getTransactions?.(),
+            walletCore.getUsdRate?.(),
+            walletCore.getConnectedAccounts?.(),
+            walletCore.getVersion?.(),
+            walletCore.getDogeOsAddress?.(),
+            walletCore.getDogeOsBalance?.(),
+            walletCore.getDogeOsTransactions?.()
+          ]);
         setBalance(Number(nextBalance?.amount ?? 0));
         if (nextAddress) setAddress(nextAddress);
         if (nextTxs?.length) setTransactions(nextTxs);
         if (nextRate && Number.isFinite(nextRate) && nextRate > 0) setUsdRate(nextRate);
         if (nextAccounts?.length) setConnectedAccounts(nextAccounts);
         if (nextVersion) setVersion(nextVersion);
+        if (nextDogeOsAddress) setDogeOsAddress(nextDogeOsAddress);
+        if (nextDogeOsBalance) setDogeOsBalance(nextDogeOsBalance);
+        if (nextDogeOsTxs?.length) setDogeOsTransactions(nextDogeOsTxs);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Failed to load wallet data');
       } finally {
@@ -74,12 +93,40 @@ export function DojakWallet() {
     void load();
   }, [walletCore]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    (window as any).ethereum = {
+      isDojak: true,
+      isMetaMask: false,
+      chainId: `0x${DOGEOS_ACTIVE_CONFIG.chainId.toString(16)}`,
+      selectedAddress: dogeOsAddress,
+      request: async ({ method, params }: { method: string; params?: any[] }) => {
+        if (method === 'eth_chainId') return `0x${DOGEOS_ACTIVE_CONFIG.chainId.toString(16)}`;
+        if (method === 'eth_accounts' || method === 'eth_requestAccounts') return [dogeOsAddress];
+        if (method === 'wallet_switchEthereumChain') return null;
+        if (method === 'eth_sendTransaction') {
+          const tx = params?.[0];
+          const response = await walletCore.sendDogeOs?.({ to: tx.to, amount: tx.value ?? '0' });
+          return response?.txid ?? `0x${Date.now().toString(16)}`;
+        }
+        throw new Error(`Method not implemented in Dojak injected provider: ${method}`);
+      }
+    };
+  }, [dogeOsAddress, walletCore]);
+
   const refreshWallet = async () => {
     setStatus('Refreshing...');
     try {
-      const [nextBalance, nextTxs] = await Promise.all([walletCore.getBalance?.(), walletCore.getTransactions?.()]);
+      const [nextBalance, nextTxs, nextDogeOsBalance, nextDogeOsTxs] = await Promise.all([
+        walletCore.getBalance?.(),
+        walletCore.getTransactions?.(),
+        walletCore.getDogeOsBalance?.(),
+        walletCore.getDogeOsTransactions?.()
+      ]);
       if (nextBalance?.amount !== undefined) setBalance(Number(nextBalance.amount));
       if (nextTxs?.length) setTransactions(nextTxs);
+      if (nextDogeOsBalance !== undefined) setDogeOsBalance(nextDogeOsBalance);
+      if (nextDogeOsTxs?.length) setDogeOsTransactions(nextDogeOsTxs);
       setStatus('Wallet updated');
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : 'Could not refresh wallet');
@@ -87,12 +134,12 @@ export function DojakWallet() {
     }
   };
 
-  const copyAddress = async () => {
+  const copyAddress = async (copyValue = address) => {
     try {
       if (walletCore.copyText) {
-        await walletCore.copyText(address);
+        await walletCore.copyText(copyValue);
       } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(address);
+        await navigator.clipboard.writeText(copyValue);
       }
       setStatus('Address copied');
     } catch {
@@ -103,49 +150,19 @@ export function DojakWallet() {
   const onSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    if (!walletCore.sendDogecoin) return setError('Core send adapter unavailable');
+    if (!sendTo.trim()) return setError('Recipient address is required');
 
-    if (!walletCore.sendDogecoin) {
-      setError('Core send adapter unavailable');
-      return;
-    }
-
-    if (!sendTo.trim()) {
-      setError('Recipient address is required');
-      return;
-    }
-
-    const isAddressValid = walletCore.validateAddress
-      ? await walletCore.validateAddress(sendTo.trim())
-      : isValidAddress(sendTo.trim());
-
-    if (!isAddressValid) {
-      setError('Recipient address is invalid');
-      return;
-    }
-
-    if (!Number.isFinite(dogeAmount) || dogeAmount <= 0) {
-      setError('Enter a valid amount');
-      return;
-    }
-
-    if (dogeAmount > balance) {
-      setError('Insufficient balance');
-      return;
-    }
-
-    if (!Number.isFinite(feeRate) || feeRate <= 0) {
-      setError('Select a valid network fee');
-      return;
-    }
+    const isAddressValid = walletCore.validateAddress ? await walletCore.validateAddress(sendTo.trim()) : isValidAddress(sendTo.trim());
+    if (!isAddressValid) return setError('Recipient address is invalid');
+    if (!Number.isFinite(dogeAmount) || dogeAmount <= 0) return setError('Enter a valid amount');
+    if (dogeAmount > balance) return setError('Insufficient balance');
+    if (!Number.isFinite(feeRate) || feeRate <= 0) return setError('Select a valid network fee');
 
     try {
       setIsSending(true);
       setStatus('Submitting transaction...');
-      const response = await walletCore.sendDogecoin({
-        to: sendTo.trim(),
-        amount: Number(dogeAmount.toFixed(8)),
-        feeRate
-      });
+      const response = await walletCore.sendDogecoin({ to: sendTo.trim(), amount: Number(dogeAmount.toFixed(8)), feeRate });
       setStatus(`Transaction sent: ${shortAddress(response.txid, 8)}`);
       setBalance((prev) => Math.max(0, prev - dogeAmount));
       setSendTo('');
@@ -160,6 +177,26 @@ export function DojakWallet() {
     }
   };
 
+  const onSendDogeOs = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalized = dogeOsSendTo.trim();
+    if (!walletCore.sendDogeOs) return setError('DogeOS send unavailable');
+    if (!walletCore.validateDogeOsAddress?.(normalized)) return setError('DogeOS recipient is invalid');
+    if (Number(dogeOsSendAmount) <= 0) return setError('Enter DogeOS amount');
+    const tx = await walletCore.sendDogeOs({ to: normalized as `0x${string}`, amount: dogeOsSendAmount });
+    setStatus(`DogeOS tx sent: ${shortAddress(tx.txid, 8)}`);
+    setDogeOsSendTo('');
+    setDogeOsSendAmount('');
+    await refreshWallet();
+  };
+
+  const onBridge = async () => {
+    if (!walletCore.bridgeDogeOs) return setError('Bridge unavailable');
+    const tx = await walletCore.bridgeDogeOs({ amount: bridgeAmount, direction: bridgeDirection });
+    setStatus(`Bridge submitted: ${shortAddress(tx.txid, 8)}`);
+    setBridgeAmount('');
+  };
+
   const sortedTransactions = useMemo(
     () => [...transactions].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)).slice(0, 5),
     [transactions]
@@ -167,7 +204,7 @@ export function DojakWallet() {
 
   const tabButtonClass = (tab: WalletTab) =>
     `rounded-xl px-3 py-2 text-xs font-semibold transition ${
-      activeTab === tab ? 'bg-sky-500 text-white' : 'text-zinc-300 hover:bg-zinc-800'
+      activeTab === tab ? 'bg-amber-400 text-black' : 'text-zinc-300 hover:bg-zinc-800'
     }`;
 
   return (
@@ -179,7 +216,7 @@ export function DojakWallet() {
           <p className="mt-1 text-xs text-zinc-400">{shortAddress(address, 7)}</p>
         </header>
 
-        <div className="grid grid-cols-4 gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="grid grid-cols-5 gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
           {WALLET_TABS.map((tab) => (
             <button key={tab.key} type="button" className={tabButtonClass(tab.key)} onClick={() => setActiveTab(tab.key)}>
               {tab.label}
@@ -190,167 +227,86 @@ export function DojakWallet() {
         <section className="flex-1 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
           {activeTab === 'home' && (
             <div className="space-y-4">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-zinc-400">Total Balance</p>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
+                <p className="text-xs uppercase tracking-wide text-zinc-400">DOGE (L1)</p>
                 <p className="mt-2 text-4xl font-bold tracking-tight">{formatDoge(balance)} DOGE</p>
                 <p className="mt-1 text-sm text-zinc-400">{formatUsd(balance * usdRate)}</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" className="rounded-xl bg-sky-500 px-4 py-3 text-sm font-semibold" onClick={() => setActiveTab('send')}>
-                  Quick Send
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-100"
-                  onClick={() => setActiveTab('receive')}>
-                  Receive
-                </button>
-              </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold">Recent Activity</p>
-                  <button type="button" className="text-xs text-sky-400" onClick={refreshWallet}>
-                    Refresh
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {sortedTransactions.map((tx) => (
-                    <div key={tx.txid} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
-                      <div className="flex items-center justify-between text-xs text-zinc-400">
-                        <span>{tx.direction === 'received' ? 'Received' : 'Sent'}</span>
-                        <span>{tx.status ?? 'confirmed'}</span>
-                      </div>
-                      <p className="mt-1 text-sm font-semibold text-zinc-100">
-                        {tx.direction === 'sent' ? '-' : '+'}
-                        {formatDoge(tx.amount)} DOGE
-                      </p>
-                      <p className="text-xs text-zinc-500">{shortAddress(tx.txid, 8)}</p>
-                    </div>
-                  ))}
-                </div>
+              <div className="rounded-xl border border-amber-700/30 bg-amber-500/10 p-3">
+                <p className="text-xs uppercase tracking-wide text-amber-200">DOGE (DogeOS)</p>
+                <p className="mt-1 text-2xl font-bold text-amber-100">{formatDoge(dogeOsBalance)} DOGE</p>
+                <p className="text-xs text-zinc-400">Same seed, same DOGE — now with smart contracts and dApps on DogeOS.</p>
               </div>
             </div>
           )}
 
           {activeTab === 'receive' && (
             <div className="space-y-4 text-center">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Wallet Address</p>
+              <p className="text-xs uppercase tracking-wide text-zinc-400">L1 Wallet Address</p>
               <p className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-200">{address}</p>
-              <div className="mx-auto w-fit rounded-2xl bg-white p-3">
-                <QRCodeSVG value={address} size={220} includeMargin />
-              </div>
-              <button type="button" className="w-full rounded-xl bg-sky-500 px-4 py-3 text-sm font-semibold" onClick={copyAddress}>
-                Copy Address
+              <div className="mx-auto w-fit rounded-2xl bg-white p-3"><QRCodeSVG value={address} size={160} includeMargin /></div>
+              <p className="text-xs uppercase tracking-wide text-amber-300">DogeOS 0x Address</p>
+              <p className="rounded-xl border border-amber-600 bg-zinc-950 px-3 py-2 text-xs text-zinc-200">{dogeOsAddress}</p>
+              <div className="mx-auto w-fit rounded-2xl bg-white p-3"><QRCodeSVG value={dogeOsAddress} size={160} includeMargin /></div>
+              <button type="button" className="w-full rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black" onClick={() => copyAddress(dogeOsAddress)}>
+                Copy DogeOS Address
               </button>
             </div>
           )}
 
           {activeTab === 'send' && (
             <form onSubmit={onSend} className="space-y-4">
-              <label className="block text-sm text-zinc-300">
-                Recipient
-                <input
-                  value={sendTo}
-                  onChange={(event) => setSendTo(event.target.value)}
-                  placeholder="D..."
-                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm"
-                />
+              <label className="block text-sm text-zinc-300">Recipient
+                <input value={sendTo} onChange={(event) => setSendTo(event.target.value)} placeholder="D..." className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm" />
               </label>
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm text-zinc-300">Amount</p>
-                  <div className="inline-flex rounded-lg border border-zinc-700 bg-zinc-950 p-1">
-                    <button
-                      type="button"
-                      className={`rounded-md px-2 py-1 text-xs ${amountMode === 'doge' ? 'bg-sky-500 text-white' : 'text-zinc-400'}`}
-                      onClick={() => setAmountMode('doge')}>
-                      DOGE
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-md px-2 py-1 text-xs ${amountMode === 'usd' ? 'bg-sky-500 text-white' : 'text-zinc-400'}`}
-                      onClick={() => setAmountMode('usd')}>
-                      USD
-                    </button>
-                  </div>
-                </div>
-                <input
-                  inputMode="decimal"
-                  value={sendAmount}
-                  onChange={(event) => setSendAmount(event.target.value)}
-                  placeholder="0.00"
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm"
-                />
-                <p className="mt-1 text-xs text-zinc-500">≈ {formatDoge(dogeAmount)} DOGE / {formatUsd(usdAmount)}</p>
-              </div>
-              <div>
-                <p className="mb-2 text-sm text-zinc-300">Network Fee</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {FEE_OPTIONS.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => setFeePreset(option.key)}
-                      className={`rounded-lg px-2 py-2 text-xs ${
-                        feePreset === option.key ? 'bg-sky-500 text-white' : 'bg-zinc-950 text-zinc-400'
-                      }`}>
-                      {option.label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setFeePreset('custom')}
-                    className={`rounded-lg px-2 py-2 text-xs ${feePreset === 'custom' ? 'bg-sky-500 text-white' : 'bg-zinc-950 text-zinc-400'}`}>
-                    Custom
-                  </button>
-                </div>
-                {feePreset === 'custom' && (
-                  <input
-                    inputMode="decimal"
-                    value={customFee}
-                    onChange={(event) => setCustomFee(event.target.value)}
-                    placeholder="sat/vB"
-                    className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm"
-                  />
-                )}
-              </div>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-xs text-zinc-400">
-                <p>Preview</p>
-                <p className="mt-1">To: {sendTo ? shortAddress(sendTo, 6) : '—'}</p>
-                <p>Amount: {formatDoge(dogeAmount)} DOGE</p>
-                <p>Fee: {feeRate || 0} sat/vB</p>
-              </div>
-              <button disabled={isSending} type="submit" className="w-full rounded-xl bg-sky-500 px-4 py-3 text-sm font-semibold disabled:opacity-60">
-                {isSending ? 'Sending...' : 'Preview & Confirm'}
-              </button>
+              <div><input inputMode="decimal" value={sendAmount} onChange={(event) => setSendAmount(event.target.value)} placeholder="0.00" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm" />
+                <p className="mt-1 text-xs text-zinc-500">≈ {formatDoge(dogeAmount)} DOGE / {formatUsd(usdAmount)}</p></div>
+              <button disabled={isSending} type="submit" className="w-full rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black disabled:opacity-60">{isSending ? 'Sending...' : 'Send DOGE (L1)'}</button>
             </form>
           )}
 
-          {activeTab === 'settings' && (
+          {activeTab === 'dogeos' && (
             <div className="space-y-3">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
-                <p className="text-sm font-semibold">Connected Accounts</p>
-                <div className="mt-2 space-y-1 text-xs text-zinc-400">
-                  {(connectedAccounts.length ? connectedAccounts : [address]).map((account) => (
-                    <p key={account}>{shortAddress(account, 8)}</p>
-                  ))}
+              <div className="rounded-xl border border-amber-600/50 bg-zinc-950/80 p-3 text-xs">
+                <p className="font-semibold text-amber-300">DogeOS Apps (Testnet)</p>
+                <p className="text-zinc-400">{DOGEOS_ACTIVE_CONFIG.poweredByLabel}</p>
+                <p className="text-zinc-400">Network: {DOGEOS_ACTIVE_CONFIG.name}</p>
+                <p className="text-zinc-500">Chain ID: {DOGEOS_ACTIVE_CONFIG.chainId} • Gas token: DOGE</p>
+              </div>
+
+              <form onSubmit={onSendDogeOs} className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
+                <p className="text-sm font-semibold">Send on DogeOS</p>
+                <input value={dogeOsSendTo} onChange={(event) => setDogeOsSendTo(event.target.value)} placeholder="0x..." className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs" />
+                <input value={dogeOsSendAmount} onChange={(event) => setDogeOsSendAmount(event.target.value)} placeholder="DOGE amount" className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs" />
+                <button type="submit" className="w-full rounded-lg bg-amber-400 py-2 text-xs font-semibold text-black">Send DOGE (DogeOS)</button>
+              </form>
+
+              <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs">
+                <p className="text-sm font-semibold">Bridge (placeholder contract call)</p>
+                <p className="text-zinc-500">Official DogeOS bridge address will replace {DOGEOS_ACTIVE_CONFIG.bridgeContractAddress}.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setBridgeDirection('l1-to-dogeos')} className={`rounded-lg px-2 py-2 ${bridgeDirection === 'l1-to-dogeos' ? 'bg-amber-400 text-black' : 'bg-zinc-800 text-zinc-300'}`}>L1 → DogeOS</button>
+                  <button type="button" onClick={() => setBridgeDirection('dogeos-to-l1')} className={`rounded-lg px-2 py-2 ${bridgeDirection === 'dogeos-to-l1' ? 'bg-amber-400 text-black' : 'bg-zinc-800 text-zinc-300'}`}>DogeOS → L1</button>
                 </div>
+                <input value={bridgeAmount} onChange={(event) => setBridgeAmount(event.target.value)} placeholder="DOGE amount" className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2" />
+                <button type="button" onClick={onBridge} className="w-full rounded-lg border border-amber-400 py-2 text-amber-300">Start Bridge</button>
               </div>
-              <div className="rounded-xl border border-amber-700/60 bg-amber-950/20 p-3 text-xs text-amber-200">
-                Backup seed phrase is not configured in this MVP. Store your keys securely before production.
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs">
+                <p className="text-sm font-semibold">DApp Browser + WalletConnect v2 fallback</p>
+                <input value={dappUrl} onChange={(event) => setDappUrl(event.target.value)} className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2" />
+                <p className="mt-1 text-zinc-500">Fallback: open WalletConnect v2 QR modal when injected provider is unavailable.</p>
+                <iframe title="dogeos-dapp-browser" src={dappUrl} className="mt-2 h-52 w-full rounded-lg border border-zinc-700 bg-zinc-900" />
               </div>
-              <button
-                type="button"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm"
-                onClick={() => {
-                  void walletCore.logout?.();
-                  setStatus('Logged out');
-                }}>
-                Logout
-              </button>
-              <p className="text-center text-xs text-zinc-500">Version {version}</p>
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs">
+                <div className="mb-2 flex items-center justify-between"><p className="text-sm font-semibold">DogeOS History</p><a href={DOGEOS_ACTIVE_CONFIG.blockExplorerUrl} target="_blank" rel="noreferrer" className="text-amber-300">Explorer</a></div>
+                <div className="space-y-1">{dogeOsTransactions.slice(0, 4).map((tx) => <p key={tx.txid} className="text-zinc-300">{tx.direction === 'sent' ? '-' : '+'}{formatDoge(tx.amount)} DOGE • {shortAddress(tx.txid, 6)}</p>)}</div>
+              </div>
             </div>
           )}
+
+          {activeTab === 'settings' && <div className="space-y-3"><p className="text-xs text-zinc-400">Version {version}</p><p className="text-xs text-zinc-500">Connected: {(connectedAccounts.length ? connectedAccounts : [address]).map((a) => shortAddress(a, 6)).join(', ')}</p></div>}
         </section>
 
         <footer className="space-y-1 pb-2">
