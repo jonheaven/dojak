@@ -20,6 +20,7 @@ export type DogeOsTransaction = {
   status?: 'pending' | 'confirmed' | 'failed';
 };
 
+// Mainnet/testnet RPC and chain ID switching is centrally controlled by DOGEOS_ACTIVE_CONFIG.
 const DOGEOS_RPC = DOGEOS_ACTIVE_CONFIG.rpcUrl;
 
 export function createDogeOsPublicClient() {

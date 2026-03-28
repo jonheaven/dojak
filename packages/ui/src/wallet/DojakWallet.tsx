@@ -12,8 +12,13 @@ const FALLBACK_TRANSACTIONS: WalletTransaction[] = [
   { txid: 'sample-sent-002', amount: 75, direction: 'sent', timestamp: Date.now() - 172_800_000, status: 'confirmed' }
 ];
 
-const FALLBACK_DOGEOS_DAPPS = ['https://app.uniswap.org', 'https://zapper.xyz'];
+const FALLBACK_DOGEOS_DAPPS = [
+  { label: 'DogeOS Testnet Bridge', url: 'https://bridge.testnet.dogeos.com' },
+  { label: 'DogeOS Testnet Swap', url: 'https://swap.testnet.dogeos.com' },
+  { label: 'Blockscout Explorer', url: DOGEOS_ACTIVE_CONFIG.blockExplorerUrl }
+];
 const DOGEOS_TESTNET_FAUCET = 'https://faucet.testnet.dogeos.com';
+const DOGEOS_CHAIN_ID_HEX = `0x${DOGEOS_ACTIVE_CONFIG.chainId.toString(16)}`;
 
 type ProviderListener = (...args: any[]) => void;
 
@@ -22,7 +27,7 @@ class DogeOsProvider {
   isMetaMask = false;
   providers = [this];
   selectedAddress: `0x${string}` | null = null;
-  chainId = `0x${DOGEOS_ACTIVE_CONFIG.chainId.toString(16)}`;
+  chainId = DOGEOS_CHAIN_ID_HEX;
   private listeners = new Map<string, Set<ProviderListener>>();
 
   constructor(
@@ -59,15 +64,28 @@ class DogeOsProvider {
       return [activeAddress];
     }
     if (method === 'wallet_switchEthereumChain' || method === 'wallet_addEthereumChain') {
+      // DogeOS is the only supported EVM chain in this wallet build.
+      void params;
       this.emit('chainChanged', this.chainId);
       return null;
     }
     if (method === 'eth_sendTransaction') {
       const tx = params?.[0] ?? {};
+      if (!tx.to) throw new Error('eth_sendTransaction requires a recipient (to)');
       const hash = await this.sendTx({ to: tx.to, amount: tx.value ?? '0', data: tx.data });
       return hash;
     }
-    if (method === 'personal_sign' || method === 'eth_sign') {
+    if (method === 'wallet_getPermissions') {
+      return [{ invoker: 'dojak-wallet', parentCapability: 'eth_accounts' }];
+    }
+    if (method === 'wallet_requestPermissions') {
+      this.emit('accountsChanged', [activeAddress]);
+      return [{ parentCapability: 'eth_accounts' }];
+    }
+    if (method === 'eth_estimateGas') {
+      return '0x5208';
+    }
+    if (method === 'personal_sign' || method === 'eth_sign' || method === 'eth_signTypedData_v4') {
       throw new Error('Signing is not implemented in this testnet build');
     }
 
@@ -112,8 +130,11 @@ export function DojakWallet() {
   const [dogeOsSendAmount, setDogeOsSendAmount] = useState('');
   const [bridgeAmount, setBridgeAmount] = useState('');
   const [bridgeDirection, setBridgeDirection] = useState<'l1-to-dogeos' | 'dogeos-to-l1'>('l1-to-dogeos');
-  const [dappUrl, setDappUrl] = useState(FALLBACK_DOGEOS_DAPPS[0]);
+  const [dappUrl, setDappUrl] = useState(FALLBACK_DOGEOS_DAPPS[0].url);
   const [dappLoading, setDappLoading] = useState(true);
+  const [dogeOsLoading, setDogeOsLoading] = useState(false);
+  const [dogeOsError, setDogeOsError] = useState<string | null>(null);
+  const [dogeOsGasEstimate, setDogeOsGasEstimate] = useState<string | null>(null);
 
   const [sendTo, setSendTo] = useState('');
   const [sendAmount, setSendAmount] = useState('');
@@ -127,6 +148,12 @@ export function DojakWallet() {
   const [isSending, setIsSending] = useState(false);
   const [status, setStatus] = useState('Ready');
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const pushToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const feeRate = feePreset === 'custom' ? Number(customFee || 0) : FEE_OPTIONS.find((item) => item.key === feePreset)?.feeRate ?? 2;
   const parsedAmount = Number(sendAmount || 0);
@@ -160,7 +187,9 @@ export function DojakWallet() {
         if (nextDogeOsBalance) setDogeOsBalance(nextDogeOsBalance);
         if (nextDogeOsTxs?.length) setDogeOsTransactions(nextDogeOsTxs);
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load wallet data');
+        const message = loadError instanceof Error ? loadError.message : 'Failed to load wallet data';
+        setError(message);
+        pushToast(message);
       } finally {
         setIsLoading(false);
       }
@@ -185,6 +214,25 @@ export function DojakWallet() {
     setDappLoading(true);
   }, [dappUrl]);
 
+  useEffect(() => {
+    const recipient = dogeOsSendTo.trim();
+    if (!walletCore.estimateDogeOsGas || !walletCore.validateDogeOsAddress?.(recipient) || Number(dogeOsSendAmount) <= 0) {
+      setDogeOsGasEstimate(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const estimate = await walletCore.estimateDogeOsGas?.({ to: recipient as `0x${string}`, amount: dogeOsSendAmount });
+        setDogeOsGasEstimate(estimate?.feeInDoge ?? null);
+      } catch {
+        setDogeOsGasEstimate(null);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [dogeOsSendAmount, dogeOsSendTo, walletCore]);
+
   const refreshWallet = async () => {
     setStatus('Refreshing...');
     try {
@@ -197,11 +245,30 @@ export function DojakWallet() {
       if (nextBalance?.amount !== undefined) setBalance(Number(nextBalance.amount));
       if (nextTxs?.length) setTransactions(nextTxs);
       if (nextDogeOsBalance !== undefined) setDogeOsBalance(nextDogeOsBalance);
-      if (nextDogeOsTxs?.length) setDogeOsTransactions(nextDogeOsTxs);
+      if (nextDogeOsTxs) setDogeOsTransactions(nextDogeOsTxs);
       setStatus('Wallet updated');
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : 'Could not refresh wallet');
+      const message = refreshError instanceof Error ? refreshError.message : 'Could not refresh wallet';
+      setError(message);
       setStatus('Refresh failed');
+      pushToast(`RPC error: ${message}`);
+    }
+  };
+
+  const refreshDogeOs = async () => {
+    try {
+      setDogeOsLoading(true);
+      setDogeOsError(null);
+      const [nextDogeOsBalance, nextDogeOsTxs] = await Promise.all([walletCore.getDogeOsBalance?.(), walletCore.getDogeOsTransactions?.()]);
+      if (nextDogeOsBalance !== undefined) setDogeOsBalance(nextDogeOsBalance);
+      if (nextDogeOsTxs) setDogeOsTransactions(nextDogeOsTxs);
+      setStatus('DogeOS updated');
+    } catch (refreshError) {
+      const message = refreshError instanceof Error ? refreshError.message : 'Could not refresh DogeOS data';
+      setDogeOsError(message);
+      pushToast(`RPC error: ${message}`);
+    } finally {
+      setDogeOsLoading(false);
     }
   };
 
@@ -215,6 +282,7 @@ export function DojakWallet() {
       setStatus('Address copied');
     } catch {
       setError('Copy not available on this platform');
+      pushToast('Copy not available on this platform');
     }
   };
 
@@ -241,8 +309,10 @@ export function DojakWallet() {
       setActiveTab('home');
       await refreshWallet();
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : 'Failed to send transaction');
+      const message = sendError instanceof Error ? sendError.message : 'Failed to send transaction';
+      setError(message);
       setStatus('Send failed');
+      pushToast(`RPC error: ${message}`);
     } finally {
       setIsSending(false);
     }
@@ -254,29 +324,38 @@ export function DojakWallet() {
     if (!walletCore.sendDogeOs) return setError('DogeOS send unavailable');
     if (!walletCore.validateDogeOsAddress?.(normalized)) return setError('DogeOS recipient is invalid');
     if (Number(dogeOsSendAmount) <= 0) return setError('Enter DogeOS amount');
-    const tx = await walletCore.sendDogeOs({ to: normalized as `0x${string}`, amount: dogeOsSendAmount });
-    setStatus(`DogeOS tx sent: ${shortAddress(tx.txid, 8)}`);
-    setDogeOsSendTo('');
-    setDogeOsSendAmount('');
-    await refreshWallet();
+
+    try {
+      const tx = await walletCore.sendDogeOs({ to: normalized as `0x${string}`, amount: dogeOsSendAmount });
+      setStatus(`DogeOS tx sent: ${shortAddress(tx.txid, 8)}`);
+      setDogeOsSendTo('');
+      setDogeOsSendAmount('');
+      setDogeOsGasEstimate(null);
+      await refreshDogeOs();
+    } catch (sendError) {
+      const message = sendError instanceof Error ? sendError.message : 'DogeOS send failed';
+      setError(message);
+      pushToast(`RPC error: ${message}`);
+    }
   };
 
   const onBridge = async () => {
     if (!walletCore.bridgeDogeOs) return setError('Bridge unavailable');
-    const tx = await walletCore.bridgeDogeOs({ amount: bridgeAmount, direction: bridgeDirection });
-    setStatus(`Bridge submitted: ${shortAddress(tx.txid, 8)}`);
-    setBridgeAmount('');
+    try {
+      const tx = await walletCore.bridgeDogeOs({ amount: bridgeAmount, direction: bridgeDirection });
+      setStatus(`Bridge submitted: ${shortAddress(tx.txid, 8)}`);
+      setBridgeAmount('');
+    } catch (bridgeError) {
+      const message = bridgeError instanceof Error ? bridgeError.message : 'Bridge failed';
+      setError(message);
+      pushToast(`RPC error: ${message}`);
+    }
   };
 
-  const sortedTransactions = useMemo(
-    () => [...transactions].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)).slice(0, 5),
-    [transactions]
-  );
+  const sortedTransactions = useMemo(() => [...transactions].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)).slice(0, 5), [transactions]);
 
   const tabButtonClass = (tab: WalletTab) =>
-    `rounded-xl px-3 py-2 text-xs font-semibold transition ${
-      activeTab === tab ? 'bg-amber-400 text-black' : 'text-zinc-300 hover:bg-zinc-800'
-    }`;
+    `rounded-xl px-3 py-2 text-xs font-semibold transition ${activeTab === tab ? 'bg-amber-400 text-black' : 'text-zinc-300 hover:bg-zinc-800'}`;
 
   return (
     <main className="wallet-safe-area min-h-screen bg-zinc-950 text-zinc-100">
@@ -307,6 +386,12 @@ export function DojakWallet() {
                 <p className="text-xs uppercase tracking-wide text-amber-200">DOGE (DogeOS)</p>
                 <p className="mt-1 text-2xl font-bold text-amber-100">{formatDoge(dogeOsBalance)} DOGE</p>
                 <p className="text-xs text-zinc-400">Same seed, same DOGE — now with smart contracts and dApps on DogeOS.</p>
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs">
+                <p className="mb-2 font-semibold text-zinc-200">Recent L1 Activity</p>
+                {sortedTransactions.map((tx) => (
+                  <p key={tx.txid} className="text-zinc-400">{tx.direction === 'sent' ? '-' : '+'}{formatDoge(tx.amount)} DOGE • {shortAddress(tx.txid, 6)}</p>
+                ))}
               </div>
             </div>
           )}
@@ -346,10 +431,13 @@ export function DojakWallet() {
               </div>
 
               <form onSubmit={onSendDogeOs} className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
-                <p className="text-sm font-semibold">Send on DogeOS</p>
+                <div className="flex items-center justify-between"><p className="text-sm font-semibold">Send on DogeOS</p><button type="button" onClick={() => void refreshDogeOs()} className="text-xs text-amber-300">Pull to refresh</button></div>
                 <input value={dogeOsSendTo} onChange={(event) => setDogeOsSendTo(event.target.value)} placeholder="0x..." className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs" />
                 <input value={dogeOsSendAmount} onChange={(event) => setDogeOsSendAmount(event.target.value)} placeholder="DOGE amount" className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs" />
+                <p className="text-xs text-zinc-500">Estimated gas: {dogeOsGasEstimate ? `${formatDoge(dogeOsGasEstimate)} DOGE` : '—'}</p>
                 <button type="submit" className="w-full rounded-lg bg-amber-400 py-2 text-xs font-semibold text-black">Send DOGE (DogeOS)</button>
+                {dogeOsLoading && <p className="text-xs text-zinc-400">Refreshing DogeOS state…</p>}
+                {dogeOsError && <div className="rounded-lg border border-red-600/50 bg-red-500/10 p-2 text-xs text-red-300">{dogeOsError} <button type="button" onClick={() => void refreshDogeOs()} className="ml-2 underline">Retry</button></div>}
               </form>
 
               <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs">
@@ -367,6 +455,13 @@ export function DojakWallet() {
                 <p className="text-sm font-semibold">DApp Browser + WalletConnect v2 fallback</p>
                 <input value={dappUrl} onChange={(event) => setDappUrl(event.target.value)} className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2" />
                 <p className="mt-1 text-zinc-500">Fallback: open WalletConnect v2 QR modal when injected provider is unavailable.</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {FALLBACK_DOGEOS_DAPPS.map((dapp) => (
+                    <button key={dapp.url} type="button" onClick={() => setDappUrl(dapp.url)} className="rounded-lg border border-zinc-700 px-2 py-1 text-[11px] text-amber-300">
+                      {dapp.label}
+                    </button>
+                  ))}
+                </div>
                 <WalletErrorBoundary>
                   <div className="relative mt-2">
                     {dappLoading && <p className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-zinc-950/80 text-xs text-zinc-400">Loading dApp…</p>}
@@ -378,6 +473,7 @@ export function DojakWallet() {
                       onError={() => {
                         setDappLoading(false);
                         setError('Failed to load DogeOS dApp');
+                        pushToast('Failed to load DogeOS dApp');
                       }}
                     />
                   </div>
@@ -399,10 +495,11 @@ export function DojakWallet() {
 
         <footer className="space-y-1 pb-2">
           {isLoading && <p className="text-center text-xs text-zinc-500">Loading wallet data...</p>}
-          {error && <p className="text-center text-xs text-red-400">{error}</p>}
+          {error && <p className="text-center text-xs text-red-400">{error} <button type="button" className="underline" onClick={() => void refreshWallet()}>Retry</button></p>}
           <p className="text-center text-xs text-zinc-500">{status}</p>
         </footer>
       </section>
+      {toast && <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-red-400/40 bg-zinc-900 px-3 py-2 text-xs text-red-200">{toast}</div>}
     </main>
   );
 }

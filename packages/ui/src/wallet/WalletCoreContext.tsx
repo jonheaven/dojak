@@ -34,6 +34,12 @@ export type BridgeDogeOsRequest = {
   direction: 'l1-to-dogeos' | 'dogeos-to-l1';
 };
 
+export type EstimateDogeOsGasResult = {
+  gasLimit: string;
+  gasPriceWei: string;
+  feeInDoge: string;
+};
+
 export type WalletCoreAdapter = {
   getBalance?: () => Promise<DogecoinBalanceV2 | null>;
   getAddress?: () => Promise<string>;
@@ -46,6 +52,7 @@ export type WalletCoreAdapter = {
   getDogeOsBalance?: () => Promise<string>;
   getDogeOsTransactions?: () => Promise<WalletTransaction[]>;
   sendDogeOs?: (request: SendDogeOsRequest) => Promise<SendDogecoinResult>;
+  estimateDogeOsGas?: (request: SendDogeOsRequest) => Promise<EstimateDogeOsGasResult>;
   bridgeDogeOs?: (request: BridgeDogeOsRequest) => Promise<SendDogecoinResult>;
   validateDogeOsAddress?: (address: string) => boolean;
 
