@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking } from 'react-native';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DOGEOS_ACTIVE_CONFIG } from '@dojak/core';
+import { WebView } from 'react-native-webview';
 
 import { isValidAddress } from '../utils/bitcoin-utils';
 import { shortAddress } from '../utils';
@@ -29,9 +31,13 @@ export function DojakWallet() {
   const [sendTo, setSendTo] = useState('');
   const [sendAmount, setSendAmount] = useState('');
   const [status, setStatus] = useState('Ready');
+  const [isLoading, setIsLoading] = useState(false);
+  const [dappUrl, setDappUrl] = useState('https://app.uniswap.org');
+  const [dappLoading, setDappLoading] = useState(true);
 
   useEffect(() => {
     void (async () => {
+      setIsLoading(true);
       const [b, a, t, da, db] = await Promise.all([
         walletCore.getBalance?.(),
         walletCore.getAddress?.(),
@@ -44,6 +50,7 @@ export function DojakWallet() {
       if (t?.length) setTxs(t);
       if (da) setDogeOsAddress(da);
       if (db) setDogeOsBalance(db);
+      setIsLoading(false);
     })();
   }, [walletCore]);
 
@@ -137,10 +144,40 @@ export function DojakWallet() {
               }}>
               <Text className="text-center text-amber-300">Bridge L1 → DogeOS</Text>
             </Pressable>
-            <Text className="text-xs text-zinc-500">In-app browser: open DogeOS dApps from Discover tab with WalletConnect v2 fallback.</Text>
+            <Text className="text-xs text-zinc-500">Official bridge contract TBA — currently placeholder.</Text>
+            <TextInput
+              placeholder="https://"
+              placeholderTextColor="#71717A"
+              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100"
+              onChangeText={setDappUrl}
+              value={dappUrl}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <View className="h-56 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-950">
+              {dappLoading && (
+                <View className="absolute inset-0 z-10 items-center justify-center bg-zinc-950/80">
+                  <ActivityIndicator color="#fbbf24" />
+                  <Text className="mt-2 text-xs text-zinc-400">Loading dApp…</Text>
+                </View>
+              )}
+              <WebView
+                source={{ uri: dappUrl }}
+                onLoadStart={() => setDappLoading(true)}
+                onLoadEnd={() => setDappLoading(false)}
+                onError={() => {
+                  setDappLoading(false);
+                  setStatus('Failed to load dApp browser');
+                }}
+              />
+            </View>
+            <Pressable className="rounded-lg border border-amber-500 px-3 py-2" onPress={() => void Linking.openURL('https://faucet.testnet.dogeos.com')}>
+              <Text className="text-center text-amber-300">Open DogeOS Testnet Faucet</Text>
+            </Pressable>
           </View>
         )}
 
+        {isLoading && <Text className="mt-2 text-center text-xs text-zinc-500">Loading wallet data...</Text>}
         <Text className="mt-3 text-center text-xs text-zinc-500">{status}</Text>
       </ScrollView>
     </SafeAreaView>

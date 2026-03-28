@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Component, FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { DOGEOS_ACTIVE_CONFIG } from '@dojak/core';
 
@@ -13,6 +13,80 @@ const FALLBACK_TRANSACTIONS: WalletTransaction[] = [
 ];
 
 const FALLBACK_DOGEOS_DAPPS = ['https://app.uniswap.org', 'https://zapper.xyz'];
+const DOGEOS_TESTNET_FAUCET = 'https://faucet.testnet.dogeos.com';
+
+type ProviderListener = (...args: any[]) => void;
+
+class DogeOsProvider {
+  isDojak = true;
+  isMetaMask = false;
+  providers = [this];
+  selectedAddress: `0x${string}` | null = null;
+  chainId = `0x${DOGEOS_ACTIVE_CONFIG.chainId.toString(16)}`;
+  private listeners = new Map<string, Set<ProviderListener>>();
+
+  constructor(
+    private readonly getAddress: () => `0x${string}`,
+    private readonly sendTx: (request: { to: `0x${string}`; amount: string; data?: `0x${string}` }) => Promise<string>
+  ) {
+    this.selectedAddress = getAddress();
+  }
+
+  private emit(eventName: string, ...payload: any[]) {
+    this.listeners.get(eventName)?.forEach((listener) => listener(...payload));
+  }
+
+  on(eventName: string, listener: ProviderListener) {
+    if (!this.listeners.has(eventName)) this.listeners.set(eventName, new Set());
+    this.listeners.get(eventName)!.add(listener);
+  }
+
+  removeListener(eventName: string, listener: ProviderListener) {
+    this.listeners.get(eventName)?.delete(listener);
+  }
+
+  async request({ method, params }: { method: string; params?: any[] }) {
+    const activeAddress = this.getAddress();
+    this.selectedAddress = activeAddress;
+
+    if (method === 'eth_chainId') return this.chainId;
+    if (method === 'net_version') return String(DOGEOS_ACTIVE_CONFIG.chainId);
+    if (method === 'eth_accounts') return [activeAddress];
+    if (method === 'eth_requestAccounts') {
+      this.emit('connect', { chainId: this.chainId });
+      this.emit('accountsChanged', [activeAddress]);
+      this.emit('chainChanged', this.chainId);
+      return [activeAddress];
+    }
+    if (method === 'wallet_switchEthereumChain' || method === 'wallet_addEthereumChain') {
+      this.emit('chainChanged', this.chainId);
+      return null;
+    }
+    if (method === 'eth_sendTransaction') {
+      const tx = params?.[0] ?? {};
+      const hash = await this.sendTx({ to: tx.to, amount: tx.value ?? '0', data: tx.data });
+      return hash;
+    }
+    if (method === 'personal_sign' || method === 'eth_sign') {
+      throw new Error('Signing is not implemented in this testnet build');
+    }
+
+    throw new Error(`Method not implemented in Dojak injected provider: ${method}`);
+  }
+}
+
+class WalletErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return <p className="rounded-lg border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">DApp view crashed. Reload tab to recover.</p>;
+    }
+    return this.props.children;
+  }
+}
 
 function formatDoge(value: number | string) {
   const parsed = typeof value === 'number' ? value : Number(value || 0);
@@ -39,6 +113,7 @@ export function DojakWallet() {
   const [bridgeAmount, setBridgeAmount] = useState('');
   const [bridgeDirection, setBridgeDirection] = useState<'l1-to-dogeos' | 'dogeos-to-l1'>('l1-to-dogeos');
   const [dappUrl, setDappUrl] = useState(FALLBACK_DOGEOS_DAPPS[0]);
+  const [dappLoading, setDappLoading] = useState(true);
 
   const [sendTo, setSendTo] = useState('');
   const [sendAmount, setSendAmount] = useState('');
@@ -95,24 +170,20 @@ export function DojakWallet() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    (window as any).ethereum = {
-      isDojak: true,
-      isMetaMask: false,
-      chainId: `0x${DOGEOS_ACTIVE_CONFIG.chainId.toString(16)}`,
-      selectedAddress: dogeOsAddress,
-      request: async ({ method, params }: { method: string; params?: any[] }) => {
-        if (method === 'eth_chainId') return `0x${DOGEOS_ACTIVE_CONFIG.chainId.toString(16)}`;
-        if (method === 'eth_accounts' || method === 'eth_requestAccounts') return [dogeOsAddress];
-        if (method === 'wallet_switchEthereumChain') return null;
-        if (method === 'eth_sendTransaction') {
-          const tx = params?.[0];
-          const response = await walletCore.sendDogeOs?.({ to: tx.to, amount: tx.value ?? '0' });
-          return response?.txid ?? `0x${Date.now().toString(16)}`;
-        }
-        throw new Error(`Method not implemented in Dojak injected provider: ${method}`);
+    const provider = new DogeOsProvider(
+      () => dogeOsAddress,
+      async (request) => {
+        const response = await walletCore.sendDogeOs?.({ to: request.to, amount: request.amount });
+        return response?.txid ?? `0x${Date.now().toString(16)}`;
       }
-    };
+    );
+    (window as any).ethereum = provider;
+    (window as any).dojakEthereum = provider;
   }, [dogeOsAddress, walletCore]);
+
+  useEffect(() => {
+    setDappLoading(true);
+  }, [dappUrl]);
 
   const refreshWallet = async () => {
     setStatus('Refreshing...');
@@ -283,7 +354,7 @@ export function DojakWallet() {
 
               <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs">
                 <p className="text-sm font-semibold">Bridge (placeholder contract call)</p>
-                <p className="text-zinc-500">Official DogeOS bridge address will replace {DOGEOS_ACTIVE_CONFIG.bridgeContractAddress}.</p>
+                <p className="text-zinc-500">Official bridge contract TBA — currently placeholder.</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => setBridgeDirection('l1-to-dogeos')} className={`rounded-lg px-2 py-2 ${bridgeDirection === 'l1-to-dogeos' ? 'bg-amber-400 text-black' : 'bg-zinc-800 text-zinc-300'}`}>L1 → DogeOS</button>
                   <button type="button" onClick={() => setBridgeDirection('dogeos-to-l1')} className={`rounded-lg px-2 py-2 ${bridgeDirection === 'dogeos-to-l1' ? 'bg-amber-400 text-black' : 'bg-zinc-800 text-zinc-300'}`}>DogeOS → L1</button>
@@ -296,7 +367,24 @@ export function DojakWallet() {
                 <p className="text-sm font-semibold">DApp Browser + WalletConnect v2 fallback</p>
                 <input value={dappUrl} onChange={(event) => setDappUrl(event.target.value)} className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2" />
                 <p className="mt-1 text-zinc-500">Fallback: open WalletConnect v2 QR modal when injected provider is unavailable.</p>
-                <iframe title="dogeos-dapp-browser" src={dappUrl} className="mt-2 h-52 w-full rounded-lg border border-zinc-700 bg-zinc-900" />
+                <WalletErrorBoundary>
+                  <div className="relative mt-2">
+                    {dappLoading && <p className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-zinc-950/80 text-xs text-zinc-400">Loading dApp…</p>}
+                    <iframe
+                      title="dogeos-dapp-browser"
+                      src={dappUrl}
+                      className="h-52 w-full rounded-lg border border-zinc-700 bg-zinc-900"
+                      onLoad={() => setDappLoading(false)}
+                      onError={() => {
+                        setDappLoading(false);
+                        setError('Failed to load DogeOS dApp');
+                      }}
+                    />
+                  </div>
+                </WalletErrorBoundary>
+                <a href={DOGEOS_TESTNET_FAUCET} target="_blank" rel="noreferrer" className="inline-flex text-amber-300 underline underline-offset-2">
+                  Open DogeOS testnet faucet
+                </a>
               </div>
 
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs">

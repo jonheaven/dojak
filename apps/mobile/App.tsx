@@ -3,7 +3,16 @@ import * as Clipboard from 'expo-clipboard';
 import * as SecureStore from 'expo-secure-store';
 import { useMemo } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { deriveDogeOsAddressFromMnemonic, dogecoinKeyrings, DOGEOS_ACTIVE_CONFIG } from '@dojak/core';
+import {
+  createDogeOsPublicClient,
+  deriveDogeOsAddressFromMnemonic,
+  dogecoinKeyrings,
+  DOGEOS_DERIVATION_PATH,
+  getDogeOsBalance,
+  getDogeOsTransactions,
+  sendDogeOsTransaction
+} from '@dojak/core';
+import { Wallet } from 'ethers';
 import { DojakWallet, WalletCoreProvider, WalletTransaction } from '@dojak/ui';
 
 import './global.css';
@@ -55,15 +64,18 @@ export default function App() {
       },
       getAddress: async () => (await SecureStore.getItemAsync(ADDRESS_KEY)) ?? fallbackAddress,
       getDogeOsAddress,
-      getDogeOsBalance: async () => (await SecureStore.getItemAsync(DOGEOS_BALANCE_KEY)) ?? '0',
+      getDogeOsBalance: async () => {
+        const address = await getDogeOsAddress();
+        return getDogeOsBalance(address);
+      },
       getUsdRate: async () => 0.12,
       getTransactions: async () => {
         const raw = await SecureStore.getItemAsync(TXS_KEY);
         return raw ? (JSON.parse(raw) as WalletTransaction[]) : [];
       },
       getDogeOsTransactions: async () => {
-        const raw = await SecureStore.getItemAsync(DOGEOS_TXS_KEY);
-        return raw ? (JSON.parse(raw) as WalletTransaction[]) : [];
+        const address = await getDogeOsAddress();
+        return (await getDogeOsTransactions(address)) as WalletTransaction[];
       },
       getConnectedAccounts: async () => [((await SecureStore.getItemAsync(ADDRESS_KEY)) as string) ?? fallbackAddress],
       validateAddress: (address: string) => /^D[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(address.trim()),
@@ -91,23 +103,16 @@ export default function App() {
         return { txid: tx.txid };
       },
       sendDogeOs: async ({ amount, to }: { amount: string; to: `0x${string}` }) => {
-        const current = Number((await SecureStore.getItemAsync(DOGEOS_BALANCE_KEY)) ?? '0');
-        const spend = Number(amount || '0');
-        await SecureStore.setItemAsync(DOGEOS_BALANCE_KEY, String(Math.max(0, current - spend)));
+        const mnemonic = await getMnemonic();
+        const signer = Wallet.fromPhrase(mnemonic, createDogeOsPublicClient(), DOGEOS_DERIVATION_PATH);
 
-        const tx = {
-          txid: `0xmobile-dogeos-${Date.now().toString(16)}`,
-          amount: spend,
-          direction: 'sent' as const,
-          timestamp: Date.now(),
-          to,
-          status: 'confirmed' as const
-        };
+        const tx = await sendDogeOsTransaction(signer, { to, amount });
+        await tx.wait(1);
 
-        const raw = await SecureStore.getItemAsync(DOGEOS_TXS_KEY);
-        const txs = raw ? (JSON.parse(raw) as WalletTransaction[]) : [];
-        await SecureStore.setItemAsync(DOGEOS_TXS_KEY, JSON.stringify([tx, ...txs].slice(0, 20)));
-        return { txid: tx.txid };
+        const balance = await getDogeOsBalance(await signer.getAddress());
+        await SecureStore.setItemAsync(DOGEOS_BALANCE_KEY, balance);
+
+        return { txid: tx.hash };
       },
       bridgeDogeOs: async ({ amount, direction }: { amount: string; direction: 'l1-to-dogeos' | 'dogeos-to-l1' }) => {
         const txid = `0xbridge-${direction}-${Date.now().toString(16)}`;
