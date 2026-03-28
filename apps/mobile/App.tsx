@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useMemo } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
+  DOGEOS_ACTIVE_CONFIG,
   createDogeOsPublicClient,
   deriveDogeOsAddressFromMnemonic,
   dogecoinKeyrings,
@@ -12,7 +13,7 @@ import {
   getDogeOsTransactions,
   sendDogeOsTransaction
 } from '@dojak/core';
-import { Wallet } from 'ethers';
+import { HDNodeWallet, formatEther, parseEther } from 'ethers';
 import { DojakWallet, WalletCoreProvider, WalletTransaction } from '@dojak/ui';
 
 import './global.css';
@@ -104,15 +105,34 @@ export default function App() {
       },
       sendDogeOs: async ({ amount, to }: { amount: string; to: `0x${string}` }) => {
         const mnemonic = await getMnemonic();
-        const signer = Wallet.fromPhrase(mnemonic, createDogeOsPublicClient(), DOGEOS_DERIVATION_PATH);
+        const provider = createDogeOsPublicClient();
+        const derivedAddress = deriveDogeOsAddressFromMnemonic(mnemonic, DOGEOS_DERIVATION_PATH).toLowerCase();
+        const signer = HDNodeWallet.fromPhrase(mnemonic, undefined, DOGEOS_DERIVATION_PATH).connect(provider);
+        const signerAddress = (await signer.getAddress()).toLowerCase();
+
+        if (signerAddress !== derivedAddress) {
+          throw new Error('Derived DogeOS signer address mismatch');
+        }
 
         const tx = await sendDogeOsTransaction(signer, { to, amount });
         await tx.wait(1);
 
-        const balance = await getDogeOsBalance(await signer.getAddress());
-        await SecureStore.setItemAsync(DOGEOS_BALANCE_KEY, balance);
+        const [balance, txs] = await Promise.all([getDogeOsBalance(await signer.getAddress()), getDogeOsTransactions(await signer.getAddress())]);
+        await Promise.all([SecureStore.setItemAsync(DOGEOS_BALANCE_KEY, balance), SecureStore.setItemAsync(DOGEOS_TXS_KEY, JSON.stringify(txs))]);
 
         return { txid: tx.hash };
+      },
+      estimateDogeOsGas: async ({ amount, to }: { amount: string; to: `0x${string}` }) => {
+        const mnemonic = await getMnemonic();
+        const provider = createDogeOsPublicClient();
+        const signer = HDNodeWallet.fromPhrase(mnemonic, undefined, DOGEOS_DERIVATION_PATH).connect(provider);
+        const [gasLimit, feeData] = await Promise.all([
+          signer.estimateGas({ to, value: parseEther(amount || '0') }),
+          provider.getFeeData()
+        ]);
+        const gasPrice = feeData.gasPrice ?? feeData.maxFeePerGas ?? 0n;
+        const totalFeeWei = gasLimit * gasPrice;
+        return { gasLimit: gasLimit.toString(), gasPriceWei: gasPrice.toString(), feeInDoge: formatEther(totalFeeWei) };
       },
       bridgeDogeOs: async ({ amount, direction }: { amount: string; direction: 'l1-to-dogeos' | 'dogeos-to-l1' }) => {
         const txid = `0xbridge-${direction}-${Date.now().toString(16)}`;
