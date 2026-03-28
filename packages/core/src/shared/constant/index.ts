@@ -8,6 +8,7 @@ import { AddressType, ChainType, NetworkType } from '@unisat/wallet-types';
 import { RestoreWalletType } from '../types';
 
 export { ChainType } from '@unisat/wallet-types';
+export * from './dogeos';
 
 export const KEYRING_CLASS = {
   PRIVATE_KEY: 'Simple Key Pair',

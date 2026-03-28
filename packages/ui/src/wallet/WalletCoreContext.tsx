@@ -24,6 +24,16 @@ export type WalletTransaction = {
   status?: 'pending' | 'confirmed' | 'failed';
 };
 
+export type SendDogeOsRequest = {
+  to: `0x${string}`;
+  amount: string;
+};
+
+export type BridgeDogeOsRequest = {
+  amount: string;
+  direction: 'l1-to-dogeos' | 'dogeos-to-l1';
+};
+
 export type WalletCoreAdapter = {
   getBalance?: () => Promise<DogecoinBalanceV2 | null>;
   getAddress?: () => Promise<string>;
@@ -31,10 +41,19 @@ export type WalletCoreAdapter = {
   getUsdRate?: () => Promise<number>;
   sendDogecoin?: (request: SendDogecoinRequest) => Promise<SendDogecoinResult>;
   validateAddress?: (address: string) => boolean | Promise<boolean>;
+
+  getDogeOsAddress?: () => Promise<`0x${string}`>;
+  getDogeOsBalance?: () => Promise<string>;
+  getDogeOsTransactions?: () => Promise<WalletTransaction[]>;
+  sendDogeOs?: (request: SendDogeOsRequest) => Promise<SendDogecoinResult>;
+  bridgeDogeOs?: (request: BridgeDogeOsRequest) => Promise<SendDogecoinResult>;
+  validateDogeOsAddress?: (address: string) => boolean;
+
   copyText?: (value: string) => Promise<void>;
   getConnectedAccounts?: () => Promise<string[]>;
-  logout?: () => Promise<void>;
   getVersion?: () => Promise<string>;
+  getSeedPhraseForDogeOsTesting?: () => Promise<string | null>;
+  logout?: () => Promise<void>;
 };
 
 const WalletCoreContext = createContext<WalletCoreAdapter>({});

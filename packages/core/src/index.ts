@@ -8,3 +8,5 @@ export * as dogecoinKeyrings from './background/service/dogecoin-keyrings';
 export { default as keyringService, ExtensionStorageAdapter, DogecoinKeyringService } from './background/service/keyring';
 export * as walletServices from './background/service';
 export { default as storage } from './background/webapi/storage';
+
+export * from './shared/lib/evm-wallet';
