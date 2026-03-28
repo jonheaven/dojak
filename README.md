@@ -1,25 +1,25 @@
 # Dojak Monorepo
 
-Dojak is now organized as a `pnpm` monorepo for maximum code sharing between browser extension and upcoming mobile apps.
+Dojak is organized as a `pnpm` monorepo for code sharing between browser extension and mobile apps.
 
 ## Workspace layout
 
-- `apps/extension` — Chrome extension app (existing Dojak extension codebase relocated).
-- `apps/mobile` — Expo React Native app scaffold for iOS/Android.
-- `packages/core` — shared wallet/core logic (background, storage, keyring, Dogecoin logic, shared types/utils).
-- `packages/ui` — shared UI/components/screens used by extension and mobile.
+- `apps/extension` — Chrome extension app.
+- `apps/mobile` — Expo React Native app for iOS/Android.
+- `packages/core` — shared wallet/core logic (Dogecoin keyring, services, storage, types/utils).
+- `packages/ui` — shared 402px mobile-first UI rendered by both extension and mobile.
 
 ## Commands
 
 From repo root:
 
 - `pnpm install`
-- `pnpm dev` (runs workspace dev tasks through Turbo)
-- `pnpm --filter @dojak/extension dev` (extension watch/build flow)
-- `pnpm --filter @dojak/mobile dev` (Expo dev server)
+- `pnpm --filter extension dev` (or `pnpm --filter @dojak/extension build` for Chrome build artifacts)
+- `pnpm --filter mobile start` (Expo Go / dev client)
+- `pnpm --filter mobile eas:build:android` (Google Play / EAS Android build)
 
 ## Design constraints
 
-- UI is standardized around a 402px mobile-first container.
-- Extension popup uses fixed width and scrollable max-height.
-- Safe-area insets are supported for iOS notch/dynamic island.
+- Shared UI uses a 402px mobile-first container (`max-w-[402px] mx-auto`).
+- Extension popup uses fixed width, scrollable body, and `max-height: 600px`.
+- Safe-area insets are handled on native with `SafeAreaProvider` and on web via CSS `env(safe-area-inset-*)`.
