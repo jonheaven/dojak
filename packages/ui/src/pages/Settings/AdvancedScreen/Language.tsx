@@ -1,0 +1,24 @@
+import { useNavigate } from 'react-router-dom';
+
+import { Card, Icon, Row, Text } from '@dojak/ui/components';
+import { useI18n } from '@dojak/ui/hooks/useI18n';
+import { fontSizes } from '@dojak/ui/theme/font';
+import { LOCALE_NAMES } from '@unisat/i18n';
+
+export function LanguageCard() {
+  const navigate = useNavigate();
+  const { t, locale } = useI18n();
+  const currentLanguageName = LOCALE_NAMES[locale];
+
+  return (
+    <Card style={{ borderRadius: 10, cursor: 'pointer' }} onClick={() => navigate('/settings/language')}>
+      <Row full justifyBetween>
+        <Text text={t('language')} preset="bold" size="sm" />
+        <Row itemsCenter gap="xs">
+          <Text text={currentLanguageName} size="sm" color="textDim" />
+          <Icon icon="right" size={fontSizes.lg} color="textDim" />
+        </Row>
+      </Row>
+    </Card>
+  );
+}

@@ -1,0 +1,49 @@
+import { Icon, Row, Text, Tooltip } from '@dojak/ui/components';
+import { DOGEUSD } from '@dojak/ui/components/DOGEUSD';
+import { fontSizes } from '@dojak/ui/theme/font';
+import { amountToSatoshis } from '@dojak/ui/utils';
+
+import Section from './Section';
+
+const FeeSection = ({ txInfo, t, networkFee, btcUnit }) => {
+  return (
+    <>
+      <Section title={t('network_fee')} extra={<DOGEUSD sats={amountToSatoshis(networkFee)} />}>
+        <Text text={networkFee} />
+        <Text text={btcUnit} color="textDim" />
+      </Section>
+
+      <Section title={t('network_fee_rate')}>
+        {txInfo.decodedPsbt.shouldWarnFeeRate ? (
+          <Tooltip
+            title={
+              txInfo.decodedPsbt.recommendedFeeRate > txInfo.decodedPsbt.feeRate
+                ? `${t('the_fee_rate_is_much_lower_than_recommended_fee_rate')} (${
+                    txInfo.decodedPsbt.recommendedFeeRate
+                  } koinu/vB)`
+                : `${t('the_fee_rate_is_much_higher_than_recommended_fee_rate')} (${
+                    txInfo.decodedPsbt.recommendedFeeRate
+                  } koinu/vB)`
+            }
+            overlayStyle={{
+              fontSize: fontSizes.xs
+            }}
+          >
+            <div>
+              <Row>
+                <Text text={txInfo.decodedPsbt.feeRate.toString()} />
+                <Icon icon="alert" color="warning" />
+              </Row>
+            </div>
+          </Tooltip>
+        ) : (
+          <Text text={txInfo.decodedPsbt.feeRate.toString()} />
+        )}
+
+        <Text text="koinu/vB" color="textDim" />
+      </Section>
+    </>
+  );
+};
+
+export default FeeSection;
