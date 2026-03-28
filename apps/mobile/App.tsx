@@ -66,8 +66,13 @@ export default function App() {
       getAddress: async () => (await SecureStore.getItemAsync(ADDRESS_KEY)) ?? fallbackAddress,
       getDogeOsAddress,
       getDogeOsBalance: async () => {
-        const address = await getDogeOsAddress();
-        return getDogeOsBalance(address);
+        try {
+          const address = await getDogeOsAddress();
+          return await getDogeOsBalance(address);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown RPC error';
+          throw new Error(`Unable to load DogeOS balance. Please try again in a moment. (${message})`);
+        }
       },
       getUsdRate: async () => 0.12,
       getTransactions: async () => {
@@ -75,8 +80,13 @@ export default function App() {
         return raw ? (JSON.parse(raw) as WalletTransaction[]) : [];
       },
       getDogeOsTransactions: async () => {
-        const address = await getDogeOsAddress();
-        return (await getDogeOsTransactions(address)) as WalletTransaction[];
+        try {
+          const address = await getDogeOsAddress();
+          return (await getDogeOsTransactions(address)) as WalletTransaction[];
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown explorer error';
+          throw new Error(`Unable to load DogeOS transactions right now. (${message})`);
+        }
       },
       getConnectedAccounts: async () => [((await SecureStore.getItemAsync(ADDRESS_KEY)) as string) ?? fallbackAddress],
       validateAddress: (address: string) => /^D[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(address.trim()),
@@ -104,42 +114,57 @@ export default function App() {
         return { txid: tx.txid };
       },
       sendDogeOs: async ({ amount, to }: { amount: string; to: `0x${string}` }) => {
-        const mnemonic = await getMnemonic();
-        const provider = createDogeOsPublicClient();
-        const derivedAddress = deriveDogeOsAddressFromMnemonic(mnemonic, DOGEOS_DERIVATION_PATH).toLowerCase();
-        const signer = HDNodeWallet.fromPhrase(mnemonic, undefined, DOGEOS_DERIVATION_PATH).connect(provider);
-        const signerAddress = (await signer.getAddress()).toLowerCase();
+        try {
+          const mnemonic = await getMnemonic();
+          const provider = createDogeOsPublicClient();
+          const derivedAddress = deriveDogeOsAddressFromMnemonic(mnemonic, DOGEOS_DERIVATION_PATH).toLowerCase();
+          const signer = HDNodeWallet.fromPhrase(mnemonic, undefined, DOGEOS_DERIVATION_PATH).connect(provider);
+          const signerAddress = (await signer.getAddress()).toLowerCase();
 
-        if (signerAddress !== derivedAddress) {
-          throw new Error('Derived DogeOS signer address mismatch');
+          if (signerAddress !== derivedAddress) {
+            throw new Error('Derived DogeOS signer address mismatch');
+          }
+
+          const tx = await sendDogeOsTransaction(signer, { to, amount });
+          await tx.wait(1);
+
+          const [balance, txs] = await Promise.all([getDogeOsBalance(await signer.getAddress()), getDogeOsTransactions(await signer.getAddress())]);
+          await Promise.all([SecureStore.setItemAsync(DOGEOS_BALANCE_KEY, balance), SecureStore.setItemAsync(DOGEOS_TXS_KEY, JSON.stringify(txs))]);
+
+          return { txid: tx.hash };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown signing error';
+          throw new Error(`DogeOS send failed. Please confirm recipient, amount, and network status. (${message})`);
         }
-
-        const tx = await sendDogeOsTransaction(signer, { to, amount });
-        await tx.wait(1);
-
-        const [balance, txs] = await Promise.all([getDogeOsBalance(await signer.getAddress()), getDogeOsTransactions(await signer.getAddress())]);
-        await Promise.all([SecureStore.setItemAsync(DOGEOS_BALANCE_KEY, balance), SecureStore.setItemAsync(DOGEOS_TXS_KEY, JSON.stringify(txs))]);
-
-        return { txid: tx.hash };
       },
       estimateDogeOsGas: async ({ amount, to }: { amount: string; to: `0x${string}` }) => {
-        const mnemonic = await getMnemonic();
-        const provider = createDogeOsPublicClient();
-        const signer = HDNodeWallet.fromPhrase(mnemonic, undefined, DOGEOS_DERIVATION_PATH).connect(provider);
-        const [gasLimit, feeData] = await Promise.all([
-          signer.estimateGas({ to, value: parseEther(amount || '0') }),
-          provider.getFeeData()
-        ]);
-        const gasPrice = feeData.gasPrice ?? feeData.maxFeePerGas ?? 0n;
-        const totalFeeWei = gasLimit * gasPrice;
-        return { gasLimit: gasLimit.toString(), gasPriceWei: gasPrice.toString(), feeInDoge: formatEther(totalFeeWei) };
+        try {
+          const mnemonic = await getMnemonic();
+          const provider = createDogeOsPublicClient();
+          const signer = HDNodeWallet.fromPhrase(mnemonic, undefined, DOGEOS_DERIVATION_PATH).connect(provider);
+          const [gasLimit, feeData] = await Promise.all([
+            signer.estimateGas({ to, value: parseEther(amount || '0') }),
+            provider.getFeeData()
+          ]);
+          const gasPrice = feeData.gasPrice ?? feeData.maxFeePerGas ?? 0n;
+          const totalFeeWei = gasLimit * gasPrice;
+          return { gasLimit: gasLimit.toString(), gasPriceWei: gasPrice.toString(), feeInDoge: formatEther(totalFeeWei) };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown gas estimation error';
+          throw new Error(`Unable to estimate DogeOS gas right now. (${message})`);
+        }
       },
       bridgeDogeOs: async ({ amount, direction }: { amount: string; direction: 'l1-to-dogeos' | 'dogeos-to-l1' }) => {
-        const txid = `0xbridge-${direction}-${Date.now().toString(16)}`;
-        // Placeholder bridge call. Replace with official DogeOS bridge contract address when published.
-        void DOGEOS_ACTIVE_CONFIG.bridgeContractAddress;
-        void amount;
-        return { txid };
+        try {
+          const txid = `0xbridge-${direction}-${Date.now().toString(16)}`;
+          // Placeholder bridge call. Replace with official DogeOS bridge contract address when published.
+          void DOGEOS_ACTIVE_CONFIG.bridgeContractAddress;
+          void amount;
+          return { txid };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown bridge error';
+          throw new Error(`Bridge request could not be created. Please try again. (${message})`);
+        }
       },
       logout: async () => {
         await Promise.all([

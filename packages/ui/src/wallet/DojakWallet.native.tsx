@@ -16,8 +16,10 @@ const FALLBACK_TRANSACTIONS: WalletTransaction[] = [
 ];
 
 const CURATED_DOGEOS_APPS = [
+  { label: 'DogeOS Faucet', url: 'https://faucet.testnet.dogeos.com' },
   { label: 'DogeOS Bridge', url: 'https://bridge.testnet.dogeos.com' },
   { label: 'DogeOS Swap', url: 'https://swap.testnet.dogeos.com' },
+  { label: 'DogeOS Homepage', url: 'https://dogeos.com' },
   { label: 'Explorer', url: DOGEOS_ACTIVE_CONFIG.blockExplorerUrl }
 ];
 
@@ -110,6 +112,9 @@ export function DojakWallet() {
           <Text className="text-xs text-zinc-400">Dojak Wallet • Dogecoin-first</Text>
           <Text className="text-zinc-100">L1: {shortAddress(address, 6)}</Text>
           <Text className="text-amber-300">DogeOS: {shortAddress(dogeOsAddress, 6)}</Text>
+          <Text className="mt-2 self-start rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-200">
+            Network Status: DogeOS Testnet • Chain 6281971
+          </Text>
         </View>
 
         <View className="mt-3 flex-row flex-wrap gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
@@ -164,6 +169,9 @@ export function DojakWallet() {
           <View className="mt-3 gap-2 rounded-xl border border-amber-600/60 bg-zinc-900/80 p-3">
             <Text className="text-amber-300">DogeOS Apps (Testnet)</Text>
             <Text className="text-xs text-zinc-400">{DOGEOS_ACTIVE_CONFIG.name} • Chain ID {DOGEOS_ACTIVE_CONFIG.chainId}</Text>
+            <Text className="self-start rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-200">
+              Network Status: DogeOS Testnet • Chain 6281971
+            </Text>
             <Text className="text-xs text-zinc-500">Powered by DogeOS</Text>
             <Pressable className="rounded-lg border border-zinc-700 px-3 py-2" onPress={() => void refreshWallet()}>
               <Text className="text-center text-xs text-zinc-300">Pull to refresh DogeOS balance & tx</Text>
@@ -211,6 +219,9 @@ export function DojakWallet() {
             </Pressable>
             <Text className="text-xs text-zinc-500">Official bridge contract TBA — currently placeholder.</Text>
             <Text className="text-xs text-zinc-400">Discover DogeOS Apps:</Text>
+            <Pressable className="rounded-lg bg-amber-400 px-3 py-2" onPress={() => void Linking.openURL('https://faucet.testnet.dogeos.com')}>
+              <Text className="text-center font-semibold text-black">Open DogeOS Testnet Faucet</Text>
+            </Pressable>
             <View className="flex-row flex-wrap gap-2">
               {CURATED_DOGEOS_APPS.map((dapp) => (
                 <Pressable key={dapp.url} className="rounded-lg border border-zinc-700 px-2 py-1" onPress={() => setDappUrl(dapp.url)}>
@@ -245,9 +256,6 @@ export function DojakWallet() {
                 }}
               />
             </View>
-            <Pressable className="rounded-lg border border-amber-500 px-3 py-2" onPress={() => void Linking.openURL('https://faucet.testnet.dogeos.com')}>
-              <Text className="text-center text-amber-300">Open DogeOS Testnet Faucet</Text>
-            </Pressable>
             {dogeOsTxs.slice(0, 3).map((tx) => (
               <Text key={tx.txid} className="text-xs text-zinc-400">{tx.direction === 'sent' ? '-' : '+'}{formatDoge(tx.amount)} DOGE • {shortAddress(tx.txid, 6)}</Text>
             ))}
