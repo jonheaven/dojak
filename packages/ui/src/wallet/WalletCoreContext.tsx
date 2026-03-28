@@ -13,9 +13,28 @@ export type SendDogecoinResult = {
   rawtx?: string;
 };
 
+export type WalletTransaction = {
+  txid: string;
+  amount: number;
+  direction: 'sent' | 'received';
+  timestamp?: number;
+  to?: string;
+  from?: string;
+  confirmations?: number;
+  status?: 'pending' | 'confirmed' | 'failed';
+};
+
 export type WalletCoreAdapter = {
   getBalance?: () => Promise<DogecoinBalanceV2 | null>;
+  getAddress?: () => Promise<string>;
+  getTransactions?: () => Promise<WalletTransaction[]>;
+  getUsdRate?: () => Promise<number>;
   sendDogecoin?: (request: SendDogecoinRequest) => Promise<SendDogecoinResult>;
+  validateAddress?: (address: string) => boolean | Promise<boolean>;
+  copyText?: (value: string) => Promise<void>;
+  getConnectedAccounts?: () => Promise<string[]>;
+  logout?: () => Promise<void>;
+  getVersion?: () => Promise<string>;
 };
 
 const WalletCoreContext = createContext<WalletCoreAdapter>({});
