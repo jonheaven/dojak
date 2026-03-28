@@ -1,0 +1,35 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "es2015",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "baseUrl": "./",
+    "outDir": "./dist",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@dojak/core": ["../../packages/core/src/index.ts"],
+      "@dojak/core/*": ["../../packages/core/src/*"],
+      "@dojak/ui": ["../../packages/ui/src/index.ts"],
+      "@dojak/ui/*": ["../../packages/ui/src/*"]
+    },
+    "noImplicitAny": false,
+    "downlevelIteration": true,
+    "types": ["chrome", "node", "react", "react-dom"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": false,
+    "jsx": "react-jsx",
+    "plugins": [{ "transform": "typescript-transform-paths", "afterDeclarations": true }],
+    "experimentalDecorators": true
+  },
+  "exclude": ["./node_modules"],
+  "include": ["src"]
+}

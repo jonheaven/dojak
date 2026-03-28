@@ -1,0 +1,708 @@
+import BigNumber from 'bignumber.js';
+import { useEffect, useMemo, useState } from 'react';
+
+import { ChainType } from '@dojak/core/constant';
+import { AddressTokenSummary, DRC20HistoryItem, Inscription } from '@dojak/core/types';
+import { Button, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text } from '@dojak/ui/components';
+import { useTools } from '@dojak/ui/components/ActionComponent';
+import { DRC20Ticker } from '@dojak/ui/components/DRC20Ticker';
+import { Line } from '@dojak/ui/components/Line';
+import { Section } from '@dojak/ui/components/Section';
+import { TabBar } from '@dojak/ui/components/TabBar';
+import { TickUsdWithoutPrice, TokenType } from '@dojak/ui/components/TickUsd';
+import { useI18n } from '@dojak/ui/hooks/useI18n';
+import { useCurrentAccount } from '@dojak/ui/state/accounts/hooks';
+import {
+  useChain,
+  useChainType,
+  usedojakWebsite,
+  useDRC20MarketPlaceWebsite,
+  useGetTxExplorerUrlCallback
+} from '@dojak/ui/state/settings/hooks';
+import { colors } from '@dojak/ui/theme/colors';
+import { shortAddress, showLongNumber, useLocationState, useWallet } from '@dojak/ui/utils';
+
+import { useNavigate } from '../MainRoute';
+
+interface LocationState {
+  ticker: string;
+}
+
+enum TabKey {
+  DETAILS = 'details',
+  HISTORY = 'history'
+}
+
+const SWAP_MODULE_ADDRESS = '6a2095ee19329a210f8d5ded9b5cfa55b74fdd3b1e9af1e202072db6d1be82d45bfd';
+const BRIDGE_BURN_ADDRESS = '6a20ada13e56859a2ab2eeb93cb4dc19c6e3f5e94d0ed38ed95a30ddc43711a0ff14';
+
+function DRC20TokenHistory(props: { ticker: string; displayName?: string }) {
+  const wallet = useWallet();
+  const { t } = useI18n();
+
+  const account = useCurrentAccount();
+
+  const [items, setItems] = useState<DRC20HistoryItem[]>([]);
+
+  const [failed, setFailed] = useState(false);
+
+  const getTxExplorerUrl = useGetTxExplorerUrlCallback();
+
+  useEffect(() => {
+    wallet
+      .getDRC20RecentHistory(account.address, props.ticker)
+      .then(setItems)
+      .catch(() => setFailed(true));
+  }, [account.address, props.ticker]);
+
+  const groupedItems = useMemo(() => {
+    const groups: { [date: string]: DRC20HistoryItem[] } = {};
+    items.forEach((item) => {
+      let time = item.blocktime;
+      if (item.blocktime == 0) {
+        time = Date.now() / 1000;
+      }
+      const date = new Date(time * 1000).toLocaleDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(item);
+    });
+    return Object.entries(groups).map(([date, items]) => ({ date, items }));
+  }, [items]);
+
+  const displayItems = useMemo(() => {
+    return groupedItems.map(({ date, items }) => ({
+      date,
+      items: items
+        .map((item) => {
+          const key = item.txid + item.type;
+
+          let mainTitle = item.type;
+          let subTitle = '';
+          let icon = '';
+          let isPending = false;
+          if (item.blocktime == 0) {
+            isPending = true;
+          }
+
+          if (item.type === 'send') {
+            mainTitle = t('drc20_history_type_send');
+            subTitle = t('drc20_history_to') + ' ' + shortAddress(item.to);
+            icon = 'history_send';
+            if (item.to === SWAP_MODULE_ADDRESS) {
+              mainTitle = t('drc20_history_type_wrap');
+              subTitle = t('drc20_history_to') + ' ' + 'InSwap';
+              icon = 'history_wrap';
+            }
+          } else if (item.type === 'single-step-transfer') {
+            if (item.from === account.address) {
+              mainTitle = t('drc20_history_type_send');
+              subTitle = t('drc20_history_to') + ' ' + shortAddress(item.to);
+              icon = 'history_send';
+            } else {
+              mainTitle = t('drc20_history_type_receive');
+              subTitle = t('drc20_history_from') + ' ' + shortAddress(item.from);
+              icon = 'history_receive';
+            }
+          } else if (item.type === 'receive') {
+            mainTitle = t('drc20_history_type_receive');
+            subTitle = t('drc20_history_from') + ' ' + shortAddress(item.from);
+            icon = 'history_receive';
+          } else if (item.type === 'withdraw') {
+            mainTitle = t('drc20_history_type_unwrap');
+            subTitle = t('drc20_history_from') + ' ' + 'InSwap';
+            icon = 'history_unwrap';
+          } else if (item.type === 'inscribe-transfer') {
+            mainTitle = t('drc20_history_type_inscribe_transfer');
+            icon = 'history_inscribe';
+          } else if (item.type === 'inscribe-mint') {
+            mainTitle = t('drc20_history_type_inscribe_mint');
+            icon = 'history_inscribe';
+          } else if (item.type === 'inscribe-deploy') {
+            mainTitle = t('drc20_history_type_inscribe_deploy');
+            icon = 'history_inscribe';
+          } else {
+            return null;
+          }
+
+          const amount = item.amount;
+
+          return {
+            key,
+            icon,
+            mainTitle,
+            subTitle,
+            amount,
+            pending: isPending,
+            txid: item.txid
+          };
+        })
+        .filter((v) => v !== null)
+    }));
+  }, [t, groupedItems]);
+
+  if (failed) {
+    return (
+      <Column style={{ minHeight: 150 }} itemsCenter justifyCenter>
+        <Text text={t('load_failed')} preset="sub" />
+      </Column>
+    );
+  }
+
+  if (displayItems.length === 0) {
+    return (
+      <Column style={{ minHeight: 150 }} itemsCenter justifyCenter>
+        <Text text={t('empty')} preset="sub" />
+      </Column>
+    );
+  }
+
+  return (
+    <Column fullX>
+      {displayItems.map(({ date, items }) => (
+        <Column key={date} fullX gap="md" mb="md">
+          <Text text={date} preset="sub" />
+          {items
+            .filter((item): item is NonNullable<typeof item> => item != null)
+            .map((item) => (
+              <Row
+                key={item.key}
+                fullX
+                justifyBetween
+                justifyCenter
+                py="md"
+                style={{ borderBottomWidth: 1, borderColor: colors.border2 }}
+              >
+                <Row itemsCenter>
+                  <Row
+                    onClick={() => {
+                      window.open(getTxExplorerUrl(item.txid));
+                    }}
+                  >
+                    <Icon icon={item.icon as any} size={32} />
+                  </Row>
+
+                  <Column>
+                    <Row style={{ alignItems: 'start' }}>
+                      <Text text={item.mainTitle} />
+
+                      {item.pending ? (
+                        <Row style={{ backgroundColor: 'rgba(244, 182, 44, 0.15)', borderRadius: 4 }} px="md" py="xs">
+                          <Text text={t('history_pending')} style={{ color: 'rgba(244, 182, 44, 0.85)' }} size="xs" />
+                        </Row>
+                      ) : null}
+                    </Row>
+
+                    <Row>
+                      <Text text={item.subTitle} preset="sub" />
+                    </Row>
+                  </Column>
+                </Row>
+
+                {item.amount !== '0' ? (
+                  <Row itemsCenter>
+                    <Text text={item.amount} />
+                    <Text text={props.displayName || props.ticker} preset="sub" />
+                  </Row>
+                ) : null}
+              </Row>
+            ))}
+        </Column>
+      ))}
+    </Column>
+  );
+}
+
+export default function DRC20TokenScreen() {
+  const { ticker } = useLocationState<LocationState>();
+  const { t } = useI18n();
+
+  const [activeTab, setActiveTab] = useState<TabKey>(TabKey.HISTORY);
+
+  const [tokenSummary, setTokenSummary] = useState<AddressTokenSummary>({
+    tokenBalance: {
+      ticker,
+      overallBalance: '',
+      availableBalance: '',
+      transferableBalance: '',
+      availableBalanceSafe: '',
+      availableBalanceUnSafe: '',
+      selfMint: false
+    },
+    tokenInfo: {
+      totalSupply: '',
+      totalMinted: '',
+      decimal: 18,
+      holder: '',
+      inscriptionId: '',
+      holdersCount: 0,
+      historyCount: 0,
+      logo: 'https://static.dojak.dog/icon/drc20/unknown'
+    },
+    historyList: [],
+    transferableList: []
+  });
+
+  const wallet = useWallet();
+
+  const account = useCurrentAccount();
+
+  const [loading, setLoading] = useState(true);
+
+  const [deployInscription, setDeployInscription] = useState<Inscription>();
+
+  useEffect(() => {
+    wallet.getDRC20Summary(account.address, ticker).then((tokenSummary) => {
+      if (tokenSummary.tokenInfo.holder == account.address) {
+        wallet
+          .getInscriptionInfo(tokenSummary.tokenInfo.inscriptionId)
+          .then((data) => {
+            setDeployInscription(data);
+          })
+          .finally(() => {
+            setTokenSummary(tokenSummary);
+            setLoading(false);
+          });
+      } else {
+        setTokenSummary(tokenSummary);
+        setLoading(false);
+      }
+    });
+  }, []);
+
+  const navigate = useNavigate();
+
+  const dojakWebsite = usedojakWebsite();
+
+  const enableMint = useMemo(() => {
+    let enable = false;
+    if (tokenSummary.tokenBalance.selfMint) {
+      if (tokenSummary.tokenInfo.holder == account.address) {
+        if (tokenSummary.tokenInfo.totalMinted != tokenSummary.tokenInfo.totalSupply) {
+          enable = true;
+        }
+      }
+    } else {
+      if (tokenSummary.tokenInfo.totalMinted != tokenSummary.tokenInfo.totalSupply) {
+        enable = true;
+      }
+    }
+    return enable;
+  }, [tokenSummary]);
+
+  const enableTransfer = useMemo(() => {
+    let enable = false;
+    if (tokenSummary.tokenBalance.overallBalance !== '0' && tokenSummary.tokenBalance.overallBalance !== '') {
+      enable = true;
+    }
+    return enable;
+  }, [tokenSummary]);
+
+  const tools = useTools();
+  const chainType = useChainType();
+  const chain = useChain();
+
+  const isDrc20Prog = useMemo(() => {
+    if (chainType === ChainType.BITCOIN_MAINNET) {
+      if (ticker.length == 6) {
+        return true;
+      }
+    }
+    return false;
+  }, [ticker, chainType]);
+
+  const enableTrade = useMemo(() => {
+    if (isDrc20Prog && chainType === ChainType.BITCOIN_MAINNET) {
+      return true;
+    }
+    if (chainType === ChainType.BITCOIN_MAINNET) {
+      return true;
+    } else {
+      return false;
+    }
+  }, [chainType, isDrc20Prog]);
+
+  const enableHistory = isDrc20Prog ? false : true;
+
+  const marketPlaceUrl = useDRC20MarketPlaceWebsite(ticker);
+
+  const inscribePlaceUrl = useMemo(() => {
+    if (isDrc20Prog) {
+      return `${dojakWebsite}/inscribe?tab=drc20-prog&tick=${encodeURIComponent(ticker)}`;
+    }
+    return `${dojakWebsite}/inscribe?tick=${encodeURIComponent(ticker)}`;
+  }, [isDrc20Prog, ticker, dojakWebsite]);
+
+  const tabItems = useMemo(() => {
+    if (enableHistory) {
+      const items = [
+        {
+          key: TabKey.HISTORY,
+          label: t('history')
+        },
+        {
+          key: TabKey.DETAILS,
+          label: t('details')
+        }
+      ];
+      return items;
+    } else {
+      return [
+        {
+          key: TabKey.DETAILS,
+          label: t('details')
+        }
+      ];
+    }
+  }, [t, enableHistory]);
+
+  const renderTabChildren = useMemo(() => {
+    if (activeTab === TabKey.HISTORY && enableHistory) {
+      return <DRC20TokenHistory ticker={ticker} displayName={tokenSummary?.tokenBalance?.displayName} />;
+    }
+
+    if (activeTab === TabKey.DETAILS) {
+      return (
+        <Column>
+          <Column
+            gap="lg"
+            px="md"
+            py="md"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderRadius: 15,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.08)'
+            }}
+          >
+            <Section title={t('ticker')} value={ticker} />
+            <Line />
+
+            {deployInscription ? (
+              <Section
+                title={t('deploy_inscription')}
+                value={''}
+                rightComponent={
+                  <Text
+                    text={shortAddress(deployInscription.inscriptionId, 10)}
+                    color={'gold'}
+                    preset="link"
+                    size="xs"
+                    onClick={() => {
+                      navigate('DoginalsInscriptionScreen', { inscription: deployInscription, withSend: true });
+                    }}
+                  />
+                }
+              />
+            ) : null}
+            {deployInscription ? <Line /> : null}
+
+            <Section title={t('minted')} value={showLongNumber(tokenSummary.tokenInfo.totalMinted)} maxLength={100} />
+            <Line />
+
+            <Section title={t('supply')} value={showLongNumber(tokenSummary.tokenInfo.totalSupply)} maxLength={100} />
+            <Line />
+
+            <Section title={t('decimal')} value={tokenSummary.tokenInfo.decimal} />
+
+            <Section title={t('holders_count')} value={showLongNumber(tokenSummary.tokenInfo.holdersCount)} />
+
+            <Section title={t('history_count')} value={showLongNumber(tokenSummary.tokenInfo.historyCount)} />
+          </Column>
+        </Column>
+      );
+    }
+  }, [activeTab, deployInscription, enableHistory, tokenSummary]);
+
+  const onSwapBalance = tokenSummary?.tokenBalance?.swapBalance;
+  const onProgBalance = tokenSummary?.tokenBalance?.progBalance;
+  const inWalletBalance = tokenSummary?.tokenBalance?.overallBalance;
+  const totalBalance = useMemo(() => {
+    if (!inWalletBalance) {
+      return '--';
+    }
+    return new BigNumber(inWalletBalance)
+      .plus(new BigNumber(onSwapBalance || 0))
+      .plus(new BigNumber(onProgBalance || 0))
+      .toString();
+  }, [onSwapBalance, onProgBalance, inWalletBalance]);
+
+  const hasOutWalletBalance = (onSwapBalance || onProgBalance || '0')! !== '0';
+
+  return (
+    <Layout>
+      <Header
+        hideLogo
+        onBack={() => {
+          window.history.go(-1);
+        }}
+      />
+
+      {tokenSummary && (
+        <Content mt="zero">
+          <Column justifyCenter itemsCenter>
+            <Image src={tokenSummary.tokenInfo.logo} size={48} style={{ borderRadius: 24 }} />
+            <Row justifyCenter itemsCenter>
+              <DRC20Ticker
+                tick={ticker}
+                displayName={tokenSummary.tokenBalance.displayName}
+                preset="md"
+                showOrigin
+                color={'ticker_color2'}
+              />
+              <Row style={{ backgroundColor: 'rgba(244, 182, 44, 0.15)', borderRadius: 4 }} px="md" py="sm">
+                {isDrc20Prog ? (
+                  <Text text={'drc2.0'} style={{ color: 'rgba(244, 182, 44, 0.85)' }} />
+                ) : (
+                  <Text text={'drc-20'} style={{ color: 'rgba(244, 182, 44, 0.85)' }} />
+                )}
+              </Row>
+            </Row>
+            <Column itemsCenter fullX justifyCenter>
+              <Text text={`${totalBalance}`} preset="bold" textCenter size="xxl" wrap digital color="white" />
+            </Column>
+            <Row justifyCenter fullX>
+              <TickUsdWithoutPrice tick={ticker} balance={totalBalance} type={TokenType.DRC20} size={'md'} />
+            </Row>
+          </Column>
+
+          {hasOutWalletBalance ? (
+            <Column style={{ backgroundColor: '#FFFFFF14', borderRadius: 12 }} px="md" py="md" mb="md">
+              <Row fullY justifyBetween justifyCenter mt="sm">
+                <Column fullY justifyCenter>
+                  <Text text={t('drc20_in_wallet')} color="textDim" size="xs" />
+                </Column>
+
+                <Row itemsCenter fullY gap="zero">
+                  <Text text={inWalletBalance} size="xs" digital />
+                </Row>
+              </Row>
+
+              <Line />
+
+              {onProgBalance ? (
+                <Row fullY justifyBetween justifyCenter>
+                  <Column fullY justifyCenter>
+                    <Text text={t('drc20_on_prog')} color="textDim" size="xs" />
+                  </Column>
+
+                  <Row itemsCenter fullY gap="zero">
+                    <Text text={onProgBalance} size="xs" digital />
+                  </Row>
+                </Row>
+              ) : null}
+
+              {onProgBalance ? (
+                <Row gap="sm">
+                  <Button
+                    text={t('swap_wrap')}
+                    preset="swap"
+                    icon="swap_wrap"
+                    onClick={(e) => {
+                      window.open(`https://dojak.dog/wrap?tick=${encodeURIComponent(ticker)}`);
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                  <Button
+                    text={t('swap_unwrap')}
+                    preset="swap"
+                    icon="swap_unwrap"
+                    onClick={(e) => {
+                      window.open(`https://dojak.dog/wrap?action=unwrap&tick=${encodeURIComponent(ticker)}`);
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                  <Button
+                    text={t('swap_send')}
+                    preset="swap"
+                    icon="swap_send"
+                    onClick={(e) => {
+                      window.open(`https://bestinslot.xyz/drc2.0/${encodeURIComponent(ticker)}/transfer`);
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                </Row>
+              ) : null}
+
+              {onSwapBalance ? (
+                <Row fullY justifyBetween justifyCenter>
+                  <Column fullY justifyCenter>
+                    <Text text={t('drc20_on_swap')} color="textDim" size="xs" />
+                  </Column>
+
+                  <Row itemsCenter fullY gap="zero">
+                    <Text text={onSwapBalance} size="xs" digital />
+                  </Row>
+                </Row>
+              ) : null}
+
+              {onSwapBalance ? (
+                <Row gap="sm">
+                  <Button
+                    text={t('swap_swap')}
+                    preset="swap"
+                    icon="swap_swap"
+                    onClick={(e) => {
+                      window.open(`https://inswap.cc/swap?t0=${encodeURIComponent(ticker)}`);
+                    }}
+                    style={{
+                      paddingTop: 5
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                  <Button
+                    text={t('swap_wrap')}
+                    preset="swap"
+                    icon="swap_wrap"
+                    onClick={(e) => {
+                      window.open('https://inswap.cc/swap?tab=deposit');
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                  <Button
+                    text={t('swap_unwrap')}
+                    preset="swap"
+                    icon="swap_unwrap"
+                    onClick={(e) => {
+                      window.open(`https://inswap.cc/swap?tab=withdraw&t=${encodeURIComponent(ticker)}`);
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                  <Button
+                    text={t('swap_send')}
+                    preset="swap"
+                    icon="swap_send"
+                    onClick={(e) => {
+                      window.open('https://inswap.cc/swap/assets/account');
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                </Row>
+              ) : null}
+            </Column>
+          ) : null}
+
+          <TabBar
+            defaultActiveKey={enableHistory ? activeTab : TabKey.DETAILS}
+            activeKey={enableHistory ? activeTab : TabKey.DETAILS}
+            items={tabItems}
+            preset="style3"
+            onTabClick={(key) => {
+              setActiveTab(key as TabKey);
+            }}
+          />
+
+          {renderTabChildren}
+        </Content>
+      )}
+      <Footer
+        style={{
+          borderTopWidth: 1,
+          borderColor: colors.border2
+        }}
+      >
+        <Column gap="sm" fullX>
+          <Row gap="sm" mt="sm" mb="md">
+            <Button
+              text={t('mint')}
+              preset="drc20-action"
+              style={!enableMint ? { backgroundColor: 'rgba(255,255,255,0.15)' } : {}}
+              disabled={!enableMint}
+              icon="pencil"
+              onClick={(e) => {
+                window.open(inscribePlaceUrl);
+              }}
+              full
+            />
+
+            <Button
+              text={t('send')}
+              preset="drc20-action"
+              icon="send"
+              disabled={!enableTransfer}
+              onClick={(e) => {
+                navigate('DRC20SendScreen', {
+                  tokenBalance: tokenSummary.tokenBalance,
+                  tokenInfo: tokenSummary.tokenInfo
+                });
+              }}
+              style={{
+                width: chain.enableDrc20SingleStep && !enableTrade ? '75px' : 'auto'
+              }}
+              full
+            />
+
+            <Button
+              text={t('trade')}
+              preset="drc20-action"
+              icon="trade"
+              onClick={(e) => {
+                window.open(marketPlaceUrl);
+              }}
+              full
+            />
+          </Row>
+
+          {chain.enableDrc20SingleStep ? (
+            <Button
+              text={t('single_step_transfer')}
+              preset="home"
+              icon="drc20-single-step"
+              style={{
+                background: 'linear-gradient(90deg, #00FF88, #00CC55)',
+                color: 'black',
+                width: enableTrade ? 'auto' : '328px',
+                minHeight: '42px',
+                borderRadius: '12px',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                padding: '0 8px'
+              }}
+              textStyle={{
+                color: 'black'
+              }}
+              disabled={!enableTransfer}
+              onClick={(e) => {
+                navigate('DRC20SingleStepScreen', {
+                  tokenBalance: tokenSummary.tokenBalance,
+                  tokenInfo: tokenSummary.tokenInfo
+                });
+              }}
+            />
+          ) : null}
+        </Column>
+      </Footer>
+    </Layout>
+  );
+}

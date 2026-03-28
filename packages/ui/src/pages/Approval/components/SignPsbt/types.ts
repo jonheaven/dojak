@@ -1,0 +1,95 @@
+import React from 'react';
+
+import {
+  CharmsBalance,
+  ContractResult,
+  DecodedPsbt,
+  DuneBalance,
+  Inscription,
+  RawTxInfo,
+  SignPsbtOptions,
+  ToSignInput,
+  TxType
+} from '@dojak/core/types';
+
+export interface Props {
+  header?: React.ReactNode;
+  params: {
+    data: {
+      type: TxType;
+
+      psbtHex: string;
+      options?: SignPsbtOptions;
+      rawTxInfo?: RawTxInfo;
+
+      sendDogeParams?: {
+        toAddress: string;
+        koinu: number;
+        memo: string;
+        memos: string[];
+        feeRate: number;
+      };
+      sendInscriptionParams?: {
+        toAddress: string;
+        inscriptionId: string;
+        feeRate: number;
+      };
+      sendDunesParams?: {
+        toAddress: string;
+        runeid: string;
+        amount: string;
+        feeRate: number;
+      };
+      sendCharmsParams?: {
+        toAddress: string;
+        charmsid: string;
+        amount: string;
+        feeRate: number;
+      };
+    };
+    session?: {
+      origin: string;
+      icon: string;
+      name: string;
+    };
+  };
+  handleCancel?: () => void;
+  handleConfirm?: (rawTxInfo?: RawTxInfo) => void;
+}
+
+export interface InputInfo {
+  txid: string;
+  vout: number;
+  address: string;
+  value: number;
+  inscriptions: Inscription[];
+  dunes: DuneBalance[];
+  Charms: CharmsBalance[];
+}
+
+export interface OutputInfo {
+  address: string;
+  value: number;
+}
+
+export enum TabState {
+  DETAILS,
+  DATA,
+  HEX
+}
+
+export interface InscriptioinInfo {
+  id: string;
+  isSent: boolean;
+}
+
+export interface TxInfo {
+  changedBalance: number;
+  changedInscriptions: InscriptioinInfo[];
+  rawtx: string;
+  psbtHex: string;
+  toSignInputs: ToSignInput[];
+  txError: string;
+  decodedPsbt: DecodedPsbt;
+  contractResults: ContractResult[];
+}

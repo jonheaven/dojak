@@ -1,25 +1,25 @@
-# Dojak Wallet
+# Dojak Monorepo
 
-Dojak Wallet - the best browser extension wallet for Doginals on Dogecoin.
+Dojak is now organized as a `pnpm` monorepo for maximum code sharing between browser extension and upcoming mobile apps.
 
-- Website: https://dojak.dog/
-- Twitter: https://x.com/dojak_wallet
+## Workspace layout
 
-## How to build
+- `apps/extension` — Chrome extension app (existing Dojak extension codebase relocated).
+- `apps/mobile` — Expo React Native app scaffold for iOS/Android.
+- `packages/core` — shared wallet/core logic (background, storage, keyring, Dogecoin logic, shared types/utils).
+- `packages/ui` — shared UI/components/screens used by extension and mobile.
 
-- Install [Node.js](https://nodejs.org) version 16 (LTS recommended)
-- Install dependencies: `yarn` (or `npm ci` to respect `package-lock.json`)
-- Build the project to the `./dist/` folder with `yarn build:firefox` for Firefox
-- Build the project to the `./dist/` folder with `yarn build:chrome` for Chrome
-- Develop: `yarn build:chrome:dev`
+## Commands
 
-## Developer reference
+From repo root:
 
-- See `docs/DEVELOPMENT.md` for a day-to-day workflow, Dogecoin parameter sanity checks, and release hygiene.
-- Audit for unused surface area with:
-  - `npm run analyze:deps` (reports unused or missing dependencies)
-  - `npm run analyze:exports` (flags unused TypeScript exports)
+- `pnpm install`
+- `pnpm dev` (runs workspace dev tasks through Turbo)
+- `pnpm --filter @dojak/extension dev` (extension watch/build flow)
+- `pnpm --filter @dojak/mobile dev` (Expo dev server)
 
-## Special Thanks
+## Design constraints
 
-Thanks to the MetaMask team for their contributions to the browser extension wallet community, Dojak Wallet relies heavily on their contributions.
+- UI is standardized around a 402px mobile-first container.
+- Extension popup uses fixed width and scrollable max-height.
+- Safe-area insets are supported for iOS notch/dynamic island.

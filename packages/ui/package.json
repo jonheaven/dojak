@@ -1,0 +1,10 @@
+{
+  "name": "@dojak/ui",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/components/index.tsx",
+  "types": "src/components/index.tsx",
+  "dependencies": {
+    "@dojak/core": "workspace:*"
+  }
+}

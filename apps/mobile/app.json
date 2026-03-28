@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Dojak",
+    "slug": "dojak",
+    "scheme": "dojak",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.dojak.wallet"
+    },
+    "android": {
+      "package": "com.dojak.wallet",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#09090B"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
