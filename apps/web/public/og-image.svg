@@ -1,0 +1,18 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#0A0A0A"/>
+  <circle cx="190" cy="98" r="240" fill="#F4C430" fill-opacity="0.22"/>
+  <circle cx="1110" cy="270" r="300" fill="#FF8C42" fill-opacity="0.16"/>
+  <rect x="70" y="80" width="1060" height="470" rx="32" fill="#111111" stroke="#262626"/>
+
+  <text x="120" y="208" fill="#F4C430" font-family="Inter, Arial" font-size="28" font-weight="700">🐶 Dojak</text>
+  <text x="120" y="282" fill="#F5F5F5" font-family="Inter, Arial" font-size="62" font-weight="800">The Dogecoin Wallet</text>
+  <text x="120" y="348" fill="#F5F5F5" font-family="Inter, Arial" font-size="62" font-weight="800">That Just Works</text>
+  <text x="120" y="410" fill="#D4D4D4" font-family="Inter, Arial" font-size="30" font-weight="500">Chrome/Brave Extension + Android + iOS</text>
+  <text x="120" y="455" fill="#B8B8B8" font-family="Inter, Arial" font-size="24" font-weight="500">Your keys, your DOGE • Open source UniSat fork</text>
+
+  <rect x="856" y="170" width="200" height="290" rx="24" fill="#0D0D0D" stroke="#F4C430" stroke-opacity="0.45"/>
+  <rect x="878" y="204" width="156" height="80" rx="16" fill="#F4C430"/>
+  <rect x="878" y="302" width="72" height="56" rx="12" fill="#1D1D1D"/>
+  <rect x="962" y="302" width="72" height="56" rx="12" fill="#1D1D1D"/>
+  <rect x="878" y="376" width="156" height="60" rx="14" fill="#161616"/>
+</svg>
