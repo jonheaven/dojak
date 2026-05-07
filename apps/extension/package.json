@@ -32,7 +32,7 @@
     "_prettier": "prettier --write .",
     "fix:modules": "node scripts/fix-modules.js",
     "format": "prettier --write \"src/**/*.{js,jsx,md,ts,tsx}\" --plugin-search-dir=./node_modules/ --plugin=./node_modules/@trivago/prettier-plugin-sort-imports/ ",
-    "postinstall": "patch-package",
+    "postinstall": "node scripts/run-patch-package-if-needed.js",
     "prepare": "npm run fix:modules"
   },
   "dependencies": {
@@ -118,6 +118,7 @@
     "lodash-es": "^4.17.21",
     "loglevel": "^1.8.0",
     "mini-css-extract-plugin": "^2.4.5",
+    "@metamask/obs-store": "^9.0.0",
     "nanoid": "^5.1.6",
     "postcss": "^8.4.4",
     "postcss-flexbugs-fixes": "^5.0.2",
@@ -160,7 +161,8 @@
     "webpack-manifest-plugin": "^4.0.2",
     "webpack-merge": "^6.0.1",
     "@dojak/core": "workspace:*",
-    "@dojak/ui": "workspace:*"
+    "@dojak/ui": "workspace:*",
+    "@dojak/biometrics": "workspace:*"
   },
   "browserslist": {
     "production": [
@@ -273,7 +275,6 @@
     "less-loader": "^11.0.0",
     "minimist": "^1.2.6",
     "patch-package": "^8.0.0",
-    "postinstall": "^0.11.0",
     "prettier": "^2.6.2",
     "sass-loader": "^12.6.0",
     "stylus": "^0.57.0",

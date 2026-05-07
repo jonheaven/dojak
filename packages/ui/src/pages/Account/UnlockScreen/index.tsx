@@ -6,6 +6,7 @@ import { Button } from '@dojak/ui/components/Button';
 import { Input } from '@dojak/ui/components/Input';
 import { Logo } from '@dojak/ui/components/Logo';
 import { Text } from '@dojak/ui/components/Text';
+import { BiometricSetupPrompt, BiometricStatusBadge, BiometricUnlockButton, useBiometricUnlock } from '@dojak/ui/features/biometric';
 import { useI18n } from '@dojak/ui/hooks/useI18n';
 import { useIsUnlocked, useUnlockCallback } from '@dojak/ui/state/global/hooks';
 import { getUiType, useWallet } from '@dojak/ui/utils';
@@ -18,17 +19,36 @@ export default function UnlockScreen() {
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [disabled, setDisabled] = useState(true);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricMethod, setBiometricMethod] = useState('');
+  const [showSetupPrompt, setShowSetupPrompt] = useState(false);
   const UIType = getUiType();
   const isInNotification = UIType.isNotification;
   const unlock = useUnlockCallback();
   const tools = useTools();
   const isUnlocked = useIsUnlocked();
+  const { getConfig, enableBiometric, disableBiometric, unlockWithBiometric } = useBiometricUnlock();
 
   useEffect(() => {
     if (isUnlocked) {
       navigate('MainScreen');
     }
   }, [isUnlocked, navigate]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadBiometricConfig = async () => {
+      const config = await getConfig();
+      if (mounted) {
+        setBiometricEnabled(config.enabled);
+        setBiometricMethod(config.method);
+      }
+    };
+    void loadBiometricConfig();
+    return () => {
+      mounted = false;
+    };
+  }, [getConfig]);
 
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +59,9 @@ export default function UnlockScreen() {
       }
       setLoading(true);
       await unlock(password);
+      if (!biometricEnabled) {
+        setShowSetupPrompt(true);
+      }
 
       if (!isInNotification) {
         const hasVault = await wallet.hasVault();
@@ -58,6 +81,29 @@ export default function UnlockScreen() {
       tools.toastError(t('password_error'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnableBiometric = async () => {
+    try {
+      if (!password) {
+        tools.toastError('Enter password first to enable biometrics.');
+        return;
+      }
+      await enableBiometric(password);
+      setBiometricEnabled(true);
+      setBiometricMethod('webauthn-platform');
+      setShowSetupPrompt(false);
+      tools.toastSuccess('Biometric unlock enabled.');
+    } catch (error) {
+      tools.toastError(error instanceof Error ? error.message : 'Failed to enable biometric unlock');
+    }
+  };
+
+  const handleBiometricUnlock = async () => {
+    const result = await unlockWithBiometric();
+    if (!result.ok) {
+      tools.toastError(result.errorMessage || 'Biometric unlock failed. Use password fallback.');
     }
   };
 
@@ -92,6 +138,22 @@ export default function UnlockScreen() {
               autoFocus={true}
             />
             <Button disabled={disabled} text={t('unlock')} preset="primary" onClick={btnClick} />
+            {biometricEnabled ? (
+              <BiometricUnlockButton onClick={handleBiometricUnlock} text="Unlock with Fingerprint / Windows Hello" />
+            ) : null}
+            <BiometricStatusBadge enabled={biometricEnabled} method={biometricMethod} />
+            {biometricEnabled ? (
+              <Button
+                text="Disable biometric unlock"
+                preset="default"
+                onClick={async () => {
+                  await disableBiometric();
+                  setBiometricEnabled(false);
+                  setBiometricMethod('');
+                }}
+              />
+            ) : null}
+            {showSetupPrompt ? <BiometricSetupPrompt onEnable={handleEnableBiometric} onSkip={() => setShowSetupPrompt(false)} /> : null}
           </Column>
         </Column>
       </Content>

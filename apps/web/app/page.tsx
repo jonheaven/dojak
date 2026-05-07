@@ -1,6 +1,5 @@
 'use client';
 
-import { Button, Card } from '@dojak/ui';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -151,24 +150,15 @@ const howItWorks = [
 function CtaButton({ href, text, primary = false }: { href: string; text: string; primary?: boolean }) {
   return (
     <Link href={href} target="_blank" rel="noreferrer" className="inline-flex">
-      <Button
-        text={text}
-        preset={primary ? 'primary' : 'default'}
-        style={
+      <span
+        className={
           primary
-            ? { minHeight: 48, borderRadius: 14, minWidth: 190, paddingLeft: 18, paddingRight: 18 }
-            : {
-                minHeight: 48,
-                borderRadius: 14,
-                minWidth: 190,
-                paddingLeft: 18,
-                paddingRight: 18,
-                border: '1px solid rgba(244,196,48,0.4)',
-                background: 'rgba(24,24,24,0.85)'
-              }
+            ? 'inline-flex min-h-12 min-w-[190px] items-center justify-center rounded-[14px] bg-gradient-to-r from-[#C9822A] to-[#E5A03A] px-[18px] text-sm font-bold text-[#0a0a0a]'
+            : 'inline-flex min-h-12 min-w-[190px] items-center justify-center rounded-[14px] border border-[rgba(244,196,48,0.4)] bg-[rgba(24,24,24,0.85)] px-[18px] text-sm font-semibold text-[#f5f5f5]'
         }
-        textStyle={primary ? { color: '#0a0a0a', fontWeight: 700 } : { color: '#f5f5f5', fontWeight: 600 }}
-      />
+      >
+        {text}
+      </span>
     </Link>
   );
 }
@@ -294,21 +284,13 @@ export default function HomePage() {
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {featureCards.map((feature) => (
-            <Card
+            <article
               key={feature.title}
-              style={{
-                borderRadius: 18,
-                border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(16,16,16,0.8)',
-                alignItems: 'flex-start',
-                justifyContent: 'flex-start',
-                flexDirection: 'column',
-                minHeight: 180
-              }}
+              className="flex min-h-[180px] flex-col justify-start rounded-[18px] border border-white/10 bg-[rgba(16,16,16,0.8)] p-4"
             >
               <h3 className="text-lg font-semibold text-zinc-100">{feature.title}</h3>
               <p className="text-sm leading-relaxed text-zinc-300">{feature.body}</p>
-            </Card>
+            </article>
           ))}
         </div>
       </section>

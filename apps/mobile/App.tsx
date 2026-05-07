@@ -1,8 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
 import * as Clipboard from 'expo-clipboard';
 import * as SecureStore from 'expo-secure-store';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  createBiometricFacade,
+  createNativeAdapters,
+  createNativeSessionSecretStore
+} from '@dojak/biometrics';
 import {
   DOGEOS_ACTIVE_CONFIG,
   createDogeOsPublicClient,
@@ -24,6 +30,9 @@ const TXS_KEY = 'dojak.txs';
 const DOGEOS_BALANCE_KEY = 'dojak.dogeos.balance';
 const DOGEOS_TXS_KEY = 'dojak.dogeos.txs';
 const MNEMONIC_KEY = 'dojak.mnemonic';
+const MOBILE_LOCK_PASSWORD_KEY = 'dojak.mobile.lock.password';
+const MOBILE_BIOMETRIC_ENABLED_KEY = 'dojak.mobile.biometric.enabled';
+const AUTO_LOCK_TIMEOUT_MS = 5 * 60 * 1000;
 
 const fallbackAddress = 'D8n4gQ8S4aQszM4xTq3w9fF6xR9H1skGgT';
 const fallbackMnemonic = 'test test test test test test test test test test test junk';
@@ -31,15 +40,85 @@ const fallbackMnemonic = 'test test test test test test test test test test test
 const isHexAddress = (address: string) => /^0x[a-fA-F0-9]{40}$/.test(address.trim());
 
 export default function App() {
+  const [lockPassword, setLockPassword] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isSettingUpPassword, setIsSettingUpPassword] = useState(true);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [lockError, setLockError] = useState('');
+  const sessionMnemonicRef = useRef<string | null>(null);
+  const autoLockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const biometricFacade = useMemo(
+    () => createBiometricFacade(createNativeAdapters(), createNativeSessionSecretStore()),
+    []
+  );
+
+  const lockSession = async () => {
+    sessionMnemonicRef.current = null;
+    setIsUnlocked(false);
+    if (autoLockTimerRef.current) {
+      clearTimeout(autoLockTimerRef.current);
+      autoLockTimerRef.current = null;
+    }
+  };
+
+  const resetAutoLockTimer = () => {
+    if (autoLockTimerRef.current) {
+      clearTimeout(autoLockTimerRef.current);
+    }
+    autoLockTimerRef.current = setTimeout(() => {
+      void lockSession();
+    }, AUTO_LOCK_TIMEOUT_MS);
+  };
+
+  const unlockWithPassword = async (password: string) => {
+    if (!password || password !== lockPassword) {
+      setLockError('Invalid password.');
+      return false;
+    }
+    const mnemonic = await SecureStore.getItemAsync(MNEMONIC_KEY);
+    sessionMnemonicRef.current = mnemonic ?? fallbackMnemonic;
+    setIsUnlocked(true);
+    setLockError('');
+    resetAutoLockTimer();
+    return true;
+  };
+
+  useEffect(() => {
+    const initLock = async () => {
+      const [storedPassword, enabledFlag] = await Promise.all([
+        SecureStore.getItemAsync(MOBILE_LOCK_PASSWORD_KEY),
+        SecureStore.getItemAsync(MOBILE_BIOMETRIC_ENABLED_KEY)
+      ]);
+      if (storedPassword) {
+        setLockPassword(storedPassword);
+        setIsSettingUpPassword(false);
+      } else {
+        setIsSettingUpPassword(true);
+      }
+      setBiometricEnabled(enabledFlag === 'true');
+    };
+    void initLock();
+  }, []);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') {
+        void lockSession();
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   const adapter = useMemo(() => {
     const memoryStore = new dogecoinKeyrings.MemoryStorageAdapter();
     void memoryStore;
 
     const getMnemonic = async () => {
-      const stored = await SecureStore.getItemAsync(MNEMONIC_KEY);
-      if (stored) return stored;
-      await SecureStore.setItemAsync(MNEMONIC_KEY, fallbackMnemonic);
-      return fallbackMnemonic;
+      if (!isUnlocked || !sessionMnemonicRef.current) {
+        throw new Error('Wallet is locked. Unlock with password or biometric first.');
+      }
+      return sessionMnemonicRef.current;
     };
 
     const getDogeOsAddress = async () => {
@@ -167,6 +246,7 @@ export default function App() {
         }
       },
       logout: async () => {
+        await lockSession();
         await Promise.all([
           SecureStore.setItemAsync(BALANCE_KEY, '0'),
           SecureStore.setItemAsync(DOGEOS_BALANCE_KEY, '0'),
@@ -177,7 +257,91 @@ export default function App() {
       getSeedPhraseForDogeOsTesting: async () => getMnemonic(),
       getVersion: async () => '0.2.0-dogeos-testnet'
     };
-  }, []);
+  }, [isUnlocked]);
+
+  if (isSettingUpPassword) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.lockContainer}>
+          <Text style={styles.title}>Set mobile lock password</Text>
+          <TextInput
+            secureTextEntry
+            placeholder="Create password"
+            placeholderTextColor="#8b8b8b"
+            style={styles.input}
+            value={passwordInput}
+            onChangeText={setPasswordInput}
+          />
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={async () => {
+              if (passwordInput.length < 6) {
+                setLockError('Use at least 6 characters.');
+                return;
+              }
+              await SecureStore.setItemAsync(MOBILE_LOCK_PASSWORD_KEY, passwordInput);
+              setLockPassword(passwordInput);
+              setPasswordInput('');
+              setIsSettingUpPassword(false);
+              setLockError('');
+            }}>
+            <Text style={styles.primaryButtonText}>Save Password</Text>
+          </TouchableOpacity>
+          {lockError ? <Text style={styles.errorText}>{lockError}</Text> : null}
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  if (!isUnlocked) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.lockContainer}>
+          <Text style={styles.title}>Unlock Dojak Wallet</Text>
+          <TextInput
+            secureTextEntry
+            placeholder="Enter password"
+            placeholderTextColor="#8b8b8b"
+            style={styles.input}
+            value={passwordInput}
+            onChangeText={setPasswordInput}
+          />
+          <TouchableOpacity style={styles.primaryButton} onPress={() => void unlockWithPassword(passwordInput)}>
+            <Text style={styles.primaryButtonText}>Unlock with Password</Text>
+          </TouchableOpacity>
+          {biometricEnabled ? (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={async () => {
+                const result = await biometricFacade.unlockWalletWithBiometric(async (secret) => {
+                  await unlockWithPassword(secret);
+                }, 'Unlock Dojak Wallet');
+                if (!result.ok) {
+                  setLockError(result.errorMessage || 'Biometric unlock failed.');
+                }
+              }}>
+              <Text style={styles.secondaryButtonText}>Unlock with Biometrics</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={async () => {
+              const ok = await unlockWithPassword(passwordInput);
+              if (!ok) return;
+              await createNativeSessionSecretStore().saveSecret(passwordInput);
+              await SecureStore.setItemAsync(MOBILE_BIOMETRIC_ENABLED_KEY, 'true');
+              setBiometricEnabled(true);
+              setPasswordInput('');
+            }}>
+            <Text style={styles.secondaryButtonText}>
+              {biometricEnabled ? 'Biometric enabled' : 'Enable biometric unlock'}
+            </Text>
+          </TouchableOpacity>
+          {lockError ? <Text style={styles.errorText}>{lockError}</Text> : null}
+        </View>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -188,3 +352,51 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  lockContainer: {
+    flex: 1,
+    backgroundColor: '#0f0f0f',
+    paddingHorizontal: 24,
+    justifyContent: 'center'
+  },
+  title: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 16
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#2b2b2b',
+    borderRadius: 10,
+    color: '#fff',
+    padding: 12,
+    marginBottom: 12
+  },
+  primaryButton: {
+    backgroundColor: '#3f7cff',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontWeight: '700'
+  },
+  secondaryButton: {
+    backgroundColor: '#1f1f1f',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  secondaryButtonText: {
+    color: '#fff'
+  },
+  errorText: {
+    color: '#ff7b7b',
+    marginTop: 6
+  }
+});

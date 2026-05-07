@@ -51,14 +51,14 @@ function task_clean() {
 }
 
 function task_prepare() {
-  // Copy all static assets and manifest sources from build/_raw to dist/browser
-  const raw = gulp.src('build/_raw/**/*').pipe(gulp.dest(`dist/${options.browser}`));
-  // Copy _locales if present
+  // Monorepo-safe preparation: source assets directly from src/bin.
+  const raw = gulp.src(['src/qr-scanner.html', 'src/qr-scanner.js'], { allowEmpty: true }).pipe(gulp.dest(`dist/${options.browser}`));
+  const optionsPage = gulp.src('src/options.html', { allowEmpty: true }).pipe(gulp.dest(`dist/${options.browser}`));
+  const icons = gulp.src('bin/icons/**/*', { allowEmpty: true }).pipe(gulp.dest(`dist/${options.browser}/icons`));
   const locales = gulp.src('src/_locales/**/*').pipe(gulp.dest(`dist/${options.browser}/_locales`));
-  // Copy manifest sources from build/_raw/manifest
-  const manifestBase = gulp.src('build/_raw/manifest/_base_v3.json').pipe(gulp.dest(`dist/${options.browser}/manifest`));
-  const manifestChrome = gulp.src(`build/_raw/manifest/${options.browser}.json`).pipe(gulp.dest(`dist/${options.browser}/manifest`));
-  return require('merge-stream')(raw, locales, manifestBase, manifestChrome);
+  const manifestBase = gulp.src('src/manifest/_base_v3.json').pipe(gulp.dest(`dist/${options.browser}/manifest`));
+  const manifestBrowser = gulp.src(`src/manifest/${options.browser}.json`, { allowEmpty: true }).pipe(gulp.dest(`dist/${options.browser}/manifest`));
+  return require('merge-stream')(raw, optionsPage, icons, locales, manifestBase, manifestBrowser);
 }
 
 function task_merge_manifest() {

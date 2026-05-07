@@ -1,5 +1,4 @@
 export * from './shared/types';
-export * from './shared/modules';
 export * from './shared/constant';
 export * from './shared/eventBus';
 export * from './shared/utils';
@@ -11,3 +10,5 @@ export { default as storage } from './background/webapi/storage';
 
 export * from './shared/lib/evm-wallet';
 export * from './shared/lib/dogeos-client';
+
+export * from './modules/dogenals';

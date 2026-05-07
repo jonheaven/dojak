@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 
 import { storage } from '@dojak/core';
 import { DojakWallet, WalletCoreProvider, WalletTransaction } from '@dojak/ui';
-import '@dojak/ui/src/global.css';
+import '@dojak/ui/src/styles/global.less';
 
 const BALANCE_KEY = 'popup-balance';
 const ADDRESS_KEY = 'popup-address';

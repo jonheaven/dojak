@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
+    "@dojak/biometrics": "workspace:*",
     "@dojak/core": "file:../core",
     "qrcode.react": "^4.2.0",
     "react-native-qrcode-svg": "^6.3.17"

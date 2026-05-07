@@ -1,9 +1,9 @@
 const webpackMerge = require('webpack-merge');
-const commonConfig = require('./build/webpack.common.config');
+const commonConfig = require('./config/webpack/webpack.common.config');
 const configs = {
-  dev: require('./build/webpack.dev.config'),
-  pro: require('./build/webpack.pro.config'),
-  debug: require('./build/webpack.debug.config')
+  dev: require('./config/webpack/webpack.dev.config'),
+  pro: require('./config/webpack/webpack.pro.config'),
+  debug: require('./config/webpack/webpack.debug.config')
 };
 
 const config = (env) => {

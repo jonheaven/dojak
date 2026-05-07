@@ -92,6 +92,8 @@ export interface PreferenceStore {
   developerMode: boolean;
   theme: 'light' | 'dark';
   customIndexerUrl?: string;
+  biometricUnlockEnabled: boolean;
+  biometricUnlockMethod: string;
   localRpcConfig?: {
     host: string;
     port: string;
@@ -149,7 +151,9 @@ class PreferenceService {
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
         openInSidePanel: false,
         developerMode: false,
-        theme: 'light'
+        theme: 'light',
+        biometricUnlockEnabled: false,
+        biometricUnlockMethod: ''
       }
     });
 
@@ -261,6 +265,13 @@ class PreferenceService {
 
     if (!this.store.theme || !['light', 'dark'].includes(this.store.theme)) {
       this.store.theme = 'light';
+    }
+
+    if (typeof this.store.biometricUnlockEnabled !== 'boolean') {
+      this.store.biometricUnlockEnabled = false;
+    }
+    if (typeof this.store.biometricUnlockMethod !== 'string') {
+      this.store.biometricUnlockMethod = '';
     }
   };
 
@@ -621,6 +632,18 @@ class PreferenceService {
 
   setCustomIndexerUrl = (url: string | undefined) => {
     this.store.customIndexerUrl = url;
+  };
+
+  getBiometricUnlockConfig = () => {
+    return {
+      enabled: this.store.biometricUnlockEnabled,
+      method: this.store.biometricUnlockMethod
+    };
+  };
+
+  setBiometricUnlockConfig = (enabled: boolean, method: string) => {
+    this.store.biometricUnlockEnabled = enabled;
+    this.store.biometricUnlockMethod = method;
   };
 }
 

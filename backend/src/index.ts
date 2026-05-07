@@ -9,6 +9,7 @@ dotenv.config();
 
 import { errorHandler } from './middleware/errorHandler.js';
 import { faucetRouter } from './routes/faucet.js';
+import dogenalsRouter from './routes/dogenals.js';
 
 const app = new Hono();
 
@@ -33,6 +34,7 @@ app.get('/health', (c) => {
 
 // API routes
 app.route('/api/v1/faucet', faucetRouter);
+app.route('/api/v1/dogenals', dogenalsRouter);
 
 // Root endpoint
 app.get('/', (c) => {
@@ -42,7 +44,8 @@ app.get('/', (c) => {
     description: 'Official Dojak Wallet API Server',
     endpoints: {
       health: '/health',
-      faucet: '/api/v1/faucet'
+      faucet: '/api/v1/faucet',
+      dogenals: '/api/v1/dogenals'
     }
   });
 });

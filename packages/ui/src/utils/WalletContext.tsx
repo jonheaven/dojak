@@ -67,6 +67,8 @@ export interface WalletController {
 
   unlock(password: string): Promise<void>;
   isUnlocked(): Promise<boolean>;
+  getBiometricUnlockConfig?: () => Promise<{ enabled: boolean; method: string }> | { enabled: boolean; method: string };
+  setBiometricUnlockConfig?: (enabled: boolean, method: string) => Promise<void> | void;
 
   lockWallet(): Promise<void>;
   setPopupOpen(isOpen: boolean): void;

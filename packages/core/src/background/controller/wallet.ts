@@ -2638,5 +2638,13 @@ export class WalletController extends BaseController {
     preferenceService.setCustomIndexerUrl(url);
     walletApiService.updateProductionIndexer();
   };
+
+  getBiometricUnlockConfig = () => {
+    return preferenceService.getBiometricUnlockConfig();
+  };
+
+  setBiometricUnlockConfig = (enabled: boolean, method: string) => {
+    preferenceService.setBiometricUnlockConfig(enabled, method);
+  };
 }
 export default new WalletController();
