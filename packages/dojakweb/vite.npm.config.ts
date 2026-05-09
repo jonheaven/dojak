@@ -60,8 +60,10 @@ export default defineConfig({
     tailwindcss(),
     dts({
       insertTypesEntry: true,
-      // Single trimmed entry for consumers; `src/types/wallet.ts` is a real module (not .d.ts-only).
-      rollupTypes: true,
+      // Avoid @microsoft/api-extractor rollup on CI: Linux + filtered pnpm installs can leave
+      // incomplete graphs that make `getResolvedModule("./types/wallet")` fail during rollup.
+      // Emit declaration files next to chunks; package "types" still points at dist/index.d.ts.
+      rollupTypes: false,
       tsconfigPath: './tsconfig.json',
       beforeWriteFile: (filePath, content) => {
         if (path.basename(filePath) !== 'index.d.ts') return;
