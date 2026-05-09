@@ -140,8 +140,8 @@ public
 *.xpi
 *.pem
 
-# Browser extension development
-extension/
+# Browser extension development (repo root only — do not use `extension/` or it ignores apps/extension/)
+/extension/
 temp/
 tmp/
 
