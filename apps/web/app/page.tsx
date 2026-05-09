@@ -1,408 +1,411 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 type NavLink = { href: string; label: string; external?: boolean };
-type DownloadItem = {
-  title: string;
-  subtitle: string;
-  cta: string;
-  href: string;
-  badge: string;
-};
-
-type FAQ = {
-  question: string;
-  answer: string;
-};
 
 const navLinks: NavLink[] = [
   { href: '#features', label: 'Features' },
+  { href: '#dogenals', label: 'Dogenals' },
+  { href: '/dogenals', label: 'Protocol Wall' },
   { href: '#platforms', label: 'Platforms' },
-  { href: '#download', label: 'Download' },
-  { href: '#community', label: 'Community' },
-  { href: 'https://github.com/dojak-wallet', label: 'GitHub', external: true }
+  { href: '#security', label: 'Security' }
 ];
 
 const featureCards = [
   {
-    title: 'Native DOGE Support',
-    body: 'Purpose-built for Dogecoin: send, receive, and monitor balance in one clean flow.'
+    title: 'Self-custodial by default',
+    body: 'Local-first key flows. Your seed and signing stay with you, never on our servers.',
+    mood: '🛡️'
   },
   {
-    title: 'Identical 402 px Experience',
-    body: 'One interface that feels familiar everywhere: Chrome/Brave popup, Android, and iOS.'
+    title: 'Dogenals-native UX',
+    body: 'Built for Dogecoin L1 standards from ../dogenals/spec, not generic cross-chain abstractions.',
+    mood: '⚡'
   },
   {
-    title: 'True Self-Custody',
-    body: 'Your keys, your DOGE. No custodial lock-ins, no hidden control over your funds.'
+    title: 'Built-in X identity',
+    body: 'Connect your handle to on-chain profile and reputation primitives for social-native wallet experiences.',
+    mood: '🐶'
   },
   {
-    title: 'Fast, Low-Fee Transactions',
-    body: 'Built for daily usage with responsive send flows and transparent fee choices.'
+    title: 'One wallet, many form factors',
+    body: 'Browser extension, mobile apps, and web wallet with a coherent product language.',
+    mood: '📱'
   },
   {
-    title: 'Modern, Clean Design',
-    body: 'Focused UI that helps newcomers and power users move quickly with confidence.'
+    title: 'Fast indexer era',
+    body: 'Designed for the Dogenals reboot and high-signal data surfaces across tags, offers, and metadata.',
+    mood: '📈'
   },
   {
-    title: 'Open Source UniSat Fork',
-    body: 'Transparent codebase inherited from proven wallet architecture with Dogecoin-first direction.'
+    title: 'Protocol-aware UTXO safety',
+    body: 'Dogenals-aware spend controls help avoid accidentally spending UTXOs tied to inscriptions, offers, or other protocol state.',
+    mood: '🔒'
   },
   {
-    title: 'Easy Recovery',
-    body: 'Simple import and backup-friendly flows so you stay secure and in control long-term.'
-  },
-  {
-    title: 'Cross-Platform Consistency',
-    body: 'No feature drift between apps. Learn once, use anywhere, and onboard faster.'
+    title: 'Open standards + private product',
+    body: 'The protocol layer is public; the Dojak app layer is proprietary and polished for production.',
+    mood: '✨'
   }
 ];
 
-const downloadCards: DownloadItem[] = [
+const platformCards = [
   {
-    title: 'Chrome + Brave Extension',
-    subtitle: '402 px popup that feels native and lightning fast for daily DOGE actions.',
-    cta: 'Add to Chrome / Brave',
+    name: 'Browser Extension',
+    cta: 'Install Extension',
     href: 'https://chromewebstore.google.com/',
-    badge: 'Most Popular'
+    badge: 'Live',
+    install: 'Chrome Web Store',
+    safety: 'Protocol-aware UTXO protection + self-custody',
+    status: 'Best for most users right now'
   },
   {
-    title: 'Android App',
-    subtitle: 'Full Dojak wallet flow on Android with the same exact familiar layout.',
-    cta: 'Get on Google Play',
-    href: 'https://play.google.com/store/apps',
-    badge: 'Google Play'
-  },
-  {
-    title: 'iOS App',
-    subtitle: 'App Store release track. Join the launch list and be first when it drops.',
-    cta: 'Download on App Store',
+    name: 'iOS',
+    cta: 'Get iOS App',
     href: 'https://apps.apple.com/',
-    badge: 'Coming Soon'
+    badge: 'Coming Soon',
+    install: 'Apple App Store',
+    safety: 'Self-custodial mobile wallet architecture',
+    status: 'Join waitlist / release track'
+  },
+  {
+    name: 'Android',
+    cta: 'Get Android App',
+    href: 'https://play.google.com/store/apps',
+    badge: 'Early Access',
+    install: 'Google Play',
+    safety: 'Self-custodial + protocol-aware spend flow',
+    status: 'Use now in early access'
+  },
+  {
+    name: 'Web Wallet',
+    cta: 'Try Web Wallet',
+    href: '#',
+    badge: 'Local-Only Mode',
+    install: 'No install needed',
+    safety: 'Local-first key handling in browser',
+    status: 'Quick onboarding and recovery flows'
   }
 ];
 
-const testimonials = [
-  {
-    quote: 'I can jump from Brave to my phone and everything feels exactly the same. Zero confusion.',
-    author: 'Rex, DOGE miner'
-  },
-  {
-    quote: 'Dojak made self-custody simple for me. Setup was fast, and I finally feel in control of my keys.',
-    author: 'Mina, everyday shibe'
-  },
-  {
-    quote: 'The send flow is clean, fee options are clear, and the 402 px design is insanely practical.',
-    author: 'Cole, crypto builder'
-  },
-  {
-    quote: 'Open source and DOGE-first with a polished UI? This is the wallet I recommend to friends.',
-    author: 'Nia, DOGE community mod'
-  }
+const statCards = [
+  { label: 'Genesis block', value: '6,142,069', note: 'Dogenals era activation point' },
+  { label: 'Core protocols', value: '15+', note: 'ÐMS, ÐMP, ÐWhisper, Ð𝕏 and more' },
+  { label: 'Chain model', value: 'Dogecoin L1', note: 'No bridge, no wrapped dependency' },
+  { label: 'Spec source', value: '../dogenals/spec', note: 'Canonical standards tree' }
 ];
 
-const faqs: FAQ[] = [
-  {
-    question: 'What does self-custodial mean in Dojak?',
-    answer:
-      'Dojak gives you full ownership of your private keys. We do not hold your funds, and only you can authorize transactions.'
-  },
-  {
-    question: 'Why is the 402 px layout important?',
-    answer:
-      'It creates one consistent experience across extension popup and mobile apps, reducing friction and onboarding time.'
-  },
-  {
-    question: 'How is Dojak different from other Dogecoin wallets?',
-    answer:
-      'Dojak is Dogecoin-first, self-custodial, and intentionally consistent across devices with modern UX and clear transaction controls.'
-  },
+const faqs = [
   {
     question: 'Is Dojak open source?',
     answer:
-      'Yes. Dojak is built from an open source UniSat fork and developed in the open with community-friendly transparency.'
+      'Dogenals standards in ../dogenals/spec are open and MIT-licensed. Dojak wallet apps are proprietary products implementing those standards.'
   },
   {
-    question: 'Is Dojak secure?',
+    question: 'How is this different from generic multi-chain wallets?',
     answer:
-      'Dojak focuses on local key control, clear signing flows, and a reduced-complexity interface to help prevent mistakes.'
+      'Dojak is intentionally Dogecoin-native and Dogenals-native, with product decisions tuned for Doge users, social behavior, and inscriptions.'
+  },
+  {
+    question: 'Does the web wallet hold server-side keys?',
+    answer:
+      'No. The web wallet flow is local-first and self-custodial. Signing and private material stay client-side.'
+  },
+  {
+    question: 'Why does protocol support matter for wallet safety?',
+    answer:
+      'Wallets that are not Dogenals-aware can treat all UTXOs as generic spendable coins, which risks unintentionally spending protocol-linked outputs. Dojak is built to surface and protect protocol-sensitive UTXOs in user flows.'
+  },
+  {
+    question: 'What does X identity mean here?',
+    answer:
+      'It maps to the Ð𝕏 ecosystem direction: optional handle-linked identity and reputation primitives for safer social interactions.'
   }
 ];
 
-const howItWorks = [
-  {
-    title: '1. Install Dojak',
-    body: 'Add the extension or download mobile. You are live in under two minutes.'
-  },
-  {
-    title: '2. Create or import wallet',
-    body: 'Start fresh or restore from your phrase while keeping complete control over keys.'
-  },
-  {
-    title: '3. Send, receive & hodl DOGE',
-    body: 'Track balances, scan QR, and move DOGE confidently—whether at home or on the go.'
-  }
-];
-
-function CtaButton({ href, text, primary = false }: { href: string; text: string; primary?: boolean }) {
+function Pill({ children }: { children: React.ReactNode }) {
   return (
-    <Link href={href} target="_blank" rel="noreferrer" className="inline-flex">
-      <span
-        className={
-          primary
-            ? 'inline-flex min-h-12 min-w-[190px] items-center justify-center rounded-[14px] bg-gradient-to-r from-[#C9822A] to-[#E5A03A] px-[18px] text-sm font-bold text-[#0a0a0a]'
-            : 'inline-flex min-h-12 min-w-[190px] items-center justify-center rounded-[14px] border border-[rgba(244,196,48,0.4)] bg-[rgba(24,24,24,0.85)] px-[18px] text-sm font-semibold text-[#f5f5f5]'
-        }
-      >
-        {text}
-      </span>
+    <span className="inline-flex items-center rounded-full border border-[#F2A900]/40 bg-[#F2A900]/10 px-3 py-1 text-xs font-semibold tracking-wide text-[#FCD34D]">
+      {children}
+    </span>
+  );
+}
+
+function CTA({ href, label, primary = false }: { href: string; label: string; primary?: boolean }) {
+  const className = primary
+    ? 'inline-flex min-h-11 items-center justify-center rounded-xl bg-gradient-to-r from-[#F2A900] to-[#FF8C42] px-5 text-sm font-bold text-black transition hover:brightness-110'
+    : 'inline-flex min-h-11 items-center justify-center rounded-xl border border-white/20 bg-white/5 px-5 text-sm font-semibold text-zinc-100 transition hover:border-[#F2A900]/60 hover:bg-white/10';
+  return (
+    <Link href={href} className={className} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer">
+      {label}
     </Link>
   );
 }
 
 export default function HomePage() {
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [openFaq, setOpenFaq] = useState(0);
-
-  const trustBarText = useMemo(
-    () => '#1 Choice for Shibes • Open Source • Self-Custodial • Trusted by the DOGE Community • Built from UniSat 🐶🚀',
-    []
-  );
+  const [faqOpen, setFaqOpen] = useState(0);
 
   return (
-    <main className="min-h-screen bg-dojak-bg text-zinc-100 selection:bg-dojak-yellow/30">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 md:py-4">
-          <Link href="#" className="flex items-center gap-2 text-lg font-black tracking-tight text-dojak-yellow md:text-xl">
-            <span className="text-2xl leading-none">🐶</span>
-            Dojak
+    <main className="relative min-h-screen overflow-x-hidden bg-[#0a0a0a] text-zinc-100">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(242,169,0,0.24)_0%,transparent_32%),radial-gradient(circle_at_90%_20%,rgba(139,92,246,0.2)_0%,transparent_34%),radial-gradient(circle_at_55%_100%,rgba(255,140,66,0.2)_0%,transparent_35%)]" />
+
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4">
+          <Link href="/" className="flex items-center gap-2 text-lg font-black tracking-tight text-[#FCD34D]">
+            <span aria-hidden>🐕</span> Dojak
           </Link>
 
           <button
             type="button"
             className="rounded-lg border border-white/20 px-3 py-2 text-sm md:hidden"
             onClick={() => setMobileMenu((prev) => !prev)}
-            aria-label="Toggle navigation"
             aria-expanded={mobileMenu}
+            aria-label="Toggle menu"
           >
             Menu
           </button>
 
           <nav className="hidden items-center gap-6 md:flex">
-            {navLinks.map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                target={link.external ? '_blank' : undefined}
-                rel={link.external ? 'noreferrer' : undefined}
-                className="text-sm font-medium text-zinc-300 transition hover:text-dojak-yellow"
-              >
-                {link.label}
+            {navLinks.map((item) => (
+              <Link key={item.href} href={item.href} className="text-sm text-zinc-300 transition hover:text-[#FCD34D]">
+                {item.label}
               </Link>
             ))}
-            <CtaButton href="https://chromewebstore.google.com/" text="Add to Chrome" primary />
+            <CTA href="#download" label="Get Dojak Free" primary />
           </nav>
         </div>
-
-        {mobileMenu && (
-          <nav className="border-t border-white/10 bg-black/40 px-4 py-4 md:hidden">
-            <div className="mx-auto flex max-w-6xl flex-col gap-3">
-              {navLinks.map((link) => (
+        {mobileMenu ? (
+          <div className="border-t border-white/10 px-4 py-3 md:hidden">
+            <div className="mx-auto flex max-w-7xl flex-col gap-3">
+              {navLinks.map((item) => (
                 <Link
-                  key={link.label}
-                  href={link.href}
-                  target={link.external ? '_blank' : undefined}
-                  rel={link.external ? 'noreferrer' : undefined}
-                  className="rounded-lg px-2 py-1.5 text-sm text-zinc-200 transition hover:bg-white/5"
+                  key={item.href}
+                  href={item.href}
                   onClick={() => setMobileMenu(false)}
+                  className="rounded-lg px-2 py-1.5 text-sm text-zinc-200 hover:bg-white/5"
                 >
-                  {link.label}
+                  {item.label}
                 </Link>
               ))}
-              <CtaButton href="https://chromewebstore.google.com/" text="Add to Chrome" primary />
+              <CTA href="#download" label="Get Dojak Free" primary />
             </div>
-          </nav>
-        )}
+          </div>
+        ) : null}
       </header>
 
-      <section className="hero-mesh relative overflow-hidden">
-        <div className="mx-auto grid min-h-[88vh] w-full max-w-6xl gap-12 px-4 py-16 md:grid-cols-[1.05fr_0.95fr] md:items-center md:py-24">
-          <div className="relative z-10">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-dojak-yellow md:text-sm">Your keys, your DOGE</p>
-            <h1 className="text-balance text-4xl font-black leading-tight md:text-6xl">
-              Dojak — The Dogecoin Wallet That Just Works
-            </h1>
-            <p className="mt-5 max-w-2xl text-pretty text-base text-zinc-300 md:text-lg">
-              Secure self-custodial wallet with the same beautiful 402 px UI on Chrome/Brave extension, Android, and iOS.
-              Built from UniSat for pure DOGE power.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <CtaButton href="https://chromewebstore.google.com/" text="Add to Chrome / Brave" primary />
-              <CtaButton href="https://play.google.com/store/apps" text="Get on Google Play" />
-              <CtaButton href="https://apps.apple.com/" text="Download on App Store" />
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center gap-5 text-sm text-zinc-300">
-              <Link href="https://github.com/dojak-wallet" target="_blank" rel="noreferrer" className="underline-offset-4 hover:underline">
-                View on GitHub
-              </Link>
-              <Link href="#download" className="underline-offset-4 hover:underline">
-                Compare platforms
-              </Link>
-            </div>
+      <section className="relative mx-auto grid min-h-[88vh] max-w-7xl gap-10 px-4 py-16 md:grid-cols-[1.15fr_0.85fr] md:items-center md:py-24">
+        <div className="space-y-6">
+          <Pill>Flagship Dogenals Wallet</Pill>
+          <h1 className="text-balance text-4xl font-black leading-tight sm:text-5xl md:text-6xl">
+            The Wallet Doge Deserves.
+            <span className="block bg-gradient-to-r from-[#FCD34D] via-[#FF8C42] to-[#C084FC] bg-clip-text text-transparent">
+              Built for the next billion shibes.
+            </span>
+          </h1>
+          <p className="max-w-2xl text-pretty text-base leading-7 text-zinc-300 md:text-lg">
+            The flagship Dogecoin wallet for the Dogenals era: simple for normies, powerful for pros, and safe for protocol-aware
+            UTXO spending. Built on open standards from <code className="rounded bg-white/10 px-1 py-0.5 text-xs">../dogenals/spec</code>.
+          </p>
+          <div id="download" className="flex flex-wrap gap-3">
+            <CTA href="https://chromewebstore.google.com/" label="Install Extension" primary />
+            <CTA href="#" label="Try Web Wallet" />
+            <CTA href="https://play.google.com/store/apps" label="Android" />
+            <CTA href="https://apps.apple.com/" label="iOS" />
           </div>
+          <p className="text-sm text-zinc-400">Self-custodial • Protocol-aware safety • Dogecoin L1 native • X-linked reputation</p>
+        </div>
 
-          <div className="relative mx-auto w-full max-w-[430px]">
-            <div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-dojak-yellow/30 via-dojak-orange/15 to-transparent blur-2xl" />
-            <div className="relative rounded-[32px] border border-dojak-yellow/35 bg-black/65 p-4 shadow-glow">
-              <Image
-                src="/wallet-mockup.svg"
-                width={402}
-                height={760}
-                alt="Dojak 402 px wallet UI mockup"
-                priority
-                className="h-auto w-full rounded-[20px]"
-              />
+        <div className="relative mx-auto w-full max-w-[430px]">
+          <div className="absolute -inset-8 rounded-full bg-[#F2A900]/20 blur-3xl" />
+          <div className="relative overflow-hidden rounded-[28px] border border-white/15 bg-black/40 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+            <div className="mascot-float mx-auto flex h-44 w-44 items-center justify-center rounded-full border border-[#F2A900]/50 bg-[radial-gradient(circle_at_30%_20%,#FFD700_0%,#F2A900_45%,#111111_100%)] text-7xl">
+              🐶
+            </div>
+            <div className="mt-5 space-y-3">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-zinc-200">Connect X → Claim Shibe Status</div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-zinc-200">Inscribe, trade, and manage Dogenals</div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-zinc-200">Your keys. Your Dojak. Your chain.</div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="border-y border-white/10 bg-black/45">
-        <p className="mx-auto max-w-6xl px-4 py-4 text-center text-sm font-medium text-zinc-100">{trustBarText}</p>
+      <section className="border-y border-white/10 bg-black/40">
+        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300 sm:grid-cols-2 lg:grid-cols-4">
+          <span>Open standards: ../dogenals/spec</span>
+          <span>No server sees your seed</span>
+          <span>Protocol-aware UTXO protection</span>
+          <span>Dogecoin L1 native</span>
+        </div>
       </section>
 
-      <section id="features" className="mx-auto max-w-6xl px-4 py-20">
+      <section id="features" className="mx-auto max-w-7xl px-4 py-20">
         <div className="max-w-2xl">
-          <h2 className="text-3xl font-bold md:text-4xl">Features that make Dojak feel effortless</h2>
-          <p className="mt-3 text-zinc-300">Built for speed, confidence, and consistency for every shibe in the DOGE army.</p>
+          <Pill>Core Product Value</Pill>
+          <h2 className="mt-3 text-3xl font-bold md:text-4xl">Premium wallet UX with pure Doge culture energy.</h2>
         </div>
-
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {featureCards.map((feature) => (
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {featureCards.map((item) => (
             <article
-              key={feature.title}
-              className="flex min-h-[180px] flex-col justify-start rounded-[18px] border border-white/10 bg-[rgba(16,16,16,0.8)] p-4"
+              key={item.title}
+              className="group rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition hover:-translate-y-1 hover:border-[#F2A900]/40 hover:bg-white/[0.08]"
             >
-              <h3 className="text-lg font-semibold text-zinc-100">{feature.title}</h3>
-              <p className="text-sm leading-relaxed text-zinc-300">{feature.body}</p>
+              <div className="mb-3 text-2xl transition group-hover:scale-110">{item.mood}</div>
+              <h3 className="text-lg font-semibold">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">{item.body}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section id="platforms" className="border-y border-white/10 bg-zinc-950/70">
-        <div className="mx-auto max-w-6xl px-4 py-20">
-          <h2 className="text-3xl font-bold md:text-4xl">Download Dojak on every platform</h2>
-          <p className="mt-3 max-w-2xl text-zinc-300">
-            Use quick links now and scan platform QR placeholders. One wallet experience, no relearning.
+      <section id="dogenals" className="border-y border-white/10 bg-zinc-950/70">
+        <div className="mx-auto max-w-7xl px-4 py-20">
+          <Pill>Dogenals Section</Pill>
+          <h2 className="mt-3 text-3xl font-bold md:text-4xl">Dogenals rebooted for 2026.</h2>
+          <p className="mt-3 max-w-3xl text-zinc-300">
+            The standards tree at <code className="rounded bg-white/10 px-1 py-0.5 text-xs">../dogenals/spec</code> defines the chain
+            contract. Dojak ships a polished implementation layer on top: fast indexing, social-native identity surfaces, and streamlined
+            flows for tags, offers, and collectables.
           </p>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {downloadCards.map((item) => (
-              <article key={item.title} className="rounded-2xl border border-dojak-yellow/20 bg-black/45 p-5">
-                <span className="inline-flex rounded-full border border-dojak-yellow/40 bg-dojak-yellow/10 px-2.5 py-1 text-xs font-semibold text-dojak-yellow">
-                  {item.badge}
-                </span>
-                <div
-                  className="mt-4 h-24 w-24 rounded-lg border border-dashed border-white/25 bg-zinc-900/80"
-                  aria-label="QR placeholder"
-                />
-                <h3 className="mt-4 text-xl font-semibold">{item.title}</h3>
-                <p className="mt-2 text-sm text-zinc-300">{item.subtitle}</p>
-                <div className="mt-5">
-                  <CtaButton href={item.href} text={item.cta} primary />
-                </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {statCards.map((item) => (
+              <article key={item.label} className="rounded-2xl border border-white/10 bg-black/40 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">{item.label}</p>
+                <p className="mt-2 text-2xl font-black text-[#FCD34D]">{item.value}</p>
+                <p className="mt-1 text-sm text-zinc-300">{item.note}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-20">
-        <h2 className="text-3xl font-bold md:text-4xl">How it works</h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {howItWorks.map((step) => (
-            <article key={step.title} className="rounded-2xl border border-white/10 bg-zinc-900/65 p-6">
-              <h3 className="text-lg font-semibold text-dojak-yellow">{step.title}</h3>
-              <p className="mt-3 text-sm text-zinc-300">{step.body}</p>
+      <section id="platforms" className="mx-auto max-w-7xl px-4 py-20">
+        <Pill>Multi-Platform</Pill>
+        <h2 className="mt-3 text-3xl font-bold md:text-4xl">One wallet brand. Every major surface.</h2>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {platformCards.map((item) => (
+            <article key={item.name} className="rounded-2xl border border-[#F2A900]/20 bg-black/35 p-5">
+              <span className="inline-flex rounded-full border border-white/15 bg-white/5 px-2 py-1 text-xs text-zinc-300">{item.badge}</span>
+              <h3 className="mt-4 text-xl font-semibold">{item.name}</h3>
+              <div className="mt-3 space-y-2 text-sm text-zinc-300">
+                <p><span className="font-semibold text-zinc-100">Install:</span> {item.install}</p>
+                <p><span className="font-semibold text-zinc-100">Safety:</span> {item.safety}</p>
+                <p><span className="font-semibold text-zinc-100">Works now:</span> {item.status}</p>
+              </div>
+              <div className="mt-5">
+                <CTA href={item.href} label={item.cta} primary={item.name === 'Browser Extension'} />
+              </div>
             </article>
           ))}
         </div>
       </section>
 
-      <section id="community" className="border-y border-white/10 bg-zinc-950/70">
-        <div className="mx-auto max-w-6xl px-4 py-20">
-          <h2 className="text-3xl font-bold md:text-4xl">Loved by the DOGE community</h2>
-          <p className="mt-3 max-w-2xl text-zinc-300">Real feedback from shibes who wanted a wallet that feels modern and trustworthy.</p>
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
-            {testimonials.map((item) => (
-              <blockquote key={item.author} className="rounded-2xl border border-white/10 bg-black/40 p-6">
-                <p className="text-zinc-200">“{item.quote}”</p>
-                <footer className="mt-4 text-sm font-medium text-dojak-yellow">— {item.author}</footer>
-              </blockquote>
-            ))}
+      <section className="border-y border-white/10 bg-black/50">
+        <div className="mx-auto max-w-7xl px-4 py-16">
+          <Pill>Why Switch Now</Pill>
+          <h2 className="mt-3 text-3xl font-bold md:text-4xl">Don’t get stranded on legacy Dogecoin wallet rails.</h2>
+          <p className="mt-3 max-w-3xl text-zinc-300">
+            Existing ecosystem wallets helped spark adoption, but the standards era is moving fast. Dojak is where the
+            flagship Dogenals protocol wallet experience is being shaped: new spec alignment, modern UX, and first-party velocity.
+          </p>
+          <p className="mt-3 max-w-3xl text-zinc-300">
+            If a wallet is not protocol-aware, it can accidentally spend UTXOs that should be preserved for Dogenals state.
+            That is a user-safety issue, not just a feature gap.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <CTA href="/dogenals" label="See the Protocol Wall" primary />
+            <CTA href="https://github.com/jonheaven/dogenals" label="Review Open Spec" />
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-4xl px-4 py-20">
-        <h2 className="text-3xl font-bold md:text-4xl">FAQ</h2>
+      <section id="security" className="border-y border-white/10 bg-zinc-950/70">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-20 md:grid-cols-2">
+          <article className="rounded-3xl border border-white/10 bg-black/35 p-6">
+            <Pill>Security</Pill>
+            <h3 className="mt-3 text-2xl font-bold">Trust signals that are actually meaningful.</h3>
+            <ul className="mt-4 space-y-3 text-sm text-zinc-300">
+              <li>• Self-custody by default. No custodial key escrow.</li>
+              <li>• Local-first web wallet mode for controlled signing.</li>
+              <li>• Open protocol standards in ../dogenals/spec.</li>
+              <li>• Dogecoin L1-native model without bridge risk.</li>
+            </ul>
+          </article>
+          <article className="rounded-3xl border border-white/10 bg-black/35 p-6">
+            <Pill>Community Pulse</Pill>
+            <h3 className="mt-3 text-2xl font-bold">Built for the shibes, not corporate vibes.</h3>
+            <ul className="mt-4 space-y-3 text-sm text-zinc-300">
+              <li>• Much secure. Very based. Feels good man.</li>
+              <li>• Identity + reputation path via Ð𝕏 direction.</li>
+              <li>• UX language for normies, depth for power users.</li>
+              <li>• Product voice that sounds like Dogecoin culture.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-16">
+        <article className="rounded-3xl border border-[#F2A900]/35 bg-[#F2A900]/10 p-6">
+          <Pill>Safe Spend Policy</Pill>
+          <h3 className="mt-3 text-2xl font-bold">Protocol-sensitive UTXOs are protected by default.</h3>
+          <ul className="mt-4 space-y-3 text-sm text-zinc-200">
+            <li>• Tag protocol-linked UTXOs and exclude them from default coin selection.</li>
+            <li>• Require explicit user confirmation before spending protocol-sensitive outputs.</li>
+            <li>• Show human-readable warnings when a send could impact listings, inscriptions, or other Dogenals state.</li>
+            <li>• Preserve deterministic behavior aligned with the standards in <code className="rounded bg-white/10 px-1 py-0.5 text-xs">../dogenals/spec</code>.</li>
+          </ul>
+        </article>
+      </section>
+
+      <section id="faq" className="mx-auto max-w-4xl px-4 py-20">
+        <Pill>FAQ</Pill>
+        <h2 className="mt-3 text-3xl font-bold md:text-4xl">Quick answers (normie-friendly)</h2>
+        <p className="mt-3 text-sm text-zinc-300">
+          Want the deep blockchain details? Visit the full technical FAQ for protocol semantics, UTXO policy, and indexer behavior.
+        </p>
+        <div className="mt-4">
+          <CTA href="/faq" label="Open Technical FAQ" />
+        </div>
         <div className="mt-6 space-y-3">
           {faqs.map((item, index) => {
-            const isOpen = openFaq === index;
-
+            const open = faqOpen === index;
             return (
-              <article key={item.question} className="overflow-hidden rounded-xl border border-white/10 bg-zinc-900/70">
+              <article key={item.question} className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left"
-                  onClick={() => setOpenFaq((prev) => (prev === index ? -1 : index))}
-                  aria-expanded={isOpen}
+                  onClick={() => setFaqOpen((prev) => (prev === index ? -1 : index))}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+                  aria-expanded={open}
                 >
                   <span className="font-semibold">{item.question}</span>
-                  <span className="text-dojak-yellow">{isOpen ? '−' : '+'}</span>
+                  <span className="text-[#FCD34D]">{open ? '−' : '+'}</span>
                 </button>
-                {isOpen && <p className="border-t border-white/10 px-4 py-4 text-sm text-zinc-300">{item.answer}</p>}
+                {open ? <p className="border-t border-white/10 px-4 py-4 text-sm text-zinc-300">{item.answer}</p> : null}
               </article>
             );
           })}
         </div>
       </section>
 
-      <footer className="border-t border-white/10 bg-black/65">
-        <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-10 text-sm text-zinc-300 md:flex-row md:items-center md:justify-between">
-          <p>Made with ❤️ for the DOGE army.</p>
-
-          <div className="flex flex-wrap gap-4">
-            <Link href="https://github.com/dojak-wallet" target="_blank" rel="noreferrer" className="hover:text-dojak-yellow">
-              GitHub
-            </Link>
-            <Link href="#" className="hover:text-dojak-yellow">
-              Privacy
-            </Link>
-            <Link href="#" className="hover:text-dojak-yellow">
-              Terms
-            </Link>
-            <Link href="#" className="hover:text-dojak-yellow">
-              Docs
-            </Link>
-            <Link href="#" className="hover:text-dojak-yellow">
-              X
-            </Link>
-            <Link href="#" className="hover:text-dojak-yellow">
-              Telegram
-            </Link>
-            <Link href="#" className="hover:text-dojak-yellow">
-              Discord
-            </Link>
+      <section className="border-t border-white/10">
+        <div className="mx-auto max-w-7xl px-4 py-14 text-center">
+          <h2 className="text-3xl font-black md:text-5xl">
+            Built for the shibes.
+            <span className="block bg-gradient-to-r from-[#FCD34D] via-[#FF8C42] to-[#C084FC] bg-clip-text text-transparent">
+              Designed to make the Doge father proud.
+            </span>
+          </h2>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <CTA href="https://chromewebstore.google.com/" label="Install Extension" primary />
+            <CTA href="#" label="Try Web Wallet" />
+            <CTA href="/faq" label="Geek FAQ" />
+            <CTA href="https://github.com/jonheaven/dogenals" label="Read Dogenals Spec" />
           </div>
         </div>
-      </footer>
+      </section>
     </main>
   );
 }
