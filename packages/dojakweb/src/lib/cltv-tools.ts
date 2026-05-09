@@ -224,7 +224,7 @@ export async function createTimeLockedTransaction(params: {
   return {
     psbtBase64: psbt.toBase64(),
     lockAddress,
-    redeemScriptHex: redeemScript.toString('hex'),
+    redeemScriptHex: Buffer.from(redeemScript).toString('hex'),
     fee: actualFee,
     lockedAmount: amountKoinu,
     locktimeUnix,
@@ -309,7 +309,7 @@ export async function createTimeLockedInscriptionTransaction(params: {
   return {
     psbtBase64: psbt.toBase64(),
     lockAddress,
-    redeemScriptHex: redeemScript.toString('hex'),
+    redeemScriptHex: Buffer.from(redeemScript).toString('hex'),
     fee: actualFee,
     lockedAmount: inscriptionUtxo.value,
     locktimeUnix,

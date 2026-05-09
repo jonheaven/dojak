@@ -523,9 +523,9 @@ export async function signInscriptionTxs(
     ok: sigOk,
     sigHashHex:  Buffer.from(sigHash).toString('hex'),
     pubKeyHex:   Buffer.from(pubKeyBytes).toString('hex'),
-    derHex:      derBytes.toString('hex'),
-    lockScriptHex: lockScript.toString('hex'),
-    p2shScriptHex: p2shScript.toString('hex'),
+    derHex:      Buffer.from(derBytes).toString('hex'),
+    lockScriptHex: Buffer.from(lockScript).toString('hex'),
+    p2shScriptHex: Buffer.from(p2shScript).toString('hex'),
   });
   if (!sigOk) throw new Error('[inscribe] Signature verification failed — aborting reveal tx build.');
 

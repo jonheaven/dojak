@@ -193,7 +193,7 @@ function buildUnsignedIntent<T extends DmpIntentType>(
         psbt_cid: validateCid(listingParams.psbt_cid),
         expiry_height: validatePositiveInteger(listingParams.expiry_height, 'expiry_height'),
         nonce,
-      } as Omit<SignedDmpIntent<T>, 'signature'>;
+      } as unknown as Omit<SignedDmpIntent<T>, 'signature'>;
     }
     case 'bid': {
       const bidParams = params as DmpSigningParams<'bid'>;
@@ -207,7 +207,7 @@ function buildUnsignedIntent<T extends DmpIntentType>(
         psbt_cid: validateCid(bidParams.psbt_cid),
         expiry_height: validatePositiveInteger(bidParams.expiry_height, 'expiry_height'),
         nonce,
-      } as Omit<SignedDmpIntent<T>, 'signature'>;
+      } as unknown as Omit<SignedDmpIntent<T>, 'signature'>;
     }
     case 'settle': {
       const settleParams = params as DmpSigningParams<'settle'>;
@@ -220,7 +220,7 @@ function buildUnsignedIntent<T extends DmpIntentType>(
         bid_id: settleParams.bid_id ? validateInscriptionId(settleParams.bid_id, 'bid_id') : undefined,
         psbt_cid: validateCid(settleParams.psbt_cid),
         nonce,
-      } as Omit<SignedDmpIntent<T>, 'signature'>;
+      } as unknown as Omit<SignedDmpIntent<T>, 'signature'>;
     }
     case 'cancel': {
       const cancelParams = params as DmpSigningParams<'cancel'>;
@@ -231,7 +231,7 @@ function buildUnsignedIntent<T extends DmpIntentType>(
         seller,
         listing_id: validateInscriptionId(cancelParams.listing_id, 'listing_id'),
         nonce,
-      } as Omit<SignedDmpIntent<T>, 'signature'>;
+      } as unknown as Omit<SignedDmpIntent<T>, 'signature'>;
     }
     default:
       throw new Error(`Unsupported ÐMP intent type: ${String(intentType)}`);

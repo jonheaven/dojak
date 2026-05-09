@@ -26,7 +26,9 @@ interface LiveActivityContextType {
   mint: (message: string, personal?: boolean, drawerData?: DrawerData, duration?: number) => void;
   transfer: (message: string, personal?: boolean, drawerData?: DrawerData, duration?: number) => void;
   sentinelStatus: SentinelStatus;
-  updateSentinelStatus: (status: Partial<SentinelStatus>) => void;
+  updateSentinelStatus: (
+    status: Partial<SentinelStatus> | ((prev: SentinelStatus) => Partial<SentinelStatus>),
+  ) => void;
 }
 
 const LiveActivityContext = createContext<LiveActivityContextType | undefined>(undefined);
@@ -95,8 +97,13 @@ export const LiveActivityProvider: React.FC<LiveActivityProviderProps> = ({ chil
     }
   };
 
-  const updateSentinelStatus = (status: Partial<SentinelStatus>) => {
-    setSentinelStatus(prev => ({ ...prev, ...status }));
+  const updateSentinelStatus = (
+    status: Partial<SentinelStatus> | ((prev: SentinelStatus) => Partial<SentinelStatus>),
+  ) => {
+    setSentinelStatus((prev) => ({
+      ...prev,
+      ...(typeof status === 'function' ? status(prev) : status),
+    }));
   };
 
   return (

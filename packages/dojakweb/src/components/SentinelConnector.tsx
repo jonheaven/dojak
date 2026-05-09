@@ -98,7 +98,7 @@ export const SentinelConnector: React.FC<SentinelConnectorProps> = ({
               };
 
               // Generate engaging live activity messages
-              showLiveActivityForEvent(data, isPersonal, drawerData);
+              showLiveActivityForEvent(data, Boolean(isPersonal), drawerData);
             }
           } catch (error) {
             console.warn('Failed to parse sentinel message:', error);
@@ -127,7 +127,10 @@ export const SentinelConnector: React.FC<SentinelConnectorProps> = ({
       } catch (error) {
         // Only log connection failures in development
         if (process.env.NODE_ENV === 'development') {
-          console.warn('Failed to connect to sentinel (service may not be running):', error.message);
+          console.warn(
+            'Failed to connect to sentinel (service may not be running):',
+            error instanceof Error ? error.message : error,
+          );
         }
         // Retry connection after longer delay
         reconnectTimeoutRef.current = setTimeout(connect, 10000);

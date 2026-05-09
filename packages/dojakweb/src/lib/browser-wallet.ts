@@ -179,8 +179,8 @@ function getDogecoinDerivationPath(accountIndex = 0): string {
   return `m/44'/3'/${accountIndex}'/0/0`;
 }
 
-secp.hashes.hmacSha256Async = hmacSha256;
-secp.hashes.sha256Async = sha256;
+secp.hashes.hmacSha256Async = hmacSha256 as any;
+secp.hashes.sha256Async = sha256 as any;
 
 function encodeVarInt(value: number): Uint8Array {
   if (!Number.isSafeInteger(value) || value < 0) {

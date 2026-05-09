@@ -122,7 +122,7 @@ export const ServerInscribeJobPanel: React.FC<ServerInscribeJobPanelProps> = ({
     if (!job) return;
     setBusy(true);
     try {
-      const b64 = contentBuffer.toString('base64');
+      const b64 = Buffer.from(contentBuffer).toString('base64');
       await uploadInscribeJobItemContent(job.job_id, 0, b64);
       const j = await getInscribeJob(job.job_id, false);
       setJob(j);

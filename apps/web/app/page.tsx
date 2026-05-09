@@ -2,6 +2,16 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import {
+  Gauge,
+  LockKeyhole,
+  PawPrint,
+  ShieldCheck,
+  Sparkles,
+  Smartphone,
+  UserRound,
+  Zap
+} from 'lucide-react';
 
 type NavLink = { href: string; label: string; external?: boolean };
 
@@ -17,37 +27,37 @@ const featureCards = [
   {
     title: 'Self-custodial by default',
     body: 'Local-first key flows. Your seed and signing stay with you, never on our servers.',
-    mood: '🛡️'
+    icon: ShieldCheck
   },
   {
     title: 'Dogenals-native UX',
-    body: 'Built for Dogecoin L1 standards from ../dogenals/spec, not generic cross-chain abstractions.',
-    mood: '⚡'
+    body: 'Built for Dogecoin L1 standards from dogenals.org, not generic cross-chain abstractions.',
+    icon: Zap
   },
   {
     title: 'Built-in X identity',
     body: 'Connect your handle to on-chain profile and reputation primitives for social-native wallet experiences.',
-    mood: '🐶'
+    icon: UserRound
   },
   {
     title: 'One wallet, many form factors',
     body: 'Browser extension, mobile apps, and web wallet with a coherent product language.',
-    mood: '📱'
+    icon: Smartphone
   },
   {
     title: 'Fast indexer era',
     body: 'Designed for the Dogenals reboot and high-signal data surfaces across tags, offers, and metadata.',
-    mood: '📈'
+    icon: Gauge
   },
   {
     title: 'Protocol-aware UTXO safety',
     body: 'Dogenals-aware spend controls help avoid accidentally spending UTXOs tied to inscriptions, offers, or other protocol state.',
-    mood: '🔒'
+    icon: LockKeyhole
   },
   {
     title: 'Open standards + private product',
     body: 'The protocol layer is public; the Dojak app layer is proprietary and polished for production.',
-    mood: '✨'
+    icon: Sparkles
   }
 ];
 
@@ -94,14 +104,14 @@ const statCards = [
   { label: 'Genesis block', value: '6,142,069', note: 'Dogenals era activation point' },
   { label: 'Core protocols', value: '15+', note: 'ÐMS, ÐMP, ÐWhisper, Ð𝕏 and more' },
   { label: 'Chain model', value: 'Dogecoin L1', note: 'No bridge, no wrapped dependency' },
-  { label: 'Spec source', value: '../dogenals/spec', note: 'Canonical standards tree' }
+  { label: 'Spec source', value: 'dogenals.org', note: 'Canonical standards tree' }
 ];
 
 const faqs = [
   {
     question: 'Is Dojak open source?',
     answer:
-      'Dogenals standards in ../dogenals/spec are open and MIT-licensed. Dojak wallet apps are proprietary products implementing those standards.'
+      'Dogenals standards at dogenals.org are open and MIT-licensed. Dojak wallet apps are proprietary products implementing those standards.'
   },
   {
     question: 'How is this different from generic multi-chain wallets?',
@@ -155,7 +165,8 @@ export default function HomePage() {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4">
           <Link href="/" className="flex items-center gap-2 text-lg font-black tracking-tight text-[#FCD34D]">
-            <span aria-hidden>🐕</span> Dojak
+            <PawPrint className="h-5 w-5" aria-hidden />
+            Dojak
           </Link>
 
           <button
@@ -207,7 +218,7 @@ export default function HomePage() {
           </h1>
           <p className="max-w-2xl text-pretty text-base leading-7 text-zinc-300 md:text-lg">
             The flagship Dogecoin wallet for the Dogenals era: simple for normies, powerful for pros, and safe for protocol-aware
-            UTXO spending. Built on open standards from <code className="rounded bg-white/10 px-1 py-0.5 text-xs">../dogenals/spec</code>.
+            UTXO spending. Built on open standards from <code className="rounded bg-white/10 px-1 py-0.5 text-xs">dogenals.org</code>.
           </p>
           <div id="download" className="flex flex-wrap gap-3">
             <CTA href="https://chromewebstore.google.com/" label="Install Extension" primary />
@@ -222,7 +233,7 @@ export default function HomePage() {
           <div className="absolute -inset-8 rounded-full bg-[#F2A900]/20 blur-3xl" />
           <div className="relative overflow-hidden rounded-[28px] border border-white/15 bg-black/40 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
             <div className="mascot-float mx-auto flex h-44 w-44 items-center justify-center rounded-full border border-[#F2A900]/50 bg-[radial-gradient(circle_at_30%_20%,#FFD700_0%,#F2A900_45%,#111111_100%)] text-7xl">
-              🐶
+              <PawPrint className="h-20 w-20 text-black/75" aria-hidden />
             </div>
             <div className="mt-5 space-y-3">
               <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-zinc-200">Connect X → Claim Shibe Status</div>
@@ -235,7 +246,7 @@ export default function HomePage() {
 
       <section className="border-y border-white/10 bg-black/40">
         <div className="mx-auto grid max-w-7xl gap-3 px-4 py-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300 sm:grid-cols-2 lg:grid-cols-4">
-          <span>Open standards: ../dogenals/spec</span>
+          <span>Open standards: dogenals.org</span>
           <span>No server sees your seed</span>
           <span>Protocol-aware UTXO protection</span>
           <span>Dogecoin L1 native</span>
@@ -253,7 +264,7 @@ export default function HomePage() {
               key={item.title}
               className="group rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition hover:-translate-y-1 hover:border-[#F2A900]/40 hover:bg-white/[0.08]"
             >
-              <div className="mb-3 text-2xl transition group-hover:scale-110">{item.mood}</div>
+              <item.icon className="mb-3 h-6 w-6 text-[#FCD34D] transition group-hover:scale-110" aria-hidden />
               <h3 className="text-lg font-semibold">{item.title}</h3>
               <p className="mt-2 text-sm leading-6 text-zinc-300">{item.body}</p>
             </article>
@@ -266,7 +277,7 @@ export default function HomePage() {
           <Pill>Dogenals Section</Pill>
           <h2 className="mt-3 text-3xl font-bold md:text-4xl">Dogenals rebooted for 2026.</h2>
           <p className="mt-3 max-w-3xl text-zinc-300">
-            The standards tree at <code className="rounded bg-white/10 px-1 py-0.5 text-xs">../dogenals/spec</code> defines the chain
+            The standards tree at <code className="rounded bg-white/10 px-1 py-0.5 text-xs">dogenals.org</code> defines the chain
             contract. Dojak ships a polished implementation layer on top: fast indexing, social-native identity surfaces, and streamlined
             flows for tags, offers, and collectables.
           </p>
@@ -330,7 +341,7 @@ export default function HomePage() {
             <ul className="mt-4 space-y-3 text-sm text-zinc-300">
               <li>• Self-custody by default. No custodial key escrow.</li>
               <li>• Local-first web wallet mode for controlled signing.</li>
-              <li>• Open protocol standards in ../dogenals/spec.</li>
+              <li>• Open protocol standards at dogenals.org.</li>
               <li>• Dogecoin L1-native model without bridge risk.</li>
             </ul>
           </article>
@@ -355,7 +366,7 @@ export default function HomePage() {
             <li>• Tag protocol-linked UTXOs and exclude them from default coin selection.</li>
             <li>• Require explicit user confirmation before spending protocol-sensitive outputs.</li>
             <li>• Show human-readable warnings when a send could impact listings, inscriptions, or other Dogenals state.</li>
-            <li>• Preserve deterministic behavior aligned with the standards in <code className="rounded bg-white/10 px-1 py-0.5 text-xs">../dogenals/spec</code>.</li>
+            <li>• Preserve deterministic behavior aligned with the standards in <code className="rounded bg-white/10 px-1 py-0.5 text-xs">dogenals.org</code>.</li>
           </ul>
         </article>
       </section>

@@ -24,6 +24,16 @@ import { normalizeDoginalInscriptionId } from '../utils/api';
 // Re-export so callers only need this module
 export { NOSTR_RELAY_URL, NOSTR_BACKUP_RELAYS, NOSTR_ALL_RELAYS, NOSTR_ORDER_KIND };
 
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.trim().replace(/^0x/i, '');
+  if (clean.length % 2 !== 0) throw new Error('Invalid hex string length');
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i += 1) {
+    out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface NostrEvent {
@@ -273,7 +283,7 @@ export async function publishListingCancelToNostrWithDiagnostics(
   ephemeralPrivateKeyHex: string,
 ): Promise<NostrPublishDiagnostics> {
   const insId = normalizeDoginalInscriptionId(inscriptionId);
-  const secretKeyBytes = secp.utils.hexToBytes(ephemeralPrivateKeyHex);
+  const secretKeyBytes = hexToBytes(ephemeralPrivateKeyHex);
 
   const tags: string[][] = [
     ['n', DOGE_NETWORK_NAME],

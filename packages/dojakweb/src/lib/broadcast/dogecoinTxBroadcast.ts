@@ -1340,7 +1340,8 @@ export async function buildOpReturnPSDT(
     wif: 0x9e,
   };
 
-  const psbt = new bitcoin.Psbt({ network: DOGE_NETWORK, version: 1 });
+  const psbt = new bitcoin.Psbt({ network: DOGE_NETWORK });
+  psbt.setVersion(1);
 
   for (let i = 0; i < selected.length; i++) {
     const u = selected[i];

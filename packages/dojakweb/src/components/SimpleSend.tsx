@@ -77,8 +77,8 @@ export const SimpleSend: React.FC<SimpleSendProps> = ({ onSuccess, wallet }) => 
       // Convert to the format expected by SimpleSend
       const formattedTokens = drc20Tokens.map(token => ({
         ticker: token.ticker,
-        balance: token.balance,
-        transferable: token.transferable
+        balance: Number(token.balance),
+        transferable: Number(token.transferable)
       }));
 
       setAvailableTokens(formattedTokens);
@@ -272,11 +272,11 @@ export const SimpleSend: React.FC<SimpleSendProps> = ({ onSuccess, wallet }) => 
 
       // In a real implementation, you'd broadcast the transaction
       // For now, we'll simulate success
-      const txId = txResult.txId || `tx_${Date.now()}`;
+      const txId = txResult || `tx_${Date.now()}`;
 
       toast.success(
         `Transfer initiated! Transaction: ${txId.slice(0, 10)}...`,
-        5000
+        { duration: 5000 }
       );
 
       // Save to analytics

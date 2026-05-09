@@ -75,11 +75,12 @@ export function DojakwebFiatProvider({
   }, []);
 
   useEffect(() => {
-    if (!fxRatesUrl) return;
+    const url = fxRatesUrl ?? '';
+    if (!url) return;
     let cancelled = false;
     async function pull() {
       try {
-        const res = await fetch(fxRatesUrl, { cache: 'no-store' });
+        const res = await fetch(url, { cache: 'no-store' });
         if (!res.ok || cancelled) return;
         const json = (await res.json()) as { rates?: Record<string, number> };
         if (!json.rates || cancelled) return;

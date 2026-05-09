@@ -13,11 +13,11 @@ const sections = [
     items: [
       {
         q: 'What is canonical when we say "Dogenals" on this site?',
-        a: 'Canonical means the standards corpus in ../dogenals/spec (GitHub: jonheaven/dogenals/tree/main/spec). Product and UI language map to that standards tree.'
+        a: 'Canonical means the standards corpus published at dogenals.org. Product and UI language map to that standards tree.'
       },
       {
         q: 'Is Dojak itself the standard?',
-        a: 'No. Dojak is a first-party proprietary wallet product implementation. The standard remains open and implementation-neutral in ../dogenals/spec.'
+        a: 'No. Dojak is a first-party proprietary wallet product implementation. The standard remains open and implementation-neutral at dogenals.org.'
       },
       {
         q: 'Are Dogenals protocols chain-native or bridge-dependent?',
@@ -47,7 +47,7 @@ const sections = [
     items: [
       {
         q: 'How should indexers/wallets interoperate?',
-        a: 'Independent implementations should follow normative rules and vectors in ../dogenals/spec so separate indexers can converge on consistent protocol state.'
+        a: 'Independent implementations should follow normative rules and vectors at dogenals.org so separate indexers can converge on consistent protocol state.'
       },
       {
         q: 'Do users need to understand terms like UTXO/PSDT/DMP?',
@@ -90,7 +90,7 @@ export default function TechnicalFaqPage() {
           <h1 className="mt-3 text-balance text-4xl font-black md:text-5xl">Deep protocol details for power users</h1>
           <p className="mt-3 text-sm leading-6 text-zinc-300">
             This page is the geek-mode companion to the normie-friendly homepage. All protocol references map to{' '}
-            <code className="rounded bg-white/10 px-1 py-0.5 text-xs">../dogenals/spec</code>.
+            <code className="rounded bg-white/10 px-1 py-0.5 text-xs">dogenals.org</code>.
           </p>
         </header>
 

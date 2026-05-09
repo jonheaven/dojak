@@ -91,7 +91,7 @@ async function deriveAesKey(
   return subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt,
+      salt: asBufferSource(salt),
       iterations,
       hash: 'SHA-256',
     },
@@ -102,6 +102,10 @@ async function deriveAesKey(
   );
 }
 
+function asBufferSource(bytes: Uint8Array): BufferSource {
+  return bytes as unknown as BufferSource;
+}
+
 async function encryptBytes(bytes: Uint8Array, password: string): Promise<SecureStorageEnvelope> {
   const subtle = requireSubtleCrypto();
   // `crypto.getRandomValues` uses the browser's CSPRNG so each wallet gets a unique salt.
@@ -110,7 +114,11 @@ async function encryptBytes(bytes: Uint8Array, password: string): Promise<Secure
   // AES-GCM also requires a fresh IV per encryption so nonce reuse cannot undermine integrity.
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
   const key = await deriveAesKey(password, salt, CURRENT_PBKDF2_ITERATIONS, ['encrypt']);
-  const ciphertext = await subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes);
+  const ciphertext = await subtle.encrypt(
+    { name: 'AES-GCM', iv: asBufferSource(iv) },
+    key,
+    asBufferSource(bytes),
+  );
 
   return {
     version: CURRENT_SECURE_STORAGE_VERSION,
@@ -133,7 +141,11 @@ async function decryptEnvelopeBytes(
   const iv = base64ToBytes(envelope.iv);
   const ciphertext = base64ToBytes(envelope.ciphertext);
   const key = await deriveAesKey(password, salt, envelope.iterations, ['decrypt']);
-  const plaintext = await subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  const plaintext = await subtle.decrypt(
+    { name: 'AES-GCM', iv: asBufferSource(iv) },
+    key,
+    asBufferSource(ciphertext),
+  );
   return new Uint8Array(plaintext);
 }
 
@@ -148,7 +160,11 @@ async function decryptLegacyCombinedBytes(payload: string, password: string): Pr
   const iv = combined.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
   const ciphertext = combined.slice(SALT_LENGTH + IV_LENGTH);
   const key = await deriveAesKey(password, salt, LEGACY_PBKDF2_ITERATIONS, ['decrypt']);
-  const plaintext = await subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  const plaintext = await subtle.decrypt(
+    { name: 'AES-GCM', iv: asBufferSource(iv) },
+    key,
+    asBufferSource(ciphertext),
+  );
   return new Uint8Array(plaintext);
 }
 

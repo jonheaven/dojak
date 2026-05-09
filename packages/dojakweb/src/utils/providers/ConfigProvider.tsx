@@ -89,7 +89,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const data = new TextEncoder().encode(JSON.stringify(creds));
     const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
-    return { encryptedCreds: arrayBufferToBase64(encrypted), iv: arrayBufferToBase64(iv) };
+    return { encryptedCreds: arrayBufferToBase64(encrypted), iv: arrayBufferToBase64(iv.buffer as ArrayBuffer) };
   };
 
   const decryptCredentials = async (encryptedCreds: string, iv: string) => {

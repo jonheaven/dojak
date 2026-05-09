@@ -4,7 +4,7 @@ import Link from 'next/link';
 export const metadata: Metadata = {
   title: 'Dojak Protocol Wall — Dogenals Flagship Wallet',
   description:
-    'Dojak protocol wall: how the flagship wallet maps to the open standards in ../dogenals/spec across DMS, DMP, DWhisper, DX, and Dogecoin L1-native flows.'
+    'Dojak protocol wall: how the flagship wallet maps to open standards at dogenals.org across DMS, DMP, DWhisper, DX, and Dogecoin L1-native flows.'
 };
 
 const protocolRows = [
@@ -48,7 +48,7 @@ export default function DogenalsPage() {
           <h1 className="mt-3 text-balance text-4xl font-black md:text-5xl">Dojak x Dogenals: flagship wallet map</h1>
           <p className="mt-4 max-w-3xl text-zinc-300">
             Dogenals references here point to the canonical standards corpus at{' '}
-            <code className="rounded bg-white/10 px-1 py-0.5 text-xs">../dogenals/spec</code>. Dojak is the first-party wallet product
+            <code className="rounded bg-white/10 px-1 py-0.5 text-xs">dogenals.org</code>. Dojak is the first-party wallet product
             implementation layer built on that open protocol foundation.
           </p>
         </header>
@@ -75,7 +75,7 @@ export default function DogenalsPage() {
           <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
             <h3 className="text-xl font-semibold">Open standard commitment</h3>
             <p className="mt-3 text-sm leading-6 text-zinc-300">
-              The protocol rules remain open and implementation-neutral in `../dogenals/spec`, so any wallet, indexer, or marketplace can
+              The protocol rules remain open and implementation-neutral at dogenals.org, so any wallet, indexer, or marketplace can
               implement independently without private coordination.
             </p>
           </article>
@@ -103,7 +103,7 @@ export default function DogenalsPage() {
             <li>• Default coin selection excludes UTXOs linked to Dogenals protocol state.</li>
             <li>• Override path requires explicit, contextual user confirmation.</li>
             <li>• Send builder surfaces impact warnings before signature requests.</li>
-            <li>• Policy language maps to canonical standards behavior in <code className="rounded bg-white/10 px-1 py-0.5 text-xs">../dogenals/spec</code>.</li>
+            <li>• Policy language maps to canonical standards behavior at <code className="rounded bg-white/10 px-1 py-0.5 text-xs">dogenals.org</code>.</li>
           </ul>
         </section>
 
@@ -111,7 +111,7 @@ export default function DogenalsPage() {
           <h2 className="text-3xl font-black">Build on the open standard. Ship with flagship UX.</h2>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
-              href="https://github.com/jonheaven/dogenals/tree/main/spec"
+              href="https://dogenals.org"
               target="_blank"
               rel="noreferrer"
               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 px-5 text-sm font-semibold hover:border-[#F2A900]/60"

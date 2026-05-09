@@ -365,9 +365,11 @@ export class CharmsService {
    * Beam asset to another chain
    */
   async beamAsset(params: BeamAssetParams & { walletId?: number; accountId?: number; signer?: CharmsWalletSigner }): Promise<BeamAssetResult> {
-    const placeholderTxid = SHA256(`${params.destAddress}:${Date.now()}`).toString().slice(0, 64);
+    const placeholderTxid = (await sha256Hex(`${params.destAddress}:${Date.now()}`))
+      .replace(/^0x/, '')
+      .slice(0, 64);
     const destUtxoId = `${placeholderTxid}:0`;
-    const destUtxoHash = `0x${SHA256(destUtxoId).toString()}`;
+    const destUtxoHash = await sha256Hex(destUtxoId);
 
     const preparePayload = {
       ticker: params.ticker,

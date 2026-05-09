@@ -464,7 +464,7 @@ export const InscribePage: React.FC = () => {
         v: PERSIST_VERSION,
         address,
         fileName: file?.name ?? 'inscription.bin',
-        contentB64: contentBuffer.toString('base64'),
+        contentB64: Buffer.from(contentBuffer).toString('base64'),
         contentType,
         feeRate,
         waitConfirms,

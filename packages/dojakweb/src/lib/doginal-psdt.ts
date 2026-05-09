@@ -323,7 +323,7 @@ export function calculateFee(
 // ── Tx‑hex cache (per page lifetime) ─────────────────────────────────────────
 const txHexCache: Record<string, string> = {};
 // In-flight deduplication: concurrent fetches for the same txid reuse one request.
-const txHexInflight: Record<string, Promise<string>> = {};
+const txHexInflight: Partial<Record<string, Promise<string>>> = {};
 
 function loadTatumApiKey(): string {
   if (typeof window === 'undefined') return '';
@@ -366,7 +366,8 @@ async function fetchTxHexFromBlockchair(txid: string): Promise<string | null> {
 
 export async function getTxHex(txid: string): Promise<string> {
   if (txHexCache[txid]) return txHexCache[txid];
-  if (txHexInflight[txid]) return txHexInflight[txid];
+  const inflightExisting = txHexInflight[txid];
+  if (inflightExisting) return inflightExisting;
 
   const inflight = (async () => {
     const hex = (await fetchTxHexFromTatum(txid)) ?? (await fetchTxHexFromBlockchair(txid));
@@ -875,7 +876,7 @@ export async function buildBuyPSDT(p: BuildBuyPSDTParams): Promise<string> {
   // ── Input 0: seller's inscription input (copy with existing partial sigs) ──
   // Must remain at vin 0: listing was signed with SIGHASH_SINGLE|ANYONECANPAY at index 0, which commits
   // to output 0 (seller payment). Shifting this input breaks the preimage vs. the stored signature.
-  const sellerGlobalTx = sellerPsbt.data.globalMap.unsignedTx?.tx;
+  const sellerGlobalTx = (sellerPsbt.data.globalMap.unsignedTx as any)?.tx as bitcoin.Transaction | undefined;
   const sellerTxIn     = sellerGlobalTx?.ins?.[0];
   const sellerPsbtIn   = sellerPsbt.data.inputs[0];
   if (!sellerTxIn || !sellerPsbtIn) {
@@ -904,22 +905,26 @@ export async function buildBuyPSDT(p: BuildBuyPSDTParams): Promise<string> {
   }
   if (!sellerPrevTx) {
     sellerPrevTx = Buffer.from(await getTxHex(prevTxid), 'hex');
-    assertPrevoutExists(sellerPrevTx, sellerTxIn.index, 'Inscription parent tx (from chain)');
+    assertPrevoutExists(sellerPrevTx as Buffer, sellerTxIn.index, 'Inscription parent tx (from chain)');
   }
+  if (!sellerPrevTx) {
+    throw new Error('Failed to resolve inscription parent transaction.');
+  }
+  const sellerPrevTxBuf = sellerPrevTx;
 
   const inscriptionWU = witnessUtxoFromPrevTx(
-    sellerPrevTx,
+    sellerPrevTxBuf,
     sellerTxIn.index,
     'Inscription prevout',
   );
 
   // MyDoge / strict PSBT codecs reject keys like redeemScript when present as `undefined`
   // (Expected Uint8Array and got undefined). Only copy optional fields that are set.
-  const sellerInputData: bitcoin.PsbtInput = {
+  const sellerInputData: any = {
     hash: sellerTxIn.hash,
     index: sellerTxIn.index,
     sequence: sellerTxIn.sequence,
-    nonWitnessUtxo: sellerPrevTx,
+    nonWitnessUtxo: sellerPrevTxBuf,
     witnessUtxo: inscriptionWU,
     partialSig: sellerPsbtIn.partialSig,
     sighashType: sellerPsbtIn.sighashType,

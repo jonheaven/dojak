@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://dojak.app'),
   title: 'Dojak — The Wallet Doge Deserves',
   description:
-    'Dojak is a premium self-custodial Dogecoin wallet across extension, iOS, Android, and web wallet. Built on the open standards in ../dogenals/spec with first-party proprietary product UX.',
+    'Dojak is a premium self-custodial Dogecoin wallet across extension, iOS, Android, and web wallet. Built on open Dogenals standards at dogenals.org with first-party proprietary product UX.',
   keywords: [
     'Dojak wallet',
     'Dogecoin wallet',
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Dojak — Dogenals. Powered by Dojak.',
     description:
-      'The Dogecoin + Dogenals wallet for shibes: self-custodial, multi-platform, and built on open standards from ../dogenals/spec.',
+      'The Dogecoin + Dogenals wallet for shibes: self-custodial, multi-platform, and built on open standards from dogenals.org.',
     url: 'https://dojak.app',
     siteName: 'Dojak',
     images: [

@@ -257,7 +257,7 @@ export function analyzePsdtLike(input: string): PsdtAnalysisResult {
       index,
       txid: prevTxid,
       vout: prevoutIndex,
-      sequence,
+      sequence: sequence ?? 0xffffffff,
       hasNonWitnessUtxo: Boolean(nonWitnessUtxo),
       hasWitnessUtxo: Boolean(witnessUtxo),
       prevoutValueDoge: prevoutValue,
