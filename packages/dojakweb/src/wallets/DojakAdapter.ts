@@ -1,19 +1,6 @@
 import { WalletAdapter, WalletConnection, DRC20Token, WalletInscription } from './types';
 import { walletDataApi } from '../utils/api';
 
-declare global {
-  interface Window {
-    dojak?: {
-      isDojak: boolean;
-      request: (args: { method: string; params?: any }) => Promise<any>;
-      on: (event: string, callback: (data?: any) => void) => void;
-      removeListener: (event: string, callback: (data?: any) => void) => void;
-      signPsbt?: (psbtHex: string, options?: any) => Promise<any>;
-      signRequest?: (params: Record<string, unknown>) => Promise<any>;
-    };
-  }
-}
-
 export class DojakAdapter implements WalletAdapter {
   readonly id = 'dojak';
   readonly name = 'Dojak';
@@ -180,7 +167,7 @@ export class DojakAdapter implements WalletAdapter {
   async getBalance(): Promise<string> {
     try {
       const address = await this.getAddress();
-      return await walletDataApi.fetchBalance(address);
+      return String(await walletDataApi.fetchBalance(address));
     } catch (error) {
       console.error('Dojak get balance failed:', error);
       return '0';
@@ -302,9 +289,7 @@ export class DojakAdapter implements WalletAdapter {
   }
 
   private isAvailable(): boolean {
-    return typeof window !== 'undefined' &&
-           window.dojak &&
-           window.dojak.isDojak === true;
+    return typeof window !== 'undefined' && Boolean(window.dojak?.isDojak);
   }
 
   private setupEventListeners(): void {

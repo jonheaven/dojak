@@ -4,6 +4,8 @@
 
 import type { CharmsChainId, CharmsAppTag, CharmsOperationType } from './constants';
 
+export type { CharmsChainId, CharmsAppTag, CharmsOperationType };
+
 /**
  * Base Charms entity interface
  */

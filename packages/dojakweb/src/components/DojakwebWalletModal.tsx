@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import React, { Fragment, lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import JSZip from 'jszip';
 import { Dialog, Menu, Transition } from '@headlessui/react';
 import {
@@ -144,8 +144,13 @@ import { NetworkSwitcher } from './dogeos/NetworkSwitcher';
 import { DogecoinL1BalanceCard } from './dogeos/DogecoinL1BalanceCard';
 import { DogeOSBalanceCard } from './dogeos/DogeOSBalanceCard';
 import { DogeosSeedSync } from './dogeos/DogeosSeedSync';
-import { DogeosBalanceHydrator } from './dogeos/DogeosBalanceHydrator';
 import { DogeosEcosystemSettings } from './dogeos/DogeosEcosystemSettings';
+import { useDojakwebFeatures } from '@/contexts/DojakwebFeaturesContext';
+
+const DogeosBalanceHydratorLazy = lazy(async () => {
+  const m = await import('./dogeos/DogeosBalanceHydrator');
+  return { default: m.DogeosBalanceHydrator };
+});
 import { AddressBookModal } from './AddressBookModal';
 import { DogePFPSelector } from './DogePFPSelector';
 import { DogePFPAvatar } from './DogePFPAvatar';
@@ -257,13 +262,14 @@ function loadBroadcastConfig(): BroadcastConfig {
     const parsed = JSON.parse(raw) as Partial<BroadcastConfig>;
     return {
       broadcastProvider: 'auto',
-      broadcastPriority: DEFAULT_BROADCAST_PRIORITY,
       rpcUrl: 'http://127.0.0.1:22555',
       rpcUser: '',
       rpcPass: '',
       tatumApiKey: '',
       ...parsed,
-      broadcastPriority: normalizeBroadcastPriority(parsed.broadcastPriority),
+      broadcastPriority: normalizeBroadcastPriority(
+        parsed.broadcastPriority ?? DEFAULT_BROADCAST_PRIORITY
+      ),
     };
   } catch {
     return {
@@ -603,6 +609,8 @@ export function DojakwebWalletModal({
   const dogeosBalance = useWalletStore((s) => s.dogeosBalance);
   const setDogecoinBalance = useWalletStore((s) => s.setDogecoinBalance);
   const resetEvmSession = useWalletStore((s) => s.resetEvmSession);
+  const { dogeosEvm: dogeosFeatureOn } = useDojakwebFeatures();
+  const dogeosUi = dogeosFeatureOn && dogeosEnabled;
 
   useEffect(() => {
     if (!connected) {
@@ -993,6 +1001,12 @@ export function DojakwebWalletModal({
   const [walletSwitcherModalOpen, setWalletSwitcherModalOpen] = useState(false);
   const [isAddressBookModalOpen, setIsAddressBookModalOpen] = useState(false);
   const [isDogePFPModalOpen, setIsDogePFPModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!dogeosFeatureOn && settingsTab === 'ecosystem') {
+      setSettingsTab('data');
+    }
+  }, [dogeosFeatureOn, settingsTab]);
   const [walletDrawerHostEl, setWalletDrawerHostEl] = useState<HTMLDivElement | null>(null);
   const walletDrawerHostRef = useCallback((node: HTMLDivElement | null) => {
     setWalletDrawerHostEl(node);
@@ -2455,7 +2469,7 @@ export function DojakwebWalletModal({
                                           ? (
                                               <div className="flex items-center gap-1.5 flex-wrap">
                                                 <span>{t('modal.title.myWallet')}</span>
-                                                {dogeosEnabled && connected ? (
+                                                {dogeosUi && connected ? (
                                                   <NetworkChainBadge network={pureDogeosMode ? 'dogeos' : currentNetwork} />
                                                 ) : null}
                                                 {connected && (
@@ -2558,7 +2572,7 @@ export function DojakwebWalletModal({
                       </div>
                     ) : null}
 
-                    {(step === 'dashboard' || (step === 'settings' && settingsTab === 'ecosystem')) && (
+                    {(step === 'dashboard' || (step === 'settings' && settingsTab === 'ecosystem')) && dogeosFeatureOn && (
                       <DogeosSeedSync
                         dogecoinAddress={activeAddress}
                         isBrowserWallet={isBrowserWallet}
@@ -2826,7 +2840,13 @@ export function DojakwebWalletModal({
 
                     {step === 'dashboard' && (
                       <div className="space-y-3">
-                        <DogeosBalanceHydrator enabled={dogeosEnabled && isBrowserWallet && Boolean(activeAddress)} />
+                        {dogeosFeatureOn ? (
+                          <Suspense fallback={null}>
+                            <DogeosBalanceHydratorLazy
+                              enabled={dogeosEnabled && isBrowserWallet && Boolean(activeAddress)}
+                            />
+                          </Suspense>
+                        ) : null}
                         {/* ── Broadcast provider indicator ───────── */}
                         <div className="flex flex-wrap items-center gap-2 self-start">
                         </div>
@@ -2898,7 +2918,7 @@ export function DojakwebWalletModal({
                               </div>
                             ) : null}
 
-                            {dogeosEnabled && isBrowserWallet ? (
+                            {dogeosUi && isBrowserWallet ? (
                               <>
                                 <div className="col-span-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                   <NetworkChainBadge network={pureDogeosMode ? 'dogeos' : currentNetwork} />
@@ -2967,7 +2987,7 @@ export function DojakwebWalletModal({
                             )}
 
                             <div className="flex shrink-0 items-center gap-1.5 self-center">
-                              {!(dogeosEnabled && isBrowserWallet && pureDogeosMode) ? (
+                              {!(dogeosUi && isBrowserWallet && pureDogeosMode) ? (
                               <button
                                 type="button"
                                 onClick={() => setStep('send')}
@@ -3003,7 +3023,7 @@ export function DojakwebWalletModal({
                                 >
                                     <Menu.Items className="absolute right-0 z-[9999] mt-1.5 w-52 max-w-[min(18rem,calc(100vw-2rem))] rounded-none border border-zinc-700 bg-zinc-950 py-1 shadow-2xl outline-none">
                                       {[
-                                        ...(dogeosEnabled && isBrowserWallet && pureDogeosMode
+                                        ...(dogeosUi && isBrowserWallet && pureDogeosMode
                                           ? []
                                           : ([
                                               { key: 'send', label: t('modal.dashboard.menu.send'), Icon: PaperAirplaneIcon, action: () => setStep('send') },
@@ -3091,7 +3111,7 @@ export function DojakwebWalletModal({
                                 <button type="button" onClick={handleCopyAddress} className="flex h-7 w-7 items-center justify-center rounded-none transition hover:bg-white/5" aria-label={t('modal.aria.copyAddress')}>
                                   <ClipboardDocumentIcon className="h-5 w-5" />
                                 </button>
-                                {!(dogeosEnabled && isBrowserWallet && pureDogeosMode) ? (
+                                {!(dogeosUi && isBrowserWallet && pureDogeosMode) ? (
                                 <button type="button" onClick={() => setStep('receive')} className="flex h-7 w-7 items-center justify-center rounded-none transition hover:bg-white/5" aria-label={t('modal.aria.receiveQr')}>
                                   <QrCodeIcon className="h-5 w-5" />
                                 </button>
@@ -3904,7 +3924,7 @@ export function DojakwebWalletModal({
                     {/* ── List inscription ─────────────────────────────── */}
                     {step === 'list_inscription' && selectedInscription && (
                       <div className="space-y-4">
-                        {dogeosEnabled && isBrowserWallet ? (
+                        {dogeosUi && isBrowserWallet ? (
                           <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerListing')}</ChainTxBanner>
                         ) : null}
                         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-3">
@@ -4267,7 +4287,7 @@ export function DojakwebWalletModal({
                               {t('modal.verification.back')}
                             </button>
                             <p className="text-sm text-[#D4D4D4]">{t('modal.verification.dxStep2Intro')}</p>
-                            {dogeosEnabled && isBrowserWallet ? (
+                            {dogeosUi && isBrowserWallet ? (
                               <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerDxSign')}</ChainTxBanner>
                             ) : null}
                             {isCommandDogDxConfigured() && dxSessionExpiresAtUnix != null ? (
@@ -4436,7 +4456,7 @@ export function DojakwebWalletModal({
                               ) : null;
                             })()}
                             <p className="text-sm text-green-200">{t('modal.verification.dxDone')}</p>
-                            {dogeosEnabled && isBrowserWallet ? (
+                            {dogeosUi && isBrowserWallet ? (
                               <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerDxInscribe')}</ChainTxBanner>
                             ) : null}
                             <textarea
@@ -4517,7 +4537,7 @@ export function DojakwebWalletModal({
                       <div className="space-y-4">
                         {!sendTxid ? (
                           <>
-                            {dogeosEnabled && isBrowserWallet ? (
+                            {dogeosUi && isBrowserWallet ? (
                               <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerSend')}</ChainTxBanner>
                             ) : null}
                             <div className="text-sm text-[#D4D4D4]">{t('modal.send.introShort')}</div>
@@ -4686,7 +4706,7 @@ export function DojakwebWalletModal({
 
                     {step === 'receive' && (
                       <div className="space-y-4">
-                        {dogeosEnabled && isBrowserWallet ? (
+                        {dogeosUi && isBrowserWallet ? (
                           <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerReceive')}</ChainTxBanner>
                         ) : null}
                         <div className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-[#0A0A0A] p-5">
@@ -4759,7 +4779,9 @@ export function DojakwebWalletModal({
                       <div className="space-y-3">
                         {/* ── Settings tabs ── */}
                         <div className="flex border-b border-white/10">
-                          {(['data', 'network', 'display', 'ecosystem'] as SettingsTab[]).map((tabId) => (
+                          {(['data', 'network', 'display', 'ecosystem'] as SettingsTab[])
+                            .filter((tabId) => tabId !== 'ecosystem' || dogeosFeatureOn)
+                            .map((tabId) => (
                             <button
                               key={tabId}
                               type="button"
@@ -5259,14 +5281,14 @@ export function DojakwebWalletModal({
                           </div>
                         )}
 
-                        {settingsTab === 'ecosystem' && (
+                        {settingsTab === 'ecosystem' && dogeosFeatureOn ? (
                           <div className="space-y-3">
                             <div className="text-[10px] font-semibold uppercase tracking-widest text-white/35">
                               {t('modal.dogeos.ecosystemSection')}
                             </div>
                             <DogeosEcosystemSettings t={t} canUseDogeosFromSeed={isBrowserWallet} />
                           </div>
-                        )}
+                        ) : null}
 
                         <div className="flex gap-2 pt-1">
                           <button type="button" onClick={() => setStep('dashboard')} className={cx('flex-1', SECONDARY_BUTTON)}>

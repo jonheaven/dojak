@@ -471,13 +471,14 @@ export function loadBroadcastConfig(): BroadcastConfig {
     const parsed = JSON.parse(raw) as Partial<BroadcastConfig>;
     return {
       broadcastProvider: 'auto',
-      broadcastPriority: normalizeBroadcastPriority(parsed.broadcastPriority),
       rpcUrl: 'http://127.0.0.1:22555',
       rpcUser: '',
       rpcPass: '',
       tatumApiKey: '',
       ...parsed,
-      broadcastPriority: normalizeBroadcastPriority(parsed.broadcastPriority),
+      broadcastPriority: normalizeBroadcastPriority(
+        parsed.broadcastPriority ?? DEFAULT_BROADCAST_PRIORITY,
+      ),
     };
   } catch {
     return {

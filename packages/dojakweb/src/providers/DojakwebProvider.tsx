@@ -14,6 +14,7 @@ import { CharmsProvider } from '../contexts/CharmsContext';
 import { DataProvider } from './DataProvider';
 import { DojakwebDxTrustedOriginsProvider } from '../contexts/DojakwebDxContext';
 import { DxHostBridge } from '../components/DxHostBridge';
+import { DojakwebFeaturesProvider, type DojakwebFeatures } from '../contexts/DojakwebFeaturesContext';
 
 export interface DojakwebProviderProps {
   children: React.ReactNode;
@@ -32,33 +33,45 @@ export interface DojakwebProviderProps {
    * Same-origin is always trusted.
    */
   dxTrustedOrigins?: readonly string[];
+  /**
+   * Capability flags. Default: DogeOS/EVM off (`dogeosEvm: false`) for lighter L1-only apps.
+   */
+  features?: Partial<DojakwebFeatures>;
 }
 
-export function DojakwebProvider({ children, fxRatesUrl, theme = 'dark', dxTrustedOrigins }: DojakwebProviderProps) {
+export function DojakwebProvider({
+  children,
+  fxRatesUrl,
+  theme = 'dark',
+  dxTrustedOrigins,
+  features,
+}: DojakwebProviderProps) {
   return (
     <DojakwebThemeProvider theme={theme}>
-      <DojakwebDxTrustedOriginsProvider trustedOrigins={dxTrustedOrigins}>
-        <DxHostBridge />
-        <DogePriceProvider>
-          <DojakwebLocaleProvider>
-            <DojakwebFiatProvider fxRatesUrl={fxRatesUrl}>
-              <MyDogeWalletProvider>
-                <BrowserWalletProvider>
-                  <UnifiedWalletProvider>
-                    <DoginalDrawerProvider>
-                      <LiveActivityProvider>
-                        <CharmsProvider>
-                          <DataProvider>{children}</DataProvider>
-                        </CharmsProvider>
-                      </LiveActivityProvider>
-                    </DoginalDrawerProvider>
-                  </UnifiedWalletProvider>
-                </BrowserWalletProvider>
-              </MyDogeWalletProvider>
-            </DojakwebFiatProvider>
-          </DojakwebLocaleProvider>
-        </DogePriceProvider>
-      </DojakwebDxTrustedOriginsProvider>
+      <DojakwebFeaturesProvider features={features}>
+        <DojakwebDxTrustedOriginsProvider trustedOrigins={dxTrustedOrigins}>
+          <DxHostBridge />
+          <DogePriceProvider>
+            <DojakwebLocaleProvider>
+              <DojakwebFiatProvider fxRatesUrl={fxRatesUrl}>
+                <MyDogeWalletProvider>
+                  <BrowserWalletProvider>
+                    <UnifiedWalletProvider>
+                      <DoginalDrawerProvider>
+                        <LiveActivityProvider>
+                          <CharmsProvider>
+                            <DataProvider>{children}</DataProvider>
+                          </CharmsProvider>
+                        </LiveActivityProvider>
+                      </DoginalDrawerProvider>
+                    </UnifiedWalletProvider>
+                  </BrowserWalletProvider>
+                </MyDogeWalletProvider>
+              </DojakwebFiatProvider>
+            </DojakwebLocaleProvider>
+          </DogePriceProvider>
+        </DojakwebDxTrustedOriginsProvider>
+      </DojakwebFeaturesProvider>
     </DojakwebThemeProvider>
   );
 }

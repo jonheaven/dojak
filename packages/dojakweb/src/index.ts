@@ -14,6 +14,11 @@ export { DoginalDrawerProvider, useDoginalDrawer } from './contexts/DoginalDrawe
 export type { DrawerData } from './contexts/DoginalDrawerContext';
 export { DojakwebProvider } from './providers/DojakwebProvider';
 export type { DojakwebProviderProps } from './providers/DojakwebProvider';
+export {
+  DojakwebFeaturesProvider,
+  useDojakwebFeatures,
+  type DojakwebFeatures,
+} from './contexts/DojakwebFeaturesContext';
 
 export { useDojakwebTheme, DojakwebThemeProvider } from './contexts/DojakwebThemeContext';
 export type { DojakwebTheme } from './contexts/DojakwebThemeContext';
