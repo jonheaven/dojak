@@ -1,5 +1,6 @@
 {
-  "name": "dojak",
+  "name": "dojakwallet",
+  "description": "Dojak Wallet Monorepo – Extension + Mobile + Core",
   "private": true,
   "packageManager": "pnpm@10.17.0",
   "workspaces": [

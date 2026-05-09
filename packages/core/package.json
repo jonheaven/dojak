@@ -4,11 +4,25 @@
   "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./wallet-web": {
+      "types": "./src/wallet-web/seedDerivation.ts",
+      "import": "./src/wallet-web/seedDerivation.ts",
+      "default": "./src/wallet-web/seedDerivation.ts"
+    }
+  },
   "dependencies": {
+    "@scure/bip32": "^2.0.1",
+    "@scure/bip39": "^2.0.1",
     "@unisat/i18n": "^1.0.0",
     "@unisat/keyring-service": "^1.0.0",
     "axios": "^1.13.2",
     "loglevel": "^1.9.2",
-    "ethers": "^6.15.0"
+    "ethers": "^6.15.0",
+    "viem": "^2.48.7"
   }
 }

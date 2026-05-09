@@ -15,6 +15,7 @@
     "@dojak/biometrics": "workspace:*",
     "@dojak/core": "workspace:*",
     "@dojak/ui": "workspace:*",
+    "@dojak/web": "workspace:*",
     "expo": "^52.0.0",
     "expo-dev-client": "~5.0.0",
     "expo-secure-store": "~14.0.0",

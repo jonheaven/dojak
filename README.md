@@ -1,19 +1,32 @@
-# Dojak Monorepo
+# Dojak Wallet (`dojakwallet`)
 
-Dojak is a `pnpm` monorepo for a shared Dogecoin wallet stack across:
+**Dojak Wallet** is a **proprietary** `pnpm` + **Turbo** monorepo for the Dogecoin wallet product: **browser extension**, **mobile** (Expo), **core**/crypto logic, and the internal **web** module (`packages/dojakweb`). The marketing site at **dojak.app** ships from the same repo.
 
-- browser extension
-- mobile (Android/iOS)
-- marketing website (`dojak.app`)
+### Open standard (public) vs Dojak (proprietary)
+
+- **Dogenals standard (open source):** normative protocols and docs live in the **[dogenals](https://github.com/jonheaven/dogenals)** repo under **`spec/`** — on disk next to this monorepo that is typically **`../dogenals/spec`**. That tree is what indexers, wallets, and apps **outside** Dojak should implement against.
+- **Dojak products (proprietary):** this monorepo, **[dojakweb-demo](https://github.com/jonheaven/dojakweb-demo)**, and **`@dojak/web`** are **not** substitutes for the public spec and are **not** offered as a reusable npm library for others to ship. **`@dojak/web`** is **private modular** code we reuse across **our** proprietary dApps (extension, marketing site, internal demos, other first-party hosts)—all interoperating on-chain via the **open** Dogenals standard. IP stays in our repos; third parties implement **`spec/`** themselves.
+
+## Architecture overview
+
+| Layer | Role |
+| --- | --- |
+| **Apps** | Shipped products: extension, mobile client, public web. |
+| **Packages** | Internal shared code: crypto/core, React Native UI, biometrics, and **`@dojak/web`** (`packages/dojakweb`) — proprietary browser wallet web layer, **private** and consumed across **our** dApps (from this monorepo and linked first-party repos), not distributed as a public SDK. |
+| **Backend** | Optional API server (`backend/`), run outside the main Turbo graph. |
+
+**Monorepo vs demo:** product code lives under `packages/*` and `apps/*`. The internal **Vite demo** (**[dojakweb-demo](https://github.com/jonheaven/dojakweb-demo)**) is a sibling clone (`../dojakweb-demo`) used to exercise **`@dojak/web`** via workspace / `file:` links—it is not a distribution template for npm.
 
 ## Workspace layout
 
-- `apps/extension` - Chrome extension wallet
-- `apps/mobile` - Expo React Native app (Android/iOS)
-- `apps/web` - Next.js App Router marketing site
-- `packages/core` - shared wallet/core logic
-- `packages/ui` - shared wallet UI components
-- `backend` - API server
+- `apps/extension` — Chrome extension wallet
+- `apps/mobile` — Expo React Native app (Android/iOS)
+- `apps/web` — Next.js App Router marketing site (`dojak.app`)
+- `packages/core` — shared wallet / core logic (`@dojak/core`)
+- `packages/ui` — shared wallet UI components (`@dojak/ui`)
+- `packages/biometrics` — biometric unlock (`@dojak/biometrics`)
+- `packages/dojakweb` — **`@dojak/web`** (proprietary browser wallet web module; `private`, not for public registry)
+- `backend` — API server (not in default `turbo` workspaces)
 
 ## Prerequisites
 

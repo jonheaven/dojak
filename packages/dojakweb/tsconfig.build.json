@@ -1,0 +1,32 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client"],
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "noCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": [
+    "src/index.ts",
+    "src/lib/browser-wallet.ts",
+    "src/lib/host-preferences-sync.ts",
+    "src/i18n/dojakweb-messages.ts",
+    "src/adapters/BrowserWalletSigner.ts",
+    "src/providers/DojakwebProvider.tsx",
+    "src/components/ConnectWalletButton.tsx",
+    "src/components/WalletSelectionModal.tsx",
+    "src/components/DogeAmount.tsx",
+    "src/contexts/BrowserWalletContext.tsx",
+    "src/contexts/UnifiedWalletContext.tsx",
+    "src/contexts/DogePriceContext.tsx",
+    "src/contexts/DojakwebLocaleContext.tsx",
+    "src/contexts/DojakwebFiatContext.tsx",
+    "src/wallet/getConnectedWalletAddress.ts"
+  ],
+  "exclude": ["src/tests/**", "src/**/*.test.ts", "src/**/*.test.tsx"]
+}
