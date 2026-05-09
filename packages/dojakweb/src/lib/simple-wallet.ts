@@ -85,7 +85,9 @@ export async function myDogeSignPsbt(psbtHex: string): Promise<string> {
   const walletManager = await import('../wallets');
   const connectedWallet = await walletManager.walletManager.getConnectedWallet();
   if (connectedWallet) {
-    return connectedWallet.signPSBT(psbtHex);
+    if (typeof connectedWallet.signPSBT === 'function') {
+      return connectedWallet.signPSBT(psbtHex);
+    }
   }
   throw new Error('No wallet connected');
 }

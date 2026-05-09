@@ -14,6 +14,8 @@ export interface WalletAdapter {
   // Transaction methods
   signMessage(message: string): Promise<string>;
   signTransaction(tx: any): Promise<string>;
+  /** PSBT hex or base64, depending on wallet (optional). */
+  signPSBT?(psbtHex: string): Promise<string>;
 
   // Balance/Token methods
   getAddress(): Promise<string>;

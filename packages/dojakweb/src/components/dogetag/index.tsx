@@ -223,7 +223,7 @@ export const DogetagPage: React.FC<{
     : walletType === 'browser' ? 'Local wallet'
     : walletType === 'dojak' ? 'Dojak'
     : walletType === 'ledger' ? 'Ledger'
-    : walletType === 'spooky' ? 'SpookyDoge'
+    : walletType === 'spookydoge' ? 'SpookyDoge'
     : null;
 
   const syncDogetagUrl = (mode: 'op_return' | 'witness') => {

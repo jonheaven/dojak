@@ -453,6 +453,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
        setCurrentStep('broadcast');
        toast.success('Signed — review the transaction details, then confirm and broadcast.');
 
+      const tryBroadcast = async (hex: string): Promise<string> => broadcastSignedTransaction(hex);
       let txid: string;
       try {
         txid = await tryBroadcast(rawTxHex);

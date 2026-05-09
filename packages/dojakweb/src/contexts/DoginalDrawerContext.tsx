@@ -17,6 +17,11 @@ export interface DrawerData {
   doginalDogId?: string;
   doginalDogTraits?: Record<string, any>;
   doginalDogRank?: number;
+  /** Raw DogeTag:tx payload bytes (optional UI detail). */
+  text?: string;
+  isTransferable?: boolean;
+  satpoint?: string;
+  contentType?: string;
 }
 
 interface DoginalDrawerContextValue {

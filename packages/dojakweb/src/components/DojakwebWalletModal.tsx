@@ -914,7 +914,9 @@ export function DojakwebWalletModal({
         quantumCommitment: quantumEnabled && quantumResult ? {
           algorithm: quantumAlgorithm,
           tag: quantumAlgorithm === 'falcon512' ? 'FLC1' : 'DIL2',
-          commitmentHex: quantumResult.commitmentHex,
+          commitmentHex: [...quantumResult.commitment.commitment]
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join(''),
         } : undefined,
         localOnly: true,
       });
@@ -1145,7 +1147,7 @@ export function DojakwebWalletModal({
     setPendingWallet(imported);
     setPendingSeed(seedMaterial);
     setStep('password');
-    toast.success(t('modal.toast.walletImportedSetPw'), 5000);
+    toast.success(t('modal.toast.walletImportedSetPw'), { duration: 5000 });
   };
 
   const importWalletFromZipFile = async (file: File) => {
@@ -1323,7 +1325,7 @@ export function DojakwebWalletModal({
       setPendingSeed({ mnemonic: created.mnemonic, passphrase: '' });
       setShowSecretPhrase(true);
       setStep('reveal');
-      toast.success(t('modal.toast.newWalletBackupPhrase'), 5000);
+      toast.success(t('modal.toast.newWalletBackupPhrase'), { duration: 5000 });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : t('modal.errors.createWallet'));
     } finally {
@@ -1381,7 +1383,9 @@ export function DojakwebWalletModal({
     setPendingWallet(walletToPersist);
     await refreshSavedLocalWallets();
     setStep('dashboard');
-    toast.success(persistPassword ? t('modal.toast.walletSecured') : t('modal.toast.walletReadyNoPw'), 5000);
+    toast.success(persistPassword ? t('modal.toast.walletSecured') : t('modal.toast.walletReadyNoPw'), {
+      duration: 5000,
+    });
 
     // If the user hit "lock" while no password existed yet, immediately lock again
     // after we persist the password (and close the modal).
@@ -1613,7 +1617,7 @@ export function DojakwebWalletModal({
       const key = getBackupFlag(activeAddress);
       if (key) localStorage.setItem(key, 'true');
     }
-    toast.success(t('modal.toast.backupConfirmed'), 5000);
+    toast.success(t('modal.toast.backupConfirmed'), { duration: 5000 });
     if (connected) {
       setStep('dashboard');
       return;
@@ -4383,7 +4387,7 @@ export function DojakwebWalletModal({
                                         },
                                         visual_data: { client: 'dojakweb', ui_pack_rip: true },
                                       });
-                                      const reg = confirmed.attestation?.register as
+                                      const reg = confirmed.attestation?.register as unknown as
                                         | DxRegisterPayload
                                         | undefined;
                                       if (reg?.p === 'dx' && reg?.op === 'register') {

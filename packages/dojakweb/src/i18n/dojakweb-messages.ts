@@ -5,7 +5,9 @@ import { WALLET_UI_JA_FLAT } from './wallet-ui-ja-flat';
 
 export type DojakwebBundleLocale = 'en' | 'ja';
 
-export type MsgTree = Record<string, string | MsgTree>;
+export interface MsgTree {
+  [key: string]: string | MsgTree;
+}
 
 function nestFlatMessages(flat: Record<string, string>): MsgTree {
   const root: MsgTree = {};

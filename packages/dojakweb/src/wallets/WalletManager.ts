@@ -1,4 +1,4 @@
-import { WalletAdapter, WalletConfig } from './types';
+import { WalletAdapter, WalletConfig, type WalletConnection } from './types';
 import { MyDogeAdapter } from './MyDogeAdapter';
 import { DojakAdapter } from './DojakAdapter';
 import { SpookyDogeAdapter } from './SpookyDogeAdapter';
@@ -110,6 +110,17 @@ export class WalletManager {
       }
     }
     return null;
+  }
+
+  /** Connect by registered wallet id (e.g. `mydoge`, `dojak`, `spookydoge`). */
+  async connect(walletId: string): Promise<WalletConnection> {
+    const adapter = this.getWallet(walletId);
+    if (!adapter) {
+      throw new Error(`Unknown wallet: ${walletId}`);
+    }
+    const result = await adapter.connect();
+    this.setCurrentWallet(adapter);
+    return result;
   }
 
   /**

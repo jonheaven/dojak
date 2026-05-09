@@ -362,6 +362,8 @@ const NULL_BROWSER_WALLET: UseBrowserWalletReturn = {
   wallet: null,
   connecting: false,
   balanceError: null,
+  balanceRefreshing: false,
+  balanceVerified: false,
   connect: noop,
   disconnect: noop,
   createWallet: noop as any,
@@ -374,6 +376,10 @@ const NULL_BROWSER_WALLET: UseBrowserWalletReturn = {
   hasWallet: noop as any,
   removeWallet: noop,
   refreshBalance: noop,
+  listWallets: async () => [],
+  selectWallet: async () => null,
+  switchAccount: noop as any,
+  updateNickname: noop,
 };
 
 export function useBrowserWallet(): UseBrowserWalletReturn {

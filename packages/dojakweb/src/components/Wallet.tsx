@@ -192,7 +192,7 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
       },
       {
         id: 'charms',
-        name: t('walletPage.tab.charms', 'Charms'),
+        name: t('walletPage.tab.charms'),
         icon: SparklesIcon,
         badge: charmsTokens?.size || 0,
         content: (

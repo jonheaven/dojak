@@ -30,6 +30,7 @@ export const AddressBookModal: React.FC<Props> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ label: '', address: '', notes: '' });
+  const [importMode, setImportMode] = useState(false);
   const [importText, setImportText] = useState('');
 
   const resetForm = () => {
@@ -89,6 +90,7 @@ export const AddressBookModal: React.FC<Props> = ({
     if (importBook(importText)) {
       toast.success('Address book imported');
       setImportText('');
+      setImportMode(false);
     } else {
       toast.error('Invalid import data');
     }
@@ -126,14 +128,21 @@ export const AddressBookModal: React.FC<Props> = ({
               <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <Button onClick={() => setImportText('')} variant="outline" size="sm">
+            <Button
+              onClick={() => {
+                setImportMode(true);
+                setImportText('');
+              }}
+              variant="outline"
+              size="sm"
+            >
               <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
               Import
             </Button>
           </div>
 
           {/* Import Form */}
-          {importText !== undefined && (
+          {importMode && (
             <div className="border border-border-primary rounded p-3 space-y-2">
               <Label>Paste JSON data to import:</Label>
               <Textarea
@@ -144,7 +153,16 @@ export const AddressBookModal: React.FC<Props> = ({
               />
               <div className="flex gap-2">
                 <Button onClick={handleImport} size="sm">Import</Button>
-                <Button onClick={() => setImportText(undefined)} variant="outline" size="sm">Cancel</Button>
+                <Button
+                  onClick={() => {
+                    setImportMode(false);
+                    setImportText('');
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
           )}
