@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, LoaderCircle, Monitor, ShieldCheck, Wallet2 } from 'lucide-react';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
-import { useMyDogeWallet } from '../contexts/MyDogeWalletContext';
+import { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { LedgerWallet } from '../lib/ledger-wallet';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';

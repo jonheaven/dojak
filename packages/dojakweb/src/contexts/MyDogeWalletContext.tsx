@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { MyDogeWalletContext } from './mydogeWalletInternals';
 import { Transaction } from 'bitcoinjs-lib';
 import { preparePsdtForMyDogeSign, tryParsePsdt } from '../lib/doginal-psdt';
 import { getInjectedMyDogeProvider } from '../utils/mydoge-provider';
@@ -249,8 +250,6 @@ export interface UseMyDogeWalletReturn {
   getTransactionStatus: (txId: string) => Promise<{ status: string; confirmations: number }>;
   debugProbeRequestPsbt: (psbtInput: string) => Promise<RequestPsbtProbeResult[]>;
 }
-
-const MyDogeWalletContext = createContext<UseMyDogeWalletReturn | null>(null);
 
 const getInjectedMyDoge = (): MyDogeWallet | null => {
   return getInjectedMyDogeProvider() as MyDogeWallet | null;
@@ -985,26 +984,4 @@ export function MyDogeWalletProvider({ children }: { children: React.ReactNode }
       {children}
     </MyDogeWalletContext.Provider>
   );
-}
-
-const noop = async () => { throw new Error('Wallet not connected'); };
-const NULL_MYDOGE_WALLET: UseMyDogeWalletReturn = {
-  myDoge: null,
-  connected: false,
-  address: null,
-  balance: 0,
-  connecting: false,
-  connect: noop,
-  disconnect: noop,
-  sendTransaction: noop as any,
-  signMessage: noop as any,
-  signPSBT: noop as any,
-  signPSBTOnly: noop as any,
-  sendInscription: noop as any,
-  getTransactionStatus: noop as any,
-  debugProbeRequestPsbt: async () => [],
-};
-
-export function useMyDogeWallet(): UseMyDogeWalletReturn {
-  return useContext(MyDogeWalletContext) ?? NULL_MYDOGE_WALLET;
 }

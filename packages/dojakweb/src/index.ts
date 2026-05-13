@@ -2,7 +2,10 @@ export * from './lib/browser-wallet';
 export type * from './types/wallet';
 
 export * from './contexts/BrowserWalletContext';
-export * from './contexts/UnifiedWalletContext';
+export { UnifiedWalletProvider } from './contexts/UnifiedWalletContext';
+export { useUnifiedWallet } from './contexts/useUnifiedWallet';
+export { useMyDogeWallet } from './contexts/useMyDogeWallet';
+export type { UseMyDogeWalletReturn } from './contexts/MyDogeWalletContext';
 export { toast } from 'sonner';
 
 export { default as WalletSelectionModal } from './components/WalletSelectionModal';
@@ -94,7 +97,6 @@ export {
 export { dogeosChain, getDogeosRpcUrl, getDogeosChainId } from './lib/dogeos-chain';
 export { dogeosWagmiConfig } from './lib/dogeos-wagmi-config';
 export { createDogeosPublicClient, fetchDogeosNativeBalance } from './lib/dogeos';
-export { useUnifiedWallet } from './hooks/useUnifiedWallet';
 export { NetworkChainBadge } from './components/dogeos/NetworkChainBadge';
 export { NetworkSwitcher } from './components/dogeos/NetworkSwitcher';
 export { ChainTxBanner } from './components/dogeos/ChainTxBanner';

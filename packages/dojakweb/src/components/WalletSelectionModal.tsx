@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, X } from 'lucide-react';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
-import { useMyDogeWallet } from '../contexts/MyDogeWalletContext';
+import { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { LedgerWallet } from '../lib/ledger-wallet';

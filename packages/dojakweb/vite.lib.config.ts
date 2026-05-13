@@ -89,6 +89,8 @@ export default defineConfig({
   plugins: [react(), flattenDistSrcPlugin()],
   build: {
     sourcemap: true,
+    /** Rolldown minify can drop `useUnifiedWallet` / `useMyDogeWallet` when the provider minifies to the same symbol as inner state (`function D` + `[D, …]`). */
+    minify: false,
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'Dojakweb',
@@ -97,12 +99,13 @@ export default defineConfig({
     },
     rollupOptions: {
       external: isExternal,
-      treeshake: {
-        moduleSideEffects: false,
-      },
+      /** Rolldown/Vite 8 can drop `useUnifiedWallet` etc. from context chunks; lib output must match `index` imports. */
+      treeshake: false,
       output: {
-        preserveModules: true,
-        preserveModulesRoot: resolve(__dirname, 'src'),
+        /** `preserveModules: true` triggers Rolldown bugs that strip most `export { … }` from small chunks (e.g. dogeos-chain, seedDerivation). */
+        preserveModules: false,
+        /** Single `dist/index.js` for `package.json` `"."` export (no orphan chunk files). */
+        codeSplitting: false,
         entryFileNames: '[name].js',
       },
     },

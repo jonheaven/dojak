@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useMyDogeWallet } from './MyDogeWalletContext';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMyDogeWallet } from './useMyDogeWallet';
 import { useBrowserWallet } from './BrowserWalletContext';
 import { BrowserWallet } from '../lib/browser-wallet';
 import { LedgerWallet } from '../lib/ledger-wallet';
@@ -28,6 +28,7 @@ import type {
   WalletType,
   WalletData,
 } from '../types/wallet';
+import { UnifiedWalletContext } from './unifiedWalletInternals';
 
 interface DojakState {
   connected: boolean;
@@ -80,8 +81,6 @@ const LEDGER_INITIAL_STATE: LedgerState = {
   accountIndex: null,
   derivationPath: null,
 };
-
-const UnifiedWalletContext = createContext<UnifiedWalletContextValue | null>(null);
 
 const getSpookyHint = (): boolean => {
   if (typeof window === 'undefined') {
@@ -1398,41 +1397,4 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   );
 }
 
-const noop = async () => { throw new Error('Wallet not connected'); };
-const NULL_WALLET: UnifiedWalletContextValue = {
-  walletType: null,
-  connected: false,
-  address: null,
-  balance: 0,
-  balanceVerified: false,
-  connecting: false,
-  accountIndex: null,
-  derivationPath: null,
-  availableWallets: [],
-  balanceRefreshing: false,
-  balanceError: null,
-  connect: noop,
-  setActiveWallet: noop as any,
-  refreshBalance: noop,
-  switchAccount: noop,
-  disconnect: noop,
-  sendTransaction: noop,
-  signMessage: noop,
-  signPSBT: noop,
-  signPSBTOnly: noop,
-  signDMPIntent: noop as any,
-  sendInscription: noop,
-  getTransactionStatus: noop as any,
-  createBrowserWallet: noop as any,
-  importBrowserWallet: noop as any,
-  importBrowserWalletFromMnemonic: noop as any,
-  saveBrowserWallet: noop,
-  loadBrowserWallet: noop as any,
-  loadBrowserSeedMaterial: noop as any,
-  hasBrowserWallet: noop as any,
-  removeBrowserWallet: noop,
-};
-
-export function useUnifiedWallet(): UnifiedWalletContextValue {
-  return useContext(UnifiedWalletContext) ?? NULL_WALLET;
-}
+export { useUnifiedWallet } from './useUnifiedWallet';
