@@ -19,7 +19,7 @@ const protocolRows = [
     walletSurface: 'Offer notifications, listing actions, buy/sell UX hooks'
   },
   {
-    name: 'ÐWhisper',
+    name: 'Ðignal',
     role: 'Encrypted message signaling on Dogecoin',
     walletSurface: 'Private negotiation and message-center flows'
   },

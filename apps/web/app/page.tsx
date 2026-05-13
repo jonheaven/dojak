@@ -102,7 +102,7 @@ const platformCards = [
 
 const statCards = [
   { label: 'Genesis block', value: '6,142,069', note: 'Dogenals era activation point' },
-  { label: 'Core protocols', value: '15+', note: 'ÐMS, ÐMP, ÐWhisper, Ð𝕏 and more' },
+  { label: 'Core protocols', value: '15+', note: 'ÐMS, ÐMP, Ðignal, Ð𝕏 and more' },
   { label: 'Chain model', value: 'Dogecoin L1', note: 'No bridge, no wrapped dependency' },
   { label: 'Spec source', value: 'dogenals.org', note: 'Canonical standards tree' }
 ];

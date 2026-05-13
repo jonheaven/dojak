@@ -26,7 +26,7 @@ export function encodeDogenalsEra2Dxd(kind: string, payload: string): Buffer {
   return Buffer.from(wire, 'utf8');
 }
 
-/** DogeWhisper / ÐMS / reserved T modules (no stylized-X fallback rule). */
+/** Dignal / ÐMS / reserved T modules (no stylized-X fallback rule). */
 export function encodeDogenalsEra2AsciiModule(
   module: 'W' | 'M' | 'T',
   kind: string,
