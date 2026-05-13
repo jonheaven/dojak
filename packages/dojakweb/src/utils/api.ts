@@ -85,9 +85,11 @@ const normalizeBaseUrl = (value?: string | null): string => (value || '').trim()
  */
 export const COMMAND_DOG_DEV_PROXY_PATH = '/__commanddog';
 
-/** Public command.dog API (tunnel or production). Override with `VITE_COMMAND_DOG_API_URL`. */
+/** Public command.dog API (tunnel or production). Override with `VITE_COMMAND_DOG_API_URL` or `NEXT_PUBLIC_COMMAND_DOG_API_URL` (e.g. Vite hosts using process.env injection). */
 export function getCommandDogApiBaseUrl(): string {
-  const fromEnv = normalizeBaseUrl(getEnv('VITE_COMMAND_DOG_API_URL', ''));
+  const fromEnv = normalizeBaseUrl(
+    getEnv('VITE_COMMAND_DOG_API_URL', '') || getEnv('NEXT_PUBLIC_COMMAND_DOG_API_URL', '')
+  );
   if (fromEnv) return fromEnv;
   if (typeof window !== 'undefined' && import.meta.env.DEV) {
     return normalizeBaseUrl(new URL(COMMAND_DOG_DEV_PROXY_PATH, window.location.origin).href);
