@@ -137,13 +137,20 @@ export default function WalletSelectionModal({ isOpen, onClose, mode = 'drawer',
   const iconTileReady = 'border-white/20 bg-white/[0.07] hover:border-white/40 hover:bg-white/[0.12]';
   const iconTileMuted = 'cursor-not-allowed border-white/[0.08] bg-white/[0.03] opacity-[0.42]';
 
+  const drawerBackdropClass = isDrawerMode
+    ? ` ds-wallet-modal-backdrop--drawer${drawerSide === 'left' ? ' ds-wallet-modal-backdrop--drawer-left' : ''}`
+    : '';
+  const drawerModalClass = isDrawerMode
+    ? ` ds-wallet-modal--drawer${drawerSide === 'left' ? ' ds-wallet-modal--drawer-left' : ''}`
+    : '';
+
   const modalMarkup = (
     <div
-      className={`ds-wallet-modal-backdrop${isDrawerMode ? ' ds-wallet-modal-backdrop--drawer' : ''}${isLight ? ' ds-light' : ''}`}
-      onClick={onClose}
+      className={`ds-wallet-modal-backdrop${drawerBackdropClass}${isLight ? ' ds-light' : ''}`}
+      onClick={isDrawerMode ? undefined : onClose}
     >
       <div
-        className={`ds-wallet-modal${isDrawerMode ? ' ds-wallet-modal--drawer' : ''}`}
+        className={`ds-wallet-modal${drawerModalClass}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="ds-wallet-modal__hero">

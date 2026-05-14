@@ -33,6 +33,8 @@ import {
   SunIcon,
   MoonIcon,
   CpuChipIcon,
+  PhotoIcon,
+  MusicalNoteIcon,
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
 import {
@@ -152,9 +154,10 @@ const DogeosBalanceHydratorLazy = lazy(async () => {
   return { default: m.DogeosBalanceHydrator };
 });
 import { AddressBookModal } from './AddressBookModal';
-import { DogePFPSelector } from './DogePFPSelector';
 import { DogePFPAvatar } from './DogePFPAvatar';
+import { DogePFAHeaderControl } from './DogePFAHeaderControl';
 import { useDogePFP } from '../hooks/useDogePFP';
+import { useDogePFA } from '../hooks/useDogePFA';
 import { useConnectedWalletAddress } from '../wallet/getConnectedWalletAddress';
 import { TechDetails } from './ui/tech-details';
 
@@ -350,6 +353,11 @@ function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ');
 }
 
+/** Prefer `content` (direct media URL) then indexer `preview` for ÐPFP / ÐPFA storage. */
+function inscriptionMediaUrlForProfile(item: MyDogeInscription): string {
+  return String(item.content || item.preview || '').trim();
+}
+
 function truncateAddress(address: string | null | undefined) {
   if (!address) return 'D9yNBj...Z2rKQ';
   if (address.length <= 12) return address;
@@ -463,8 +471,11 @@ const PRIMARY_BUTTON = 'bg-neutral-200 hover:bg-white text-black font-bold py-2 
 const SECONDARY_BUTTON = 'bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition border border-zinc-700';
 const DANGER_BUTTON = 'bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-4 rounded-none shadow-md transition';
 const MODAL_SURFACE = 'bg-[#0A0A0A]/95 text-text-primary rounded-none p-6 shadow-doge border border-border-primary';
-const DRAWER_SURFACE =
-  'bg-[#0A0A0A]/95 text-text-primary border border-border-primary shadow-2xl';
+/** Full-bleed phone dock: opaque app chrome, single inner edge toward the page (largest common flagship width ≈ 430 CSS px). */
+const DRAWER_SURFACE_PHONE_RIGHT =
+  'bg-[#0A0A0A] text-text-primary border-l border-border-primary shadow-2xl';
+const DRAWER_SURFACE_PHONE_LEFT =
+  'bg-[#0A0A0A] text-text-primary border-r border-border-primary shadow-2xl';
 const INPUT_CLASS = 'wallet-input';
 
 function recommendedFeeRateForDxChain(baseFeeRateKoinuPerKb: number, stageCount: number): number {
@@ -523,6 +534,7 @@ export function DojakwebWalletModal({
   const { t, locale: stashLocale, setLocale: setStashLocale } = useDojakwebI18n();
   const fiatPrefs = useDojakwebFiatOptional();
   const { pfpInscriptionId, setDogePFP, clearDogePFP } = useDogePFP();
+  const { pfaInscriptionId, setDogePFA, clearDogePFA } = useDogePFA();
 
   const [step, setStep] = useState<WalletStep>('entry');
   const [tab, setTab] = useState<DashboardTab>('assets');
@@ -1002,7 +1014,6 @@ export function DojakwebWalletModal({
   const [draggedPriceSourceId, setDraggedPriceSourceId] = useState<DogePriceSourceId | null>(null);
   const [walletSwitcherModalOpen, setWalletSwitcherModalOpen] = useState(false);
   const [isAddressBookModalOpen, setIsAddressBookModalOpen] = useState(false);
-  const [isDogePFPModalOpen, setIsDogePFPModalOpen] = useState(false);
 
   useEffect(() => {
     if (!dogeosFeatureOn && settingsTab === 'ecosystem') {
@@ -2378,32 +2389,40 @@ export function DojakwebWalletModal({
   return (
     <>
       <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative" data-ds-theme={isDark ? 'dark' : 'light'} style={{ zIndex: 9999 }} onClose={onClose}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div
-              className={
-                isDrawerMode
-                  ? 'fixed inset-0 bg-black/72 backdrop-blur-sm'
-                  : 'fixed inset-0 bg-black/84 backdrop-blur-sm'
-              }
-            />
-          </Transition.Child>
+        <Dialog
+          as="div"
+          className={cx('relative', isDrawerMode && 'pointer-events-none')}
+          data-ds-theme={isDark ? 'dark' : 'light'}
+          style={{ zIndex: 9999 }}
+          onClose={onClose}
+          __demoMode={isDrawerMode}
+        >
+          {!isDrawerMode ? (
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-200"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black/84 backdrop-blur-sm" />
+            </Transition.Child>
+          ) : null}
 
-          <div className={cx('fixed inset-0', isDrawerMode ? 'overflow-hidden' : 'overflow-y-auto')}>
+          <div
+            className={cx(
+              'fixed inset-0',
+              isDrawerMode ? 'pointer-events-none overflow-visible' : 'overflow-y-auto',
+            )}
+          >
             <div
               className={cx(
                 'flex min-h-full',
                 isDrawerMode
-                  ? cx('items-center p-4', isDrawerLeft ? 'justify-start' : 'justify-end')
-                  : 'items-center justify-center px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-8'
+                  ? cx('h-[100dvh] min-h-0 items-stretch p-0', isDrawerLeft ? 'justify-start' : 'justify-end')
+                  : 'items-center justify-center px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-8',
               )}
             >
               <Transition.Child
@@ -2432,9 +2451,16 @@ export function DojakwebWalletModal({
                   className={cx(
                     'ds-wallet-dashboard relative flex flex-col overflow-hidden',
                     isDrawerMode
-                      ? 'h-[min(844px,calc(100dvh-2rem))] w-[390px] rounded-[2rem]'
+                      ? cx(
+                          'pointer-events-auto fixed top-0 z-[10001] flex h-[100dvh] max-h-[100dvh] min-h-0 w-[min(100dvw,430px)] max-w-[min(100dvw,430px)] flex-col overflow-hidden',
+                          isDrawerLeft ? 'left-0' : 'right-0',
+                        )
                       : 'w-full max-h-[92vh] max-w-lg',
-                    isDrawerMode ? DRAWER_SURFACE : MODAL_SURFACE
+                    isDrawerMode
+                      ? isDrawerLeft
+                        ? DRAWER_SURFACE_PHONE_LEFT
+                        : DRAWER_SURFACE_PHONE_RIGHT
+                      : MODAL_SURFACE,
                   )}
                 >
                   <div className="shrink-0 border-b border-white/10 px-4 py-3">
@@ -2478,15 +2504,6 @@ export function DojakwebWalletModal({
                                                 ) : null}
                                                 {connected && (
                                                   <>
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => setIsDogePFPModalOpen(true)}
-                                                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                                                      aria-label="DogePFP"
-                                                      title="Set DogePFP"
-                                                    >
-                                                      <DogePFPAvatar size="sm" />
-                                                    </button>
                                                     <button
                                                       type="button"
                                                       onClick={() => setIsAddressBookModalOpen(true)}
@@ -2928,6 +2945,76 @@ export function DojakwebWalletModal({
                                   <NetworkChainBadge network={pureDogeosMode ? 'dogeos' : currentNetwork} />
                                   {!pureDogeosMode ? <NetworkSwitcher className="sm:ml-auto" /> : null}
                                 </div>
+                                {connected ? (
+                                  <div className="col-span-2 flex min-w-0 items-center gap-2">
+                                    <Menu as="div" className="relative shrink-0">
+                                      <Menu.Button
+                                        type="button"
+                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
+                                        aria-label={t('modal.profileDpfp.avatarMenuAria')}
+                                        title={t('modal.profileDpfp.avatarMenuAria')}
+                                      >
+                                        <DogePFPAvatar size="md" />
+                                      </Menu.Button>
+                                      <Transition
+                                        as={Fragment}
+                                        enter="transition ease-out duration-100"
+                                        enterFrom="transform opacity-0 scale-95"
+                                        enterTo="transform opacity-100 scale-100"
+                                        leave="transition ease-in duration-75"
+                                        leaveFrom="transform opacity-100 scale-100"
+                                        leaveTo="transform opacity-0 scale-95"
+                                      >
+                                        <Menu.Items className="absolute left-0 z-[9999] mt-1 min-w-[13rem] max-w-[16rem] rounded-xl border border-white/10 bg-gray-900 py-1 shadow-2xl outline-none">
+                                          <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
+                                            {t('modal.profileDpfp.menuHint')}
+                                          </div>
+                                          {pfpInscriptionId ? (
+                                            <Menu.Item>
+                                              {({ active }) => (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    clearDogePFP();
+                                                    toast.message(t('modal.toast.dpfpCleared'));
+                                                  }}
+                                                  className={cx(
+                                                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                    active ? 'bg-gray-700' : 'hover:bg-gray-800',
+                                                  )}
+                                                >
+                                                  <PhotoIcon className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
+                                                  <span className="leading-tight">{t('modal.profileDpfp.clearPfp')}</span>
+                                                </button>
+                                              )}
+                                            </Menu.Item>
+                                          ) : null}
+                                          {pfaInscriptionId ? (
+                                            <Menu.Item>
+                                              {({ active }) => (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    clearDogePFA();
+                                                    toast.message(t('modal.toast.dpfaCleared'));
+                                                  }}
+                                                  className={cx(
+                                                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                    active ? 'bg-gray-700' : 'hover:bg-gray-800',
+                                                  )}
+                                                >
+                                                  <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/80" aria-hidden />
+                                                  <span className="leading-tight">{t('modal.profileDpfa.clearPfa')}</span>
+                                                </button>
+                                              )}
+                                            </Menu.Item>
+                                          ) : null}
+                                        </Menu.Items>
+                                      </Transition>
+                                    </Menu>
+                                    <DogePFAHeaderControl />
+                                  </div>
+                                ) : null}
                                 {!pureDogeosMode ? (
                                   <div className="col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                                     <DogecoinL1BalanceCard
@@ -2953,7 +3040,78 @@ export function DojakwebWalletModal({
                                 )}
                               </>
                             ) : (
-                            <div className="min-w-0 flex flex-wrap items-center gap-2 text-xl font-bold text-white">
+                            <div className="flex min-w-0 items-start gap-3">
+                              {connected ? (
+                                <div className="flex shrink-0 items-center gap-2 self-center pt-0.5">
+                                  <Menu as="div" className="relative shrink-0">
+                                    <Menu.Button
+                                      type="button"
+                                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
+                                      aria-label={t('modal.profileDpfp.avatarMenuAria')}
+                                      title={t('modal.profileDpfp.avatarMenuAria')}
+                                    >
+                                      <DogePFPAvatar size="md" />
+                                    </Menu.Button>
+                                    <Transition
+                                      as={Fragment}
+                                      enter="transition ease-out duration-100"
+                                      enterFrom="transform opacity-0 scale-95"
+                                      enterTo="transform opacity-100 scale-100"
+                                      leave="transition ease-in duration-75"
+                                      leaveFrom="transform opacity-100 scale-100"
+                                      leaveTo="transform opacity-0 scale-95"
+                                    >
+                                      <Menu.Items className="absolute left-0 z-[9999] mt-1 min-w-[13rem] max-w-[16rem] rounded-xl border border-white/10 bg-gray-900 py-1 shadow-2xl outline-none">
+                                        <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
+                                          {t('modal.profileDpfp.menuHint')}
+                                        </div>
+                                        {pfpInscriptionId ? (
+                                          <Menu.Item>
+                                            {({ active }) => (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  clearDogePFP();
+                                                  toast.message(t('modal.toast.dpfpCleared'));
+                                                }}
+                                                className={cx(
+                                                  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                  active ? 'bg-gray-700' : 'hover:bg-gray-800',
+                                                )}
+                                              >
+                                                <PhotoIcon className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
+                                                <span className="leading-tight">{t('modal.profileDpfp.clearPfp')}</span>
+                                              </button>
+                                            )}
+                                          </Menu.Item>
+                                        ) : null}
+                                        {pfaInscriptionId ? (
+                                          <Menu.Item>
+                                            {({ active }) => (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  clearDogePFA();
+                                                  toast.message(t('modal.toast.dpfaCleared'));
+                                                }}
+                                                className={cx(
+                                                  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                  active ? 'bg-gray-700' : 'hover:bg-gray-800',
+                                                )}
+                                              >
+                                                <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/80" aria-hidden />
+                                                <span className="leading-tight">{t('modal.profileDpfa.clearPfa')}</span>
+                                              </button>
+                                            )}
+                                          </Menu.Item>
+                                        ) : null}
+                                      </Menu.Items>
+                                    </Transition>
+                                  </Menu>
+                                  <DogePFAHeaderControl />
+                                </div>
+                              ) : null}
+                              <div className="min-w-0 flex flex-1 flex-wrap items-center gap-2 text-xl font-bold text-white">
                               {balanceRefreshing
                                 ? <span className="opacity-60">{t('modal.dashboard.refreshingBalance')}</span>
                                 : (
@@ -2987,6 +3145,7 @@ export function DojakwebWalletModal({
                               >
                                 <ArrowPathIcon className="h-5 w-5" />
                               </button>
+                            </div>
                             </div>
                             )}
 
@@ -3240,7 +3399,53 @@ export function DojakwebWalletModal({
                                                 leaveFrom="transform opacity-100 scale-100"
                                                 leaveTo="transform opacity-0 scale-95"
                                               >
-                                                <Menu.Items className="absolute right-0 z-[9999] mt-1 min-w-[8.5rem] rounded-xl border border-white/10 bg-gray-900 py-1 shadow-2xl outline-none">
+                                                <Menu.Items className="absolute right-0 z-[9999] mt-1 min-w-[11rem] rounded-xl border border-white/10 bg-gray-900 py-1 shadow-2xl outline-none">
+                                                  {item.contentType?.startsWith('image/') ? (
+                                                    <Menu.Item>
+                                                      {({ active }) => (
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => {
+                                                            const u = inscriptionMediaUrlForProfile(item);
+                                                            setDogePFP(item.inscriptionId, u ? { contentUrl: u } : undefined);
+                                                            toast.success(t('modal.toast.dpfpSet'));
+                                                          }}
+                                                          className={cx(
+                                                            'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                            active ? 'bg-gray-700' : 'hover:bg-gray-800',
+                                                          )}
+                                                        >
+                                                          <PhotoIcon className="h-4 w-4 shrink-0 text-yellow-200/90" aria-hidden />
+                                                          <span className="leading-tight">{t('modal.assets.setAsDpfp')}</span>
+                                                        </button>
+                                                      )}
+                                                    </Menu.Item>
+                                                  ) : null}
+                                                  {item.contentType?.startsWith('audio/') ? (
+                                                    <Menu.Item>
+                                                      {({ active }) => (
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => {
+                                                            const u = inscriptionMediaUrlForProfile(item);
+                                                            if (!u) {
+                                                              toast.error(t('modal.toast.dpfaNoUrl'));
+                                                              return;
+                                                            }
+                                                            setDogePFA(item.inscriptionId, { contentUrl: u });
+                                                            toast.success(t('modal.toast.dpfaSet'));
+                                                          }}
+                                                          className={cx(
+                                                            'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                            active ? 'bg-gray-700' : 'hover:bg-gray-800',
+                                                          )}
+                                                        >
+                                                          <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/90" aria-hidden />
+                                                          <span className="leading-tight">{t('modal.assets.setAsDpfa')}</span>
+                                                        </button>
+                                                      )}
+                                                    </Menu.Item>
+                                                  ) : null}
                                                   <Menu.Item>
                                                     {({ active }) => (
                                                       <button
@@ -5348,22 +5553,6 @@ export function DojakwebWalletModal({
         onClose={() => setIsAddressBookModalOpen(false)}
         nestInWalletDrawer={mode === 'drawer'}
         walletDrawerHost={walletDrawerHostEl}
-      />
-
-      {/* DogePFP Selector Modal */}
-      <DogePFPSelector
-        isOpen={isDogePFPModalOpen}
-        onClose={() => setIsDogePFPModalOpen(false)}
-        nestInWalletDrawer={mode === 'drawer'}
-        walletDrawerHost={walletDrawerHostEl}
-        onSelectPFP={(inscriptionId) => {
-          if (inscriptionId) {
-            setDogePFP(inscriptionId);
-          } else {
-            clearDogePFP();
-          }
-        }}
-        currentPFP={pfpInscriptionId}
       />
 
       {/* Wallet Switcher Modal (centered only; drawer mode uses in-panel stack above) */}

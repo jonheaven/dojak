@@ -6,6 +6,7 @@ export const NOSTR_RELAY_URL = 'wss://relay.primal.net';
  * fetchNostrListings fans out to ALL of these simultaneously.
  */
 export const NOSTR_ALL_RELAYS = [
+  'wss://relay.command.dog',
   'wss://relay.primal.net',
   'wss://nostr.wine',
   'wss://nos.lol',

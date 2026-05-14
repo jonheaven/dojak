@@ -42,7 +42,7 @@ export function ConnectWalletButton({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={buttonAriaLabel}
-        className={`ds-connect-button inline-flex min-h-10 appearance-none items-center gap-3 rounded-none border border-[color:var(--ds-accent-border)] bg-[linear-gradient(180deg,var(--ds-accent-solid)_0%,var(--ds-accent-solid-hover)_100%)] px-4 py-2 text-sm font-semibold text-[color:var(--ds-accent-foreground)] transition hover:brightness-105 ${className}`.trim()}
+        className={`ds-connect-button inline-flex min-h-10 appearance-none items-center gap-3 rounded-lg border border-[color:var(--ds-accent-border)] bg-[linear-gradient(180deg,var(--ds-accent-solid)_0%,var(--ds-accent-solid-hover)_100%)] px-4 py-2 text-sm font-semibold text-[color:var(--ds-accent-foreground)] transition hover:brightness-105 ${className}`.trim()}
       >
         <span>{buttonLabel}</span>
         {connected && address ? <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" /> : null}

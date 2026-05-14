@@ -91,7 +91,7 @@
 .ds-connect-button {
   position: relative;
   overflow: hidden;
-  border-radius: 0;
+  border-radius: 0.5rem;
   border: 1px solid var(--ds-accent-border);
   background: linear-gradient(180deg, var(--ds-accent-solid) 0%, var(--ds-accent-solid-hover) 100%);
   box-shadow:
@@ -142,7 +142,7 @@
   width: 2.35rem;
   align-items: center;
   justify-content: center;
-  border-radius: 0;
+  border-radius: 0.45rem;
   background: linear-gradient(135deg, #fff4bf, #f59e0b);
   color: #0a0a0a;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
@@ -214,9 +214,14 @@
 .ds-wallet-modal-backdrop--drawer {
   align-items: stretch;
   justify-content: flex-end;
-  background: rgba(0, 0, 0, 0.68);
-  backdrop-filter: blur(24px);
+  background: transparent;
+  backdrop-filter: none;
   padding: 0;
+  pointer-events: none;
+}
+
+.ds-wallet-modal-backdrop--drawer.ds-wallet-modal-backdrop--drawer-left {
+  justify-content: flex-start;
 }
 
 .ds-wallet-modal {
@@ -232,19 +237,46 @@
 }
 
 .ds-wallet-modal--drawer {
-  width: min(100vw, 430px);
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10001;
+  display: flex;
+  width: min(100dvw, 430px);
+  max-width: min(100dvw, 430px);
+  height: 100dvh;
   min-height: 100dvh;
   max-height: 100dvh;
-  border-width: 0 0 0 1px;
-  display: flex;
   flex-direction: column;
+  border-width: 0 0 0 1px;
+  border-radius: 0;
   animation: ds-wallet-drawer-in 220ms ease-out;
+  pointer-events: auto;
+}
+
+.ds-wallet-modal--drawer.ds-wallet-modal--drawer-left {
+  right: auto;
+  left: 0;
+  border-width: 0 1px 0 0;
+  animation: ds-wallet-drawer-in-left 220ms ease-out;
 }
 
 @keyframes ds-wallet-drawer-in {
   from {
     opacity: 0;
     transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ds-wallet-drawer-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
   }
   to {
     opacity: 1;
@@ -268,6 +300,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ds-wallet-modal--drawer,
+  .ds-wallet-modal--drawer.ds-wallet-modal--drawer-left {
+    animation: none;
+  }
+
   .ds-toast-progress {
     animation: none;
     transform: scaleX(1);
