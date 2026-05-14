@@ -8,7 +8,7 @@ import {
   createBiometricFacade,
   createNativeAdapters,
   createNativeSessionSecretStore
-} from '@dojak/biometrics';
+} from '@dojak/biometrics/mobile';
 import {
   DOGEOS_ACTIVE_CONFIG,
   createDogeOsPublicClient,

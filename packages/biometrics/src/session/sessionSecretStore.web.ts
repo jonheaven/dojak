@@ -5,7 +5,11 @@ const KEY = 'dojak.biometric.session-secret';
 function getChromeSessionStorage():
   | { get: (keys: string[]) => Promise<Record<string, string>>; set: (items: Record<string, string>) => Promise<void>; remove: (keys: string[]) => Promise<void> }
   | null {
-  const maybeChrome = globalThis.chrome as any;
+  const maybeChrome = (globalThis as unknown as { chrome?: { storage?: { session: {
+    get: (k: string[]) => Promise<Record<string, string>>;
+    set: (i: Record<string, string>) => Promise<void>;
+    remove: (k: string[]) => Promise<void>;
+  } } } }).chrome;
   if (maybeChrome?.storage?.session) {
     return maybeChrome.storage.session;
   }

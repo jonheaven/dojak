@@ -106,14 +106,38 @@ function asBufferSource(bytes: Uint8Array): BufferSource {
   return bytes as unknown as BufferSource;
 }
 
-async function encryptBytes(bytes: Uint8Array, password: string): Promise<SecureStorageEnvelope> {
+export type SecureEncryptOptions = {
+  /** PBKDF2 iteration count; defaults to `CURRENT_PBKDF2_ITERATIONS`. */
+  pbkdf2Iterations?: number;
+};
+
+export function pbkdf2IterationsForSecretStrength(strength: 'standard' | 'high' | 'maximum'): number {
+  switch (strength) {
+    case 'high':
+      return 500_000;
+    case 'maximum':
+      return 750_000;
+    default:
+      return CURRENT_PBKDF2_ITERATIONS;
+  }
+}
+
+async function encryptBytes(
+  bytes: Uint8Array,
+  password: string,
+  options?: SecureEncryptOptions
+): Promise<SecureStorageEnvelope> {
   const subtle = requireSubtleCrypto();
+  const iterations = options?.pbkdf2Iterations ?? CURRENT_PBKDF2_ITERATIONS;
+  if (!Number.isFinite(iterations) || iterations < 50_000 || iterations > 2_000_000) {
+    throw new Error('Invalid PBKDF2 iteration count');
+  }
   // `crypto.getRandomValues` uses the browser's CSPRNG so each wallet gets a unique salt.
   // That prevents identical passwords from deriving identical AES keys across stored wallets.
   const salt = globalThis.crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
   // AES-GCM also requires a fresh IV per encryption so nonce reuse cannot undermine integrity.
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-  const key = await deriveAesKey(password, salt, CURRENT_PBKDF2_ITERATIONS, ['encrypt']);
+  const key = await deriveAesKey(password, salt, iterations, ['encrypt']);
   const ciphertext = await subtle.encrypt(
     { name: 'AES-GCM', iv: asBufferSource(iv) },
     key,
@@ -125,7 +149,7 @@ async function encryptBytes(bytes: Uint8Array, password: string): Promise<Secure
     kdf: 'PBKDF2',
     hash: 'SHA-256',
     cipher: 'AES-GCM',
-    iterations: CURRENT_PBKDF2_ITERATIONS,
+    iterations,
     salt: bytesToBase64(salt),
     iv: bytesToBase64(iv),
     ciphertext: bytesToBase64(new Uint8Array(ciphertext)),
@@ -168,8 +192,12 @@ async function decryptLegacyCombinedBytes(payload: string, password: string): Pr
   return new Uint8Array(plaintext);
 }
 
-export async function encryptText(plaintext: string, password: string): Promise<string> {
-  const envelope = await encryptBytes(new TextEncoder().encode(plaintext), password);
+export async function encryptText(
+  plaintext: string,
+  password: string,
+  options?: SecureEncryptOptions
+): Promise<string> {
+  const envelope = await encryptBytes(new TextEncoder().encode(plaintext), password, options);
   return JSON.stringify(envelope);
 }
 
@@ -199,8 +227,12 @@ export async function decryptText(
   };
 }
 
-export async function encryptJSON<T>(value: T, password: string): Promise<string> {
-  return encryptText(JSON.stringify(value), password);
+export async function encryptJSON<T>(
+  value: T,
+  password: string,
+  options?: SecureEncryptOptions
+): Promise<string> {
+  return encryptText(JSON.stringify(value), password, options);
 }
 
 export async function decryptJSON<T>(

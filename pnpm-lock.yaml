@@ -675,6 +675,9 @@ importers:
 
   packages/dojakweb:
     dependencies:
+      '@dojak/biometrics':
+        specifier: workspace:*
+        version: link:../biometrics
       '@dojak/core':
         specifier: file:../core
         version: link:../core

@@ -7,4 +7,5 @@ export function createWebAdapters(): BiometricAdapter[] {
   return [new WebAuthnAdapter(), new DigitalPersonaAdapter()];
 }
 
-export { WebAuthnAdapter, DigitalPersonaAdapter };
+export { WebAuthnAdapter, type WebAuthnAdapterOptions } from './webauthnAdapter';
+export { DigitalPersonaAdapter } from './digitalPersonaAdapter';

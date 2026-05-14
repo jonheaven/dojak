@@ -1,6 +1,13 @@
 import { BiometricAdapter, BiometricAuthResult, BiometricAvailability } from '../../types';
 
-const CRED_ID_KEY = 'dojak.biometric.webauthn.credential-id';
+const DEFAULT_CRED_ID_KEY = 'dojak.biometric.webauthn.credential-id';
+
+export type WebAuthnAdapterOptions = {
+  /** Defaults to `dojak.biometric.webauthn.credential-id` (extension). Use a host-specific key for embedded web wallets. */
+  credentialStorageKey?: string;
+  /** When true, do not restrict to platform authenticators so USB / cross-device security keys can enroll. */
+  allowUsbSecurityKeys?: boolean;
+};
 
 function bytesToBase64(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes));
@@ -20,6 +27,14 @@ function randomChallenge(size = 32) {
 }
 
 export class WebAuthnAdapter implements BiometricAdapter {
+  private readonly credentialStorageKey: string;
+  private readonly allowUsbSecurityKeys: boolean;
+
+  constructor(options?: WebAuthnAdapterOptions) {
+    this.credentialStorageKey = options?.credentialStorageKey ?? DEFAULT_CRED_ID_KEY;
+    this.allowUsbSecurityKeys = options?.allowUsbSecurityKeys ?? false;
+  }
+
   getMethod() {
     return 'webauthn-platform' as const;
   }
@@ -31,12 +46,16 @@ export class WebAuthnAdapter implements BiometricAdapter {
   }
 
   async registerIfNeeded(userName = 'Dojak Wallet'): Promise<boolean> {
-    const existing = localStorage.getItem(CRED_ID_KEY);
+    const existing = localStorage.getItem(this.credentialStorageKey);
     if (existing) return true;
 
     if (!window.PublicKeyCredential || !navigator.credentials) return false;
 
     const userId = randomChallenge(16);
+    const authenticatorSelection = this.allowUsbSecurityKeys
+      ? { userVerification: 'preferred' as const }
+      : { authenticatorAttachment: 'platform' as const, userVerification: 'preferred' as const };
+
     const publicKey: PublicKeyCredentialCreationOptions = {
       challenge: randomChallenge(),
       rp: { name: 'Dojak Wallet' },
@@ -46,7 +65,7 @@ export class WebAuthnAdapter implements BiometricAdapter {
         displayName: userName
       },
       pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
-      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'preferred' },
+      authenticatorSelection,
       timeout: 60_000,
       attestation: 'none'
     };
@@ -54,7 +73,7 @@ export class WebAuthnAdapter implements BiometricAdapter {
     const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
     if (!credential?.rawId) return false;
 
-    localStorage.setItem(CRED_ID_KEY, bytesToBase64(new Uint8Array(credential.rawId)));
+    localStorage.setItem(this.credentialStorageKey, bytesToBase64(new Uint8Array(credential.rawId)));
     return true;
   }
 
@@ -65,7 +84,7 @@ export class WebAuthnAdapter implements BiometricAdapter {
         return { ok: false, method: this.getMethod(), errorCode: 'biometric/not-available', errorMessage: available.reason };
       }
 
-      const credId = localStorage.getItem(CRED_ID_KEY);
+      const credId = localStorage.getItem(this.credentialStorageKey);
       if (!credId) return { ok: false, method: this.getMethod(), errorCode: 'biometric/not-enrolled', errorMessage: 'Biometric credential not enrolled' };
 
       const publicKey: PublicKeyCredentialRequestOptions = {

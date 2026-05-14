@@ -34,6 +34,8 @@ import type {
 
 export interface BrowserWalletSaveOptions {
   seedMaterial?: SeedMaterial | null;
+  /** PBKDF2 iterations for new encrypted payloads (wallet JSON + seed envelope). */
+  pbkdf2Iterations?: number;
 }
 
 interface EncryptedWalletRecord {
@@ -449,7 +451,8 @@ export class BrowserWallet {
       const unencryptedKey = BrowserWallet.unencryptedKey(wallet.address);
 
       if (password) {
-        const encrypted = await encryptJSON(walletToPersist, password);
+        const encOpts = options?.pbkdf2Iterations ? { pbkdf2Iterations: options.pbkdf2Iterations } : undefined;
+        const encrypted = await encryptJSON(walletToPersist, password, encOpts);
         localStorage.setItem(
           encryptedKey,
           JSON.stringify({ encrypted, network: wallet.network } satisfies EncryptedWalletRecord)
@@ -466,7 +469,7 @@ export class BrowserWallet {
 
       if (seedMaterial) {
         if (password) {
-          await this.saveSeedMaterial(seedMaterial, seedFingerprint!, password);
+          await this.saveSeedMaterial(seedMaterial, seedFingerprint!, password, options?.pbkdf2Iterations);
           localStorage.removeItem(BrowserWallet.legacyMnemonicKey(wallet.address));
         } else {
           localStorage.setItem(BrowserWallet.legacyMnemonicKey(wallet.address), seedMaterial.mnemonic);
@@ -874,10 +877,12 @@ export class BrowserWallet {
   private async saveSeedMaterial(
     seedMaterial: SeedMaterial,
     seedFingerprint: string,
-    password: string
+    password: string,
+    pbkdf2Iterations?: number
   ): Promise<void> {
     const normalized = normalizeSeedMaterial(seedMaterial);
-    const encrypted = await encryptJSON(normalized, password);
+    const encOpts = pbkdf2Iterations ? { pbkdf2Iterations } : undefined;
+    const encrypted = await encryptJSON(normalized, password, encOpts);
     localStorage.setItem(BrowserWallet.seedKey(seedFingerprint), encrypted);
   }
 

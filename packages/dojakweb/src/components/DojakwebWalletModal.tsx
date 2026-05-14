@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Fragment, lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import React, { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import JSZip from 'jszip';
 import { Dialog, Menu, Transition } from '@headlessui/react';
 import {
@@ -29,6 +29,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronDownIcon,
+  ChevronUpIcon,
   XMarkIcon,
   SunIcon,
   MoonIcon,
@@ -70,10 +71,17 @@ import {
 } from '../services/listing-store';
 import { encodeBase64PsdtToDogePsdtUri } from '../lib/psdt/codec';
 import { QRCodeSVG } from 'qrcode.react';
+import { WebAuthnAdapter } from '@dojak/biometrics';
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { BrowserWallet } from '../lib/browser-wallet';
+import { createDojakwebBiometricFacade, createDojakwebSessionSecretStore } from '../lib/dojakweb-biometric';
+import {
+  readWalletLockPreferences,
+  writeWalletLockPreferences,
+} from '../lib/browser-wallet-lock-prefs';
+import { findSeedGroupIndexForAddress, groupBrowserWalletsBySeed } from '../lib/wallet-seed-groups';
 import { ConfirmationReadSourcesBar } from './chain/ConfirmationReadSourcesBar';
-import { decryptText, encryptText } from '../lib/secureStorage';
+import { decryptText, encryptText, pbkdf2IterationsForSecretStrength } from '../lib/secureStorage';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { toast } from 'sonner';
 import type { SeedMaterial, WalletData, WalletType } from '../types/wallet';
@@ -516,6 +524,7 @@ export function DojakwebWalletModal({
     setDrawerSide: gsSetDrawerSide,
   } = useGlobalStore();
   const browser = useBrowserWallet();
+  const dojakwebBiometricFacade = useMemo(() => createDojakwebBiometricFacade(), []);
   const {
     connected,
     address,
@@ -542,6 +551,10 @@ export function DojakwebWalletModal({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [unlockPassword, setUnlockPassword] = useState('');
+  const [unlockMode, setUnlockMode] = useState<'password' | 'pin' | 'biometric'>('password');
+  const [newPrimarySecret, setNewPrimarySecret] = useState<'password' | 'pin'>('password');
+  const [newSecretStrength, setNewSecretStrength] = useState<'standard' | 'high' | 'maximum'>('standard');
+  const [enableWebAuthnQuickUnlock, setEnableWebAuthnQuickUnlock] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [hideBalance, setHideBalance] = useState(false);
@@ -613,6 +626,16 @@ export function DojakwebWalletModal({
       ? (browser.wallet?.nickname?.trim() || pendingWallet?.nickname?.trim() || '')
       : activeWalletSummary?.label ?? '';
   const isBrowserWallet = activeWalletSummary?.type === 'browser' || walletType === 'browser';
+
+  const unlockStepPrefs = useMemo(() => {
+    if (step !== 'unlock' || !selectedLocalWalletAddress) return null;
+    return readWalletLockPreferences(selectedLocalWalletAddress);
+  }, [step, selectedLocalWalletAddress]);
+  const showUnlockBiometricTab = Boolean(unlockStepPrefs?.biometricQuickUnlock);
+  const localSeedWalletGroups = useMemo(
+    () => groupBrowserWalletsBySeed(savedLocalWallets),
+    [savedLocalWallets]
+  );
 
   const dogeosEnabled = useWalletStore((s) => s.dogeosEnabled);
   const pureDogeosMode = useWalletStore((s) => s.pureDogeosMode);
@@ -1360,17 +1383,19 @@ export function DojakwebWalletModal({
     nextPassword?: string,
     walletOverride?: WalletData | null,
     seedOverride?: SeedMaterial | null,
-  ) => {
+    saveOpts?: { pbkdf2Iterations?: number }
+  ): Promise<WalletData | null> => {
     const walletToPersist =
       walletOverride ??
       pendingWallet ??
       (walletType === 'browser' ? (browser.wallet ?? (activeAddress ? await browser.loadWallet() : null)) : null);
-    if (!walletToPersist) return;
+    if (!walletToPersist) return null;
     const persistPassword = nextPassword?.trim() || undefined;
     if (persistPassword) setActivePassword(persistPassword);
     localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
     await browser.saveWallet(walletToPersist, persistPassword, {
       seedMaterial: seedOverride ?? pendingSeed ?? undefined,
+      pbkdf2Iterations: saveOpts?.pbkdf2Iterations,
     });
     await browser.connect(walletToPersist);
     const passwordKey = getStoredPasswordFlag(walletToPersist.address);
@@ -1405,19 +1430,61 @@ export function DojakwebWalletModal({
       await browser.disconnect();
       onClose();
     }
+    return walletToPersist;
   };
 
   const handleUnlockWallet = async () => {
     setIsBusy(true);
     setError(null);
     try {
-      const loaded = await browser.loadWallet(unlockPassword);
+      if (unlockMode === 'biometric') {
+        const unlockedRef: { current: WalletData | null } = { current: null };
+        const result = await dojakwebBiometricFacade.unlockWalletWithBiometric(async (secret: string) => {
+          const loaded = await browser.loadWallet(secret);
+          if (!loaded) {
+            throw new Error(t('modal.throws.unlockWrong'));
+          }
+          await browser.connect(loaded);
+          unlockedRef.current = loaded;
+        }, t('modal.unlock.biometricReason'));
+        if (!result.ok) {
+          throw new Error(result.errorMessage || t('modal.toast.unlockFailed'));
+        }
+        const unlocked = unlockedRef.current;
+        if (!unlocked) {
+          throw new Error(t('modal.throws.unlockWrong'));
+        }
+        setWalletNameDraft(unlocked.nickname?.trim() || '');
+        const sessionSecret = await createDojakwebSessionSecretStore().getSecret();
+        if (!sessionSecret) {
+          throw new Error(t('modal.toast.unlockFailed'));
+        }
+        setActivePassword(sessionSecret);
+        setUnlockPassword('');
+        setShowTemporaryBanner(false);
+        setStep('dashboard');
+        toast.success(t('modal.toast.walletUnlocked'));
+        return;
+      }
+
+      const secret = unlockPassword.trim();
+      if (unlockMode === 'pin') {
+        if (!secret) {
+          throw new Error(t('modal.errors.enterPin'));
+        }
+        if (!/^\d{6,}$/.test(secret)) {
+          throw new Error(t('modal.errors.pinInvalid'));
+        }
+      } else if (!secret) {
+        throw new Error(t('modal.errors.enterPassword'));
+      }
+      const loaded = await browser.loadWallet(secret);
       if (!loaded) {
         throw new Error(t('modal.throws.unlockWrong'));
       }
       await browser.connect(loaded);
       setWalletNameDraft(loaded.nickname?.trim() || '');
-      setActivePassword(unlockPassword);
+      setActivePassword(secret);
       setUnlockPassword('');
       setShowTemporaryBanner(false);
       setStep('dashboard');
@@ -1442,10 +1509,43 @@ export function DojakwebWalletModal({
       setError(t('modal.errors.enterPassword'));
       return;
     }
+    if (newPrimarySecret === 'pin') {
+      if (!/^\d{6,}$/.test(password.trim())) {
+        setError(t('modal.errors.pinInvalid'));
+        return;
+      }
+    }
     setIsBusy(true);
     setError(null);
     try {
-      await finalizeWallet(password);
+      const iterations = pbkdf2IterationsForSecretStrength(newSecretStrength);
+      const saved = await finalizeWallet(password, undefined, undefined, { pbkdf2Iterations: iterations });
+      const addr = saved?.address;
+      if (password.trim() && addr) {
+        writeWalletLockPreferences(addr, {
+          primary: newPrimarySecret,
+          strength: newSecretStrength,
+          biometricQuickUnlock: enableWebAuthnQuickUnlock,
+        });
+      }
+      if (enableWebAuthnQuickUnlock && password.trim()) {
+        try {
+          const webAuthn = new WebAuthnAdapter({
+            credentialStorageKey: 'dojakweb.biometric.webauthn.credential-id',
+            allowUsbSecurityKeys: true,
+          });
+          const registered = await webAuthn.registerIfNeeded('Dojak web wallet');
+          if (registered) {
+            await createDojakwebSessionSecretStore().saveSecret(password.trim());
+            toast.success(t('modal.toast.biometricEnabled'));
+          } else {
+            toast.message(t('modal.toast.biometricSkipped'));
+          }
+        } catch (bioErr) {
+          console.warn(bioErr);
+          toast.message(t('modal.toast.biometricSkipped'));
+        }
+      }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : t('modal.errors.savePassword'));
     } finally {
@@ -1493,10 +1593,78 @@ export function DojakwebWalletModal({
     }
   };
 
+  useEffect(() => {
+    if (step !== 'unlock' || !selectedLocalWalletAddress) return;
+    const prefs = readWalletLockPreferences(selectedLocalWalletAddress);
+    setUnlockMode(prefs?.primary === 'pin' ? 'pin' : 'password');
+  }, [step, selectedLocalWalletAddress]);
+
+  const handleSwitchBrowserSeedWallet = async (delta: -1 | 1) => {
+    if (!isBrowserWallet) return;
+    const groups = localSeedWalletGroups;
+    if (groups.length <= 1) return;
+    const addr = browser.wallet?.address ?? activeAddress ?? undefined;
+    const gi = findSeedGroupIndexForAddress(groups, addr);
+    const nextGi = (gi + delta + groups.length) % groups.length;
+    const target = groups[nextGi]?.accounts[0];
+    if (!target?.address) return;
+    setIsBusy(true);
+    setError(null);
+    try {
+      await createDojakwebSessionSecretStore().clearSecret();
+      await browser.selectWallet(target.address);
+      setSelectedLocalWalletAddress(target.address);
+      const enc = await new BrowserWallet().isEncrypted(target.address);
+      setIsEncryptedWallet(enc);
+      if (enc) {
+        setActivePassword(undefined);
+        setUnlockPassword('');
+        setStep('unlock');
+      } else {
+        const loaded = await browser.loadWallet();
+        if (!loaded) {
+          throw new Error(t('modal.throws.loadSelectedWallet'));
+        }
+        await browser.connect(loaded);
+        setWalletNameDraft(loaded.nickname?.trim() || '');
+        setStep('dashboard');
+        await browser.refreshBalance({ silent: true });
+      }
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : t('modal.errors.connectWallet'));
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleSwitchBrowserAccount = async (delta: -1 | 1) => {
+    if (!isBrowserWallet || !activePassword) {
+      toast.error(t('modal.toast.reunlockForAccountSwitch'));
+      return;
+    }
+    const currentIdx = browser.wallet?.accountIndex ?? 0;
+    const nextIdx = currentIdx + delta;
+    if (nextIdx < 0) return;
+    setIsBusy(true);
+    setError(null);
+    try {
+      const switched = await browser.switchAccount(nextIdx, activePassword);
+      await browser.connect(switched);
+      setWalletNameDraft(switched.nickname?.trim() || '');
+      await refreshSavedLocalWallets();
+      await browser.refreshBalance({ silent: true });
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : t('modal.errors.connectWallet'));
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   const handleDisconnectWallet = async () => {
     setIsBusy(true);
     setError(null);
     try {
+      await createDojakwebSessionSecretStore().clearSecret();
       await disconnect();
       resetEvmSession();
       localStorage.setItem(BROWSER_WALLET_RESTORE_BLOCK_KEY, 'true');
@@ -2661,35 +2829,133 @@ export function DojakwebWalletModal({
                     )}
 
                     {step === 'unlock' && (
-                      <form
-                        className="space-y-4"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          if (!isBusy && unlockPassword) {
-                            void handleUnlockWallet();
-                          }
-                        }}
-                      >
-                        <label className="block text-sm text-[#E5E5E5]">
-                          <span className="mb-2 block">{t('modal.unlock.enterPassword')}</span>
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            value={unlockPassword}
-                            onChange={(event) => setUnlockPassword(event.target.value)}
-                            autoFocus
-                            autoComplete="current-password"
-                            className={INPUT_CLASS}
-                          />
-                        </label>
-                        <div className="flex gap-3">
-                          <Button type="button" onClick={() => setStep('entry')} className={cx('flex-1', SECONDARY_BUTTON)}>
+                      <div className="space-y-4">
+                        <div className="flex rounded-xl border border-white/10 bg-[#0A0A0A] p-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUnlockMode('password');
+                              setUnlockPassword('');
+                            }}
+                            className={cx(
+                              'min-w-0 flex-1 rounded-lg py-2 text-center text-xs font-semibold transition',
+                              unlockMode === 'password' ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'
+                            )}
+                          >
+                            {t('modal.unlock.modePassword')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUnlockMode('pin');
+                              setUnlockPassword('');
+                            }}
+                            className={cx(
+                              'min-w-0 flex-1 rounded-lg py-2 text-center text-xs font-semibold transition',
+                              unlockMode === 'pin' ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'
+                            )}
+                          >
+                            {t('modal.unlock.modePin')}
+                          </button>
+                          {showUnlockBiometricTab ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUnlockMode('biometric');
+                                setUnlockPassword('');
+                              }}
+                              className={cx(
+                                'min-w-0 flex-1 rounded-lg py-2 text-center text-xs font-semibold transition',
+                                unlockMode === 'biometric' ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'
+                              )}
+                            >
+                              {t('modal.unlock.modeBiometric')}
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {unlockMode === 'biometric' ? (
+                          <div className="space-y-3">
+                            <p className="text-sm leading-6 text-white/60">{t('modal.unlock.biometricHint')}</p>
+                            <Button
+                              type="button"
+                              onClick={() => void handleUnlockWallet()}
+                              disabled={isBusy}
+                              className={cx('w-full', PRIMARY_BUTTON)}
+                            >
+                              {isBusy ? t('modal.unlock.unlocking') : t('modal.unlock.biometricCta')}
+                            </Button>
+                          </div>
+                        ) : (
+                          <form
+                            className="space-y-4"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              if (!isBusy) {
+                                void handleUnlockWallet();
+                              }
+                            }}
+                          >
+                            <label className="block text-sm text-[#E5E5E5]">
+                              <span className="mb-2 block">
+                                {unlockMode === 'pin' ? t('modal.unlock.enterPin') : t('modal.unlock.enterPassword')}
+                              </span>
+                              {unlockMode === 'pin' ? (
+                                <input
+                                  type="password"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  autoComplete="one-time-code"
+                                  value={unlockPassword}
+                                  onChange={(event) => setUnlockPassword(event.target.value.replace(/\D/g, ''))}
+                                  autoFocus
+                                  className={INPUT_CLASS}
+                                />
+                              ) : (
+                                <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
+                                  <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={unlockPassword}
+                                    onChange={(event) => setUnlockPassword(event.target.value)}
+                                    autoFocus
+                                    autoComplete="current-password"
+                                    className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowPassword((value) => !value)}
+                                    className="px-4 text-white/65 transition hover:text-white"
+                                    aria-label={showPassword ? t('modal.aria.hidePassword') : t('modal.aria.showPassword')}
+                                  >
+                                    {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                  </button>
+                                </div>
+                              )}
+                            </label>
+                            <div className="flex gap-3">
+                              <Button type="button" onClick={() => setStep('entry')} className={cx('flex-1', SECONDARY_BUTTON)}>
+                                {t('modal.unlock.goBack')}
+                              </Button>
+                              <Button
+                                type="submit"
+                                disabled={
+                                  isBusy ||
+                                  (unlockMode === 'pin' ? !/^\d{6,}$/.test(unlockPassword.trim()) : !unlockPassword.trim())
+                                }
+                                className={cx('flex-1', PRIMARY_BUTTON)}
+                              >
+                                {isBusy ? t('modal.unlock.unlocking') : t('modal.unlock.submit')}
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+
+                        {unlockMode === 'biometric' ? (
+                          <Button type="button" onClick={() => setStep('entry')} className={cx('w-full', SECONDARY_BUTTON)}>
                             {t('modal.unlock.goBack')}
                           </Button>
-                          <Button type="submit" disabled={isBusy || !unlockPassword} className={cx('flex-1', PRIMARY_BUTTON)}>
-                            {isBusy ? t('modal.unlock.unlocking') : t('modal.unlock.submit')}
-                          </Button>
-                        </div>
-                      </form>
+                        ) : null}
+                      </div>
                     )}
 
                     {step === 'import' && (
@@ -2814,40 +3080,123 @@ export function DojakwebWalletModal({
                           }
                         }}
                       >
-                        {[
-                          {
-                            label: t('modal.password.enter'),
-                            value: password,
-                            setter: setPassword,
-                            shown: showPassword,
-                            toggle: () => setShowPassword((value) => !value),
-                            autoComplete: 'new-password' as const,
-                          },
-                          {
-                            label: t('modal.password.confirm'),
-                            value: confirmPassword,
-                            setter: setConfirmPassword,
-                            shown: showConfirmPassword,
-                            toggle: () => setShowConfirmPassword((value) => !value),
-                            autoComplete: 'new-password' as const,
-                          },
-                        ].map((field) => (
-                          <label key={field.label} className="block text-sm text-[#E5E5E5]">
-                            <span className="mb-2 block">{field.label}</span>
+                        <div>
+                          <span className="mb-2 block text-sm text-[#E5E5E5]">{t('modal.password.primaryLabel')}</span>
+                          <div className="flex rounded-xl border border-white/10 bg-[#0A0A0A] p-1">
+                            <button
+                              type="button"
+                              onClick={() => setNewPrimarySecret('password')}
+                              className={cx(
+                                'min-w-0 flex-1 rounded-lg py-2 px-1 text-center text-[11px] font-semibold leading-tight sm:text-xs transition',
+                                newPrimarySecret === 'password' ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'
+                              )}
+                            >
+                              {t('modal.password.primaryPassword')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNewPrimarySecret('pin')}
+                              className={cx(
+                                'min-w-0 flex-1 rounded-lg py-2 px-1 text-center text-[11px] font-semibold leading-tight sm:text-xs transition',
+                                newPrimarySecret === 'pin' ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'
+                              )}
+                            >
+                              {t('modal.password.primaryPin')}
+                            </button>
+                          </div>
+                        </div>
+
+                        <label className="block text-sm text-[#E5E5E5]">
+                          <span className="mb-2 block">{t('modal.password.strengthLabel')}</span>
+                          <select
+                            value={newSecretStrength}
+                            onChange={(event) =>
+                              setNewSecretStrength(event.target.value as 'standard' | 'high' | 'maximum')
+                            }
+                            className={INPUT_CLASS}
+                          >
+                            <option value="standard">{t('modal.password.strengthStandard')}</option>
+                            <option value="high">{t('modal.password.strengthHigh')}</option>
+                            <option value="maximum">{t('modal.password.strengthMaximum')}</option>
+                          </select>
+                        </label>
+
+                        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 py-3 text-sm text-white/75">
+                          <input
+                            type="checkbox"
+                            checked={enableWebAuthnQuickUnlock}
+                            onChange={(event) => setEnableWebAuthnQuickUnlock(event.target.checked)}
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-transparent"
+                          />
+                          <span>{t('modal.password.biometricHint')}</span>
+                        </label>
+
+                        <label className="block text-sm text-[#E5E5E5]">
+                          <span className="mb-2 block">{t('modal.password.enter')}</span>
+                          {newPrimarySecret === 'pin' ? (
+                            <input
+                              type="password"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              autoComplete="new-password"
+                              value={password}
+                              onChange={(event) => setPassword(event.target.value.replace(/\D/g, ''))}
+                              className={INPUT_CLASS}
+                            />
+                          ) : (
                             <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
                               <input
-                                type={field.shown ? 'text' : 'password'}
-                                value={field.value}
-                                onChange={(event) => field.setter(event.target.value)}
-                                autoComplete={field.autoComplete}
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(event) => setPassword(event.target.value)}
+                                autoComplete="new-password"
                                 className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
                               />
-                              <button type="button" onClick={field.toggle} className="px-4 text-white/65 transition hover:text-white" aria-label={field.shown ? t('modal.aria.hidePassword') : t('modal.aria.showPassword')}>
-                                {field.shown ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword((value) => !value)}
+                                className="px-4 text-white/65 transition hover:text-white"
+                                aria-label={showPassword ? t('modal.aria.hidePassword') : t('modal.aria.showPassword')}
+                              >
+                                {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                               </button>
                             </div>
-                          </label>
-                        ))}
+                          )}
+                        </label>
+
+                        <label className="block text-sm text-[#E5E5E5]">
+                          <span className="mb-2 block">{t('modal.password.confirm')}</span>
+                          {newPrimarySecret === 'pin' ? (
+                            <input
+                              type="password"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              autoComplete="new-password"
+                              value={confirmPassword}
+                              onChange={(event) => setConfirmPassword(event.target.value.replace(/\D/g, ''))}
+                              className={INPUT_CLASS}
+                            />
+                          ) : (
+                            <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
+                              <input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                value={confirmPassword}
+                                onChange={(event) => setConfirmPassword(event.target.value)}
+                                autoComplete="new-password"
+                                className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword((value) => !value)}
+                                className="px-4 text-white/65 transition hover:text-white"
+                                aria-label={showConfirmPassword ? t('modal.aria.hidePassword') : t('modal.aria.showPassword')}
+                              >
+                                {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                              </button>
+                            </div>
+                          )}
+                        </label>
+
                         <div className="flex items-center justify-between gap-3">
                           <Button type="button" onClick={handleSkipPassword} className={cx('min-w-32', SECONDARY_BUTTON)}>
                             {t('modal.password.skip')}
@@ -2861,6 +3210,63 @@ export function DojakwebWalletModal({
 
                     {step === 'dashboard' && (
                       <div className="space-y-3">
+                        {connected && isBrowserWallet && savedLocalWallets.length > 0 ? (
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#0f0f0f] px-3 py-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                              <span className="hidden shrink-0 text-[10px] uppercase tracking-wide text-white/40 sm:inline">
+                                {t('modal.localNav.hdWallet')}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => void handleSwitchBrowserSeedWallet(-1)}
+                                disabled={isBusy || localSeedWalletGroups.length <= 1}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
+                                aria-label={t('modal.localNav.prevSeed')}
+                                title={t('modal.localNav.prevSeed')}
+                              >
+                                <ChevronLeftIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleSwitchBrowserSeedWallet(1)}
+                                disabled={isBusy || localSeedWalletGroups.length <= 1}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
+                                aria-label={t('modal.localNav.nextSeed')}
+                                title={t('modal.localNav.nextSeed')}
+                              >
+                                <ChevronRightIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-2 border-l border-white/10 pl-3 sm:pl-4">
+                              <span className="hidden shrink-0 text-[10px] uppercase tracking-wide text-white/40 sm:inline">
+                                {t('modal.localNav.account')}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => void handleSwitchBrowserAccount(-1)}
+                                disabled={isBusy || (browser.wallet?.accountIndex ?? 0) <= 0}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
+                                aria-label={t('modal.localNav.prevAccount')}
+                                title={t('modal.localNav.prevAccount')}
+                              >
+                                <ChevronUpIcon className="h-4 w-4" />
+                              </button>
+                              <span className="min-w-[2.5rem] text-center text-xs font-semibold tabular-nums text-white/80">
+                                #{browser.wallet?.accountIndex ?? 0}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => void handleSwitchBrowserAccount(1)}
+                                disabled={isBusy}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
+                                aria-label={t('modal.localNav.nextAccount')}
+                                title={t('modal.localNav.nextAccount')}
+                              >
+                                <ChevronDownIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
                         {dogeosFeatureOn ? (
                           <Suspense fallback={null}>
                             <DogeosBalanceHydratorLazy
