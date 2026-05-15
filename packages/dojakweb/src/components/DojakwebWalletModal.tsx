@@ -5919,7 +5919,7 @@ export function DojakwebWalletModal({
 
                     {isDrawerMode && walletSwitcherModalOpen ? (
                       <div
-                        className="absolute inset-0 z-[130] flex min-h-0 flex-col bg-bg-primary shadow-[0_-12px_48px_rgba(0,0,0,0.4)]"
+                        className="absolute inset-0 z-[130] flex min-h-0 flex-col overflow-hidden bg-[var(--ds-bg,#0A0A0A)]"
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="wallet-switcher-drawer-title"
@@ -5930,7 +5930,7 @@ export function DojakwebWalletModal({
                               <h2 id="wallet-switcher-drawer-title" className="text-lg font-bold text-white">
                                 {t('modal.walletSwitcher.title')}
                               </h2>
-                              <p className="mt-1 text-sm text-white/70">{t('modal.walletSwitcher.subtitle')}</p>
+                              <p className="mt-1 text-xs text-white/50">{t('modal.walletSwitcher.subtitle')}</p>
                             </div>
                             <button
                               type="button"

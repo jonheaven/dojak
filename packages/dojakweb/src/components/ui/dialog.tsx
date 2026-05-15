@@ -53,7 +53,7 @@ const DialogContent = React.forwardRef<
         className={cn(
           "z-50 bg-black/80",
           dialogOverlayAnim,
-          useNested ? "absolute inset-0 z-[100] bg-black/55" : "fixed inset-0"
+          useNested ? "absolute inset-0 z-[100] bg-black/65 backdrop-blur-[2px]" : "fixed inset-0"
         )}
       />
       <DialogPrimitive.Content
@@ -61,7 +61,7 @@ const DialogContent = React.forwardRef<
         className={cn(
           useNested
             ? cn(
-                "absolute left-0 top-0 z-[110] flex h-full w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden border-0 bg-background p-0 shadow-none outline-none duration-200",
+                "absolute left-0 top-0 z-[110] flex h-full w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden border-0 bg-[var(--ds-bg,#0A0A0A)] p-0 shadow-none outline-none duration-200",
                 "rounded-none sm:rounded-none",
                 "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2"
               )
