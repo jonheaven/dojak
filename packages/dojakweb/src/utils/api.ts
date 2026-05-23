@@ -601,7 +601,34 @@ export const walletDataApi = {
 
   fetchInscriptions: async (address: string): Promise<MyDogeInscription[]> => {
     if (isCommandDogWalletDataProvider()) {
-      return [];
+      // command.dog indexer (Kabosu): fetch inscriptions owned by this address.
+      try {
+        const base = typeof window !== 'undefined' ? window.location.origin : 'https://indexer.command.dog';
+        const indexerBase = `${base}/__indexer`;
+        const res = await fetch(`${indexerBase}/v1/inscriptions?owner=${encodeURIComponent(address)}&limit=100`);
+        if (!res.ok) return [];
+        const payload = await res.json() as any;
+        const rows: any[] = Array.isArray(payload?.items) ? payload.items
+          : Array.isArray(payload?.data) ? payload.data
+          : Array.isArray(payload) ? payload
+          : [];
+        return rows.map((row: any) => ({
+          inscriptionId: row.inscriptionId ?? row.id ?? '',
+          inscriptionNumber: row.inscriptionNumber ?? row.number ?? 0,
+          contentType: row.contentType ?? row.content_type ?? 'image/png',
+          contentLength: row.contentLength ?? row.content_length,
+          content: null,
+          ownerAddress: row.ownerAddress ?? row.owner ?? address,
+          collectionSymbol: row.collectionId ?? row.collectionSlug ?? '',
+          collectionName: row.collectionName ?? '',
+          itemName: row.itemName ?? row.name ?? '',
+          listed: Boolean(row.listed),
+          price: row.price ?? null,
+          status: row.status ?? '',
+        } as MyDogeInscription));
+      } catch {
+        return [];
+      }
     }
     const data = await fetchJson(getWalletEndpoint('/inscriptions/', address));
     const primary = extractArray(data) as MyDogeInscription[];
@@ -620,7 +647,29 @@ export const walletDataApi = {
 
   fetchDRC20Tokens: async (walletOrAddress: any): Promise<DRC20Token[]> => {
     if (isCommandDogWalletDataProvider()) {
-      return [];
+      // Try kabosu indexer for DRC-20 holdings (endpoint added when kabosu gains DRC-20 support).
+      // Falls back to an empty list if the endpoint doesn't exist yet.
+      try {
+        const address = await resolveAddress(walletOrAddress);
+        const base = typeof window !== 'undefined' ? window.location.origin : 'https://indexer.command.dog';
+        const indexerBase = `${base}/__indexer`;
+        const res = await fetch(`${indexerBase}/v1/drc20/${encodeURIComponent(address)}`);
+        if (!res.ok) return [];
+        const payload = await res.json() as any;
+        const balances: any[] = Array.isArray(payload?.balances) ? payload.balances
+          : Array.isArray(payload) ? payload
+          : [];
+        return balances.map((b: any) => ({
+          ticker: b.ticker ?? b.tick ?? 'UNKNOWN',
+          balance: String(b.overallBalance ?? b.balance ?? b.amount ?? '0'),
+          transferable: String(b.transferableBalance ?? b.transferable ?? '0'),
+          available: String(b.availableBalance ?? b.available ?? '0'),
+          inscriptionId: b.inscriptionId,
+          content: b.content,
+        }));
+      } catch {
+        return [];
+      }
     }
     const address = await resolveAddress(walletOrAddress);
     const data = await fetchJson(getWalletEndpoint('/DRC20/', address)) as DRC20ApiResponse | any;

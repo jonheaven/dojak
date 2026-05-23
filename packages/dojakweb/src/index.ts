@@ -394,3 +394,16 @@ export {
 /** Demo app shell — host with `RouterProvider` + routes. */
 export { AppProvider } from './providers/AppProvider';
 export { ErrorBoundary } from './components/ErrorBoundary';
+
+/** command.dog server-side inscription job API */
+export {
+  isInscribeJobsClientConfigured,
+  createInscribeJob,
+  uploadInscribeJobItemContent,
+  runInscribeJob,
+  getInscribeJob,
+  type CreateInscribeJobBody,
+  type InscribeJobResponse,
+  type InscribeJobItemInput,
+  type InscribeJobItemResponse,
+} from './lib/inscribeJobs/commandDogInscribeJobs';
