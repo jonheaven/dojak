@@ -2,7 +2,6 @@
   "name": "@dojak/web",
   "version": "2.0.0",
   "private": true,
-  "description": "Proprietary first-party module — shared @dojak/web layer for our dApps on the open Dogenals standard (not for public npm / third-party use).",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -14,16 +13,9 @@
     },
     "./dojakweb-host.css": "./dojakweb-host.css"
   },
-  "scripts": {
-    "build": "vite build --config vite.npm.config.ts",
-    "build:lib": "vite build --config vite.lib.config.ts && node scripts/verify-lib-exports.mjs",
-    "build:npm": "vite build --config vite.npm.config.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "preview": "vite preview"
-  },
   "dependencies": {
-    "@dojak/biometrics": "workspace:*",
-    "@dojak/core": "file:../core",
+    "@dojak/biometrics": "file:../../../.vendor-dojak/packages/biometrics",
+    "@dojak/core": "file:../../../.vendor-dojak/packages/core",
     "@headlessui/react": "^2.2.10",
     "@heroicons/react": "^2.2.0",
     "@ledgerhq/hw-app-btc": "^10.21.1",
@@ -74,20 +66,5 @@
     "wagmi": "^2.14.0",
     "zod": "^4.3.6",
     "zustand": "^5.0.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
-    "@types/node": "^20.12.7",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@types/w3c-web-usb": "^1.0.13",
-    "@vitejs/plugin-react": "^6.0.1",
-    "autoprefixer": "^10.4.17",
-    "buffer": "^6.0.3",
-    "postcss": "^8.4.33",
-    "tailwindcss": "^4.2.2",
-    "typescript": "^5.6.3",
-    "vite": "^8.0.1",
-    "vite-plugin-dts": "^4.5.4"
   }
 }
