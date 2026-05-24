@@ -38,6 +38,8 @@ import {
   MusicalNoteIcon,
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
+import { WalletMenuItems } from './wallet/WalletMenuItems';
+import { walletCredentialInputProps, walletSecretInputProps } from '../lib/wallet-secret-input';
 import {
   buildListingPSDT,
   signListingPSDT,
@@ -2754,7 +2756,7 @@ export function DojakwebWalletModal({
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto px-4 py-4">
+                  <div className="flex-1 overflow-x-visible overflow-y-auto px-4 py-4">
                     {error ? (
                       <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                         {error}
@@ -2889,6 +2891,7 @@ export function DojakwebWalletModal({
                         ) : (
                           <form
                             className="space-y-4"
+                            autoComplete="off"
                             onSubmit={(event) => {
                               event.preventDefault();
                               if (!isBusy) {
@@ -2903,13 +2906,11 @@ export function DojakwebWalletModal({
                               {unlockMode === 'pin' ? (
                                 <input
                                   type="password"
-                                  inputMode="numeric"
-                                  pattern="[0-9]*"
-                                  autoComplete="one-time-code"
                                   value={unlockPassword}
                                   onChange={(event) => setUnlockPassword(event.target.value.replace(/\D/g, ''))}
                                   autoFocus
                                   className={INPUT_CLASS}
+                                  {...walletSecretInputProps('dojakweb-unlock-pin', { pin: true })}
                                 />
                               ) : (
                                 <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
@@ -2918,8 +2919,8 @@ export function DojakwebWalletModal({
                                     value={unlockPassword}
                                     onChange={(event) => setUnlockPassword(event.target.value)}
                                     autoFocus
-                                    autoComplete="current-password"
                                     className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
+                                    {...walletSecretInputProps('dojakweb-unlock-secret')}
                                   />
                                   <button
                                     type="button"
@@ -3040,8 +3041,8 @@ export function DojakwebWalletModal({
                                   onChange={(e) => setRevealPassword(e.target.value)}
                                   onKeyDown={(e) => { if (e.key === "Enter") { void handleRevealWithPassword(); } }}
                                   placeholder={t('modal.reveal.walletPasswordPlaceholder')}
-                                  autoComplete="current-password"
                                   className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
+                                  {...walletSecretInputProps('dojakweb-reveal-secret')}
                                 />
                                 <button type="button" onClick={() => setShowPassword((v) => !v)} className="px-4 text-white/65 transition hover:text-white">
                                   {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
@@ -3073,6 +3074,7 @@ export function DojakwebWalletModal({
                     {step === 'password' && (
                       <form
                         className="space-y-4"
+                        autoComplete="off"
                         onSubmit={(event) => {
                           event.preventDefault();
                           if (!isBusy) {
@@ -3136,12 +3138,10 @@ export function DojakwebWalletModal({
                           {newPrimarySecret === 'pin' ? (
                             <input
                               type="password"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              autoComplete="new-password"
                               value={password}
                               onChange={(event) => setPassword(event.target.value.replace(/\D/g, ''))}
                               className={INPUT_CLASS}
+                              {...walletSecretInputProps('dojakweb-new-pin', { pin: true })}
                             />
                           ) : (
                             <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
@@ -3149,8 +3149,8 @@ export function DojakwebWalletModal({
                                 type={showPassword ? 'text' : 'password'}
                                 value={password}
                                 onChange={(event) => setPassword(event.target.value)}
-                                autoComplete="new-password"
                                 className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
+                                {...walletSecretInputProps('dojakweb-new-secret')}
                               />
                               <button
                                 type="button"
@@ -3169,12 +3169,10 @@ export function DojakwebWalletModal({
                           {newPrimarySecret === 'pin' ? (
                             <input
                               type="password"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              autoComplete="new-password"
                               value={confirmPassword}
                               onChange={(event) => setConfirmPassword(event.target.value.replace(/\D/g, ''))}
                               className={INPUT_CLASS}
+                              {...walletSecretInputProps('dojakweb-confirm-pin', { pin: true })}
                             />
                           ) : (
                             <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
@@ -3182,8 +3180,8 @@ export function DojakwebWalletModal({
                                 type={showConfirmPassword ? 'text' : 'password'}
                                 value={confirmPassword}
                                 onChange={(event) => setConfirmPassword(event.target.value)}
-                                autoComplete="new-password"
                                 className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
+                                {...walletSecretInputProps('dojakweb-confirm-secret')}
                               />
                               <button
                                 type="button"
@@ -3362,16 +3360,10 @@ export function DojakwebWalletModal({
                                       >
                                         <DogePFPAvatar size="md" />
                                       </Menu.Button>
-                                      <Transition
-                                        as={Fragment}
-                                        enter="transition ease-out duration-100"
-                                        enterFrom="transform opacity-0 scale-95"
-                                        enterTo="transform opacity-100 scale-100"
-                                        leave="transition ease-in duration-75"
-                                        leaveFrom="transform opacity-100 scale-100"
-                                        leaveTo="transform opacity-0 scale-95"
+                                      <WalletMenuItems
+                                        anchor="bottom start"
+                                        className="min-w-[13rem] max-w-[16rem]"
                                       >
-                                        <Menu.Items className="absolute left-0 z-[9999] mt-1 min-w-[13rem] max-w-[16rem] rounded-xl border border-white/10 bg-gray-900 py-1 shadow-2xl outline-none">
                                           <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
                                             {t('modal.profileDpfp.menuHint')}
                                           </div>
@@ -3415,8 +3407,7 @@ export function DojakwebWalletModal({
                                               )}
                                             </Menu.Item>
                                           ) : null}
-                                        </Menu.Items>
-                                      </Transition>
+                                      </WalletMenuItems>
                                     </Menu>
                                     <DogePFAHeaderControl />
                                   </div>
@@ -3458,16 +3449,10 @@ export function DojakwebWalletModal({
                                     >
                                       <DogePFPAvatar size="md" />
                                     </Menu.Button>
-                                    <Transition
-                                      as={Fragment}
-                                      enter="transition ease-out duration-100"
-                                      enterFrom="transform opacity-0 scale-95"
-                                      enterTo="transform opacity-100 scale-100"
-                                      leave="transition ease-in duration-75"
-                                      leaveFrom="transform opacity-100 scale-100"
-                                      leaveTo="transform opacity-0 scale-95"
+                                    <WalletMenuItems
+                                      anchor="bottom start"
+                                      className="min-w-[13rem] max-w-[16rem]"
                                     >
-                                      <Menu.Items className="absolute left-0 z-[9999] mt-1 min-w-[13rem] max-w-[16rem] rounded-xl border border-white/10 bg-gray-900 py-1 shadow-2xl outline-none">
                                         <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
                                           {t('modal.profileDpfp.menuHint')}
                                         </div>
@@ -3511,8 +3496,7 @@ export function DojakwebWalletModal({
                                             )}
                                           </Menu.Item>
                                         ) : null}
-                                      </Menu.Items>
-                                    </Transition>
+                                    </WalletMenuItems>
                                   </Menu>
                                   <DogePFAHeaderControl />
                                 </div>
@@ -3581,16 +3565,7 @@ export function DojakwebWalletModal({
                                 <Menu.Button className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white" aria-label={t('modal.aria.moreActions')}>
                                   <EllipsisHorizontalIcon className="h-4 w-4" />
                                 </Menu.Button>
-                                <Transition
-                                  as={Fragment}
-                                  enter="transition ease-out duration-100"
-                                  enterFrom="transform opacity-0 scale-95"
-                                  enterTo="transform opacity-100 scale-100"
-                                  leave="transition ease-in duration-75"
-                                  leaveFrom="transform opacity-100 scale-100"
-                                  leaveTo="transform opacity-0 scale-95"
-                                >
-                                    <Menu.Items className="absolute right-0 z-[9999] mt-1.5 w-52 max-w-[min(18rem,calc(100vw-2rem))] rounded-none border border-zinc-700 bg-zinc-950 py-1 shadow-2xl outline-none">
+                                    <WalletMenuItems className="w-52 max-w-[min(18rem,calc(100vw-2rem))] rounded-lg border-zinc-700 bg-zinc-950">
                                       {[
                                         ...(dogeosUi && isBrowserWallet && pureDogeosMode
                                           ? []
@@ -3656,8 +3631,7 @@ export function DojakwebWalletModal({
                                         </button>
                                       )}
                                     </Menu.Item>
-                                  </Menu.Items>
-                                </Transition>
+                                    </WalletMenuItems>
                               </Menu>
                             </div>
 
@@ -3731,9 +3705,9 @@ export function DojakwebWalletModal({
                             ))}
                           </div>
 
-                          <div className="border border-zinc-700 bg-zinc-950">
+                          <div className="overflow-visible border border-zinc-700 bg-zinc-950">
                             {tab === 'assets' ? (
-                              <div>
+                              <div className="overflow-visible">
                                 {/* NFT / DRC-20 sub-selector */}
                                 <div className="flex items-center justify-between border-b border-zinc-700 px-4 py-2">
                                   <select
@@ -3767,11 +3741,14 @@ export function DojakwebWalletModal({
                                       <div className="text-xs text-white/45">{t('modal.assets.noDoginalsHint')}</div>
                                     </div>
                                   ) : (
-                                    <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3">
+                                    <div className="grid grid-cols-2 gap-3.5 p-4 sm:grid-cols-3">
                                       {inscriptions.map((item) => (
-                                        <div key={item.inscriptionId} className="group relative rounded-xl border border-white/10 bg-gray-900 transition hover:border-yellow-500/50">
-                                          {/* image — overflow-hidden scoped to this element only */}
-                                          <div className="overflow-hidden rounded-t-xl">
+                                        <div
+                                          key={item.inscriptionId}
+                                          className="group relative overflow-visible rounded-xl border border-white/10 bg-zinc-900/90 shadow-sm transition hover:border-[#D4A017]/55 hover:shadow-md hover:shadow-[#D4A017]/10"
+                                        >
+                                          {/* image — overflow-hidden scoped to media only */}
+                                          <div className="overflow-hidden rounded-t-[0.65rem]">
                                             {item.contentType?.startsWith('image/') ? (
                                               <img
                                                 src={item.content}
@@ -3785,27 +3762,20 @@ export function DojakwebWalletModal({
                                               </div>
                                             )}
                                           </div>
-                                          <div className="flex items-center justify-between px-2 py-1.5">
-                                            <div className="truncate text-xs font-semibold text-white">#{item.inscriptionNumber}</div>
+                                          <div className="flex items-center justify-between gap-1 border-t border-white/5 bg-zinc-950/80 px-2.5 py-2">
+                                            <div className="min-w-0 truncate text-xs font-semibold tabular-nums text-white/90">
+                                              #{item.inscriptionNumber}
+                                            </div>
                                             {/* ··· more menu per inscription */}
                                             <Menu as="div" className="relative shrink-0">
                                               <Menu.Button
-                                                className="flex h-6 w-6 items-center justify-center rounded-md text-white/50 transition hover:bg-white/10 hover:text-white"
+                                                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/55 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#D4A017]/70"
                                                 aria-label={t('modal.aria.moreActions')}
                                                 title={t('modal.aria.moreActions')}
                                               >
                                                 <EllipsisHorizontalIcon className="h-4 w-4" />
                                               </Menu.Button>
-                                              <Transition
-                                                as={Fragment}
-                                                enter="transition ease-out duration-100"
-                                                enterFrom="transform opacity-0 scale-95"
-                                                enterTo="transform opacity-100 scale-100"
-                                                leave="transition ease-in duration-75"
-                                                leaveFrom="transform opacity-100 scale-100"
-                                                leaveTo="transform opacity-0 scale-95"
-                                              >
-                                                <Menu.Items className="absolute right-0 z-[9999] mt-1 min-w-[11rem] rounded-xl border border-white/10 bg-gray-900 py-1 shadow-2xl outline-none">
+                                              <WalletMenuItems anchor="bottom end" className="min-w-[12rem]">
                                                   {item.contentType?.startsWith('image/') ? (
                                                     <Menu.Item>
                                                       {({ active }) => (
@@ -3882,8 +3852,7 @@ export function DojakwebWalletModal({
                                                       </button>
                                                     )}
                                                   </Menu.Item>
-                                                </Menu.Items>
-                                              </Transition>
+                                              </WalletMenuItems>
                                             </Menu>
                                           </div>
                                         </div>
@@ -5391,7 +5360,7 @@ export function DojakwebWalletModal({
                     )}
 
                     {step === 'settings' && (
-                      <div className="space-y-3">
+                      <form className="space-y-3" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
                         {/* ── Settings tabs ── */}
                         <div className="flex border-b border-white/10">
                           {(['data', 'network', 'display', 'ecosystem'] as SettingsTab[])
@@ -5687,12 +5656,12 @@ export function DojakwebWalletModal({
                               {/* Tatum key (only if tatum enabled) */}
                               {!disabledBroadcastProviders.includes('tatum') && (
                                 <input
-                                  type="password"
+                                  type="text"
                                   value={settingsBroadcast.tatumApiKey}
                                   onChange={e => setSettingsBroadcast(prev => ({ ...prev, tatumApiKey: e.target.value }))}
                                   placeholder="Tatum API key (optional)"
-                                  autoComplete="off"
-                                  className={cx(INPUT_CLASS, 'mt-2 text-xs')}
+                                  className={cx(INPUT_CLASS, 'mt-2 text-xs [webkit-text-security:disc]')}
+                                  {...walletCredentialInputProps('dojakweb-tatum-api-key')}
                                 />
                               )}
                               <ConfirmationReadSourcesBar previewConfig={settingsBroadcast} dense className="mt-3" />
@@ -5748,17 +5717,17 @@ export function DojakwebWalletModal({
                                 <div className="flex gap-2">
                                   <label className="flex-1 block">
                                     <span className="mb-1 block text-[10px] text-white/40">Username</span>
-                                    <input value={settingsBroadcast.rpcUser} onChange={e => { setRpcTestStatus('idle'); setSettingsBroadcast(prev => ({ ...prev, rpcUser: e.target.value })); }} placeholder="rpcuser" className={INPUT_CLASS} />
+                                    <input value={settingsBroadcast.rpcUser} onChange={e => { setRpcTestStatus('idle'); setSettingsBroadcast(prev => ({ ...prev, rpcUser: e.target.value })); }} placeholder="rpcuser" className={INPUT_CLASS} {...walletCredentialInputProps('dojakweb-rpc-user')} />
                                   </label>
                                   <label className="flex-1 block">
-                                    <span className="mb-1 block text-[10px] text-white/40">Password</span>
+                                    <span className="mb-1 block text-[10px] text-white/40">RPC pass</span>
                                     <input
-                                      type="password"
+                                      type="text"
                                       value={settingsBroadcast.rpcPass}
                                       onChange={e => { setRpcTestStatus('idle'); setSettingsBroadcast(prev => ({ ...prev, rpcPass: e.target.value })); }}
                                       placeholder="rpcpassword"
-                                      autoComplete="off"
-                                      className={INPUT_CLASS}
+                                      className={cx(INPUT_CLASS, '[webkit-text-security:disc]')}
+                                      {...walletCredentialInputProps('dojakweb-rpc-pass')}
                                     />
                                   </label>
                                 </div>
@@ -5913,7 +5882,7 @@ export function DojakwebWalletModal({
                             {settingsSaved ? t('modal.settings.saved') : t('modal.settings.save')}
                           </button>
                         </div>
-                      </div>
+                      </form>
                     )}
                   </div>
 

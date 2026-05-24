@@ -137,6 +137,13 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       setWallet(walletData);
       setAddress(walletData.address);
       setConnected(true);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('wallet_type', 'browser');
+        } catch {
+          // Ignore localStorage failures during connect.
+        }
+      }
       // Only reset balance state when switching to a different address.
       // Re-connecting the same address (e.g. the UnifiedWalletContext auto-
       // reconnect that fires 100ms after mount) must not discard a balance

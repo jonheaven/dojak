@@ -792,6 +792,17 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     }
   }, [browser.connected, isInitialized, walletType]);
 
+  /** After unlock/connect, align unified wallet type when localStorage says browser. */
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isInitialized || !browser.connected) {
+      return;
+    }
+    const stored = localStorage.getItem('wallet_type');
+    if (stored === 'browser' && walletType !== 'browser') {
+      setWalletType('browser');
+    }
+  }, [browser.connected, isInitialized, walletType]);
+
   const connect = useCallback(
     async (type: WalletType) => {
       await connectWallet(type);
