@@ -16,7 +16,7 @@
   },
   "scripts": {
     "build": "vite build --config vite.npm.config.ts",
-    "build:lib": "vite build --config vite.lib.config.ts",
+    "build:lib": "vite build --config vite.lib.config.ts && node scripts/verify-lib-exports.mjs",
     "build:npm": "vite build --config vite.npm.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "preview": "vite preview"
