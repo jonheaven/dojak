@@ -21,11 +21,13 @@ const FEATURE_LABELS: Record<FeatureId, string> = {
   'address-book': 'Address Book',
   tools: 'Tools',
   nostr: 'Nostr relay',
+  dogewatch: 'ÐWatch (Dogewatch USB)',
   settings: 'Settings',
   support: 'Support',
+  treats: 'ÐogeTreats',
   drc20: 'ÐRC-20',
   dunes: 'Ðunes',
-  'universal-drc20': 'Universal ÐRC-20',
+  'universal-drc20': 'Universal ÐRC-20 (legacy)',
   charms: 'Charms',
 };
 
@@ -45,11 +47,13 @@ const FEATURE_DESCRIPTIONS: Record<FeatureId, string> = {
   'address-book': 'Import/export contacts for easy transaction management',
   tools: 'Developer tools — PSBT analyzer, UTXO inspector, validators, probes',
   nostr: 'Command.dog Nostr relay status (NIP-11) and WebSocket URL',
+  dogewatch: 'Dogewatch USB diagnostics — Web Serial ping and signing tests',
   settings: 'Application settings',
   support: 'Help and support resources',
+  treats: 'ÐogeTreats (under ÐogeTokens) — canonical OP_RETURN fungibles (`p:"dt"`)',
   drc20: 'ÐRC-20 (under ÐogeTokens) — inscription-based fungibles on Doginals/Dogenals',
   dunes: 'Ðunes (under ÐogeTokens) — UTXO-native fungible token protocol',
-  'universal-drc20': 'Universal ÐRC-20 / BlackDoge (under ÐogeTokens) — OP_RETURN token operations',
+  'universal-drc20': 'Legacy Universal ÐRC-20 nav — use ÐogeTreats instead',
   charms: 'Charms (under ÐogeTokens) — cross-chain token protocol',
 };
 

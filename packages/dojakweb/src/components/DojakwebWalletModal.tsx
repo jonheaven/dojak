@@ -324,6 +324,8 @@ function getWalletSourceIndicator(
       return { label: t('modal.walletSource.spookydoge'), dot: 'bg-indigo-400', text: 'text-indigo-300' };
     case 'ledger':
       return { label: t('modal.walletSource.ledger'), dot: 'bg-violet-400', text: 'text-violet-300' };
+    case 'dogewatch':
+      return { label: t('modal.walletSource.dogewatch'), dot: 'bg-amber-400', text: 'text-amber-300' };
     default:
       return { label: t('modal.walletSource.generic'), dot: 'bg-white/40', text: 'text-white/55' };
   }
@@ -574,10 +576,11 @@ export function DojakwebWalletModal({
   const [selectedLocalWalletAddress, setSelectedLocalWalletAddress] = useState<string | null>(null);
   const [walletNameDraft, setWalletNameDraft] = useState('');
   const [isSavingWalletName, setIsSavingWalletName] = useState(false);
-  const [assetType, setAssetType] = useState<'nft' | 'drc20'>('nft');
+  const [assetType, setAssetType] = useState<'nft' | 'drc20' | 'treats'>('nft');
   const [revealPassword, setRevealPassword] = useState('');
   const [inscriptions, setInscriptions] = useState<MyDogeInscription[]>([]);
   const [drc20Tokens, setDrc20Tokens] = useState<DRC20Token[]>([]);
+  const [treatsTokens, setTreatsTokens] = useState<Array<{ tick: string; balance: string }>>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsError, setAssetsError] = useState<string | null>(null);
   const [recipientAddress, setRecipientAddress] = useState('');
@@ -740,6 +743,12 @@ export function DojakwebWalletModal({
 
   const handleDxInscribeRegisterJson = useCallback(async () => {
     if (!dxPayload || !activeAddress) return;
+    if (walletType === 'dogewatch') {
+      toast.info(
+        'Register JSON is ready. Inscription PSBTs are built by command.dog — copy the payload or complete inscribe via the API; sign each PSBT on Dogewatch when prompted.',
+      );
+      return;
+    }
     if (walletType !== 'browser' || !browser.wallet?.privateKey) {
       toast.error(t('modal.verification.dxInscribeNeedBrowser'));
       return;
@@ -791,6 +800,12 @@ export function DojakwebWalletModal({
     const badgeId = dxBadgeInscriptionIdFromEnv();
     if (!badgeId) {
       toast.error(t('modal.verification.dxBadgeIdMissing'));
+      return;
+    }
+    if (walletType === 'dogewatch') {
+      toast.info(
+        'Wallet card inscribe needs command.dog or the in-browser wallet. Dogewatch signs PSBTs once the API returns them.',
+      );
       return;
     }
     if (walletType !== 'browser' || !browser.wallet?.privateKey) {
@@ -1073,7 +1088,9 @@ export function DojakwebWalletModal({
 
   const localWallets = availableWallets.filter((wallet) => wallet.type === 'browser');
   const extensionWallets = availableWallets.filter((wallet) => wallet.type === 'mydoge' || wallet.type === 'spookydoge' || wallet.type === 'dojak');
-  const hardwareWallets = availableWallets.filter((wallet) => wallet.type === 'ledger');
+  const hardwareWallets = availableWallets.filter(
+    (wallet) => wallet.type === 'ledger' || wallet.type === 'dogewatch'
+  );
   const mergedTransactions: DisplayDogeTransaction[] = [
     ...localRecentTransactions,
     ...transactions.filter((tx) => !localRecentTransactions.some((localTx) => localTx.txid === tx.txid)),
@@ -1829,12 +1846,14 @@ export function DojakwebWalletModal({
     setAssetsLoading(true);
     setAssetsError(null);
     try {
-      const [nfts, tokens] = await Promise.all([
+      const [nfts, tokens, treats] = await Promise.all([
         walletDataApi.fetchInscriptions(address),
         walletDataApi.fetchDRC20Tokens(address),
+        walletDataApi.fetchTreatsBalances(address),
       ]);
       setInscriptions(nfts);
       setDrc20Tokens(tokens);
+      setTreatsTokens(treats);
     } catch (err) {
       setAssetsError(t('modal.errors.assetsLoad'));
     } finally {
@@ -2756,7 +2775,7 @@ export function DojakwebWalletModal({
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-x-visible overflow-y-auto px-4 py-4">
+                  <div className="min-h-0 flex-1 overflow-x-visible overflow-y-auto overscroll-contain px-4 py-4">
                     {error ? (
                       <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                         {error}
@@ -3712,11 +3731,12 @@ export function DojakwebWalletModal({
                                 <div className="flex items-center justify-between border-b border-zinc-700 px-4 py-2">
                                   <select
                                     value={assetType}
-                                    onChange={(e) => setAssetType(e.target.value as 'nft' | 'drc20')}
+                                    onChange={(e) => setAssetType(e.target.value as 'nft' | 'drc20' | 'treats')}
                                     aria-label={t('modal.aria.assetType')}
                                     className="rounded-none border border-border-primary bg-bg-secondary px-3 py-1 text-sm font-semibold text-text-primary outline-none focus:border-primary-500"
                                   >
                                     <option value="nft">{t('modal.assets.nftOption')}</option>
+                                    <option value="treats">{t('modal.assets.treatsOption')}</option>
                                     <option value="drc20">{t('modal.assets.drc20Option')}</option>
                                   </select>
                                   <button
@@ -3733,6 +3753,30 @@ export function DojakwebWalletModal({
                                   <div className="px-4 py-6 text-center text-sm text-red-300">{assetsError}</div>
                                 ) : assetsLoading ? (
                                   <div className="px-4 py-8 text-center text-sm text-white/50">{t('modal.assets.loading')}</div>
+                                ) : assetType === 'treats' ? (
+                                  treatsTokens.length === 0 ? (
+                                    <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                                      <TagIcon className="h-8 w-8 text-white/30" />
+                                      <div className="text-sm font-semibold text-white">{t('modal.assets.noTreatsTitle')}</div>
+                                      <div className="text-xs text-white/45">{t('modal.assets.noTreatsHint')}</div>
+                                    </div>
+                                  ) : (
+                                    <div className="divide-y divide-white/5 px-1 py-1">
+                                      {treatsTokens.map((token) => (
+                                        <div key={token.tick} className="flex items-center justify-between rounded-lg px-3 py-2.5 transition hover:bg-white/5">
+                                          <div className="flex items-center gap-2">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold uppercase text-amber-300">
+                                              {token.tick.slice(0, 2)}
+                                            </div>
+                                            <span className="text-sm font-semibold uppercase text-white">{token.tick}</span>
+                                          </div>
+                                          <div className="text-sm font-semibold tabular-nums text-white">
+                                            {Number(token.balance).toLocaleString()}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
                                 ) : assetType === 'nft' ? (
                                   inscriptions.length === 0 ? (
                                     <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">

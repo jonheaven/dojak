@@ -5,6 +5,7 @@ import { useMyDogeWallet } from './useMyDogeWallet';
 import { useBrowserWallet } from './BrowserWalletContext';
 import { BrowserWallet } from '../lib/browser-wallet';
 import { LedgerWallet } from '../lib/ledger-wallet';
+import { DogewatchWallet } from '../lib/dogewatch-wallet';
 import {
   broadcastTx,
   getAddressUtxos,
@@ -56,6 +57,17 @@ interface LedgerState {
   derivationPath: string | null;
 }
 
+interface DogewatchState {
+  connected: boolean;
+  address: string | null;
+  balance: number;
+  connecting: boolean;
+  balanceRefreshing: boolean;
+  balanceVerified: boolean;
+  balanceError: string | null;
+  walletId: string | null;
+}
+
 const DOJAK_INITIAL_STATE: DojakState = {
   connected: false,
   address: null,
@@ -80,6 +92,17 @@ const LEDGER_INITIAL_STATE: LedgerState = {
   balanceError: null,
   accountIndex: null,
   derivationPath: null,
+};
+
+const DOGEWATCH_INITIAL_STATE: DogewatchState = {
+  connected: false,
+  address: null,
+  balance: 0,
+  connecting: false,
+  balanceRefreshing: false,
+  balanceVerified: false,
+  balanceError: null,
+  walletId: null,
 };
 
 const getSpookyHint = (): boolean => {
@@ -167,6 +190,8 @@ function getWalletTypeLabel(type: WalletType, browserNickname?: string | null): 
       return 'Dojak';
     case 'ledger':
       return 'Ledger';
+    case 'dogewatch':
+      return 'Dogewatch';
     default:
       return 'Wallet';
   }
@@ -187,6 +212,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   const [spookyState, setSpookyState] = useState<SpookyState>(SPOOKY_INITIAL_STATE);
   const [dojakState, setDojakState] = useState<DojakState>(DOJAK_INITIAL_STATE);
   const [ledgerState, setLedgerState] = useState<LedgerState>(LEDGER_INITIAL_STATE);
+  const [dogewatchState, setDogewatchState] = useState<DogewatchState>(DOGEWATCH_INITIAL_STATE);
 
   const myDoge = useMyDogeWallet();
 
@@ -194,6 +220,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   const spookyListenersRef = useRef(false);
   const dojakListenersRef = useRef(false);
   const ledgerWalletRef = useRef(new LedgerWallet());
+  const dogewatchWalletRef = useRef(new DogewatchWallet());
 
   useEffect(() => {
     if (myDoge && browser) {
@@ -283,7 +310,9 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           ? dojakState.connected
           : walletType === 'ledger'
             ? ledgerState.connected
-            : false;
+            : walletType === 'dogewatch'
+              ? dogewatchState.connected
+              : false;
 
   const address =
     walletType === 'mydoge'
@@ -296,7 +325,9 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             ? dojakState.address
             : walletType === 'ledger'
               ? ledgerState.address
-              : null;
+              : walletType === 'dogewatch'
+                ? dogewatchState.address
+                : null;
 
   const balance =
     walletType === 'mydoge'
@@ -309,7 +340,9 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           ? dojakState.balance
           : walletType === 'ledger'
             ? ledgerState.balance
-            : 0;
+            : walletType === 'dogewatch'
+              ? dogewatchState.balance
+              : 0;
 
   const accountIndex =
     walletType === 'browser'
@@ -331,21 +364,26 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       (walletType === 'browser' && browser?.balanceVerified) ||
       (walletType === 'spookydoge' && spookyState.connected) ||
       (walletType === 'dojak' && dojakState.connected) ||
-      (walletType === 'ledger' && ledgerState.balanceVerified));
+      (walletType === 'ledger' && ledgerState.balanceVerified) ||
+      (walletType === 'dogewatch' && dogewatchState.balanceVerified));
 
   const balanceRefreshing =
     walletType === 'browser'
       ? browser.balanceRefreshing
       : walletType === 'ledger'
         ? ledgerState.balanceRefreshing
-        : false;
+        : walletType === 'dogewatch'
+          ? dogewatchState.balanceRefreshing
+          : false;
 
   const balanceError =
     walletType === 'browser'
       ? browser.balanceError
       : walletType === 'ledger'
         ? ledgerState.balanceError
-        : null;
+        : walletType === 'dogewatch'
+          ? dogewatchState.balanceError
+          : null;
 
   const connecting =
     walletType === 'mydoge'
@@ -358,13 +396,16 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           ? dojakState.connecting
           : walletType === 'ledger'
             ? ledgerState.connecting
-            : false;
+            : walletType === 'dogewatch'
+              ? dogewatchState.connecting
+              : false;
 
   const browserConnected = browser?.connected ?? false;
   const myDogeConnected = myDoge?.connected ?? false;
   const spookyConnected = spookyState.connected;
   const dojakConnected = dojakState.connected;
   const ledgerConnected = ledgerState.connected;
+  const dogewatchConnected = dogewatchState.connected;
 
   const availableWallets = useMemo(() => {
     const wallets = [
@@ -433,6 +474,19 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         derivationPath: ledgerState.derivationPath,
         isActive: walletType === 'ledger',
       },
+      {
+        type: 'dogewatch' as const,
+        label: getWalletTypeLabel('dogewatch'),
+        connected: dogewatchConnected,
+        address: dogewatchState.address,
+        balance: dogewatchState.balance,
+        balanceVerified: dogewatchState.balanceVerified,
+        balanceRefreshing: dogewatchState.balanceRefreshing,
+        connecting: dogewatchState.connecting,
+        accountIndex: null,
+        derivationPath: null,
+        isActive: walletType === 'dogewatch',
+      },
     ];
 
     return wallets.filter((wallet) => wallet.connected);
@@ -458,6 +512,12 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     ledgerState.balanceVerified,
     ledgerState.connecting,
     ledgerState.derivationPath,
+    dogewatchConnected,
+    dogewatchState.address,
+    dogewatchState.balance,
+    dogewatchState.balanceRefreshing,
+    dogewatchState.balanceVerified,
+    dogewatchState.connecting,
     myDoge?.address,
     myDoge?.balance,
     myDoge?.connected,
@@ -476,7 +536,8 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       (type === 'mydoge' && myDogeConnected) ||
       (type === 'spookydoge' && spookyConnected) ||
       (type === 'dojak' && dojakConnected) ||
-      (type === 'ledger' && ledgerConnected);
+      (type === 'ledger' && ledgerConnected) ||
+      (type === 'dogewatch' && dogewatchConnected);
 
     if (!isConnected) {
       throw new Error(`Wallet ${type} is not connected`);
@@ -486,7 +547,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     if (typeof window !== 'undefined') {
       localStorage.setItem('wallet_type', type);
     }
-  }, [browserConnected, dojakConnected, ledgerConnected, myDogeConnected, spookyConnected]);
+  }, [browserConnected, dojakConnected, dogewatchConnected, ledgerConnected, myDogeConnected, spookyConnected]);
 
   const disconnectCurrentWallet = useCallback(
     async () => {
@@ -516,6 +577,10 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         await ledgerWalletRef.current.disconnect();
         setLedgerState(LEDGER_INITIAL_STATE);
       }
+      if (walletType === 'dogewatch' && dogewatchState.connected) {
+        await dogewatchWalletRef.current.disconnect();
+        setDogewatchState(DOGEWATCH_INITIAL_STATE);
+      }
     },
     [
       browser.connected,
@@ -523,6 +588,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       dojakState.connected,
       spookyState.connected,
       ledgerState.connected,
+      dogewatchState.connected,
       myDoge.connected,
       myDoge.disconnect,
       walletType,
@@ -631,6 +697,32 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           return;
         }
 
+        if (type === 'dogewatch') {
+          setDogewatchState((prev) => ({
+            ...prev,
+            connecting: true,
+            balanceRefreshing: false,
+            balanceVerified: false,
+            balanceError: null,
+          }));
+          const account = await dogewatchWalletRef.current.connect({
+            promptUser: options?.ledgerPrompt ?? true,
+          });
+          setDogewatchState({
+            connected: true,
+            address: account.address,
+            balance: 0,
+            connecting: false,
+            balanceRefreshing: false,
+            balanceVerified: false,
+            balanceError: null,
+            walletId: account.walletId,
+          });
+          setWalletType(type);
+          localStorage.setItem('wallet_type', type);
+          return;
+        }
+
         const hasStoredWallet = await browser.hasWallet();
         if (!hasStoredWallet) {
           return;
@@ -662,6 +754,12 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         if (type === 'ledger') {
           setLedgerState(LEDGER_INITIAL_STATE);
           throw new Error(normalizeLedgerError(error));
+        }
+        if (type === 'dogewatch') {
+          setDogewatchState(DOGEWATCH_INITIAL_STATE);
+          throw error instanceof Error
+            ? error
+            : new Error('Failed to connect Dogewatch');
         }
         throw error;
       }
@@ -707,6 +805,8 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
                   ? !!(window.dojak as any)?.isDojak
                 : stored === 'ledger'
                   ? false
+                  : stored === 'dogewatch'
+                    ? false
                   : true;
 
           if (!isAvailable) {
@@ -720,7 +820,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             return;
           }
 
-          if (stored === 'ledger') {
+          if (stored === 'ledger' || stored === 'dogewatch') {
             localStorage.removeItem('wallet_type');
             setWalletType(null);
             return;
@@ -856,6 +956,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       setSpookyState(SPOOKY_INITIAL_STATE);
       setDojakState(DOJAK_INITIAL_STATE);
       setLedgerState(LEDGER_INITIAL_STATE);
+      setDogewatchState(DOGEWATCH_INITIAL_STATE);
       localStorage.removeItem('wallet_type');
     }
   }, [disconnectCurrentWallet]);
@@ -970,6 +1071,13 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       if (walletType === 'ledger') {
         return ledgerWalletRef.current.signMessage(message);
       }
+      if (walletType === 'dogewatch') {
+        const signature = await dogewatchWalletRef.current.signMessage(message);
+        console.log('[UnifiedWallet] signMessage:dogewatch:result', {
+          length: signature.length,
+        });
+        return signature;
+      }
 
       throw new Error('Message signing is not supported for the current wallet');
     },
@@ -1056,6 +1164,16 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           'Ledger’s Dogecoin app uses the legacy Ledger interface: it cannot sign PSBTs from web apps (only older “build transaction” flows). ' +
             'doggy.market-style buys need PSDT signing. Use MyDoge, Dojak, SpookyDoge, or Dojakweb’s in-browser wallet for this step.',
         );
+      }
+
+      if (walletType === 'dogewatch') {
+        const { psbtHex: preparedHex } = preparePsdtForMyDogeSign(psbtHex);
+        const signed = await dogewatchWalletRef.current.signPsbt(preparedHex);
+        console.log('[UnifiedWallet] signPSBT:dogewatch:result', {
+          length: signed.length,
+          prefix: signed.slice(0, 32),
+        });
+        return signed;
       }
 
       throw new Error('PSDT signing is not supported for the current wallet');
@@ -1174,6 +1292,16 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         );
       }
 
+      if (walletType === 'dogewatch') {
+        const { psbtHex } = preparePsdtForMyDogeSign(psbtInput);
+        const signedHex = await dogewatchWalletRef.current.signPsbt(psbtHex);
+        console.log('[UnifiedWallet] signPSBTOnly:dogewatch:result', {
+          length: signedHex.length,
+          prefix: signedHex.slice(0, 32),
+        });
+        return normalizeSignedPsdtToBase64(signedHex);
+      }
+
       throw new Error('PSDT signing is not supported for the current wallet');
     },
     [address, browser, myDoge, walletType]
@@ -1238,6 +1366,14 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           ...params,
           activeAddress: address,
           signMessage: (message) => ledgerWalletRef.current.signMessage(message),
+        });
+      }
+
+      if (walletType === 'dogewatch') {
+        return signDMPIntentService(intentType, {
+          ...params,
+          activeAddress: address,
+          signMessage: (message) => dogewatchWalletRef.current.signMessage(message),
         });
       }
 
@@ -1339,6 +1475,28 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           balanceError: error?.message || 'Unable to refresh balance right now.',
         }));
       }
+      return;
+    }
+
+    if (walletType === 'dogewatch') {
+      setDogewatchState((prev) => ({ ...prev, balanceRefreshing: true, balanceError: null }));
+      try {
+        const nextBalance = await fetchBalance(address);
+        setDogewatchState((prev) => ({
+          ...prev,
+          balance: nextBalance,
+          balanceRefreshing: false,
+          balanceVerified: true,
+          balanceError: null,
+        }));
+      } catch (error: any) {
+        setDogewatchState((prev) => ({
+          ...prev,
+          balanceRefreshing: false,
+          balanceVerified: false,
+          balanceError: error?.message || 'Unable to refresh balance right now.',
+        }));
+      }
     }
   }, [address, browser.refreshBalance, walletType]);
 
@@ -1360,6 +1518,25 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       window.clearInterval(interval);
     };
   }, [ledgerState.address, ledgerState.connected, refreshBalance, walletType]);
+
+  useEffect(() => {
+    if (walletType !== 'dogewatch' || !dogewatchState.connected || !dogewatchState.address || typeof window === 'undefined') {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      void refreshBalance();
+    }, 0);
+
+    const interval = window.setInterval(() => {
+      void refreshBalance();
+    }, 60000);
+
+    return () => {
+      window.clearTimeout(timeout);
+      window.clearInterval(interval);
+    };
+  }, [dogewatchState.address, dogewatchState.connected, refreshBalance, walletType]);
 
   const value: UnifiedWalletContextValue = {
     walletType,

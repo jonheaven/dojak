@@ -161,12 +161,43 @@ export {
   fetchCommandDogTxStatus,
   commandDogTxMempoolPath,
   getCommandDogApiBaseUrl,
+  getIndexerApiBase,
   getWalletDataProviderConfig,
   setWalletDataProviderConfig,
   walletDataApi,
   WALLET_DATA_PROVIDER_CHANGED_EVENT,
   normalizeDoginalInscriptionId,
 } from './utils/api';
+
+export {
+  TREATS_PROTOCOL_ID,
+  TREATS_DUST_KOINU,
+  TREATS_MAX_OPRETURN_SCRIPT_BYTES,
+  buildTreatsDeployJson,
+  buildTreatsMintJson,
+  buildTreatsTransferJson,
+  buildTreatsBurnJson,
+  treatsPayloadBytes,
+  planTreatsOperationOutputs,
+  signTreatsTransaction,
+  signAndBroadcastTreats,
+  fetchTreatsTokens,
+  fetchTreatsBalances,
+  fetchTreatsHolders,
+  fetchTreatsToken,
+} from './lib/treats';
+export type {
+  TreatsOpKind,
+  SignTreatsParams,
+  SignedTreatsTx,
+  TreatsTokenRow,
+  TreatsBalanceRow,
+  TreatsHolderRow,
+} from './lib/treats';
+
+export { TreatsMintPanel, TreatsTransferPanel } from './components/treats/TreatsMintPanel';
+export type { TreatsMintPanelProps, TreatsUiOp } from './components/treats/TreatsMintPanel';
+export { TreatsPage } from './components/treats/TreatsPage';
 export type {
   CommandDogTxMempoolBody,
   CommandDogTxStatusBody,

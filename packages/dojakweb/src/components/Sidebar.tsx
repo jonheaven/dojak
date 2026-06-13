@@ -51,6 +51,7 @@ const inscriptionsItems = [
 ] as const;
 
 const dogeTokensItems = [
+  { id: 'treats', label: 'ÐogeTreats', icon: CurrencyDollarIcon },
   { id: 'drc20',  label: 'ÐRC-20', icon: CurrencyDollarIcon },
   { id: 'dunes',  label: 'Ðunes',  icon: CircleStackIcon },
   { id: 'charms', label: 'Charms', icon: SparklesIcon },

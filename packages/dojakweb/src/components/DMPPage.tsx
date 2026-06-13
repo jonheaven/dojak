@@ -149,6 +149,8 @@ export function DMPPage() {
           ? 'Dojak'
           : walletType === 'ledger'
             ? 'Ledger'
+            : walletType === 'dogewatch'
+              ? 'Dogewatch'
             : null;
 
   const handleSignIntent = async (intentType: 'listing' | 'bid' | 'settle' | 'cancel') => {

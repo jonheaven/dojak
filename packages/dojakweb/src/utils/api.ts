@@ -13,6 +13,10 @@ function normalizeWalletDataProvider(value: unknown): WalletDataProviderType {
 export interface WalletDataProviderConfig {
   walletDataProvider: WalletDataProviderType;
   walletDataProviderUrl?: string;
+  /** Same-origin indexer proxy (e.g. `/api/indexer` on dogenals.com, `/__indexer` on Dojakweb dev). */
+  indexerApiBase?: string;
+  /** Optional override for command.dog API (dogenals passes `/api/commanddog`). */
+  commandDogApiBase?: string;
   /**
    * When true (default), merge [InuBits](https://inubits.com/api/wallet/inscriptions) wallet inscription results
    * with the primary provider. InuBits indexes text/plain and other types MyDoge may omit.
@@ -87,6 +91,10 @@ export const COMMAND_DOG_DEV_PROXY_PATH = '/__commanddog';
 
 /** Public command.dog API (tunnel or production). Override with `VITE_COMMAND_DOG_API_URL` or `NEXT_PUBLIC_COMMAND_DOG_API_URL` (e.g. Vite hosts using process.env injection). */
 export function getCommandDogApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const cfg = getWalletDataProviderConfig();
+    if (cfg.commandDogApiBase) return cfg.commandDogApiBase;
+  }
   const fromEnv = normalizeBaseUrl(
     getEnv('VITE_COMMAND_DOG_API_URL', '') || getEnv('NEXT_PUBLIC_COMMAND_DOG_API_URL', '')
   );
@@ -95,6 +103,19 @@ export function getCommandDogApiBaseUrl(): string {
     return normalizeBaseUrl(new URL(COMMAND_DOG_DEV_PROXY_PATH, window.location.origin).href);
   }
   return 'https://api.command.dog';
+}
+
+/** Indexer HTTP root for ÐogeTreats / doginals read APIs. */
+export function getIndexerApiBase(): string {
+  if (typeof window !== 'undefined') {
+    const cfg = getWalletDataProviderConfig();
+    if (cfg.indexerApiBase) return cfg.indexerApiBase;
+    return normalizeBaseUrl(new URL('/__indexer', window.location.origin).href);
+  }
+  const fromEnv = normalizeBaseUrl(
+    getEnv('VITE_MARKETPLACE_API_BASE', '') || getEnv('NEXT_PUBLIC_MARKETPLACE_API_BASE', '')
+  );
+  return fromEnv || 'https://indexer.command.dog';
 }
 
 /** Path for `POST` body `{ hex }` → `{ txid }` (see command.dog/api `http_tx_broadcast`). */
@@ -202,8 +223,10 @@ export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
     const walletDataProviderUrl = normalizeBaseUrl(parsed.walletDataProviderUrl)
       || getDefaultWalletDataProviderUrl(walletDataProvider);
     const mergeInuBitsInscriptions = parsed.mergeInuBitsInscriptions !== false;
+    const indexerApiBase = normalizeBaseUrl(parsed.indexerApiBase) || undefined;
+    const commandDogApiBase = normalizeBaseUrl(parsed.commandDogApiBase) || undefined;
 
-    return { walletDataProvider, walletDataProviderUrl, mergeInuBitsInscriptions };
+    return { walletDataProvider, walletDataProviderUrl, mergeInuBitsInscriptions, indexerApiBase, commandDogApiBase };
   } catch {
     return {
       walletDataProvider: 'mydoge',
@@ -220,10 +243,12 @@ export const setWalletDataProviderConfig = (config: WalletDataProviderConfig) =>
   const walletDataProviderUrl = normalizeBaseUrl(config.walletDataProviderUrl)
     || getDefaultWalletDataProviderUrl(walletDataProvider);
   const mergeInuBitsInscriptions = config.mergeInuBitsInscriptions !== false;
+  const indexerApiBase = normalizeBaseUrl(config.indexerApiBase) || undefined;
+  const commandDogApiBase = normalizeBaseUrl(config.commandDogApiBase) || undefined;
 
   window.localStorage.setItem(
     WALLET_PROVIDER_STORAGE_KEY,
-    JSON.stringify({ walletDataProvider, walletDataProviderUrl, mergeInuBitsInscriptions })
+    JSON.stringify({ walletDataProvider, walletDataProviderUrl, mergeInuBitsInscriptions, indexerApiBase, commandDogApiBase })
   );
   window.dispatchEvent(new CustomEvent(WALLET_DATA_PROVIDER_CHANGED_EVENT));
 };
@@ -683,6 +708,23 @@ export const walletDataApi = {
       inscriptionId: balance.inscriptionId,
       content: balance.content,
     }));
+  },
+
+  /** ÐogeTreats (`p:"dt"`) balances from dogex / indexer read API. */
+  fetchTreatsBalances: async (address: string): Promise<Array<{ tick: string; balance: string }>> => {
+    if (!address?.trim()) return [];
+    try {
+      const base = getIndexerApiBase();
+      const res = await fetch(
+        `${base.replace(/\/+$/, '')}/api/doginals/treats/balance/${encodeURIComponent(address)}`,
+        { cache: 'no-store', headers: { Accept: 'application/json' } },
+      );
+      if (!res.ok) return [];
+      const payload = (await res.json()) as { balances?: Array<{ tick: string; balance: string }> };
+      return Array.isArray(payload.balances) ? payload.balances : [];
+    } catch {
+      return [];
+    }
   },
 
   fetchDunes: async (address: string): Promise<DuneHolding[]> => {

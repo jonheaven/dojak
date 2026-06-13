@@ -17,9 +17,11 @@ export type FeatureId =
   | 'address-book'
   | 'tools'
   | 'nostr'
+  | 'dogewatch'
   | 'settings'
   | 'support'
   | 'drc20'
+  | 'treats'
   | 'dunes'
   | 'universal-drc20'
   | 'charms';
@@ -58,11 +60,13 @@ const DEFAULT_FEATURES: Record<FeatureId, boolean> = {
   'address-book': true,
   tools: true,
   nostr: true,
+  dogewatch: true,
   settings: true,
   support: true,
   drc20: true,
+  treats: true,
   dunes: true,
-  'universal-drc20': true,
+  'universal-drc20': false,
   charms: true,
 };
 
@@ -99,20 +103,25 @@ export const useFeatureStore = create<FeatureVisibilityState>()(
     }),
     {
       name: 'dojakweb-feature-visibility',
-      version: 2,
+      version: 3,
       migrate: (persistedState, fromVersion) => {
         if (
-          fromVersion < 2 &&
           persistedState &&
           typeof persistedState === 'object' &&
           'features' in persistedState
         ) {
           const f = (persistedState as { features: Record<string, boolean> }).features;
           if (f && typeof f === 'object') {
-            if (f.chainmarks !== undefined && f['inscription-hub'] === undefined) {
-              f['inscription-hub'] = f.chainmarks;
+            if (fromVersion < 2) {
+              if (f.chainmarks !== undefined && f['inscription-hub'] === undefined) {
+                f['inscription-hub'] = f.chainmarks;
+              }
+              delete f.chainmarks;
             }
-            delete f.chainmarks;
+            if (fromVersion < 3) {
+              if (f.treats === undefined) f.treats = true;
+              f['universal-drc20'] = false;
+            }
           }
         }
         return persistedState as FeatureVisibilityState;

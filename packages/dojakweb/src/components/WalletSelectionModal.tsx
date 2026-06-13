@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, X } from 'lucide-react';
+import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, Watch, X } from 'lucide-react';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { LedgerWallet } from '../lib/ledger-wallet';
+import { DogewatchWallet } from '../lib/dogewatch-wallet';
 import DojakwebWalletModal from './DojakwebWalletModal';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
@@ -19,7 +20,7 @@ interface WalletSelectionModalProps {
   drawerSide?: 'left' | 'right';
 }
 
-type ConnectKind = 'spookydoge' | 'mydoge' | 'browser' | 'dojak' | 'ledger';
+type ConnectKind = 'spookydoge' | 'mydoge' | 'browser' | 'dojak' | 'ledger' | 'dogewatch';
 
 export default function WalletSelectionModal({ isOpen, onClose, mode = 'drawer', drawerSide = 'right' }: WalletSelectionModalProps) {
   const { connect, walletType } = useUnifiedWallet();
@@ -32,6 +33,7 @@ export default function WalletSelectionModal({ isOpen, onClose, mode = 'drawer',
   const [showBrowserWallet, setShowBrowserWallet] = useState(false);
   const [hasBrowserWallet, setHasBrowserWallet] = useState(false);
   const [ledgerSupported, setLedgerSupported] = useState(false);
+  const [dogewatchSupported, setDogewatchSupported] = useState(false);
   const [connectingType, setConnectingType] = useState<ConnectKind | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -112,6 +114,10 @@ export default function WalletSelectionModal({ isOpen, onClose, mode = 'drawer',
     ? `${t('wallet.options.ledger.title')}. ${t('wallet.options.ledger.subtitle')}`
     : `${t('wallet.options.ledger.title')}. ${t('wallet.options.ledger.webusbRequired')}`;
 
+  const dogewatchAria = dogewatchSupported
+    ? `${t('wallet.options.dogewatch.title')}. ${t('wallet.options.dogewatch.subtitle')}`
+    : `${t('wallet.options.dogewatch.title')}. ${t('wallet.options.dogewatch.serialRequired')}`;
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -120,6 +126,7 @@ export default function WalletSelectionModal({ isOpen, onClose, mode = 'drawer',
     void (async () => {
       setHasBrowserWallet(await hasWallet());
       setLedgerSupported(await LedgerWallet.isSupported());
+      setDogewatchSupported(await DogewatchWallet.isSupported());
     })();
   }, [hasWallet, isOpen]);
 
@@ -128,6 +135,7 @@ export default function WalletSelectionModal({ isOpen, onClose, mode = 'drawer',
   }
 
   const ledgerConnecting = connectingType === 'ledger';
+  const dogewatchConnecting = connectingType === 'dogewatch';
   const browserBusy = connectingType === 'browser';
   const anyConnecting = connectingType !== null;
   const isDrawerMode = mode === 'drawer';
@@ -236,28 +244,53 @@ export default function WalletSelectionModal({ isOpen, onClose, mode = 'drawer',
               })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleConnect('ledger')}
-              disabled={!ledgerSupported || connectingType !== null}
-              aria-label={ledgerAria}
-              title={ledgerAria}
-              className={`${iconTileBase} ${
-                ledgerSupported && connectingType === null ? iconTileReady : iconTileMuted
-              }`}
-            >
-              <span className="relative flex h-11 w-11 items-center justify-center">
-                <img src="/ledger.svg" alt="" className="h-9 w-9 opacity-95" />
-                <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-md border border-white/20 bg-zinc-900 text-sky-300 shadow-md">
-                  <Usb className="h-3 w-3" aria-hidden="true" />
+            <div className="flex w-full max-w-[16.5rem] items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => handleConnect('dogewatch')}
+                disabled={!dogewatchSupported || connectingType !== null}
+                aria-label={dogewatchAria}
+                title={dogewatchAria}
+                className={`${iconTileBase} ${
+                  dogewatchSupported && connectingType === null ? iconTileReady : iconTileMuted
+                }`}
+              >
+                <span className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-300 to-amber-600 text-zinc-950 shadow-inner">
+                  <Watch className="h-6 w-6" aria-hidden="true" />
+                  <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-md border border-white/20 bg-zinc-900 text-amber-300 shadow-md">
+                    <Usb className="h-3 w-3" aria-hidden="true" />
+                  </span>
                 </span>
-              </span>
-              {ledgerConnecting ? (
-                <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/55">
-                  <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
+                {dogewatchConnecting ? (
+                  <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/55">
+                    <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
+                  </span>
+                ) : null}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleConnect('ledger')}
+                disabled={!ledgerSupported || connectingType !== null}
+                aria-label={ledgerAria}
+                title={ledgerAria}
+                className={`${iconTileBase} ${
+                  ledgerSupported && connectingType === null ? iconTileReady : iconTileMuted
+                }`}
+              >
+                <span className="relative flex h-11 w-11 items-center justify-center">
+                  <img src="/ledger.svg" alt="" className="h-9 w-9 opacity-95" />
+                  <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-md border border-white/20 bg-zinc-900 text-sky-300 shadow-md">
+                    <Usb className="h-3 w-3" aria-hidden="true" />
+                  </span>
                 </span>
-              ) : null}
-            </button>
+                {ledgerConnecting ? (
+                  <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/55">
+                    <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
+                  </span>
+                ) : null}
+              </button>
+            </div>
           </div>
         </div>
 

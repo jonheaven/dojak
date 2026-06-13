@@ -82,6 +82,12 @@ const en: MsgTree = {
         webusbReady: 'WebUSB ready',
         webusbRequired: 'WebUSB required',
       },
+      dogewatch: {
+        title: 'Hardware Wallet: Dogewatch',
+        subtitle: 'Sign on your LilyGo watch — USB + confirm on device.',
+        serialReady: 'Web Serial ready',
+        serialRequired: 'Web Serial required (Chrome / Edge)',
+      },
     },
   },
   settings: {
@@ -149,6 +155,12 @@ const ja: MsgTree = {
         subtitle: '最も安全: WebUSB 経由のハードウェア署名。',
         webusbReady: 'WebUSB 準備OK',
         webusbRequired: 'WebUSB が必要',
+      },
+      dogewatch: {
+        title: 'ハードウェアウォレット: Dogewatch',
+        subtitle: 'LilyGo ウォッチで署名 — USB 接続後、本体で承認。',
+        serialReady: 'Web Serial 準備OK',
+        serialRequired: 'Web Serial が必要（Chrome / Edge）',
       },
     },
   },

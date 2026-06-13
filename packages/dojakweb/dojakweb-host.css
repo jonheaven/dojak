@@ -956,3 +956,14 @@
 [data-ds-theme="light"] .ds-wallet-dashboard .text-yellow-200\/90 {
   color: #713f12 !important;
 }
+
+/* Wallet drawer — prevent flex clip (top quarter visible, rest black on mobile) */
+.ds-wallet-dashboard.flex.flex-col {
+  min-height: 0;
+}
+
+.ds-wallet-dashboard.flex.flex-col > .min-h-0,
+.ds-wallet-dashboard.flex.flex-col > .flex-1 {
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}

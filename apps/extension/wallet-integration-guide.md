@@ -329,10 +329,10 @@ const verifyWalletOwnership = async (address, message, signature) => {
 
 ## Canonical Signer Parity
 
-Use the same canonicalized payload in both Dojak and `dogestash` if you need marketplace signer parity:
+Use the same canonicalized payload in both Dojak extension and **`@dojak/web`** if you need marketplace signer parity:
 
 ```javascript
-import { BrowserWallet, BrowserWalletSigner } from 'dogestash';
+import { BrowserWallet, BrowserWalletSigner } from '@dojak/web';
 
 const dojakEnvelope = await window.dojak.request({
   method: 'signIntent',
@@ -342,11 +342,11 @@ const dojakEnvelope = await window.dojak.request({
 const browserWallet = new BrowserWallet();
 await browserWallet.saveWallet(importedWalletWithSamePrivateKey);
 
-const dogestashSigner = new BrowserWalletSigner(browserWallet);
-await dogestashSigner.connect();
-const dogestashSignature = await dogestashSigner.signIntent(intentPayload);
+const dojakwebSigner = new BrowserWalletSigner(browserWallet);
+await dojakwebSigner.connect();
+const dojakwebSignature = await dojakwebSigner.signIntent(intentPayload);
 
-console.log(dojakEnvelope.signature === dogestashSignature); // true when both use the same key + payload
+console.log(dojakEnvelope.signature === dojakwebSignature); // true when both use the same key + payload
 ```
 
 ## Error Handling

@@ -146,7 +146,7 @@ declare global {
   }
 }
 
-export type WalletType = 'browser' | 'mydoge' | 'spookydoge' | 'dojak' | 'ledger';
+export type WalletType = 'browser' | 'mydoge' | 'spookydoge' | 'dojak' | 'ledger' | 'dogewatch';
 export type WalletMode = 'dojak' | 'local_browser_wallet';
 export type NetworkType = 'mainnet' | 'testnet' | 'regtest';
 export type WalletSource = 'generated' | 'mnemonic' | 'privateKey' | 'ledger';
