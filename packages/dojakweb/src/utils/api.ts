@@ -17,6 +17,10 @@ export interface WalletDataProviderConfig {
   indexerApiBase?: string;
   /** Optional override for command.dog API (dogenals passes `/api/commanddog`). */
   commandDogApiBase?: string;
+  /** Same-origin wonky-dogeord proxy (e.g. `/api/wonky` on dogenals.com). Used for Dunes address balances. */
+  wonkyOrdApiBase?: string;
+  /** When true, fall back to wonky-dogeord if dogex returns no dune address balances. Default false. */
+  wonkyOrdFallback?: boolean;
   /**
    * When true (default), merge [InuBits](https://inubits.com/api/wallet/inscriptions) wallet inscription results
    * with the primary provider. InuBits indexes text/plain and other types MyDoge may omit.
@@ -116,6 +120,57 @@ export function getIndexerApiBase(): string {
     getEnv('VITE_MARKETPLACE_API_BASE', '') || getEnv('NEXT_PUBLIC_MARKETPLACE_API_BASE', '')
   );
   return fromEnv || 'https://indexer.command.dog';
+}
+
+/** wonky-dogeord HTTP root — Dunes UTXO balances (dogex proxies here server-side too). */
+export function getWonkyOrdApiBase(): string {
+  if (typeof window !== 'undefined') {
+    const cfg = getWalletDataProviderConfig();
+    if (cfg.wonkyOrdApiBase) return cfg.wonkyOrdApiBase;
+    return normalizeBaseUrl(new URL('/api/wonky', window.location.origin).href);
+  }
+  const fromEnv = normalizeBaseUrl(
+    getEnv('VITE_WONKY_ORD_URL', '') || getEnv('NEXT_PUBLIC_WONKY_ORD_URL', '')
+  );
+  return fromEnv || 'https://wonky-ord.dogeord.io';
+}
+
+function mapWonkyDuneHoldings(payload: unknown): DuneHolding[] {
+  const root = payload as { dunes?: unknown[]; balances?: unknown[] };
+  const rows = Array.isArray(root?.dunes)
+    ? root.dunes
+    : Array.isArray(root?.balances)
+      ? root.balances
+      : Array.isArray(payload)
+        ? (payload as unknown[])
+        : [];
+  return rows.map((row: any) => ({
+    dune: String(row?.dune ?? row?.spaced_dune ?? row?.name ?? row?.ticker ?? ''),
+    ticker: String(row?.ticker ?? row?.dune ?? row?.name ?? ''),
+    balance: String(row?.total_balance ?? row?.balance ?? row?.amount ?? '0'),
+    amount: String(row?.total_balance ?? row?.amount ?? row?.balance ?? '0'),
+    symbol: row?.symbol != null ? String(row.symbol) : undefined,
+  }));
+}
+
+async function fetchDunesFromIndexer(address: string): Promise<DuneHolding[]> {
+  const base = getIndexerApiBase().replace(/\/+$/, '');
+  const url = `${base}/api/doginals/dunes/balance/${encodeURIComponent(address)}?list_dunes=true`;
+  try {
+    const res = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return mapWonkyDuneHoldings(data);
+  } catch {
+    return [];
+  }
+}
+
+async function fetchDunesFromWonky(address: string): Promise<DuneHolding[]> {
+  const base = getWonkyOrdApiBase().replace(/\/+$/, '');
+  const url = `${base}/dunes/balance/${encodeURIComponent(address)}?list_dunes=true`;
+  const data = await fetchJson(url);
+  return mapWonkyDuneHoldings(data);
 }
 
 /** Path for `POST` body `{ hex }` → `{ txid }` (see command.dog/api `http_tx_broadcast`). */
@@ -729,7 +784,20 @@ export const walletDataApi = {
 
   fetchDunes: async (address: string): Promise<DuneHolding[]> => {
     if (isCommandDogWalletDataProvider()) {
-      return [];
+      const fromDogex = await fetchDunesFromIndexer(address);
+      const cfg = getWalletDataProviderConfig();
+      const allowWonky =
+        cfg.wonkyOrdFallback === true ||
+        (typeof import.meta !== 'undefined' &&
+          import.meta.env?.VITE_WONKY_ORD_FALLBACK === '1');
+      if (fromDogex.length > 0 || !allowWonky) {
+        return fromDogex;
+      }
+      try {
+        return await fetchDunesFromWonky(address);
+      } catch {
+        return fromDogex;
+      }
     }
     const data = await fetchJson(getWalletEndpoint('/Dunes/', address));
     const dunes = extractArray(data);
@@ -744,6 +812,97 @@ export const walletDataApi = {
 
   fetchDuneInfo: async (name: string): Promise<DuneInfo | null> => {
     if (isCommandDogWalletDataProvider()) {
+      const indexerBase = getIndexerApiBase().replace(/\/+$/, '');
+      const cleaned = name.replace(/[.•\s]/g, '').toUpperCase();
+      const indexerCandidates = [
+        `${indexerBase}/api/doginals/dunes/dune/${encodeURIComponent(name)}`,
+        `${indexerBase}/api/doginals/dunes/dune/${encodeURIComponent(cleaned)}`,
+      ];
+      for (const url of indexerCandidates) {
+        try {
+          const res = await fetch(url, { headers: { Accept: 'application/json' } });
+          if (!res.ok) continue;
+          const d = await res.json();
+          if (!d || typeof d !== 'object') continue;
+          const id = String(d.id ?? d.dune_id ?? d.duneId ?? '');
+          if (!id) continue;
+          return {
+            id,
+            name: String(d.spaced_name ?? d.name ?? name),
+            divisibility: Number(d.divisibility ?? 0),
+            symbol: d.symbol ? String(d.symbol) : undefined,
+            supply: d.supply != null ? String(d.supply) : undefined,
+            mints: d.mints != null ? String(d.mints) : undefined,
+            burned: d.burned != null ? String(d.burned) : undefined,
+            premine: d.premine != null ? String(d.premine) : undefined,
+            turbo: Boolean(d.turbo),
+            block: d.block != null ? Number(d.block) : undefined,
+            etching: d.etching ? String(d.etching) : undefined,
+            terms: d.terms ? {
+              amount: d.terms.amount != null ? String(d.terms.amount) : undefined,
+              cap: d.terms.cap != null ? String(d.terms.cap) : undefined,
+              heightStart: d.terms.height?.[0] ?? d.terms.heightStart ?? undefined,
+              heightEnd: d.terms.height?.[1] ?? d.terms.heightEnd ?? undefined,
+              offsetStart: d.terms.offset?.[0] ?? d.terms.offsetStart ?? undefined,
+              offsetEnd: d.terms.offset?.[1] ?? d.terms.offsetEnd ?? undefined,
+            } : undefined,
+            mintable: d.mintable != null ? Boolean(d.mintable) : (d.terms != null),
+          };
+        } catch {
+          continue;
+        }
+      }
+      const cfg = getWalletDataProviderConfig();
+      const allowWonky =
+        cfg.wonkyOrdFallback === true ||
+        (typeof import.meta !== 'undefined' &&
+          import.meta.env?.VITE_WONKY_ORD_FALLBACK === '1');
+      if (!allowWonky) {
+        return null;
+      }
+    }
+    if (isCommandDogWalletDataProvider()) {
+      const wonkyBase = getWonkyOrdApiBase().replace(/\/+$/, '');
+      const cleaned = name.replace(/[.•\s]/g, '').toUpperCase();
+      const candidates = [
+        `${wonkyBase}/dune/${encodeURIComponent(name)}`,
+        `${wonkyBase}/dune/${encodeURIComponent(cleaned)}`,
+      ];
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url, { headers: { Accept: 'application/json' } });
+          if (!res.ok) continue;
+          const data = await res.json();
+          const d = data?.dune ?? data?.data ?? data?.result ?? data;
+          if (!d || typeof d !== 'object') continue;
+          const id = String(d.id ?? d.duneId ?? d.dune_id ?? '');
+          if (!id || !id.includes(':')) continue;
+          return {
+            id,
+            name: String(d.name ?? d.spaced_name ?? d.spaced_dune ?? name),
+            divisibility: Number(d.divisibility ?? 0),
+            symbol: d.symbol ? String(d.symbol) : undefined,
+            supply: d.supply != null ? String(d.supply) : undefined,
+            mints: d.mints != null ? String(d.mints) : undefined,
+            burned: d.burned != null ? String(d.burned) : undefined,
+            premine: d.premine != null ? String(d.premine) : undefined,
+            turbo: Boolean(d.turbo),
+            block: d.block != null ? Number(d.block) : undefined,
+            etching: d.etching ? String(d.etching) : undefined,
+            terms: d.terms ? {
+              amount: d.terms.amount != null ? String(d.terms.amount) : undefined,
+              cap: d.terms.cap != null ? String(d.terms.cap) : undefined,
+              heightStart: d.terms.height?.[0] ?? d.terms.heightStart ?? undefined,
+              heightEnd: d.terms.height?.[1] ?? d.terms.heightEnd ?? undefined,
+              offsetStart: d.terms.offset?.[0] ?? d.terms.offsetStart ?? undefined,
+              offsetEnd: d.terms.offset?.[1] ?? d.terms.offsetEnd ?? undefined,
+            } : undefined,
+            mintable: d.mintable != null ? Boolean(d.mintable) : (d.terms != null),
+          };
+        } catch {
+          continue;
+        }
+      }
       return null;
     }
     const base = getWalletProviderBaseUrl();

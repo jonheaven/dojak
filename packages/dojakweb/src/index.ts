@@ -198,6 +198,18 @@ export type {
 export { TreatsMintPanel, TreatsTransferPanel } from './components/treats/TreatsMintPanel';
 export type { TreatsMintPanelProps, TreatsUiOp } from './components/treats/TreatsMintPanel';
 export { TreatsPage } from './components/treats/TreatsPage';
+
+export { DunesToolsPanel } from './components/dunes/DunesToolsPanel';
+export type { DunesToolsPanelProps, DunesUiOp } from './components/dunes/DunesToolsPanel';
+export { DuneDeployModal } from './components/DuneDeployModal';
+export { DuneMintModal } from './components/DuneMintModal';
+export { DuneSendModal } from './components/DuneSendModal';
+
+export { CharmsToolsPanel } from './components/charms/CharmsToolsPanel';
+export type { CharmsToolsPanelProps, CharmsUiOp } from './components/charms/CharmsToolsPanel';
+export { CharmsCreateModal } from './components/CharmsCreateModal';
+export { CharmsTransferModal } from './components/CharmsTransferModal';
+export type { CharmsToken } from './lib/charms/types';
 export type {
   CommandDogTxMempoolBody,
   CommandDogTxStatusBody,
