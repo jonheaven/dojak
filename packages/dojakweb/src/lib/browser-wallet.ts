@@ -20,6 +20,7 @@ import * as secp from '@noble/secp256k1';
 
 import { decryptJSON, encryptJSON } from './secureStorage';
 import { warnIfUnexpectedSigningHostname } from '../services/dmp';
+import { buildOpReturnLockingScript, estimateOpReturnOutputsTxWeight } from './tx/opReturn';
 import {
   signPartialPsdtWithWifToHex,
   signPsdtWithWifToTxHex,
@@ -78,6 +79,8 @@ export interface BrowserWalletSendTransactionOptions {
   feeRate?: number;
   minConfirmations?: number;
   includeInscribedUtxos?: boolean;
+  /** UTF-8 stake / attestation line (≤80 bytes) embedded as OP_RETURN in the same tx. */
+  opReturnMessage?: string;
 }
 
 const DEFAULT_DOGE_FEE_RATE = 1_000;
@@ -1048,6 +1051,15 @@ export class BrowserWallet {
     );
     const sendValue = normalizeDogeAmountToKoinu(amountDoge);
 
+    let opReturnPayload: Buffer | undefined;
+    const opReturnMessage = options.opReturnMessage?.trim();
+    if (opReturnMessage) {
+      opReturnPayload = Buffer.from(opReturnMessage, 'utf8');
+      if (opReturnPayload.length > 80) {
+        throw new Error('OP_RETURN message exceeds 80 bytes');
+      }
+    }
+
     const spendableUtxos = options.utxos
       .filter((utxo) => Number.isFinite(utxo.value) && utxo.value > 0)
       .filter((utxo) => (utxo.confirmations ?? 0) >= minConfirmations)
@@ -1061,9 +1073,13 @@ export class BrowserWallet {
       );
     }
 
+    const opReturnWeight = opReturnPayload ? estimateOpReturnOutputsTxWeight([opReturnPayload]) : 0;
+    const effectiveFeeRate =
+      opReturnWeight > 0 ? feeRate + Math.ceil((opReturnWeight * feeRate) / 1000) : feeRate;
+
     const selected = coinSelectP2PKH(
       wallet.address,
-      feeRate,
+      effectiveFeeRate,
       spendableUtxos.map((utxo) => ({
         txid: utxo.txid,
         vout: utxo.vout,
@@ -1073,7 +1089,19 @@ export class BrowserWallet {
     );
 
     const signer = DogeMemoryWallet.fromWIF(wallet.privateKey, getNetworkId(wallet.network));
-    const finalizedTx = await createP2PKHTransaction(signer, selected).finalizeAndSign();
+
+    const outputs = opReturnPayload
+      ? [
+          { value: 0, script: new Uint8Array(buildOpReturnLockingScript(opReturnPayload, 80)) },
+          ...selected.outputs,
+        ]
+      : selected.outputs;
+
+    const finalizedTx = await createP2PKHTransaction(signer, {
+      address: wallet.address,
+      inputs: selected.inputs,
+      outputs,
+    }).finalizeAndSign();
 
     const inputTotal = selected.inputs.reduce((sum, utxo) => sum + utxo.value, 0);
     const outputTotal = selected.outputs.reduce((sum, output) => sum + output.value, 0);

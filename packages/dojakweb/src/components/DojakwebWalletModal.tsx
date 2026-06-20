@@ -3228,7 +3228,7 @@ export function DojakwebWalletModal({
                     {step === 'dashboard' && (
                       <div className="space-y-3">
                         {connected && isBrowserWallet && savedLocalWallets.length > 0 ? (
-                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#0f0f0f] px-3 py-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2">
                             <div className="flex min-w-0 flex-1 items-center gap-2">
                               <span className="hidden shrink-0 text-[10px] uppercase tracking-wide text-white/40 sm:inline">
                                 {t('modal.localNav.hdWallet')}
@@ -3380,6 +3380,7 @@ export function DojakwebWalletModal({
                                         <DogePFPAvatar size="md" />
                                       </Menu.Button>
                                       <WalletMenuItems
+                                        theme={isDark ? 'dark' : 'light'}
                                         anchor="bottom start"
                                         className="min-w-[13rem] max-w-[16rem]"
                                       >
@@ -3469,6 +3470,7 @@ export function DojakwebWalletModal({
                                       <DogePFPAvatar size="md" />
                                     </Menu.Button>
                                     <WalletMenuItems
+                                      theme={isDark ? 'dark' : 'light'}
                                       anchor="bottom start"
                                       className="min-w-[13rem] max-w-[16rem]"
                                     >
@@ -3584,7 +3586,7 @@ export function DojakwebWalletModal({
                                 <Menu.Button className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white" aria-label={t('modal.aria.moreActions')}>
                                   <EllipsisHorizontalIcon className="h-4 w-4" />
                                 </Menu.Button>
-                                    <WalletMenuItems className="w-52 max-w-[min(18rem,calc(100vw-2rem))] rounded-lg border-zinc-700 bg-zinc-950">
+                                    <WalletMenuItems theme={isDark ? 'dark' : 'light'} className="w-52 max-w-[min(18rem,calc(100vw-2rem))]">
                                       {[
                                         ...(dogeosUi && isBrowserWallet && pureDogeosMode
                                           ? []
@@ -3789,7 +3791,7 @@ export function DojakwebWalletModal({
                                       {inscriptions.map((item) => (
                                         <div
                                           key={item.inscriptionId}
-                                          className="group relative overflow-visible rounded-xl border border-white/10 bg-zinc-900/90 shadow-sm transition hover:border-[#D4A017]/55 hover:shadow-md hover:shadow-[#D4A017]/10"
+                                          className="group relative overflow-visible rounded-xl border border-white/10 bg-zinc-900 shadow-sm transition hover:border-[#D4A017]/55 hover:shadow-md hover:shadow-[#D4A017]/10"
                                         >
                                           {/* image — overflow-hidden scoped to media only */}
                                           <div className="overflow-hidden rounded-t-[0.65rem]">
@@ -3806,7 +3808,7 @@ export function DojakwebWalletModal({
                                               </div>
                                             )}
                                           </div>
-                                          <div className="flex items-center justify-between gap-1 border-t border-white/5 bg-zinc-950/80 px-2.5 py-2">
+                                          <div className="flex items-center justify-between gap-1 border-t border-white/5 bg-zinc-950 px-2.5 py-2">
                                             <div className="min-w-0 truncate text-xs font-semibold tabular-nums text-white/90">
                                               #{item.inscriptionNumber}
                                             </div>
@@ -3819,7 +3821,7 @@ export function DojakwebWalletModal({
                                               >
                                                 <EllipsisHorizontalIcon className="h-4 w-4" />
                                               </Menu.Button>
-                                              <WalletMenuItems anchor="bottom end" className="min-w-[12rem]">
+                                              <WalletMenuItems theme={isDark ? 'dark' : 'light'} anchor="bottom end" className="min-w-[12rem]">
                                                   {item.contentType?.startsWith('image/') ? (
                                                     <Menu.Item>
                                                       {({ active }) => (

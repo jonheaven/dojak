@@ -962,10 +962,16 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   }, [disconnectCurrentWallet]);
 
   const sendTransaction = useCallback(
-    async (recipientAddress: string, amount: number): Promise<string> => {
+    async (
+      recipientAddress: string,
+      amount: number,
+      sendOptions?: { opReturnMessage?: string },
+    ): Promise<string> => {
       if (!isInitialized) {
         throw new Error('Wallet system not initialized');
       }
+
+      const opReturnMessage = sendOptions?.opReturnMessage?.trim();
 
       if (walletType === 'mydoge') {
         return myDoge.sendTransaction(recipientAddress, amount);
@@ -1025,6 +1031,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           broadcastTx,
           minConfirmations: 0,
           includeInscribedUtxos: false,
+          opReturnMessage,
         });
       }
 

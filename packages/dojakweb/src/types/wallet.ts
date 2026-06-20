@@ -324,7 +324,11 @@ export interface UnifiedWalletContextValue {
   balanceError: string | null;
   switchAccount: (accountIndex: number, password?: string) => Promise<void>;
   disconnect: () => Promise<void>;
-  sendTransaction: (recipientAddress: string, amount: number) => Promise<string>;
+  sendTransaction: (
+    recipientAddress: string,
+    amount: number,
+    sendOptions?: { opReturnMessage?: string },
+  ) => Promise<string>;
   signMessage: (message: string) => Promise<string>;
   signPSBT: (psbtHex: string) => Promise<string>;
   signPSBTOnly: (psbtHex: string) => Promise<string>;
