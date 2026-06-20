@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { CTA, PageBack, PageHeader } from '../../components/site-ui';
 
 export const metadata: Metadata = {
   title: 'Dojak Technical FAQ',
@@ -80,34 +81,40 @@ const sections = [
 
 export default function TechnicalFaqPage() {
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-zinc-100">
-      <div className="mx-auto max-w-5xl px-4 py-14">
-        <Link href="/" className="text-sm font-semibold text-[#FCD34D] hover:underline">
-          ← Back to Dojak Home
-        </Link>
-        <header className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#FCD34D]">Technical FAQ</p>
-          <h1 className="mt-3 text-balance text-4xl font-black md:text-5xl">Deep protocol details for power users</h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-300">
-            This page is the geek-mode companion to the normie-friendly homepage. All protocol references map to{' '}
-            <code className="rounded bg-white/10 px-1 py-0.5 text-xs">dogenals.org</code>.
-          </p>
-        </header>
+    <main className="min-h-screen bg-white text-zinc-950">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-96 site-grid site-grid-fade" />
+      <div className="relative mx-auto max-w-4xl px-4 py-14">
+        <PageBack />
+        <PageHeader
+          eyebrow="Technical FAQ"
+          title="Deep protocol details for power users"
+          description={
+            <>
+              Geek-mode companion to the normie-friendly homepage. All protocol references map to{' '}
+              <code className="site-code">dogenals.org</code>.
+            </>
+          }
+        />
 
-        <div className="mt-8 space-y-6">
+        <div className="mt-10 space-y-6">
           {sections.map((section) => (
-            <section key={section.title} className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <h2 className="text-2xl font-bold text-[#FCD34D]">{section.title}</h2>
-              <div className="mt-4 space-y-4">
+            <section key={section.title} className="site-card p-6 md:p-8">
+              <h2 className="text-xl font-bold md:text-2xl">{section.title}</h2>
+              <div className="mt-5 space-y-3">
                 {section.items.map((item) => (
-                  <article key={item.q} className="rounded-xl border border-white/10 bg-black/30 p-4">
-                    <h3 className="text-sm font-semibold md:text-base">{item.q}</h3>
-                    <p className="mt-2 text-sm leading-6 text-zinc-300">{item.a}</p>
+                  <article key={item.q} className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 md:p-5">
+                    <h3 className="text-sm font-bold md:text-base">{item.q}</h3>
+                    <p className="mt-2 text-sm leading-6 text-zinc-600">{item.a}</p>
                   </article>
                 ))}
               </div>
             </section>
           ))}
+        </div>
+
+        <div className="mt-10 flex flex-wrap gap-3">
+          <CTA href="/" label="Back to Home" primary />
+          <CTA href="/dogenals" label="Protocol Wall" />
         </div>
       </div>
     </main>

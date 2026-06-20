@@ -12,14 +12,19 @@ module.exports = {
     extend: {
       colors: {
         dojak: {
-          bg: '#0a0a0a',
-          yellow: '#f4c430',
-          gold: '#ffcc00',
-          orange: '#ff8c42'
+          ink: '#09090b',
+          paper: '#ffffff',
+          muted: '#71717a',
+          line: '#e4e4e7',
+          gold: '#D4A017',
+          'gold-hover': '#C49214'
         }
       },
+      fontFamily: {
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+      },
       boxShadow: {
-        glow: '0 0 42px rgba(244, 196, 48, 0.24)'
+        card: '0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04)'
       }
     }
   }
