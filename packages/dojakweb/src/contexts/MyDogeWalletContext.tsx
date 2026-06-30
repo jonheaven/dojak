@@ -404,6 +404,11 @@ export function MyDogeWalletProvider({ children }: { children: React.ReactNode }
             console.log('[WALLET] getCurrentAddress not available, falling back to stored');
             const storedAddr = localStorage.getItem('mydoge_address');
             if (storedAddr) {
+              console.log('[WALLET] Ignoring stored MyDoge address until the extension can confirm the active account.');
+              setAddress(null);
+              setConnected(false);
+              setBalance(0);
+              return;
               setAddress(storedAddr);
               setConnected(true);
               // Optional: Try to fetch balance anyway if possible

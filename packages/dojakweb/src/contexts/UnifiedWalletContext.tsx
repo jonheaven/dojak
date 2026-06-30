@@ -820,6 +820,14 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             return;
           }
 
+          if (stored === 'mydoge') {
+            // MyDoge restore must be passive. Calling connect() on page load can
+            // pop the extension approval UI even when the user just refreshed.
+            // MyDogeWalletProvider will adopt the session if the extension can
+            // report a verified current address without prompting.
+            return;
+          }
+
           if (stored === 'ledger' || stored === 'dogewatch') {
             localStorage.removeItem('wallet_type');
             setWalletType(null);

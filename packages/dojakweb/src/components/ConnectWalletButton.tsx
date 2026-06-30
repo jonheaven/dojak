@@ -52,6 +52,7 @@ export function ConnectWalletButton({
           isOpen={open}
           onClose={() => setOpen(false)}
           initialStep={connected ? 'dashboard' : 'entry'}
+          isDark={isDark}
         />
       ) : (
         <DojakwebWalletModal

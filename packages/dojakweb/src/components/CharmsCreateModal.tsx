@@ -16,6 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  charmsModalCardClass,
+  charmsModalPrimaryBtnClass,
+  charmsModalSecondaryBtnClass,
+} from './charms/charms-ui-classes';
 
 interface Props {
   isOpen: boolean;
@@ -131,9 +136,9 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md border-[var(--ds-border-strong)] bg-[var(--ds-bg-elevated)] text-[var(--ds-text)]">
         <DialogHeader>
-          <DialogTitle>Create Charms Token</DialogTitle>
+          <DialogTitle className="text-[var(--ds-text)]">Create Charms Token</DialogTitle>
         </DialogHeader>
 
         {/* Content */}
@@ -141,7 +146,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
           {step === 'form' && (
             <div className="space-y-4">
               <div>
-                <Label className="block mb-1">
+                <Label className="mb-1 block text-[var(--ds-text)]">
                   Token Ticker
                 </Label>
                 <Input
@@ -154,7 +159,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
               </div>
 
               <div>
-                <Label className="block mb-1">
+                <Label className="mb-1 block text-[var(--ds-text)]">
                   Token Name
                 </Label>
                 <Input
@@ -167,7 +172,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="block mb-1">
+                  <Label className="mb-1 block text-[var(--ds-text)]">
                     Supply
                   </Label>
                   <Input
@@ -178,7 +183,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
                   />
                 </div>
                 <div>
-                  <Label className="block mb-1">
+                  <Label className="mb-1 block text-[var(--ds-text)]">
                     Decimals
                   </Label>
                   <Input
@@ -192,7 +197,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
               </div>
 
               <div>
-                <Label className="block mb-1">
+                <Label className="mb-1 block text-[var(--ds-text)]">
                   Blockchain
                 </Label>
                 <Select value={chainId} onValueChange={(v) => setChainId(v as CharmsChainId)}>
@@ -216,16 +221,13 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
               )}
 
               <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleClose}
-                  className="flex-1 px-4 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary hover:border-primary-500 transition-colors"
-                >
+                <button onClick={handleClose} className={charmsModalSecondaryBtnClass}>
                   Cancel
                 </button>
                 <button
                   onClick={handleConfirm}
                   disabled={!ticker.trim() || !name.trim()}
-                  className="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-400 text-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={charmsModalPrimaryBtnClass}
                 >
                   Next
                 </button>
@@ -235,45 +237,38 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
 
           {step === 'confirm' && (
             <div className="space-y-4">
-              <div className="p-4 bg-bg-secondary border border-border-primary rounded space-y-2">
+              <div className={`${charmsModalCardClass} space-y-2`}>
                 <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Ticker:</span>
-                  <span className="text-text-primary font-medium">{ticker}</span>
+                  <span className="text-[var(--ds-text-muted)]">Ticker:</span>
+                  <span className="font-medium text-[var(--ds-text)]">{ticker}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Name:</span>
-                  <span className="text-text-primary font-medium">{name}</span>
+                  <span className="text-[var(--ds-text-muted)]">Name:</span>
+                  <span className="font-medium text-[var(--ds-text)]">{name}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Supply:</span>
-                  <span className="text-text-primary font-medium">
+                  <span className="text-[var(--ds-text-muted)]">Supply:</span>
+                  <span className="font-medium text-[var(--ds-text)]">
                     {Number(supply).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Decimals:</span>
-                  <span className="text-text-primary font-medium">{decimals}</span>
+                  <span className="text-[var(--ds-text-muted)]">Decimals:</span>
+                  <span className="font-medium text-[var(--ds-text)]">{decimals}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Chain:</span>
-                  <span className="text-text-primary font-medium">
+                  <span className="text-[var(--ds-text-muted)]">Chain:</span>
+                  <span className="font-medium text-[var(--ds-text)]">
                     {CHARMS_CHAIN_CONFIG[chainId].name}
                   </span>
                 </div>
               </div>
 
               <div className="flex gap-3">
-                <button
-                  onClick={() => setStep('form')}
-                  className="flex-1 px-4 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary hover:border-primary-500 transition-colors"
-                >
+                <button onClick={() => setStep('form')} className={charmsModalSecondaryBtnClass}>
                   Back
                 </button>
-                <button
-                  onClick={handleBroadcast}
-                  disabled={isLoading}
-                  className="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-400 text-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button onClick={handleBroadcast} disabled={isLoading} className={charmsModalPrimaryBtnClass}>
                   {isLoading ? 'Creating...' : 'Create'}
                 </button>
               </div>
@@ -284,10 +279,10 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
             <div className="space-y-4 text-center">
               <div className="inline-block">
                 <div className="animate-spin">
-                  <div className="w-8 h-8 border-4 border-primary-500/30 border-t-primary-500 rounded-full" />
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--ds-accent-ring)] border-t-[var(--ds-accent-solid)]" />
                 </div>
               </div>
-              <p className="text-text-secondary text-sm">Creating your Charms token...</p>
+              <p className="text-sm text-[var(--ds-text-muted)]">Creating your Charms token...</p>
             </div>
           )}
 
@@ -299,15 +294,12 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
                 </p>
               </div>
               {txid && (
-                <div className="p-3 bg-bg-secondary border border-border-primary rounded">
-                  <p className="text-xs text-text-secondary mb-1">Transaction ID:</p>
-                  <p className="text-sm font-mono text-text-primary break-all">{txid}</p>
+                <div className={charmsModalCardClass}>
+                  <p className="mb-1 text-xs text-[var(--ds-text-muted)]">Transaction ID:</p>
+                  <p className="break-all font-mono text-sm text-[var(--ds-text)]">{txid}</p>
                 </div>
               )}
-              <button
-                onClick={handleClose}
-                className="w-full px-4 py-2 bg-primary-500 hover:bg-primary-400 text-bg-primary rounded transition-colors"
-              >
+              <button onClick={handleClose} className={`w-full ${charmsModalPrimaryBtnClass}`}>
                 Done
               </button>
             </div>

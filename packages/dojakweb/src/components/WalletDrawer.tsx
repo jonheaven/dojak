@@ -7,17 +7,19 @@ interface WalletDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   initialStep?: 'entry' | 'dashboard' | 'settings';
+  /** Host override (e.g. ConnectWalletButton isDark). Falls back to DojakwebThemeProvider. */
+  isDark?: boolean;
 }
 
-export default function WalletDrawer({ isOpen, onClose, initialStep }: WalletDrawerProps) {
+export default function WalletDrawer({ isOpen, onClose, initialStep, isDark: isDarkProp }: WalletDrawerProps) {
   const { theme } = useDojakwebTheme();
-  const isLight = theme === 'light';
+  const isDark = isDarkProp ?? theme === 'dark';
 
   return (
     <DojakwebWalletModal
       isOpen={isOpen}
       onClose={onClose}
-      isDark={!isLight}
+      isDark={isDark}
       initialStep={initialStep}
       mode="drawer"
     />

@@ -5,6 +5,16 @@ import { useDataProvider } from '../../providers/DataProvider';
 import { CharmsCreateModal } from '../CharmsCreateModal';
 import { CharmsTransferModal } from '../CharmsTransferModal';
 import type { CharmsToken } from '../../lib/charms/types';
+import {
+  charmsBodyClass,
+  charmsEyebrowClass,
+  charmsListItemClass,
+  charmsPanelClass,
+  charmsPanelCompactClass,
+  charmsPrimaryBtnClass,
+  charmsSecondaryBtnClass,
+  charmsTitleClass,
+} from './charms-ui-classes';
 
 export type CharmsUiOp = 'create' | 'transfer';
 
@@ -42,12 +52,12 @@ export function CharmsToolsPanel({
   };
 
   return (
-    <div className={`space-y-6 ${className}`.trim()}>
+    <div className={`ds-charms-tools space-y-6 ${className}`.trim()}>
       {!compact && (
-        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#FCD34D]">Charms</p>
-          <h2 className="mt-2 text-2xl font-bold text-white">Create and transfer Charms</h2>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+        <div className={charmsPanelClass}>
+          <p className={charmsEyebrowClass}>Charms</p>
+          <h2 className={charmsTitleClass}>Create and transfer Charms</h2>
+          <p className={charmsBodyClass}>
             Programmable ZK assets on Dogecoin — client-side validation with Groth16 proofs.
             Launch a token or transfer balances to another address via PSBT.
           </p>
@@ -56,11 +66,7 @@ export function CharmsToolsPanel({
 
       <div className="flex flex-wrap gap-2">
         {ops.includes('create') && (
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="rounded-xl border border-[#FCD34D]/50 bg-[#FCD34D]/10 px-4 py-2 text-sm font-semibold text-[#FCD34D] transition hover:bg-[#FCD34D]/20"
-          >
+          <button type="button" onClick={() => setCreateOpen(true)} className={charmsPrimaryBtnClass}>
             Create token
           </button>
         )}
@@ -69,47 +75,47 @@ export function CharmsToolsPanel({
             type="button"
             onClick={() => openTransfer(tokens[0])}
             disabled={!tokens.length}
-            className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:border-zinc-500 hover:text-white disabled:opacity-40"
+            className={charmsSecondaryBtnClass}
           >
             Transfer
           </button>
         )}
       </div>
 
-      <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/40 p-5">
+      <div className={charmsPanelCompactClass}>
         <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Your Charms</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-[var(--ds-text-muted)]">Your Charms</p>
           <button
             type="button"
             onClick={() => void refreshCharms()}
-            className="text-xs text-zinc-400 underline hover:text-white"
+            className="text-xs text-[var(--ds-text-muted)] underline hover:text-[var(--ds-text)]"
           >
             Refresh
           </button>
         </div>
         {isLoadingCharms ? (
-          <p className="text-sm text-zinc-500">Loading…</p>
+          <p className="text-sm text-[var(--ds-text-muted)]">Loading…</p>
         ) : tokens.length ? (
           <ul className="space-y-2">
             {tokens.map((token) => {
-              const human =
-                Number(token.balance) / 10 ** (token.decimals || 8);
+              const human = Number(token.balance) / 10 ** (token.decimals || 8);
               return (
-                <li
-                  key={`${token.txid}:${token.vout}`}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2"
-                >
+                <li key={`${token.txid}:${token.vout}`} className={charmsListItemClass}>
                   <div className="min-w-0">
-                    <p className="truncate font-mono text-sm font-bold text-white">{token.ticker}</p>
-                    {token.name && <p className="truncate text-xs text-zinc-500">{token.name}</p>}
+                    <p className="truncate font-mono text-sm font-bold text-[var(--ds-text)]">{token.ticker}</p>
+                    {token.name && (
+                      <p className="truncate text-xs text-[var(--ds-text-muted)]">{token.name}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="tabular-nums text-sm text-zinc-300">{human.toLocaleString()}</span>
+                    <span className="tabular-nums text-sm text-[var(--ds-text-muted)]">
+                      {human.toLocaleString()}
+                    </span>
                     {ops.includes('transfer') && (
                       <button
                         type="button"
                         onClick={() => openTransfer(token)}
-                        className="rounded-lg border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-500"
+                        className="rounded-lg border border-[var(--ds-border-strong)] px-2 py-1 text-xs text-[var(--ds-text)] hover:border-[var(--ds-accent-border)]"
                       >
                         Transfer
                       </button>
@@ -120,7 +126,7 @@ export function CharmsToolsPanel({
             })}
           </ul>
         ) : (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-[var(--ds-text-muted)]">
             No Charms detected yet. Create a token or connect a wallet with existing holdings.
           </p>
         )}

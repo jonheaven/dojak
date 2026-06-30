@@ -1,15 +1,23 @@
 /**
  * Charms Token Transfer Modal
- * 
+ *
  * Allows users to transfer Charms tokens to another address.
  */
 
 import React, { useState } from 'react';
-import { XMarkIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'sonner';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { charmsService } from '../lib/charms';
 import type { CharmsToken } from '../lib/charms/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  charmsModalCardClass,
+  charmsModalPrimaryBtnClass,
+  charmsModalSecondaryBtnClass,
+} from './charms/charms-ui-classes';
 
 interface Props {
   isOpen: boolean;
@@ -20,19 +28,11 @@ interface Props {
 
 type Step = 'form' | 'confirm' | 'broadcasting' | 'done';
 
-export const CharmsTransferModal: React.FC<Props> = ({
-  isOpen,
-  token,
-  onClose,
-  onSuccess,
-}) => {
+export const CharmsTransferModal: React.FC<Props> = ({ isOpen, token, onClose, onSuccess }) => {
   const { connected, signPSBT } = useUnifiedWallet();
 
-  // Form state
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
-
-  // UI state
   const [step, setStep] = useState<Step>('form');
   const [error, setError] = useState<string | null>(null);
   const [txid, setTxid] = useState<string | null>(null);
@@ -70,9 +70,7 @@ export const CharmsTransferModal: React.FC<Props> = ({
   };
 
   const handleConfirm = () => {
-    if (validateForm()) {
-      setStep('confirm');
-    }
+    if (validateForm()) setStep('confirm');
   };
 
   const handleBroadcast = async () => {
@@ -81,14 +79,13 @@ export const CharmsTransferModal: React.FC<Props> = ({
       setError('Connect a Dogecoin wallet before transferring Charms');
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
     setStep('broadcasting');
     try {
-      // Prepare transfer transaction
       const amountBig = BigInt(Number(amount) * 10 ** token.decimals);
-      const txid = await charmsService.transferToken({
+      const resultTxid = await charmsService.transferToken({
         ticker: token.ticker,
         fromAddress: token.address,
         fromUtxo: `${token.txid}:${token.vout}`,
@@ -98,189 +95,147 @@ export const CharmsTransferModal: React.FC<Props> = ({
         signer: { signPsdt: signPSBT },
       });
 
-      setTxid(txid);
+      setTxid(resultTxid);
       setStep('done');
-
-      if (onSuccess) {
-        onSuccess(txid);
-      }
+      onSuccess?.(resultTxid);
       toast?.success(`Transferred ${amount} ${token.ticker}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to transfer token';
       console.error('Failed to transfer token:', err);
-      setError(err.message || 'Failed to transfer token');
+      setError(message);
       setStep('form');
-      toast?.error(`Transfer failed: ${err.message}`);
+      toast?.error(`Transfer failed: ${message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!isOpen || !token) return null;
+  if (!token) return null;
 
   const maxAmount = (token.balance / BigInt(10 ** token.decimals)).toString();
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-bg-primary border border-border-primary rounded-lg shadow-xl max-w-md w-full mx-4">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border-primary">
-          <h2 className="text-lg font-semibold text-text-primary">
-            Transfer {token.ticker}
-          </h2>
-          <button
-            onClick={handleClose}
-            className="p-1 hover:bg-bg-secondary rounded transition-colors"
-          >
-            <XMarkIcon className="w-5 h-5 text-text-secondary" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="max-w-md border-[var(--ds-border-strong)] bg-[var(--ds-bg-elevated)] text-[var(--ds-text)]">
+        <DialogHeader>
+          <DialogTitle className="text-[var(--ds-text)]">Transfer {token.ticker}</DialogTitle>
+        </DialogHeader>
 
-        {/* Content */}
-        <div className="p-6">
-          {step === 'form' && (
-            <div className="space-y-4">
-              <div className="p-3 bg-bg-secondary border border-border-primary rounded">
-                <p className="text-xs text-text-secondary mb-1">Available Balance</p>
-                <p className="text-lg font-semibold text-text-primary">
-                  {maxAmount} {token.ticker}
-                </p>
-              </div>
+        {step === 'form' && (
+          <div className="space-y-4">
+            <div className={`${charmsModalCardClass} p-3`}>
+              <p className="mb-1 text-xs text-[var(--ds-text-muted)]">Available Balance</p>
+              <p className="text-lg font-semibold text-[var(--ds-text)]">
+                {maxAmount} {token.ticker}
+              </p>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Recipient Address
-                </label>
-                <input
-                  type="text"
-                  value={toAddress}
-                  onChange={(e) => setToAddress(e.target.value)}
-                  placeholder="Enter recipient address"
-                  className="w-full px-3 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary placeholder-text-secondary focus:outline-none focus:border-primary-500"
+            <div>
+              <Label className="mb-1 block text-[var(--ds-text)]">Recipient Address</Label>
+              <Input
+                type="text"
+                value={toAddress}
+                onChange={(e) => setToAddress(e.target.value)}
+                placeholder="Enter recipient address"
+              />
+            </div>
+
+            <div>
+              <Label className="mb-1 block text-[var(--ds-text)]">Amount</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0"
+                  step="0.00000001"
+                  className="flex-1"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Amount
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0"
-                    step="0.00000001"
-                    className="flex-1 px-3 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary placeholder-text-secondary focus:outline-none focus:border-primary-500"
-                  />
-                  <button
-                    onClick={() => setAmount(maxAmount)}
-                    className="px-3 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary text-sm hover:border-primary-500 transition-colors"
-                  >
-                    Max
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="flex gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-500 text-sm">
-                  <InformationCircleIcon className="w-5 h-5 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleClose}
-                  className="flex-1 px-4 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary hover:border-primary-500 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirm}
-                  disabled={!toAddress.trim() || !amount.trim()}
-                  className="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-400 text-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
+                <button type="button" onClick={() => setAmount(maxAmount)} className={charmsModalSecondaryBtnClass}>
+                  Max
                 </button>
               </div>
             </div>
-          )}
 
-          {step === 'confirm' && (
-            <div className="space-y-4">
-              <div className="p-4 bg-bg-secondary border border-border-primary rounded space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">From:</span>
-                  <span className="text-text-primary font-mono text-xs break-all">
-                    {token.address}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">To:</span>
-                  <span className="text-text-primary font-mono text-xs break-all">
-                    {toAddress}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-text-secondary">Amount:</span>
-                  <span className="text-text-primary font-medium">
-                    {amount} {token.ticker}
-                  </span>
-                </div>
+            {error && (
+              <div className="flex gap-2 rounded border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
+                <InformationCircleIcon className="h-5 w-5 shrink-0" />
+                <span>{error}</span>
               </div>
+            )}
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep('form')}
-                  className="flex-1 px-4 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary hover:border-primary-500 transition-colors"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleBroadcast}
-                  disabled={isLoading}
-                  className="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-400 text-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Sending...' : 'Send'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 'broadcasting' && (
-            <div className="space-y-4 text-center">
-              <div className="inline-block">
-                <div className="animate-spin">
-                  <div className="w-8 h-8 border-4 border-primary-500/30 border-t-primary-500 rounded-full" />
-                </div>
-              </div>
-              <p className="text-text-secondary text-sm">Sending transaction...</p>
-            </div>
-          )}
-
-          {step === 'done' && (
-            <div className="space-y-4">
-              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded">
-                <p className="text-green-500 text-sm">
-                  ✓ Transfer successful!
-                </p>
-              </div>
-              {txid && (
-                <div className="p-3 bg-bg-secondary border border-border-primary rounded">
-                  <p className="text-xs text-text-secondary mb-1">Transaction ID:</p>
-                  <p className="text-sm font-mono text-text-primary break-all">{txid}</p>
-                </div>
-              )}
+            <div className="flex gap-3 pt-4">
+              <button type="button" onClick={handleClose} className={charmsModalSecondaryBtnClass}>
+                Cancel
+              </button>
               <button
-                onClick={handleClose}
-                className="w-full px-4 py-2 bg-primary-500 hover:bg-primary-400 text-bg-primary rounded transition-colors"
+                type="button"
+                onClick={handleConfirm}
+                disabled={!toAddress.trim() || !amount.trim()}
+                className={charmsModalPrimaryBtnClass}
               >
-                Done
+                Next
               </button>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </div>
+        )}
+
+        {step === 'confirm' && (
+          <div className="space-y-4">
+            <div className={`${charmsModalCardClass} space-y-2`}>
+              <div className="flex justify-between text-sm">
+                <span className="text-[var(--ds-text-muted)]">From:</span>
+                <span className="break-all font-mono text-xs text-[var(--ds-text)]">{token.address}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[var(--ds-text-muted)]">To:</span>
+                <span className="break-all font-mono text-xs text-[var(--ds-text)]">{toAddress}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[var(--ds-text-muted)]">Amount:</span>
+                <span className="font-medium text-[var(--ds-text)]">
+                  {amount} {token.ticker}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setStep('form')} className={charmsModalSecondaryBtnClass}>
+                Back
+              </button>
+              <button type="button" onClick={handleBroadcast} disabled={isLoading} className={charmsModalPrimaryBtnClass}>
+                {isLoading ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'broadcasting' && (
+          <div className="space-y-4 text-center">
+            <div className="inline-block animate-spin">
+              <div className="h-8 w-8 rounded-full border-4 border-[var(--ds-accent-ring)] border-t-[var(--ds-accent-solid)]" />
+            </div>
+            <p className="text-sm text-[var(--ds-text-muted)]">Sending transaction...</p>
+          </div>
+        )}
+
+        {step === 'done' && (
+          <div className="space-y-4">
+            <div className="rounded border border-green-500/20 bg-green-500/10 p-4">
+              <p className="text-sm text-green-600 dark:text-green-500">✓ Transfer successful!</p>
+            </div>
+            {txid && (
+              <div className={charmsModalCardClass}>
+                <p className="mb-1 text-xs text-[var(--ds-text-muted)]">Transaction ID:</p>
+                <p className="break-all font-mono text-sm text-[var(--ds-text)]">{txid}</p>
+              </div>
+            )}
+            <button type="button" onClick={handleClose} className={`w-full ${charmsModalPrimaryBtnClass}`}>
+              Done
+            </button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };

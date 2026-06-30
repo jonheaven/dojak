@@ -784,12 +784,23 @@ export const walletDataApi = {
 
   fetchDunes: async (address: string): Promise<DuneHolding[]> => {
     if (isCommandDogWalletDataProvider()) {
-      const fromDogex = await fetchDunesFromIndexer(address);
       const cfg = getWalletDataProviderConfig();
       const allowWonky =
         cfg.wonkyOrdFallback === true ||
         (typeof import.meta !== 'undefined' &&
           import.meta.env?.VITE_WONKY_ORD_FALLBACK === '1');
+
+      // Prefer wonky when fallback is on — indexer.command.dog is often offline (502).
+      if (allowWonky) {
+        try {
+          const fromWonky = await fetchDunesFromWonky(address);
+          if (fromWonky.length > 0) return fromWonky;
+        } catch {
+          /* try indexer next */
+        }
+      }
+
+      const fromDogex = await fetchDunesFromIndexer(address);
       if (fromDogex.length > 0 || !allowWonky) {
         return fromDogex;
       }

@@ -39,6 +39,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
 import { WalletMenuItems } from './wallet/WalletMenuItems';
+import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { walletCredentialInputProps, walletSecretInputProps } from '../lib/wallet-secret-input';
 import {
   buildListingPSDT,
@@ -483,11 +484,6 @@ const PRIMARY_BUTTON = 'bg-neutral-200 hover:bg-white text-black font-bold py-2 
 const SECONDARY_BUTTON = 'bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition border border-zinc-700';
 const DANGER_BUTTON = 'bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-4 rounded-none shadow-md transition';
 const MODAL_SURFACE = 'bg-[#0A0A0A]/95 text-text-primary rounded-none p-6 shadow-doge border border-border-primary';
-/** Full-bleed phone dock: opaque app chrome, single inner edge toward the page (largest common flagship width ≈ 430 CSS px). */
-const DRAWER_SURFACE_PHONE_RIGHT =
-  'bg-[#0A0A0A] text-text-primary border-l border-border-primary shadow-2xl';
-const DRAWER_SURFACE_PHONE_LEFT =
-  'bg-[#0A0A0A] text-text-primary border-r border-border-primary shadow-2xl';
 const INPUT_CLASS = 'wallet-input';
 
 function recommendedFeeRateForDxChain(baseFeeRateKoinuPerKb: number, stageCount: number): number {
@@ -513,7 +509,7 @@ function Button({ className, type = 'button', ...props }: React.ButtonHTMLAttrib
 export function DojakwebWalletModal({
   isOpen,
   onClose,
-  isDark = true,
+  isDark: isDarkProp,
   initialStep = 'entry',
   initialSettingsTab = 'data',
   openNonce = 0,
@@ -521,6 +517,14 @@ export function DojakwebWalletModal({
   drawerSide = 'right',
   onThemeChange,
 }: DojakwebWalletModalProps) {
+  const { theme: walletTheme } = useDojakwebTheme();
+  const isDark = isDarkProp ?? walletTheme === 'dark';
+  const drawerSurfacePhoneRight = isDark
+    ? 'bg-[#0A0A0A] text-text-primary border-l border-border-primary shadow-2xl'
+    : 'bg-[#f5f4f1] text-zinc-950 border-l border-zinc-200 shadow-2xl';
+  const drawerSurfacePhoneLeft = isDark
+    ? 'bg-[#0A0A0A] text-text-primary border-r border-border-primary shadow-2xl'
+    : 'bg-[#f5f4f1] text-zinc-950 border-r border-zinc-200 shadow-2xl';
   const {
     walletInterface: gsWalletInterface,
     setWalletInterface: gsSetWalletInterface,
@@ -2637,8 +2641,10 @@ export function DojakwebWalletModal({
               >
                 <Dialog.Panel
                   ref={walletDrawerHostRef}
+                  data-ds-theme={isDark ? 'dark' : 'light'}
                   className={cx(
                     'ds-wallet-dashboard relative flex flex-col overflow-hidden',
+                    !isDark && 'ds-light',
                     isDrawerMode
                       ? cx(
                           'pointer-events-auto fixed top-0 z-[10001] flex h-[100dvh] max-h-[100dvh] min-h-0 w-[min(100dvw,430px)] max-w-[min(100dvw,430px)] flex-col overflow-hidden',
@@ -2647,8 +2653,8 @@ export function DojakwebWalletModal({
                       : 'w-full max-h-[92vh] max-w-lg',
                     isDrawerMode
                       ? isDrawerLeft
-                        ? DRAWER_SURFACE_PHONE_LEFT
-                        : DRAWER_SURFACE_PHONE_RIGHT
+                        ? drawerSurfacePhoneLeft
+                        : drawerSurfacePhoneRight
                       : MODAL_SURFACE,
                   )}
                 >

@@ -499,7 +499,8 @@
 }
 
 /* ─── Light-mode: CSS token overrides ─────────────────────────────────────── */
-.ds-light {
+/* html[data-theme] = host apps (dogenals web-com); .ds-light = modal panel class */
+:is(html[data-theme="light"], .ds-light) {
   color-scheme: light;
   --ds-bg: #fafaf8;
   --ds-bg-elevated: #f2f0eb;
@@ -591,115 +592,120 @@
   box-shadow: 0 0 0 4px rgba(232, 212, 139, 0.22);
 }
 
+/* Charms tools panel — embedded in host pages (dogenals web-com) */
+.ds-charms-tools {
+  color: var(--ds-text);
+}
+
 /* ─── Light-mode: DojakwebWalletModal (full wallet UI) overrides ─────────── */
 /* The Dialog gets data-ds-theme="light"; .ds-wallet-dashboard is the panel.   */
 /* We use compound selectors (higher specificity than utility classes) so we   */
 /* override Tailwind's bg-zinc-*, text-white, border-white/* etc.              */
 
-[data-ds-theme="light"] .ds-wallet-dashboard {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard {
   background-color: #f5f4f1;
   color: #0f0e0d;
   border-color: rgba(0, 0, 0, 0.12);
 }
 
 /* All white text → dark text */
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white {
   color: #0f0e0d;
 }
 
 /* Muted white variants → muted dark */
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/80,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/70,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/65,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/60,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/55,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/45,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/35 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/80,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/70,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/65,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/60,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/55,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/45,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/35 {
   color: rgba(40, 35, 28, 0.65);
 }
 
 /* Dark card/panel backgrounds → light equivalents */
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-950,
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-\[\#0A0A0A\],
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-\[\#0a0a0a\] {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-950,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-\[\#0A0A0A\],
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-\[\#0a0a0a\] {
   background-color: #ede9e2;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-900 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-900 {
   background-color: #e3dfd8;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-800 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-800 {
   background-color: #d8d4cc;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-700 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-700 {
   background-color: #c8c3b9;
 }
 
 /* White overlay surfaces → dark overlay on light bg */
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-white\/5 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-white\/5 {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-white\/10 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-white\/10 {
   background-color: rgba(0, 0, 0, 0.08);
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-white\/15 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-white\/15 {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .hover\:bg-white\/5:hover {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .hover\:bg-white\/5:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .hover\:bg-white\/10:hover {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .hover\:bg-white\/10:hover {
   background-color: rgba(0, 0, 0, 0.08);
 }
 
 /* White-based borders → dark borders */
-[data-ds-theme="light"] .ds-wallet-dashboard .border-white\/10 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-white\/10 {
   border-color: rgba(0, 0, 0, 0.1);
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .border-white\/25 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-white\/25 {
   border-color: rgba(0, 0, 0, 0.2);
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .border-white\/40 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-white\/40 {
   border-color: rgba(0, 0, 0, 0.35);
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .border-zinc-700 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-zinc-700 {
   border-color: rgba(0, 0, 0, 0.14);
 }
 
 /* Header bar border */
-[data-ds-theme="light"] .ds-wallet-dashboard .border-b.border-white\/10 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-b.border-white\/10 {
   border-bottom-color: rgba(0, 0, 0, 0.1);
 }
 
 /* Secondary/danger buttons (used inside modal) */
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-800.hover\:bg-zinc-700 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-800.hover\:bg-zinc-700 {
   background-color: #d8d4cc;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-neutral-200 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-neutral-200 {
   background-color: #e8e5de;
 }
 
 /* Transparent bg inputs inside the wallet modal */
-[data-ds-theme="light"] .ds-wallet-dashboard input[class*="bg-transparent"] {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard input[class*="bg-transparent"] {
   color: #0f0e0d;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard input[class*="bg-transparent"]::placeholder {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard input[class*="bg-transparent"]::placeholder {
   color: rgba(80, 75, 68, 0.5);
 }
 
 /* Hover text states */
-[data-ds-theme="light"] .ds-wallet-dashboard .hover\:text-white:hover {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .hover\:text-white:hover {
   color: #0f0e0d;
 }
 
@@ -724,294 +730,327 @@
 /* ─── Light-mode: DojakwebWalletModal Dashboard fixes ─────────────────────── */
 /* Fix more button context menu icons, wallet address contrast, and tab styling */
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/70,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/60,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/50,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/45,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/40 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/70,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/60,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/50,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/45,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/40 {
   color: rgba(40, 35, 28, 0.65) !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/90,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/80 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/90,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/80 {
   color: #0f0e0d !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-zinc-100,
-[data-ds-theme="light"] .ds-wallet-dashboard .font-semibold.text-white {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-zinc-100,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .font-semibold.text-white {
   color: #0f0e0d !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-\[\#D4D4D4\],
-[data-ds-theme="light"] .ds-wallet-dashboard .text-\[\#D4D4D4\],
-[data-ds-theme="light"] .ds-wallet-dashboard .text-\[\#E5E5E5\] {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-\[\#D4D4D4\],
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-\[\#D4D4D4\],
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-\[\#E5E5E5\] {
   color: #44413a !important;
 }
 
 /* More button (EllipsisHorizontalIcon) in light mode */
-[data-ds-theme="light"] .ds-wallet-dashboard button:has(.text-white\/70) .text-white\/70,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/50,
-[data-ds-theme="light"] .ds-wallet-dashboard button:has(svg) .text-white\/50 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button:has(.text-white\/70) .text-white\/70,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/50,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button:has(svg) .text-white\/50 {
   color: #57534e !important;
 }
 
 /* Dashboard tabs - active and inactive states */
-[data-ds-theme="light"] .ds-wallet-dashboard .border-b.border-zinc-700 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-b.border-zinc-700 {
   border-color: #d1ccc4 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard button[style*="border-zinc-700"],
-[data-ds-theme="light"] .ds-wallet-dashboard .border-zinc-700 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button[style*="border-zinc-700"],
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-zinc-700 {
   border-color: #c8c3b9 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-950,
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-\[\#0A0A0A\] {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-950,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-\[\#0A0A0A\] {
   background-color: #f5f4f1 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-900 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-900 {
   background-color: #ede9e2 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-800 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-800 {
   background-color: #e3dfd8 !important;
 }
 
 /* Active tab */
-[data-ds-theme="light"] .ds-wallet-dashboard button.border-zinc-600,
-[data-ds-theme="light"] .ds-wallet-dashboard .border-zinc-600 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-zinc-600,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-zinc-600 {
   border-color: #c8a84c !important;
   background-color: #f5f4f1 !important;
   color: #0f0e0d !important;
 }
 
 /* Inactive tabs - fix contrast (this was the main issue reported) */
-[data-ds-theme="light"] .ds-wallet-dashboard button.border-zinc-700.bg-zinc-950,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/40 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-zinc-700.bg-zinc-950,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/40 {
   color: #6b665d !important;
   background-color: #ede9e2 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard button.border-zinc-700.bg-zinc-950:hover,
-[data-ds-theme="light"] .ds-wallet-dashboard .hover\:bg-white\/5:hover {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-zinc-700.bg-zinc-950:hover,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .hover\:bg-white\/5:hover {
   background-color: #e3dfd8 !important;
   color: #0f0e0d !important;
 }
 
 /* Menu items and dropdowns */
-[data-ds-theme="light"] .ds-wallet-dashboard .border-zinc-700 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-zinc-700 {
   border-color: #c8c3b9 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-950 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-950 {
   background-color: #f5f4f1 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-zinc-900,
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-gray-900 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-900,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-gray-900 {
   background-color: #ede9e2 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .hover\:bg-zinc-800:hover,
-[data-ds-theme="light"] .ds-wallet-dashboard .hover\:bg-gray-700:hover,
-[data-ds-theme="light"] .ds-wallet-dashboard .hover\:bg-gray-800:hover {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .hover\:bg-zinc-800:hover,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .hover\:bg-gray-700:hover,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .hover\:bg-gray-800:hover {
   background-color: #e3dfd8 !important;
 }
 
 /* Red text for danger actions */
-[data-ds-theme="light"] .ds-wallet-dashboard .text-red-300 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-red-300 {
   color: #c04a4a !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-red-300\/90 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-red-300\/90 {
   color: #b53f3f !important;
 }
 
 /* Icon colors in light mode */
-[data-ds-theme="light"] .ds-wallet-dashboard svg.text-white\/70,
-[data-ds-theme="light"] .ds-wallet-dashboard svg.text-white\/60,
-[data-ds-theme="light"] .ds-wallet-dashboard svg.text-white\/50 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard svg.text-white\/70,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard svg.text-white\/60,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard svg.text-white\/50 {
   color: #57534e !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard svg.text-white {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard svg.text-white {
   color: #0f0e0d !important;
 }
 
 /* Address text specifically (the reported light grey on light bg issue) */
-[data-ds-theme="light"] .ds-wallet-dashboard .text-\[\#D4D4D4\] {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-\[\#D4D4D4\] {
   color: #57534e !important;
 }
 
 /* Secondary UI elements */
-[data-ds-theme="light"] .ds-wallet-dashboard .text-zinc-300,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/45,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/30 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-zinc-300,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/45,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/30 {
   color: #78716c !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/35 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/35 {
   color: #6b665d !important;
 }
 
 /* Border fixes */
-[data-ds-theme="light"] .ds-wallet-dashboard .border-white\/10,
-[data-ds-theme="light"] .ds-wallet-dashboard .border-white\/5 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-white\/10,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-white\/5 {
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .border-white\/25 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-white\/25 {
   border-color: rgba(0, 0, 0, 0.18) !important;
 }
 
 /* Wallet Settings Modal tabs (data, network, display) */
-[data-ds-theme="light"] .ds-wallet-dashboard .border-b.border-white\/10 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-b.border-white\/10 {
   border-color: #d1ccc4 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard button.border-\[\#D4A017\],
-[data-ds-theme="light"] .ds-wallet-dashboard .border-\[\#D4A017\] {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-\[\#D4A017\],
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-\[\#D4A017\] {
   border-color: #c9a84c !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/35,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/40 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/35,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/40 {
   color: #6b665d !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard button.border-transparent.text-white\/40,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white\/40 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-transparent.text-white\/40,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/40 {
   color: #6b665d !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard button.border-transparent.text-white\/40:hover,
-[data-ds-theme="light"] .ds-wallet-dashboard .hover\:text-white\/70:hover {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-transparent.text-white\/40:hover,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .hover\:text-white\/70:hover {
   color: #0f0e0d !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard button.border-\[\#D4A017\].text-white,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-white {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-\[\#D4A017\].text-white,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white {
   color: #0f0e0d !important;
 }
 
 /* ── Form controls: html may stay .dark while modal is light (data-ds-theme) ─ */
-[data-ds-theme="light"] .ds-wallet-dashboard input.wallet-input,
-[data-ds-theme="light"] .ds-wallet-dashboard select.wallet-input {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard input.wallet-input,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard select.wallet-input {
   border-color: rgba(0, 0, 0, 0.22) !important;
   background-color: #ffffff !important;
   color: #0f0e0d !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard input.wallet-input::placeholder {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard input.wallet-input::placeholder {
   color: rgba(80, 75, 68, 0.52) !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard input.wallet-input:focus,
-[data-ds-theme="light"] .ds-wallet-dashboard select.wallet-input:focus {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard input.wallet-input:focus,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard select.wallet-input:focus {
   border-color: #c9a84c !important;
   box-shadow: 0 0 0 4px rgba(201, 168, 76, 0.22) !important;
 }
 
 /* ── Warning / caution callouts (yellow text on faint yellow was unreadable) ─ */
-[data-ds-theme="light"] .ds-wallet-dashboard .border-yellow-500\/20 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-yellow-500\/20 {
   border-color: rgba(120, 53, 15, 0.38) !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .border-yellow-500\/30 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .border-yellow-500\/30 {
   border-color: rgba(120, 53, 15, 0.48) !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-yellow-500\/10,
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-yellow-500\/8 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-yellow-500\/10,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-yellow-500\/8 {
   background-color: rgba(254, 243, 199, 0.92) !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .bg-yellow-500\/20 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-yellow-500\/20 {
   background-color: rgba(253, 230, 138, 0.65) !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-\[\#F8E7A1\] {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-\[\#F8E7A1\] {
   color: #713f12 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-yellow-100,
-[data-ds-theme="light"] .ds-wallet-dashboard .text-yellow-200 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-yellow-100,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-yellow-200 {
   color: #713f12 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-yellow-300 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-yellow-300 {
   color: #854d0e !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-yellow-400 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-yellow-400 {
   color: #a16207 !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-yellow-400\/90 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-yellow-400\/90 {
   color: #92400e !important;
 }
 
-[data-ds-theme="light"] .ds-wallet-dashboard .text-yellow-200\/90 {
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-yellow-200\/90 {
   color: #713f12 !important;
 }
 
 /* Portaled flyout menus (Headless UI portal — outside .ds-wallet-dashboard) */
-[data-ds-theme="light"].ds-wallet-menu {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) {
   border-color: rgba(0, 0, 0, 0.12) !important;
   background-color: #f5f4f1 !important;
   color: #0f0e0d;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .text-white,
-[data-ds-theme="light"].ds-wallet-menu .text-white\/90 {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .text-white,
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .text-white\/90 {
   color: #0f0e0d !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .text-white\/45,
-[data-ds-theme="light"].ds-wallet-menu .text-white\/70 {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .text-white\/45,
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .text-white\/70 {
   color: rgba(40, 35, 28, 0.65) !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu svg.text-white\/70,
-[data-ds-theme="light"].ds-wallet-menu svg.text-white\/90 {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) svg.text-white\/70,
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) svg.text-white\/90 {
   color: #57534e !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .bg-gray-700,
-[data-ds-theme="light"].ds-wallet-menu .bg-zinc-800 {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .bg-gray-700,
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .bg-zinc-800 {
   background-color: #e3dfd8 !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .hover\:bg-gray-800:hover,
-[data-ds-theme="light"].ds-wallet-menu .hover\:bg-zinc-900:hover {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .hover\:bg-gray-800:hover,
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .hover\:bg-zinc-900:hover {
   background-color: #e3dfd8 !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .text-red-300,
-[data-ds-theme="light"].ds-wallet-menu .text-red-300\/90 {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .text-red-300,
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .text-red-300\/90 {
   color: #c04a4a !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .hover\:bg-red-500\/10:hover {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .hover\:bg-red-500\/10:hover {
   background-color: rgba(192, 74, 74, 0.1) !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .bg-red-500\/20 {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .bg-red-500\/20 {
   background-color: rgba(192, 74, 74, 0.14) !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .text-yellow-200\/90 {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .text-yellow-200\/90 {
   color: #854d0e !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .hover\:bg-yellow-500\/10:hover {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .hover\:bg-yellow-500\/10:hover {
   background-color: rgba(201, 168, 76, 0.12) !important;
 }
 
-[data-ds-theme="light"].ds-wallet-menu .bg-yellow-500\/20 {
+:is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) .bg-yellow-500\/20 {
   background-color: rgba(201, 168, 76, 0.18) !important;
+}
+
+/* Opacity / black overlay utilities (Tailwind /90 /80 variants miss exact-class overrides) */
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-black\/30,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-black\/35,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-black\/40,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-black\/50,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-black\/60 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-900\/90,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-900\/60,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-950\/80,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-zinc-950\/60 {
+  background-color: #ede9e2 !important;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-\[\#0A0A0A\]\/95,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-\[\#0a0a0a\]\/95 {
+  background-color: rgba(245, 244, 241, 0.95) !important;
+}
+
+html[data-theme="light"] .wallet-input,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .wallet-input {
+  border-color: rgba(0, 0, 0, 0.22) !important;
+  background: #ffffff !important;
+  color: #0f0e0d !important;
+}
+
+html[data-theme="light"] .wallet-input::placeholder,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .wallet-input::placeholder {
+  color: rgba(80, 75, 68, 0.52) !important;
 }
 
 /* Wallet drawer — prevent flex clip (top quarter visible, rest black on mobile) */
