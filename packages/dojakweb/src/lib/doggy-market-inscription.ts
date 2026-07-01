@@ -4,7 +4,7 @@
  */
 
 import * as bitcoin from 'bitcoinjs-lib';
-import { normalizeDoginalInscriptionId } from '../utils/api';
+import { getIndexerApiBase, getWalletDataProviderConfig, normalizeDoginalInscriptionId } from '../utils/api';
 import { DOGE_NETWORK } from './doginal-psdt';
 
 export const DOGGY_INSCRIPTION_API_BASE = 'https://api.doggy.market/inscriptions/';
@@ -70,9 +70,15 @@ export async function fetchDoggyMarketInscription(
     ...(typeof process !== 'undefined' && process.env?.NODE_ENV === 'development'
       ? [`http://localhost:7070/api/inscriptions/${encodeURIComponent(id)}`]
       : []),
+  ];
+  const cfg = typeof window !== 'undefined' ? getWalletDataProviderConfig() : null;
+  if (cfg?.walletDataProvider === 'dogex' || cfg?.indexerApiBase) {
+    urls.push(`${getIndexerApiBase()}/api/compat/doggy/inscriptions/${encodeURIComponent(id)}`);
+  }
+  urls.push(
     `/api/doggy-inscription?id=${encodeURIComponent(id)}`,
     doggyMarketInscriptionJsonUrl(id),
-  ];
+  );
 
   for (const url of urls) {
     try {
