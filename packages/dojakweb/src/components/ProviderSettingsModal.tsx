@@ -147,7 +147,7 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
                 <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
                   {([
                     { key: 'mydoge' as const, label: t('providerModal.mydogeLabel'), url: getDefaultWalletDataProviderUrl('mydoge'), description: t('providerModal.mydogeDesc') },
-                    { key: 'wzrd' as const, label: t('providerModal.wzrdLabel'), url: getDefaultWalletDataProviderUrl('wzrd'), description: t('providerModal.wzrdDesc') },
+                    { key: 'dogex' as const, label: t('providerModal.dogexLabel'), url: getDefaultWalletDataProviderUrl('dogex'), description: t('providerModal.dogexDesc') },
                     {
                       key: 'commanddog' as const,
                       label: t('providerModal.commanddogLabel'),

@@ -53,7 +53,12 @@ interface ProviderConfig {
 
 // Helper to check if URL is for production API
 const isProductionAPI = (baseURL: string): boolean => {
-  return baseURL.includes('wzrd.dog');
+  return (
+    baseURL.includes('indexer.command.dog')
+    || baseURL.includes('dogex')
+    || baseURL.includes('dogenals.org')
+    || baseURL.includes('api.mydoge.com')
+  );
 };
 
 // Helper to check if URL is for local indexer

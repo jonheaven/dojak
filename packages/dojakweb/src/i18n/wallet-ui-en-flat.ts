@@ -50,8 +50,8 @@ export const WALLET_UI_EN_FLAT: Record<string, string> = {
   'providerModal.mydogeLabel': 'MyDoge API',
   'providerModal.mydogeDesc':
     'Default provider for wallet info, inscriptions, ÐogeTokens balances, and coins.',
-  'providerModal.wzrdLabel': 'WZRD Indexer',
-  'providerModal.wzrdDesc': 'Alternate indexer endpoint using the same route structure for now.',
+  'providerModal.dogexLabel': 'Dogex indexer',
+  'providerModal.dogexDesc': 'Self-hosted or federated dogex node — Era 1/Era 2 reads + /cdn/content.',
   'providerModal.commanddogLabel': 'Command.dog API',
   'providerModal.commanddogDesc':
     'Gateway at api.command.dog (or your tunnel URL). Balances/inscriptions are not MyDoge-parity yet — use for chain health + broadcast relay; set VITE_COMMAND_DOG_API_URL for dev.',

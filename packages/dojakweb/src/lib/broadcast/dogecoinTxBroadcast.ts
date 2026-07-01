@@ -1173,7 +1173,7 @@ export async function signOpReturnTransaction(
   if (!Number.isFinite(changeAmount) || changeAmount < 0) {
     throw new Error(
       `Fee calculation produced invalid change (${changeAmount}). ` +
-      'Please report this to the wzrd.dog team.',
+      'Please report this to the Dojak team.',
     );
   }
 

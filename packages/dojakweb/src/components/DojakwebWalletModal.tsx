@@ -88,7 +88,8 @@ import { decryptText, encryptText, pbkdf2IterationsForSecretStrength } from '../
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { toast } from 'sonner';
 import type { SeedMaterial, WalletData, WalletType } from '../types/wallet';
-import { walletDataApi, getWalletDataProviderConfig, setWalletDataProviderConfig } from '../utils/api';
+import { walletDataApi, getWalletDataProviderConfig, setWalletDataProviderConfig, getIndexerApiBase } from '../utils/api';
+import { fetchDogexIndexerHealth } from '../lib/dogex-indexer-health';
 import { browserRpcProxyAbsoluteUrl, fetchRpcDetailedHealth } from '../lib/rpc-proxy-client';
 import {
   testAllBroadcastRelayHealths,
@@ -300,7 +301,7 @@ function loadBroadcastConfig(): BroadcastConfig {
 /** Returns the label for the active data provider. */
 function getDataProviderInfo(t: DojakwebTranslate): { label: string } {
   const cfg = getWalletDataProviderConfig();
-  if (cfg.walletDataProvider === 'wzrd') return { label: t('modal.dataProvider.wzrd') };
+  if (cfg.walletDataProvider === 'dogex') return { label: t('modal.dataProvider.dogex') };
   if (cfg.walletDataProvider === 'commanddog') return { label: t('modal.dataProvider.commanddog') };
   return { label: t('modal.dataProvider.mydoge') };
 }
@@ -1044,6 +1045,15 @@ export function DojakwebWalletModal({
   const [settingsProvider, setSettingsProvider] = useState<WalletDataProviderType>('mydoge');
   const [settingsCustomUrl, setSettingsCustomUrl] = useState('');
   const [settingsMergeInuBits, setSettingsMergeInuBits] = useState(true);
+  const [settingsIndexerApiBase, setSettingsIndexerApiBase] = useState('');
+  const [settingsDogexCdnBase, setSettingsDogexCdnBase] = useState('');
+  type IndexerHealthRow = {
+    status: 'idle' | 'loading' | 'ok' | 'warn' | 'err';
+    message?: string;
+    latencyMs?: number;
+    tipHeight?: number;
+  };
+  const [indexerHealth, setIndexerHealth] = useState<IndexerHealthRow>({ status: 'idle' });
   const [settingsBroadcast, setSettingsBroadcast] = useState<BroadcastConfig>({
     broadcastProvider: 'auto', broadcastPriority: DEFAULT_BROADCAST_PRIORITY, rpcUrl: 'http://127.0.0.1:22555', rpcUser: '', rpcPass: '', tatumApiKey: '',
   });
@@ -1881,6 +1891,8 @@ export function DojakwebWalletModal({
     const dp = getWalletDataProviderConfig();
     setSettingsProvider(dp.walletDataProvider);
     setSettingsCustomUrl(dp.walletDataProviderUrl || '');
+    setSettingsIndexerApiBase(dp.indexerApiBase || '');
+    setSettingsDogexCdnBase(dp.dogexCdnBase || '');
     setSettingsMergeInuBits(dp.mergeInuBitsInscriptions !== false);
     setSettingsBroadcast(migrateBroadcastToAuto(loadBroadcastConfig()));
     setSettingsChainExplorer(loadDogeTxExplorerPreference());
@@ -1897,6 +1909,7 @@ export function DojakwebWalletModal({
     setRpcTestIbd(false);
     setRelayHealthByProvider({});
     setRelayTestAllBusy(false);
+    setIndexerHealth({ status: 'idle' });
     setSettingsTab('data');
     setStep('settings');
   };
@@ -2007,6 +2020,40 @@ export function DojakwebWalletModal({
     }
   }, [dogeRpcProxyDisplayUrl, settingsBroadcast.rpcUrl, settingsBroadcast.rpcUser, settingsBroadcast.rpcPass, t]);
 
+  const resolveSettingsIndexerBase = useCallback((): string => {
+    const custom = settingsIndexerApiBase.trim();
+    if (custom) {
+      if (/^https?:\/\//i.test(custom)) return custom.replace(/\/+$/, '');
+      if (typeof window !== 'undefined') {
+        return new URL(custom.startsWith('/') ? custom : `/${custom}`, window.location.origin).href.replace(/\/+$/, '');
+      }
+      return custom.replace(/\/+$/, '');
+    }
+    return getIndexerApiBase();
+  }, [settingsIndexerApiBase]);
+
+  const handleTestIndexerHealth = useCallback(async () => {
+    setIndexerHealth({ status: 'loading' });
+    const base = resolveSettingsIndexerBase();
+    const r = await fetchDogexIndexerHealth(base);
+    if (!r.ok) {
+      setIndexerHealth({
+        status: 'err',
+        latencyMs: r.latencyMs,
+        message: r.error || t('modal.settings.indexerHealthErr'),
+      });
+      return;
+    }
+    const tip = r.tipHeight != null ? t('modal.settings.indexerHealthTip', { height: String(r.tipHeight) }) : '';
+    const fp = r.fingerprintPreview ? ` · ${r.fingerprintPreview}…` : '';
+    setIndexerHealth({
+      status: r.healthy ? 'ok' : 'warn',
+      latencyMs: r.latencyMs,
+      tipHeight: r.tipHeight,
+      message: `${r.healthy ? t('modal.settings.indexerHealthOk') : t('modal.settings.indexerHealthDegraded')}${tip}${fp}`,
+    });
+  }, [resolveSettingsIndexerBase, t]);
+
   const pinRpcFirstInBroadcastOrder = useCallback(() => {
     setSettingsBroadcast(prev => {
       const rest = normalizeBroadcastPriority(prev.broadcastPriority).filter((x) => x !== 'rpc');
@@ -2040,6 +2087,8 @@ export function DojakwebWalletModal({
     setWalletDataProviderConfig({
       walletDataProvider: settingsProvider,
       walletDataProviderUrl: settingsCustomUrl || undefined,
+      indexerApiBase: settingsIndexerApiBase.trim() || undefined,
+      dogexCdnBase: settingsDogexCdnBase.trim() || undefined,
       mergeInuBitsInscriptions: settingsMergeInuBits,
     });
     saveBroadcastConfig(
@@ -2277,7 +2326,7 @@ export function DojakwebWalletModal({
       // Build dogepsdt URI (self-contained, for QR) and share URL (for copy/link)
       const dogePsdtUri = encodeBase64PsdtToDogePsdtUri(signedPsbt);
       setListingDogePsbtUri(dogePsdtUri);
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://wzrd.dog';
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://dogenals.org';
       const shareUrl = buildShareUrl(baseUrl, insData.id, signedPsbt);
       setListingShareUrl(shareUrl);
       console.log('[Listing] share artifacts created', {
@@ -5449,7 +5498,7 @@ export function DojakwebWalletModal({
                               <div className="flex gap-2">
                                 {([
                                   { id: 'mydoge' as const, label: 'MyDoge', hint: 'api.mydoge.com' },
-                                  { id: 'wzrd' as const, label: 'WZRD', hint: 'api.wzrd.dog' },
+                                  { id: 'dogex' as const, label: 'Dogex', hint: t('modal.dataProvider.dogexHint') },
                                   {
                                     id: 'commanddog' as const,
                                     label: 'Command.dog',
@@ -5481,6 +5530,66 @@ export function DojakwebWalletModal({
                                 placeholder="Custom API URL (optional)"
                                 className={cx(INPUT_CLASS, 'mt-2 text-xs')}
                               />
+                              {(settingsProvider === 'dogex' || settingsProvider === 'commanddog') && (
+                                <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                                  <div className="text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                                    {t('modal.settings.indexerSectionTitle')}
+                                  </div>
+                                  <label className="block space-y-1">
+                                    <span className="text-[11px] text-white/50">{t('modal.settings.indexerApiLabel')}</span>
+                                    <input
+                                      value={settingsIndexerApiBase}
+                                      onChange={(e) => setSettingsIndexerApiBase(e.target.value)}
+                                      placeholder={typeof window !== 'undefined' ? new URL('/__indexer', window.location.origin).href : '/__indexer'}
+                                      className={cx(INPUT_CLASS, 'text-xs font-mono')}
+                                    />
+                                    <span className="block text-[10px] text-white/30">{t('modal.settings.indexerApiHint')}</span>
+                                  </label>
+                                  {settingsProvider === 'dogex' && (
+                                    <label className="block space-y-1">
+                                      <span className="text-[11px] text-white/50">{t('modal.settings.dogexCdnLabel')}</span>
+                                      <input
+                                        value={settingsDogexCdnBase}
+                                        onChange={(e) => setSettingsDogexCdnBase(e.target.value)}
+                                        placeholder={t('modal.settings.dogexCdnPlaceholder')}
+                                        className={cx(INPUT_CLASS, 'text-xs font-mono')}
+                                      />
+                                      <span className="block text-[10px] text-white/30">{t('modal.settings.dogexCdnHint')}</span>
+                                    </label>
+                                  )}
+                                  <div className="flex items-center gap-2 pt-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleTestIndexerHealth()}
+                                      disabled={indexerHealth.status === 'loading'}
+                                      className="rounded border border-white/15 bg-white/[0.06] px-2 py-1 text-[10px] font-semibold text-white/55 transition hover:border-[#D4A017]/40 hover:text-white/85 disabled:opacity-40"
+                                    >
+                                      {indexerHealth.status === 'loading'
+                                        ? t('modal.settings.indexerHealthTesting')
+                                        : t('modal.settings.indexerHealthTest')}
+                                    </button>
+                                    {indexerHealth.status === 'ok' && (
+                                      <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-400">
+                                        <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden />
+                                        {indexerHealth.latencyMs != null ? `${indexerHealth.latencyMs}ms` : ''}
+                                        {indexerHealth.message ? ` · ${indexerHealth.message}` : ''}
+                                      </span>
+                                    )}
+                                    {indexerHealth.status === 'warn' && (
+                                      <span className="flex items-center gap-1.5 text-[10px] font-medium text-amber-300" title={indexerHealth.message}>
+                                        <span className="h-2 w-2 rounded-full bg-amber-300" aria-hidden />
+                                        {indexerHealth.message}
+                                      </span>
+                                    )}
+                                    {indexerHealth.status === 'err' && (
+                                      <span className="flex items-center gap-1.5 text-[10px] font-medium text-red-300" title={indexerHealth.message}>
+                                        <span className="h-2 w-2 rounded-full bg-red-400" aria-hidden />
+                                        {indexerHealth.message ?? '✗'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             {/* Price sources */}

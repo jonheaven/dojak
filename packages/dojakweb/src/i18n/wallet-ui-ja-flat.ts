@@ -49,8 +49,8 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
   'providerModal.mydogeLabel': 'MyDoge API',
   'providerModal.mydogeDesc':
     'ウォレット情報、inscription、DRC-20、dune、UTXO の既定プロバイダー。',
-  'providerModal.wzrdLabel': 'WZRD インデクサー',
-  'providerModal.wzrdDesc': '当面は同じルート構造の代替インデクサー。',
+  'providerModal.dogexLabel': 'Dogex インデクサー',
+  'providerModal.dogexDesc': '自前または連合 dogex — Era 1/2 読取 + /cdn/content。',
   'providerModal.commanddogLabel': 'Command.dog API',
   'providerModal.commanddogDesc':
     'api.command.dog（またはトンネル URL）のゲートウェイ。残高・インスクリプションは MyDoge 互換未実装 — チェーン健全性とブロードキャスト用。開発は VITE_COMMAND_DOG_API_URL。',

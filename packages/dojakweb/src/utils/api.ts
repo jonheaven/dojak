@@ -2,10 +2,11 @@
 import axios from 'axios';
 import { getEnv } from './env';
 
-export type WalletDataProviderType = 'mydoge' | 'wzrd' | 'commanddog';
+export type WalletDataProviderType = 'mydoge' | 'dogex' | 'commanddog';
 
 function normalizeWalletDataProvider(value: unknown): WalletDataProviderType {
-  if (value === 'wzrd') return 'wzrd';
+  // Legacy: wzrd.dog alias → dogex indexer (MyDoge-compat routes on dogex host)
+  if (value === 'wzrd' || value === 'dogex') return 'dogex';
   if (value === 'commanddog') return 'commanddog';
   return 'mydoge';
 }
@@ -26,6 +27,8 @@ export interface WalletDataProviderConfig {
    * with the primary provider. InuBits indexes text/plain and other types MyDoge may omit.
    */
   mergeInuBitsInscriptions: boolean;
+  /** Public dogex CDN origin for inscription thumbnails (e.g. https://cdn.example.com). */
+  dogexCdnBase?: string;
 }
 
 const WALLET_PROVIDER_STORAGE_KEY = 'dojakweb-wallet-data-provider';
@@ -33,7 +36,6 @@ const WALLET_PROVIDER_STORAGE_KEY = 'dojakweb-wallet-data-provider';
 /** Fired on `window` after `setWalletDataProviderConfig` (same-tab; `storage` only fires in other tabs). */
 export const WALLET_DATA_PROVIDER_CHANGED_EVENT = 'dojakweb-wallet-data-provider-changed';
 const DEFAULT_MYDOGE_PROVIDER_URL = 'https://api.mydoge.com';
-const DEFAULT_WZRD_PROVIDER_URL = 'https://api.wzrd.dog';
 const INUBITS_WALLET_INSCRIPTIONS_PATH = '/api/wallet/inscriptions';
 
 type InubitsWindow = Window & {
@@ -249,10 +251,27 @@ export async function fetchCommandDogTxMempoolEntry(txid: string): Promise<Comma
 }
 
 export const getDefaultWalletDataProviderUrl = (provider: WalletDataProviderType): string => {
-  if (provider === 'wzrd') return DEFAULT_WZRD_PROVIDER_URL;
+  if (provider === 'dogex') return getIndexerApiBase();
   if (provider === 'commanddog') return getCommandDogApiBaseUrl();
   return DEFAULT_MYDOGE_PROVIDER_URL;
 };
+
+/** CDN base for dogex `/cdn/content/:id` (env or same as indexer). */
+export function getDogexCdnBase(): string {
+  if (typeof window !== 'undefined') {
+    const cfg = getWalletDataProviderConfig();
+    if (cfg.dogexCdnBase) return normalizeBaseUrl(cfg.dogexCdnBase);
+  }
+  const fromEnv = normalizeBaseUrl(getEnv('VITE_DOGEX_CDN_BASE', '') || getEnv('NEXT_PUBLIC_DOGEX_CDN_BASE', ''));
+  if (fromEnv) return fromEnv;
+  return getIndexerApiBase();
+}
+
+export function dogexCdnContentUrl(inscriptionId: string): string {
+  const base = getDogexCdnBase().replace(/\/+$/, '');
+  const id = inscriptionId.trim();
+  return `${base}/cdn/content/${encodeURIComponent(id)}`;
+}
 
 export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
   if (typeof window === 'undefined') {
@@ -280,8 +299,16 @@ export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
     const mergeInuBitsInscriptions = parsed.mergeInuBitsInscriptions !== false;
     const indexerApiBase = normalizeBaseUrl(parsed.indexerApiBase) || undefined;
     const commandDogApiBase = normalizeBaseUrl(parsed.commandDogApiBase) || undefined;
+    const dogexCdnBase = normalizeBaseUrl(parsed.dogexCdnBase) || undefined;
 
-    return { walletDataProvider, walletDataProviderUrl, mergeInuBitsInscriptions, indexerApiBase, commandDogApiBase };
+    return {
+      walletDataProvider,
+      walletDataProviderUrl,
+      mergeInuBitsInscriptions,
+      indexerApiBase,
+      commandDogApiBase,
+      dogexCdnBase,
+    };
   } catch {
     return {
       walletDataProvider: 'mydoge',
@@ -300,16 +327,27 @@ export const setWalletDataProviderConfig = (config: WalletDataProviderConfig) =>
   const mergeInuBitsInscriptions = config.mergeInuBitsInscriptions !== false;
   const indexerApiBase = normalizeBaseUrl(config.indexerApiBase) || undefined;
   const commandDogApiBase = normalizeBaseUrl(config.commandDogApiBase) || undefined;
+  const dogexCdnBase = normalizeBaseUrl(config.dogexCdnBase) || undefined;
 
   window.localStorage.setItem(
     WALLET_PROVIDER_STORAGE_KEY,
-    JSON.stringify({ walletDataProvider, walletDataProviderUrl, mergeInuBitsInscriptions, indexerApiBase, commandDogApiBase })
+    JSON.stringify({
+      walletDataProvider,
+      walletDataProviderUrl,
+      mergeInuBitsInscriptions,
+      indexerApiBase,
+      commandDogApiBase,
+      dogexCdnBase,
+    })
   );
   window.dispatchEvent(new CustomEvent(WALLET_DATA_PROVIDER_CHANGED_EVENT));
 };
 
 const getWalletProviderBaseUrl = () => {
   const config = getWalletDataProviderConfig();
+  if (config.walletDataProvider === 'dogex') {
+    return normalizeBaseUrl(config.indexerApiBase || config.walletDataProviderUrl) || getIndexerApiBase();
+  }
   return normalizeBaseUrl(config.walletDataProviderUrl)
     || getDefaultWalletDataProviderUrl(config.walletDataProvider);
 };

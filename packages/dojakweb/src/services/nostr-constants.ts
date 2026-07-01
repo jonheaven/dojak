@@ -21,4 +21,4 @@ export const NOSTR_BACKUP_RELAYS = NOSTR_ALL_RELAYS.filter(r => r !== NOSTR_RELA
 export const NOSTR_ORDER_KIND  = 802;
 export const NOSTR_CANCEL_KIND = 803; // New: for cancelling listings
 export const DOGE_NETWORK_NAME = 'dogecoin-mainnet';
-export const EXCHANGE_NAME     = 'wzrd.dog';
+export const EXCHANGE_NAME     = 'dogenals.org';

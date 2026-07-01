@@ -300,7 +300,7 @@ export const BLOCKCHAIR_URL     = 'https://api.blockchair.com/dogecoin';
 export const NOSTR_RELAY_URL    = 'wss://relay.damus.io';
 export const NOSTR_BACKUP_RELAYS = ['wss://nos.lol', 'wss://relay.nostr.band'];
 export const NOSTR_ORDER_KIND   = 802;
-export const EXCHANGE_NAME      = 'wzrd.dog';
+export const EXCHANGE_NAME      = 'dogenals.org';
 export const DOGE_NETWORK_NAME  = 'dogecoin-mainnet';
 
 // ── Utilities ────────────────────────────────────────────────────────────────

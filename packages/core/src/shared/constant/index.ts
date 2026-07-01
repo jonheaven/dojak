@@ -36,7 +36,9 @@ const getProductionApiEndpoint = () => {
     return override;
   }
 
-  return 'https://api.wzrd.dog';
+  return process.env.DOJAK_INDEXER_API_BASE?.trim()
+    || process.env.DOJAK_API_BASE_URL?.trim()
+    || 'https://indexer.command.dog';
 };
 
 export const API_ENDPOINTS = {
