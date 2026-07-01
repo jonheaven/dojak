@@ -18,8 +18,18 @@ This file is for **agents and engineers already working inside the Dojak workspa
 
 ## 2. Shell providers (when touching the web module)
 
-- **`DojakwebProvider`** — wallet + locale + fiat + theme + Ð𝕏 bridge (see source for the full tree).
-- Prefer the barrel **`src/index.ts`** for exports consumed by **first-party proprietary dApps** (extension, `apps/web`, **[dojakweb-demo](https://github.com/jonheaven/dojakweb-demo)**, other linked internal hosts).
+- **`DojakWalletProvider`** (`@dojak/web/wallet`) — **preferred for embed hosts** (drok, dogenals web-com, etc.): Dojak + MyDoge + SpookyDoge drawer without Charms/LiveActivity/DoginalDrawer stacks. Default `features: { dogeosEvm: false }`.
+- **`DojakwebProvider`** — full stack (legacy / inscribe-heavy apps). Use `@dojak/web` barrel only when you need Treats, Dunes, Charms, Nostr, etc.
+
+### Embed import (host dApps)
+
+```tsx
+import { DojakWalletProvider, ConnectWalletButton, WalletDrawer, useUnifiedWallet } from '@dojak/web/wallet';
+import '@dojak/web/wallet.css';
+```
+
+Build: `pnpm --filter @dojak/web run build:wallet` → `dist/wallet.js` (prebundled; host supplies React only).  
+Full lib + wallet: `pnpm --filter @dojak/web run build:lib`.
 
 ---
 

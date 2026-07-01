@@ -18,6 +18,10 @@ export type { DrawerData } from './contexts/DoginalDrawerContext';
 export { DojakwebProvider } from './providers/DojakwebProvider';
 export type { DojakwebProviderProps } from './providers/DojakwebProvider';
 export {
+  DojakWalletProvider,
+  type DojakWalletProviderProps,
+} from './providers/DojakWalletProvider';
+export {
   DojakwebFeaturesProvider,
   useDojakwebFeatures,
   type DojakwebFeatures,

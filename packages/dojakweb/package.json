@@ -12,11 +12,18 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./dojakweb-host.css": "./dojakweb-host.css"
+    "./wallet": {
+      "import": "./dist/wallet.js",
+      "types": "./wallet.d.ts"
+    },
+    "./dojakweb-host.css": "./dojakweb-host.css",
+    "./wallet.css": "./dojakweb-host.css"
   },
   "scripts": {
     "build": "vite build --config vite.npm.config.ts",
-    "build:lib": "vite build --config vite.lib.config.ts && node scripts/verify-lib-exports.mjs",
+    "build:lib": "vite build --config vite.lib.config.ts && vite build --config vite.wallet.config.ts && node scripts/verify-lib-exports.mjs && node scripts/verify-wallet-exports.mjs",
+    "build:wallet": "vite build --config vite.wallet.config.ts && node scripts/verify-wallet-exports.mjs",
+    "build:wallet-web-core": "pnpm --filter @dojak/core run build:wallet-web",
     "build:npm": "vite build --config vite.npm.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "preview": "vite preview"
