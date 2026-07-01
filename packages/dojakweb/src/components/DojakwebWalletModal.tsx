@@ -39,6 +39,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
 import { WalletMenuItems } from './wallet/WalletMenuItems';
+import { WalletAccountSwitcherPanel } from './wallet/WalletAccountSwitcherPanel';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { walletCredentialInputProps, walletSecretInputProps } from '../lib/wallet-secret-input';
 import {
@@ -548,6 +549,8 @@ export function DojakwebWalletModal({
     signMessage,
     availableWallets,
     setActiveWallet,
+    switchAccount,
+    accountIndex: unifiedAccountIndex,
   } = useUnifiedWallet();
   const { t, locale: stashLocale, setLocale: setStashLocale } = useDojakwebI18n();
   const fiatPrefs = useDojakwebFiatOptional();
@@ -1670,6 +1673,56 @@ export function DojakwebWalletModal({
     }
   };
 
+  const handleAddBrowserAccount = async () => {
+    if (!isBrowserWallet || !activePassword) {
+      toast.error(t('modal.toast.reunlockForAccountSwitch'));
+      return;
+    }
+    const groups = localSeedWalletGroups;
+    const gi = findSeedGroupIndexForAddress(groups, browser.wallet?.address ?? activeAddress);
+    const group = groups[gi];
+    if (!group) return;
+    const maxIdx = group.accounts.reduce((m, a) => Math.max(m, a.accountIndex ?? 0), 0);
+    const nextIdx = maxIdx + 1;
+    setIsBusy(true);
+    setError(null);
+    try {
+      const switched = await browser.switchAccount(nextIdx, activePassword);
+      await browser.connect(switched);
+      setWalletNameDraft(switched.nickname?.trim() || '');
+      await refreshSavedLocalWallets();
+      await browser.refreshBalance({ silent: true });
+      setWalletSwitcherModalOpen(false);
+      toast.success(t('modal.toast.accountAdded', { index: String(nextIdx) }));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : t('modal.errors.connectWallet'));
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleLedgerAccountDelta = async (delta: -1 | 1) => {
+    if (walletType !== 'ledger') return;
+    const current = unifiedAccountIndex ?? 0;
+    const nextIdx = current + delta;
+    if (nextIdx < 0) return;
+    setIsBusy(true);
+    setError(null);
+    try {
+      await switchAccount(nextIdx);
+      await refreshBalance({ silent: true });
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : t('modal.errors.connectWallet'));
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!walletSwitcherModalOpen) return;
+    void refreshSavedLocalWallets();
+  }, [walletSwitcherModalOpen, refreshSavedLocalWallets]);
+
   const handleSwitchBrowserAccount = async (delta: -1 | 1) => {
     if (!isBrowserWallet || !activePassword) {
       toast.error(t('modal.toast.reunlockForAccountSwitch'));
@@ -2535,93 +2588,29 @@ export function DojakwebWalletModal({
     return () => document.removeEventListener('keydown', onKey, true);
   }, [mode, walletSwitcherModalOpen]);
 
-  const renderWalletSwitcherGroups = () => {
-    const allGroups = [
-      {
-        key: 'local' as const,
-        label: t('modal.walletSwitcher.tab.local'),
-        hint: t('modal.walletSwitcher.group.localHint'),
-        items: localWallets,
-        HeaderIcon: CpuChipIcon,
-      },
-      {
-        key: 'ext' as const,
-        label: t('modal.walletSwitcher.tab.ext'),
-        hint: t('modal.walletSwitcher.group.extHint'),
-        items: extensionWallets,
-        HeaderIcon: WalletIcon,
-      },
-      {
-        key: 'hw' as const,
-        label: t('modal.walletSwitcher.tab.hw'),
-        hint: t('modal.walletSwitcher.group.hwHint'),
-        items: hardwareWallets,
-        HeaderIcon: Usb,
-      },
-    ].filter((g) => g.items.length > 0);
-
-    return (
-      <div className="space-y-5">
-        {allGroups.map((group) => {
-          const GroupHeaderIcon = group.HeaderIcon;
-          return (
-            <div key={group.key} className="space-y-2" title={group.hint}>
-              <div className="flex items-center gap-2 px-0.5">
-                <GroupHeaderIcon className="h-4 w-4 shrink-0 text-white/40" aria-hidden="true" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
-                  {group.label}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {group.items.map((wallet) => (
-                  <button
-                    key={wallet.type}
-                    type="button"
-                    onClick={() => {
-                      if (!wallet.isActive) {
-                        setActiveWallet(wallet.type);
-                        setWalletSwitcherModalOpen(false);
-                      }
-                    }}
-                    className={cx(
-                      'flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition',
-                      wallet.isActive
-                        ? 'border-[#FCD34D] bg-[#FCD34D]/10 text-white'
-                        : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
-                    )}
-                    aria-pressed={wallet.isActive}
-                    title={t('modal.walletSwitcher.useAsActive', { label: wallet.label })}
-                  >
-                    {(() => {
-                      const src = getWalletSourceIndicator(wallet.type, t);
-                      return (
-                        <span className={cx('h-2.5 w-2.5 shrink-0 rounded-full', wallet.isActive ? 'bg-[#FCD34D]' : src.dot)} />
-                      );
-                    })()}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">{wallet.label}</span>
-                      <span className="block text-xs text-white/50">
-                        {wallet.address ? truncateAddress(wallet.address) : t('modal.walletSwitcher.connected')}
-                      </span>
-                    </span>
-                    {wallet.isActive ? (
-                      <span className="shrink-0 rounded border border-[#FCD34D]/30 bg-[#FCD34D]/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[#FCD34D]">
-                        {t('modal.walletSwitcher.active')}
-                      </span>
-                    ) : (
-                      <span className="shrink-0 text-xs text-white/30 transition group-hover:text-white/60">
-                        Switch →
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+  const renderWalletSwitcherGroups = () => (
+    <WalletAccountSwitcherPanel
+      localSeedGroups={localSeedWalletGroups}
+      extensionWallets={extensionWallets}
+      hardwareWallets={hardwareWallets}
+      activeAddress={activeAddress}
+      walletType={walletType}
+      isBusy={isBusy}
+      canAddHdAccount={isBrowserWallet && Boolean(activePassword && browser.wallet?.seedFingerprint)}
+      ledgerAccountIndex={walletType === 'ledger' ? unifiedAccountIndex : null}
+      onSelectLocalAddress={async (targetAddress) => {
+        await handleConnectSavedLocalWallet(targetAddress);
+        setWalletSwitcherModalOpen(false);
+      }}
+      onAddHdAccount={handleAddBrowserAccount}
+      onSelectWalletType={(type) => {
+        setActiveWallet(type);
+        setWalletSwitcherModalOpen(false);
+      }}
+      onLedgerAccountDelta={handleLedgerAccountDelta}
+      t={t}
+    />
+  );
 
   const words = (pendingSeed?.mnemonic ?? '').split(/\s+/).filter(Boolean);
   const revealedWords = showSecretPhrase ? words : [];
@@ -2855,42 +2844,54 @@ export function DojakwebWalletModal({
                             <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
                               {t('modal.savedWallets.heading')}
                             </div>
-                            <div className="space-y-2">
-                              {savedLocalWallets.map((item) => (
-                                <button
-                                  key={item.address}
-                                  type="button"
-                                  onClick={() => handleConnectSavedLocalWallet(item.address)}
-                                  className={cx(
-                                    'flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition',
-                                    selectedLocalWalletAddress === item.address
-                                      ? 'border-yellow-400/50 bg-yellow-400/10'
-                                      : 'border-white/10 bg-white/5 hover:border-white/25'
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className="shrink-0 relative">
-                                      <KeyIcon className={cx('h-5 w-5', (item as any).encrypted ? 'text-white/80' : 'text-white/25')} />
-                                      {(item as any).encrypted && (
-                                        <LockClosedIcon className="absolute -bottom-1 -right-1.5 h-3 w-3 text-yellow-400/90" />
+                            <div className="space-y-3">
+                              {localSeedWalletGroups.map((group) => (
+                                <div key={group.id} className="space-y-2">
+                                  {group.accounts.length > 1 ? (
+                                    <div className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+                                      {group.accounts[0]?.nickname?.trim() ||
+                                        t('modal.walletSwitcher.seedGroup', {
+                                          count: String(group.accounts.length),
+                                        })}
+                                    </div>
+                                  ) : null}
+                                  {group.accounts.map((item) => (
+                                    <button
+                                      key={item.address}
+                                      type="button"
+                                      onClick={() => handleConnectSavedLocalWallet(item.address)}
+                                      className={cx(
+                                        'flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition',
+                                        selectedLocalWalletAddress === item.address
+                                          ? 'border-yellow-400/50 bg-yellow-400/10'
+                                          : 'border-white/10 bg-white/5 hover:border-white/25'
                                       )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="text-sm font-semibold text-white truncate">
-                                        {item.nickname?.trim() || `${item.address.slice(0, 8)}...${item.address.slice(-6)}`}
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="shrink-0 relative">
+                                          <KeyIcon className={cx('h-5 w-5', (item as any).encrypted ? 'text-white/80' : 'text-white/25')} />
+                                          {(item as any).encrypted && (
+                                            <LockClosedIcon className="absolute -bottom-1 -right-1.5 h-3 w-3 text-yellow-400/90" />
+                                          )}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <div className="text-sm font-semibold text-white truncate">
+                                            {item.nickname?.trim() || `${item.address.slice(0, 8)}...${item.address.slice(-6)}`}
+                                          </div>
+                                          <div className="text-[11px] text-white/55">
+                                            {(item as any).encrypted ? t('modal.savedWallets.encrypted') : t('modal.savedWallets.passwordless')}
+                                            {typeof item.accountIndex === 'number'
+                                              ? ` · ${t('modal.savedWallets.account', { index: String(item.accountIndex) })}`
+                                              : ''}
+                                          </div>
+                                        </div>
                                       </div>
-                                      <div className="text-[11px] text-white/55">
-                                        {(item as any).encrypted ? t('modal.savedWallets.encrypted') : t('modal.savedWallets.passwordless')}
-                                        {typeof item.accountIndex === 'number'
-                                          ? ` · ${t('modal.savedWallets.account', { index: String(item.accountIndex) })}`
-                                          : ''}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <span className="shrink-0 rounded-full border border-[#C8A84B]/40 bg-[#C8A84B]/15 px-3 py-1 text-xs font-semibold text-[#D4A84B] transition hover:bg-[#C8A84B]/25">
-                                    {t('modal.savedWallets.connect')}
-                                  </span>
-                                </button>
+                                      <span className="shrink-0 rounded-full border border-[#C8A84B]/40 bg-[#C8A84B]/15 px-3 py-1 text-xs font-semibold text-[#D4A84B] transition hover:bg-[#C8A84B]/25">
+                                        {t('modal.savedWallets.connect')}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
                               ))}
                             </div>
                           </div>

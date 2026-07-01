@@ -505,6 +505,10 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.walletSwitcher.active': 'アクティブ',
   'modal.walletSwitcher.closeAria': 'ウォレット切り替えを閉じる',
   'modal.walletSwitcher.useAsActive': '{label} をアクティブなウォレットにする',
+  'modal.walletSwitcher.seedGroup': 'HD ウォレット（{count} アカウント）',
+  'modal.walletSwitcher.accountsInSeed': '同一シードから {count} アカウント',
+  'modal.walletSwitcher.addAccount': 'アカウントを追加',
+  'modal.walletSwitcher.empty': '接続中のウォレットがありません。',
   'modal.walletSource.local': 'ローカル',
   'modal.walletSource.mydoge': 'MyDoge',
   'modal.walletSource.dojak': 'Dojak',
@@ -541,6 +545,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.toast.biometricSkipped': '生体認証の登録をスキップしたか、利用できませんでした。',
   'modal.toast.reunlockForAccountSwitch':
     'HD アカウントを切り替えるには、まずウォレットのロックを解除してください。',
+  'modal.toast.accountAdded': 'アカウント #{index} の準備ができました。',
   'modal.toast.wrongPassword': 'パスワードが正しくありません。もう一度お試しください。',
   'modal.toast.unlockFailed': 'ウォレットのロックを解除できませんでした。',
   'modal.toast.walletDisconnected': 'ウォレットを切断しました。下から保存済みウォレットを再接続できます。',
