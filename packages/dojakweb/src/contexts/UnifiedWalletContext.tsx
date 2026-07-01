@@ -912,8 +912,11 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   }, [browser.connected, isInitialized, walletType]);
 
   const connect = useCallback(
-    async (type: WalletType) => {
-      await connectWallet(type);
+    async (
+      type: WalletType,
+      options?: { ledgerPrompt?: boolean; ledgerVerify?: boolean }
+    ) => {
+      await connectWallet(type, options);
     },
     [connectWallet]
   );

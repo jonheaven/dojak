@@ -58,6 +58,26 @@ type JsonRecord = Record<string, unknown>;
 type SignResultKey = 'signed' | 'signature';
 
 export class DogewatchWallet {
+  /** Web Serial allows one open session per port — serialize across all instances. */
+  private static serialTail: Promise<unknown> = Promise.resolve();
+
+  private static runExclusive<T>(work: () => Promise<T>): Promise<T> {
+    const next = DogewatchWallet.serialTail.then(work, work);
+    DogewatchWallet.serialTail = next.then(
+      () => undefined,
+      () => undefined
+    );
+    return next;
+  }
+
+  /** Shown on the watch sign-review screen (origin + dApp label). */
+  private static signContext(): { origin: string; label: string } {
+    if (typeof window === 'undefined') {
+      return { origin: 'dojakweb', label: 'dojakweb' };
+    }
+    return { origin: window.location.origin, label: 'dojakweb' };
+  }
+
   private port: DogewatchSerialPort | null = null;
   private lineReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   private readBuffer = '';
@@ -79,53 +99,56 @@ export class DogewatchWallet {
 
   /** Lightweight USB probe — does not require an unlocked wallet. */
   static async probeLink(options?: { promptUser?: boolean }): Promise<DogewatchProbeSnapshot> {
-    const serialSupported = await DogewatchWallet.isSupported();
-    const checkedAt = Date.now();
-    if (!serialSupported) {
-      return {
-        serialSupported: false,
-        authorizedPorts: 0,
-        status: 'unsupported',
-        ping: null,
-        checkedAt,
-      };
-    }
+    return DogewatchWallet.runExclusive(async () => {
+      const serialSupported = await DogewatchWallet.isSupported();
+      const checkedAt = Date.now();
+      if (!serialSupported) {
+        return {
+          serialSupported: false,
+          authorizedPorts: 0,
+          status: 'unsupported',
+          ping: null,
+          checkedAt,
+        };
+      }
 
-    const authorizedPorts = await DogewatchWallet.authorizedPortCount();
-    if (authorizedPorts === 0 && !options?.promptUser) {
+      const authorizedPorts = await DogewatchWallet.authorizedPortCount();
+      if (authorizedPorts === 0 && !options?.promptUser) {
+        return {
+          serialSupported: true,
+          authorizedPorts: 0,
+          status: 'idle',
+          ping: null,
+          checkedAt,
+        };
+      }
+
+      const client = new DogewatchWallet();
+      const ping = await client.pingStatusUnlocked({ promptUser: options?.promptUser ?? false });
+      await client.disconnectUnlocked();
+      await sleep(200);
+
+      let status: DogewatchLinkStatus = 'offline';
+      if (ping.ok) {
+        if (!ping.wallet) {
+          status = 'no_wallet';
+        } else if (!ping.unlocked) {
+          status = 'locked';
+        } else {
+          status = 'ready';
+        }
+      } else if (authorizedPorts > 0) {
+        status = 'authorized';
+      }
+
       return {
         serialSupported: true,
-        authorizedPorts: 0,
-        status: 'idle',
-        ping: null,
+        authorizedPorts: Math.max(authorizedPorts, options?.promptUser ? 1 : 0),
+        status,
+        ping,
         checkedAt,
       };
-    }
-
-    const client = new DogewatchWallet();
-    const ping = await client.pingStatus({ promptUser: options?.promptUser ?? false });
-    await client.disconnect();
-
-    let status: DogewatchLinkStatus = 'offline';
-    if (ping.ok) {
-      if (!ping.wallet) {
-        status = 'no_wallet';
-      } else if (!ping.unlocked) {
-        status = 'locked';
-      } else {
-        status = 'ready';
-      }
-    } else if (authorizedPorts > 0) {
-      status = 'authorized';
-    }
-
-    return {
-      serialSupported: true,
-      authorizedPorts: Math.max(authorizedPorts, options?.promptUser ? 1 : 0),
-      status,
-      ping,
-      checkedAt,
-    };
+    });
   }
 
   getAccount(): DogewatchAccount | null {
@@ -134,6 +157,10 @@ export class DogewatchWallet {
 
   /** Ping device over USB (works when wallet is locked — use for diagnostics). */
   async pingStatus(options?: { promptUser?: boolean }): Promise<DogewatchPingResult> {
+    return DogewatchWallet.runExclusive(async () => this.pingStatusUnlocked(options));
+  }
+
+  private async pingStatusUnlocked(options?: { promptUser?: boolean }): Promise<DogewatchPingResult> {
     try {
       await this.ensureOpen(options?.promptUser ?? false);
       const ping = await this.sendCommand({ cmd: 'ping' });
@@ -158,19 +185,112 @@ export class DogewatchWallet {
   }
 
   async fetchAddress(): Promise<string> {
-    await this.ensureOpen(false);
-    const resp = await this.sendCommand({ cmd: 'get_address' });
-    if (!resp.ok) {
-      throw new Error(String(resp.error || 'get_address failed'));
-    }
-    const address = String(resp.address || '');
-    if (!address) {
-      throw new Error('Dogewatch did not return an address');
-    }
-    return address;
+    return DogewatchWallet.runExclusive(async () => {
+      await this.ensureOpen(false);
+      const resp = await this.sendCommand({ cmd: 'get_address' });
+      if (!resp.ok) {
+        throw new Error(String(resp.error || 'get_address failed'));
+      }
+      const address = String(resp.address || '');
+      if (!address) {
+        throw new Error('Dogewatch did not return an address');
+      }
+      return address;
+    });
   }
 
   async connect(options?: { promptUser?: boolean }): Promise<DogewatchAccount> {
+    return DogewatchWallet.runExclusive(async () => {
+      const promptUser = options?.promptUser ?? true;
+      await this.ensureOpen(promptUser);
+
+      const ping = await this.sendCommand({ cmd: 'ping' });
+      if (!ping.ok) {
+        throw new Error(String(ping.error || 'Dogewatch did not respond'));
+      }
+      if (!ping.wallet) {
+        throw new Error('No wallet on Dogewatch — create one on the watch first');
+      }
+      if (!ping.unlocked) {
+        throw new Error('Unlock Dogewatch with your PIN before connecting');
+      }
+
+      const account: DogewatchAccount = {
+        address: String(ping.address || ''),
+        walletId: ping.wallet_id != null ? String(ping.wallet_id) : null,
+        unlocked: true,
+        deviceVersion: ping.version != null ? String(ping.version) : null,
+      };
+
+      if (!account.address) {
+        throw new Error('Dogewatch did not return an address');
+      }
+
+      this.account = account;
+      return account;
+    });
+  }
+
+  async signPsbt(psbtHex: string): Promise<string> {
+    return DogewatchWallet.runExclusive(async () => {
+      if (!psbtHex || psbtHex.length < 16) {
+        throw new Error('PSBT hex is required');
+      }
+
+      if (!this.account) {
+        await this.connectUnlocked({ promptUser: false });
+      }
+
+      const req = await this.sendCommand(
+        { cmd: 'request_sign', psbt: psbtHex, ...DogewatchWallet.signContext() },
+        15000
+      );
+      if (!req.ok) {
+        throw new Error(String(req.error || 'Sign request failed'));
+      }
+
+      const requestId = String(req.request_id || '');
+      if (!requestId) {
+        throw new Error('Dogewatch did not return a request_id');
+      }
+
+      return this.pollSignResult(requestId, 'signed', 'Transaction rejected on Dogewatch');
+    });
+  }
+
+  /** Dogecoin signed-message (base64 compact). Used for Ð𝕏 VerifyDogenal challenges. */
+  async signMessage(message: string): Promise<string> {
+    return DogewatchWallet.runExclusive(async () => {
+      const trimmed = message.trim();
+      if (!trimmed) {
+        throw new Error('Message is required');
+      }
+      if (trimmed.length > 384) {
+        throw new Error('Message is too long for Dogewatch');
+      }
+
+      if (!this.account) {
+        await this.connectUnlocked({ promptUser: false });
+      }
+
+      const req = await this.sendCommand(
+        { cmd: 'request_sign_message', message: trimmed, ...DogewatchWallet.signContext() },
+        15000
+      );
+      if (!req.ok) {
+        throw new Error(String(req.error || 'Message sign request failed'));
+      }
+
+      const requestId = String(req.request_id || '');
+      if (!requestId) {
+        throw new Error('Dogewatch did not return a request_id');
+      }
+
+      return this.pollSignResult(requestId, 'signature', 'Message rejected on Dogewatch');
+    });
+  }
+
+  private async connectUnlocked(options?: { promptUser?: boolean }): Promise<DogewatchAccount> {
     const promptUser = options?.promptUser ?? true;
     await this.ensureOpen(promptUser);
 
@@ -200,84 +320,36 @@ export class DogewatchWallet {
     return account;
   }
 
-  async signPsbt(psbtHex: string): Promise<string> {
-    if (!psbtHex || psbtHex.length < 16) {
-      throw new Error('PSBT hex is required');
-    }
-
-    if (!this.account) {
-      await this.connect({ promptUser: false });
-    }
-
-    const req = await this.sendCommand({ cmd: 'request_sign', psbt: psbtHex }, 15000);
-    if (!req.ok) {
-      throw new Error(String(req.error || 'Sign request failed'));
-    }
-
-    const requestId = String(req.request_id || '');
-    if (!requestId) {
-      throw new Error('Dogewatch did not return a request_id');
-    }
-
-    return this.pollSignResult(requestId, 'signed', 'Transaction rejected on Dogewatch');
-  }
-
-  /** Dogecoin signed-message (base64 compact). Used for Ð𝕏 VerifyDogenal challenges. */
-  async signMessage(message: string): Promise<string> {
-    const trimmed = message.trim();
-    if (!trimmed) {
-      throw new Error('Message is required');
-    }
-    if (trimmed.length > 384) {
-      throw new Error('Message is too long for Dogewatch');
-    }
-
-    if (!this.account) {
-      await this.connect({ promptUser: false });
-    }
-
-    const req = await this.sendCommand(
-      { cmd: 'request_sign_message', message: trimmed },
-      15000
-    );
-    if (!req.ok) {
-      throw new Error(String(req.error || 'Message sign request failed'));
-    }
-
-    const requestId = String(req.request_id || '');
-    if (!requestId) {
-      throw new Error('Dogewatch did not return a request_id');
-    }
-
-    return this.pollSignResult(requestId, 'signature', 'Message rejected on Dogewatch');
-  }
-
   async disconnect(): Promise<void> {
-    if (this.lineReader) {
-      try {
-        await this.lineReader.cancel();
-      } catch {
-        // Ignore reader cancel failures during teardown.
-      }
-      try {
-        this.lineReader.releaseLock();
-      } catch {
-        // Reader may already be released.
-      }
-      this.lineReader = null;
-    }
+    return DogewatchWallet.runExclusive(async () => this.disconnectUnlocked());
+  }
 
-    if (this.port) {
-      try {
-        await this.port.close();
-      } catch {
-        // Ignore close failures during disconnect.
+  private async disconnectUnlocked(): Promise<void> {
+      if (this.lineReader) {
+        try {
+          await this.lineReader.cancel();
+        } catch {
+          // Ignore reader cancel failures during teardown.
+        }
+        try {
+          this.lineReader.releaseLock();
+        } catch {
+          // Reader may already be released.
+        }
+        this.lineReader = null;
       }
-    }
 
-    this.port = null;
-    this.readBuffer = '';
-    this.account = null;
+      if (this.port) {
+        try {
+          await this.port.close();
+        } catch {
+          // Ignore close failures during disconnect.
+        }
+      }
+
+      this.port = null;
+      this.readBuffer = '';
+      this.account = null;
   }
 
   private async pollSignResult(

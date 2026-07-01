@@ -21,7 +21,8 @@ function hasPsbtSigning(type: WalletType | null): type is WalletType {
 /**
  * Resolve signing for Ðune etch / mint / send.
  * - Unlocked in-browser wallet → local WIF sign (fast path)
- * - MyDoge, Dojak, SpookyDoge, Dogewatch, or locked browser → unsigned PSBT + wallet signPSBT
+ * - Connected in-browser wallet (locked) → PSBT via signPSBTOnly (unlock prompt)
+ * - MyDoge, Dojak ext, SpookyDoge, Dogewatch → PSBT via signPSBTOnly
  */
 export async function resolveDuneTxSigner(
   unified: {
@@ -32,12 +33,38 @@ export async function resolveDuneTxSigner(
   browser: UseBrowserWalletReturn,
   signPSBTOnly: (psbtInput: string) => Promise<string>,
 ): Promise<DuneTxSignerResult> {
-  if (browser.wallet?.privateKey && browser.wallet.address) {
+  const browserAddress = browser.wallet?.address ?? browser.address;
+
+  // In-browser wallet is authoritative when connected — even if unified walletType is stale.
+  if (browser.connected && browserAddress) {
+    if (browser.wallet?.privateKey) {
+      return {
+        ok: true,
+        signer: {
+          fromAddress: browserAddress,
+          privateKeyWIF: browser.wallet.privateKey,
+        },
+      };
+    }
+
+    try {
+      const loaded = await browser.loadWallet();
+      if (loaded?.privateKey) {
+        await browser.connect(loaded);
+        return {
+          ok: true,
+          signer: { fromAddress: loaded.address, privateKeyWIF: loaded.privateKey },
+        };
+      }
+    } catch {
+      // Encrypted / locked — fall through to PSBT (wallet drawer unlock during sign).
+    }
+
     return {
       ok: true,
       signer: {
-        fromAddress: browser.wallet.address,
-        privateKeyWIF: browser.wallet.privateKey,
+        fromAddress: browserAddress,
+        signPsbt: signPSBTOnly,
       },
     };
   }

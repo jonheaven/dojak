@@ -317,7 +317,7 @@ export interface UnifiedWalletContextValue {
   accountIndex: number | null;
   derivationPath: string | null;
   availableWallets: WalletConnectionSummary[];
-  connect: (type: WalletType) => Promise<void>;
+  connect: (type: WalletType, options?: { ledgerPrompt?: boolean; ledgerVerify?: boolean }) => Promise<void>;
   setActiveWallet: (type: WalletType) => void;
   refreshBalance: () => Promise<void>;
   balanceRefreshing: boolean;
