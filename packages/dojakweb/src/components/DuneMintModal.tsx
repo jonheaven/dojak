@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { XMarkIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
-import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { toast } from 'sonner';
 import { mintDune } from '../services/duneService';
+import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
 import { walletDataApi, type DuneInfo } from '../utils/api';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,8 +19,8 @@ interface Props {
 type Step = 'form' | 'lookup' | 'confirm' | 'broadcasting' | 'done';
 
 export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSuccess }) => {
-  const { address, walletType } = useUnifiedWallet();
-  const browser = useBrowserWallet();
+  const { address, connected } = useUnifiedWallet();
+  const resolveSigner = useDuneTxSigner();
 
   const [inputName, setInputName]       = useState(duneName ?? '');
   const [duneInfo, setDuneInfo]         = useState<DuneInfo | null>(null);
@@ -77,23 +77,19 @@ export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSu
   };
 
   const handleBroadcast = async () => {
-    if (walletType !== 'browser') {
-      return setError('Ðune transactions require the local Dojakweb browser wallet.');
-    }
     setIsLoading(true);
     setError(null);
     setStep('broadcasting');
     try {
-      const privateKeyWIF = browser.wallet?.privateKey ?? null;
-      if (!privateKeyWIF) throw new Error('Could not retrieve private key. Unlock your wallet and try again.');
+      const resolved = await resolveSigner();
+      if (!resolved.ok) throw new Error(resolved.message);
 
       const result = await mintDune({
         duneId: duneInfo!.id,
-        destination: destination.trim() || (address ?? undefined),
+        destination: destination.trim() || resolved.signer.fromAddress,
         postage: Number(postage),
         feeRate: Number(feeRate),
-        fromAddress: address!,
-        privateKeyWIF,
+        signer: resolved.signer,
       });
 
       setTxid(result.txid ?? null);

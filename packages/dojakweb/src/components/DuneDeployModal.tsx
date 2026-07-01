@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
-import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { toast } from 'sonner';
 import { etchDune } from '../services/duneService';
 import { parseSpacedDune } from '../lib/dunestone';
 import type { DuneTerms } from '../lib/dunestone';
+import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+
+/** Runes/Dunes symbol tag is one Unicode code point — not a ticker string. */
+function singleCodePointSymbol(raw: string): string {
+  if (!raw) return '';
+  const cp = raw.codePointAt(0);
+  return cp === undefined ? '' : String.fromCodePoint(cp);
+}
 
 interface Props {
   isOpen: boolean;
@@ -28,8 +36,8 @@ interface Props {
 type Step = 'form' | 'confirm' | 'broadcasting' | 'done';
 
 export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, initialName }) => {
-  const { address, walletType } = useUnifiedWallet();
-  const browser = useBrowserWallet();
+  const { address, connected } = useUnifiedWallet();
+  const resolveSigner = useDuneTxSigner();
 
   // Form state
   const [name, setName]               = useState(initialName ?? '');
@@ -47,6 +55,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const [error, setError]             = useState<string | null>(null);
   const [txid, setTxid]               = useState<string | null>(null);
   const [isLoading, setIsLoading]     = useState(false);
+  const [signingAddress, setSigningAddress] = useState<string | null>(null);
 
   const reset = () => {
     setName(initialName ?? ''); setSupply('1000000'); setDivisibility('0'); setSymbol('');
@@ -68,33 +77,39 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     catch (e: any) { return e.message as string; }
   })();
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setError(null);
     if (!name.trim()) return setError('Ðune name is required');
     if (nameError) return setError(nameError);
-    if (!supply.trim() || isNaN(Number(supply))) return setError('Supply must be a valid number');
+    if (!enableMint && (!supply.trim() || isNaN(Number(supply)))) return setError('Supply must be a valid number');
     if (Number(divisibility) < 0 || Number(divisibility) > 38) return setError('Divisibility must be 0-38');
-    if (symbol && [...symbol].length > 1) return setError('Symbol must be a single character');
+    if (symbol && singleCodePointSymbol(symbol) !== symbol) {
+      return setError('Symbol must be a single Unicode character (e.g. Ð or 🐕, not Ð>Ð)');
+    }
     if (enableMint) {
       if (!mintAmount.trim()) return setError('Mint amount per call is required when open-mint is enabled');
       if (!mintCap.trim()) return setError('Mint cap is required when open-mint is enabled');
     }
+    if (!connected || !address) {
+      return setError('Connect MyDoge, Dojak, SpookyDoge, or your in-browser Dojak wallet first.');
+    }
+
+    const resolved = await resolveSigner();
+    if (!resolved.ok) return setError(resolved.message);
+    setSigningAddress(resolved.signer.fromAddress);
     setStep('confirm');
   };
 
   const handleBroadcast = async () => {
-    if (walletType !== 'browser') {
-      setError('Ðune transactions require the local Dojakweb browser wallet.');
-      return;
-    }
     setIsLoading(true);
     setError(null);
     setStep('broadcasting');
     try {
-      const privateKeyWIF = browser.wallet?.privateKey ?? null;
-      if (!privateKeyWIF) {
-        throw new Error('Could not retrieve private key. Unlock your wallet and try again.');
+      const resolved = await resolveSigner();
+      if (!resolved.ok) {
+        throw new Error(resolved.message);
       }
+      setSigningAddress(resolved.signer.fromAddress);
 
       const terms: DuneTerms | undefined = enableMint ? {
         amount: BigInt(mintAmount.replace(/,/g, '')),
@@ -109,8 +124,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
         terms,
         turbo,
         feeRate: Number(feeRate),
-        fromAddress: address!,
-        privateKeyWIF,
+        signer: resolved.signer,
       });
 
       setTxid(result.txid ?? null);
@@ -169,7 +183,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 </p>
               </div>
 
-              {/* Symbol */}
+              {/* Symbol — protocol allows one code point only (same as Bitcoin Runes) */}
               <div>
                 <Label className="block mb-1">
                   Symbol (optional)
@@ -177,22 +191,51 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 <Input
                   type="text"
                   value={symbol}
-                  onChange={e => setSymbol([...e.target.value][0] ?? '')}
-                  maxLength={2}
+                  onChange={e => setSymbol(singleCodePointSymbol(e.target.value))}
                   placeholder="e.g. Ð"
+                  className="max-w-[5rem] text-center text-lg font-medium"
                 />
+                <p className="text-xs text-text-secondary mt-1">
+                  One Unicode character only — how wallets display balances (like 🐕 on DOG Runes).
+                  Not a ticker; <span className="text-text-primary">Ð&gt;Ð</span> cannot be encoded on-chain.
+                </p>
               </div>
 
-              {/* Open-mint toggle */}
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="enableMint"
-                  checked={enableMint}
-                  onCheckedChange={(checked) => setEnableMint(checked === true)}
-                />
-                <label htmlFor="enableMint" className="text-sm text-text-primary">
-                  Enable open minting (others can mint tokens)
-                </label>
+              {/* Supply mode — premine vs open mint */}
+              <div>
+                <Label className="block mb-2">How is supply created?</Label>
+                <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setEnableMint(false)}
+                    className={cn(
+                      'rounded-md px-3 py-2.5 text-left transition-colors',
+                      !enableMint
+                        ? 'bg-amber-500/20 text-zinc-100 ring-1 ring-amber-500/40'
+                        : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200',
+                    )}
+                  >
+                    <span className="block text-sm font-medium">Premine to wallet</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug opacity-80">
+                      Fixed supply — all tokens to you at etch
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEnableMint(true)}
+                    className={cn(
+                      'rounded-md px-3 py-2.5 text-left transition-colors',
+                      enableMint
+                        ? 'bg-amber-500/20 text-zinc-100 ring-1 ring-amber-500/40'
+                        : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200',
+                    )}
+                  >
+                    <span className="block text-sm font-medium">Open mint</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug opacity-80">
+                      Anyone mints until cap is reached
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {enableMint ? (
@@ -241,16 +284,21 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
               )}
 
               {/* Turbo */}
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="turbo"
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 px-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-text-primary flex items-center gap-1">
+                    Turbo mode
+                    <InformationCircleIcon className="w-4 h-4 text-text-secondary" title="Enables future protocol features; harmless if unused." />
+                  </p>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    Optional Runes-compatible flag for future features
+                  </p>
+                </div>
+                <Switch
                   checked={turbo}
-                  onCheckedChange={(checked) => setTurbo(checked === true)}
+                  onCheckedChange={setTurbo}
+                  aria-label="Turbo mode"
                 />
-                <label htmlFor="turbo" className="text-sm text-text-primary flex items-center gap-1">
-                  Turbo mode
-                  <InformationCircleIcon className="w-4 h-4 text-text-secondary" title="Enables future protocol features; harmless if unused." />
-                </label>
               </div>
 
               {/* Fee rate */}
@@ -266,6 +314,14 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 />
                 <p className="text-xs text-text-secondary mt-1">1000 koinu/kB ≈ 1 sat/byte (recommended minimum)</p>
               </div>
+
+              {!connected && (
+                <Alert>
+                  <AlertDescription className="text-xs">
+                    Connect MyDoge, Dojak, SpookyDoge, or your in-browser Dojak wallet to deploy.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {error && (
                 <Alert variant="destructive">
@@ -293,23 +349,32 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 {symbol && <Row label="Symbol" value={symbol} />}
                 {enableMint ? (
                   <>
+                    <Row label="Distribution" value="Open mint" />
                     <Row label="Tokens per mint" value={mintAmount} />
                     <Row label="Mint cap" value={mintCap} />
                     <Row label="Total supply" value={`${mintAmount} × ${mintCap} = ${(BigInt(mintAmount.replace(/,/g, '')) * BigInt(mintCap.replace(/,/g, ''))).toLocaleString()}`} />
                   </>
                 ) : (
-                  <Row label="Premine supply" value={Number(supply).toLocaleString()} />
+                  <>
+                    <Row label="Distribution" value="Premine to wallet" />
+                    <Row label="Premine supply" value={Number(supply).toLocaleString()} />
+                  </>
                 )}
                 {turbo && <Row label="Turbo" value="enabled" />}
                 <Row label="Fee rate" value={`${Number(feeRate).toLocaleString()} koinu/kB`} />
-                <Row label="Wallet" value={address ?? ''} mono />
+                <Row
+                  label="Signing wallet"
+                  value={signingAddress ?? address ?? 'Connect wallet'}
+                  mono={Boolean(signingAddress ?? address)}
+                />
               </div>
 
               <Alert>
                 <AlertDescription className="flex items-start gap-2 text-xs text-yellow-400">
                   <InformationCircleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <span>
-                    This transaction deploys a new Ðune on-chain. Ensure the name is unique and all parameters are correct — Ðune parameters cannot be changed after etching.
+                    Extension wallets will prompt you to sign a PSBT. In-browser wallets sign locally.
+                    Ðune parameters cannot be changed after etching.
                   </span>
                 </AlertDescription>
               </Alert>

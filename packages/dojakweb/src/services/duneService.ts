@@ -14,7 +14,9 @@ import {
   filterSafeSpendableUtxos,
   type NormalisedUtxo,
 } from '../lib/broadcast/dogecoinTxBroadcast';
-import { broadcastTx } from '../lib/doginal-psdt';
+import { broadcastTx, coerceSignedPsdtToRawTxHex, getTxHex } from '../lib/doginal-psdt';
+import type { DuneTxSigner } from '../lib/dune-tx-signer';
+import { assertDuneTxSigner } from '../lib/dune-tx-signer';
 import {
   buildEtchScript,
   buildMintScript,
@@ -111,11 +113,26 @@ interface BuiltTx {
   inputCount: number;
 }
 
-async function buildAndSign(params: SignTxParams): Promise<BuiltTx> {
-  const { fromAddress, privateKeyWIF, opReturnScript, extraOutputs, utxos, feeRate } = params;
+const DOGE_NETWORK = {
+  messagePrefix: '\x19Dogecoin Signed Message:\n',
+  bech32: 'dc',
+  bip32: { public: 0x02facafd, private: 0x02fac398 },
+  pubKeyHash: 0x1e,
+  scriptHash: 0x16,
+  wif: 0x9e,
+};
 
+interface BuildDuneTxParams {
+  fromAddress: string;
+  opReturnScript: Uint8Array;
+  extraOutputs: Array<{ address: string; value: number }>;
+  utxos: NormalisedUtxo[];
+  feeRate: number;
+}
+
+function planDuneTx(params: BuildDuneTxParams) {
+  const { fromAddress, opReturnScript, extraOutputs, utxos, feeRate } = params;
   const requiredOutputSats = extraOutputs.reduce((s, o) => s + o.value, 0);
-  // total outputs = OP_RETURN + extra + change (if any)
   const estOutputCount = 1 + extraOutputs.length + 1;
 
   const { selected, feeSatoshis, changeSatoshis } = selectCoins(
@@ -135,6 +152,53 @@ async function buildAndSign(params: SignTxParams): Promise<BuiltTx> {
     outputs.push({ address: fromAddress, value: changeSatoshis });
   }
 
+  return { selected, feeSatoshis, changeSatoshis, outputs };
+}
+
+async function buildDunePsbt(params: BuildDuneTxParams): Promise<{ psbtBase64: string; feeSatoshis: number; changeSatoshis: number; inputCount: number }> {
+  const { selected, feeSatoshis, changeSatoshis, outputs } = planDuneTx(params);
+  const rawTxHexes = await Promise.all(selected.map((u) => getTxHex(u.tx_hash)));
+
+  const bitcoin = await import('bitcoinjs-lib');
+  const psbt = new bitcoin.Psbt({ network: DOGE_NETWORK });
+  psbt.setVersion(1);
+
+  for (let i = 0; i < selected.length; i++) {
+    const u = selected[i];
+    psbt.addInput({
+      hash: u.tx_hash,
+      index: u.tx_output_n,
+      nonWitnessUtxo: Buffer.from(rawTxHexes[i], 'hex'),
+      sighashType: bitcoin.Transaction.SIGHASH_ALL,
+    });
+  }
+
+  for (const o of outputs) {
+    if (o.script) {
+      psbt.addOutput({ script: Buffer.from(o.script), value: BigInt(o.value) } as any);
+    } else if (o.address) {
+      psbt.addOutput({ address: o.address, value: BigInt(o.value) } as any);
+    }
+  }
+
+  return {
+    psbtBase64: psbt.toBase64(),
+    feeSatoshis,
+    changeSatoshis,
+    inputCount: selected.length,
+  };
+}
+
+async function buildAndSign(params: SignTxParams): Promise<BuiltTx> {
+  const { fromAddress, privateKeyWIF, opReturnScript, extraOutputs, utxos, feeRate } = params;
+  const { selected, feeSatoshis, changeSatoshis, outputs } = planDuneTx({
+    fromAddress,
+    opReturnScript,
+    extraOutputs,
+    utxos,
+    feeRate,
+  });
+
   const signer = DogeMemoryWallet.fromWIF(privateKeyWIF, 'doge');
   const txBuilder = createP2PKHTransaction(signer, {
     address: fromAddress,
@@ -149,6 +213,48 @@ async function buildAndSign(params: SignTxParams): Promise<BuiltTx> {
     changeSatoshis,
     inputCount: selected.length,
   };
+}
+
+async function signDuneTransaction(
+  signer: DuneTxSigner,
+  opReturnScript: Uint8Array,
+  extraOutputs: Array<{ address: string; value: number }>,
+  feeRate: number,
+): Promise<BuiltTx> {
+  assertDuneTxSigner(signer);
+  const utxos = await getSpendableUtxos(signer.fromAddress);
+  const buildParams: BuildDuneTxParams = {
+    fromAddress: signer.fromAddress,
+    opReturnScript,
+    extraOutputs,
+    utxos,
+    feeRate,
+  };
+
+  if (signer.privateKeyWIF) {
+    return buildAndSign({
+      fromAddress: signer.fromAddress,
+      privateKeyWIF: signer.privateKeyWIF,
+      opReturnScript,
+      extraOutputs,
+      utxos,
+      feeRate,
+    });
+  }
+
+  if (signer.signPsbt) {
+    const built = await buildDunePsbt(buildParams);
+    const signedPayload = await signer.signPsbt(built.psbtBase64);
+    const rawHex = coerceSignedPsdtToRawTxHex(signedPayload);
+    return {
+      rawHex,
+      feeSatoshis: built.feeSatoshis,
+      changeSatoshis: built.changeSatoshis,
+      inputCount: built.inputCount,
+    };
+  }
+
+  throw new Error('No signing method available for this wallet');
 }
 
 // ── Fetch + filter UTXOs ──────────────────────────────────────────────────────
@@ -180,8 +286,8 @@ export interface EtchDuneParams {
   turbo?: boolean;
   /** Fee rate in koinu/kB (default: 1000 = 1 sat/byte). */
   feeRate?: number;
-  fromAddress: string;
-  privateKeyWIF: string;
+  /** Browser WIF and/or extension PSBT signer (see resolveDuneTxSigner). */
+  signer: DuneTxSigner;
   /** Set to false to build + return hex without broadcasting. */
   broadcast?: boolean;
 }
@@ -202,7 +308,7 @@ export interface EtchResult {
 export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
   const {
     name, supply, divisibility, symbol, terms, turbo = false,
-    feeRate = 1000, fromAddress, privateKeyWIF, broadcast = true,
+    feeRate = 1000, signer, broadcast = true,
   } = params;
 
   // Validate name
@@ -217,22 +323,11 @@ export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
     throw new Error(`Dunestone is ${opReturnScript.length} bytes — exceeds the 83-byte OP_RETURN limit. Shorten the name or reduce parameters.`);
   }
 
-  const utxos = await getSpendableUtxos(fromAddress);
-
-  // etch tx: OP_RETURN + postage output (receiver of premined tokens)
-  // The postage output at index 1 receives the premined supply.
   const extraOutputs = supplyBig > 0n && !terms
-    ? [{ address: fromAddress, value: POSTAGE_KOINU }]
+    ? [{ address: signer.fromAddress, value: POSTAGE_KOINU }]
     : [];
 
-  const built = await buildAndSign({
-    fromAddress,
-    privateKeyWIF,
-    opReturnScript,
-    extraOutputs,
-    utxos,
-    feeRate,
-  });
+  const built = await signDuneTransaction(signer, opReturnScript, extraOutputs, feeRate);
 
   let txid: string | undefined;
   if (broadcast) {
@@ -256,8 +351,7 @@ export interface MintDuneParams {
   postage?: number;
   /** Fee rate in koinu/kB (default: 1000). */
   feeRate?: number;
-  fromAddress: string;
-  privateKeyWIF: string;
+  signer: DuneTxSigner;
   broadcast?: boolean;
 }
 
@@ -276,25 +370,22 @@ export interface MintResult {
 export async function mintDune(params: MintDuneParams): Promise<MintResult> {
   const {
     duneId, postage = POSTAGE_KOINU, feeRate = 1000,
-    fromAddress, privateKeyWIF, broadcast = true,
+    signer, broadcast = true,
   } = params;
-  const destination = params.destination?.trim() || fromAddress;
+  const destination = params.destination?.trim() || signer.fromAddress;
 
   if (postage < POSTAGE_KOINU) {
     throw new Error(`Postage must be at least ${POSTAGE_KOINU} koinu (0.001 DOGE) to avoid dust rejection.`);
   }
 
   const opReturnScript = buildMintScript(duneId);
-  const utxos = await getSpendableUtxos(fromAddress);
 
-  const built = await buildAndSign({
-    fromAddress,
-    privateKeyWIF,
+  const built = await signDuneTransaction(
+    signer,
     opReturnScript,
-    extraOutputs: [{ address: destination, value: postage }],
-    utxos,
+    [{ address: destination, value: postage }],
     feeRate,
-  });
+  );
 
   let txid: string | undefined;
   if (broadcast) {
@@ -319,8 +410,7 @@ export interface SendDuneParams {
   postage?: number;
   /** Fee rate in koinu/kB (default: 1000). */
   feeRate?: number;
-  fromAddress: string;
-  privateKeyWIF: string;
+  signer: DuneTxSigner;
   broadcast?: boolean;
 }
 
@@ -340,23 +430,20 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
   const {
     duneId, amount, divisibility,
     recipientAddress, postage = POSTAGE_KOINU,
-    feeRate = 1000, fromAddress, privateKeyWIF, broadcast = true,
+    feeRate = 1000, signer, broadcast = true,
   } = params;
 
   const amountBig = humanToSmallestUnits(amount, divisibility);
   if (amountBig <= 0n) throw new Error('Send amount must be greater than zero');
 
   const opReturnScript = buildSendScript(duneId, amountBig, 1);
-  const utxos = await getSpendableUtxos(fromAddress);
 
-  const built = await buildAndSign({
-    fromAddress,
-    privateKeyWIF,
+  const built = await signDuneTransaction(
+    signer,
     opReturnScript,
-    extraOutputs: [{ address: recipientAddress, value: postage }],
-    utxos,
+    [{ address: recipientAddress, value: postage }],
     feeRate,
-  });
+  );
 
   let txid: string | undefined;
   if (broadcast) {
