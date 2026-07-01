@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
@@ -21,16 +21,18 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (txid: string) => void;
+  /** Pre-fill etch name (e.g. DOGENALS•OVER•DOGINALS). */
+  initialName?: string;
 }
 
 type Step = 'form' | 'confirm' | 'broadcasting' | 'done';
 
-export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
+export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, initialName }) => {
   const { address, walletType } = useUnifiedWallet();
   const browser = useBrowserWallet();
 
   // Form state
-  const [name, setName]               = useState('');
+  const [name, setName]               = useState(initialName ?? '');
   const [supply, setSupply]           = useState('1000000');
   const [divisibility, setDivisibility] = useState('0');
   const [symbol, setSymbol]           = useState('');
@@ -47,12 +49,18 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess })
   const [isLoading, setIsLoading]     = useState(false);
 
   const reset = () => {
-    setName(''); setSupply('1000000'); setDivisibility('0'); setSymbol('');
+    setName(initialName ?? ''); setSupply('1000000'); setDivisibility('0'); setSymbol('');
     setFeeRate('1000'); setEnableMint(false); setMintAmount(''); setMintCap('');
     setTurbo(false); setStep('form'); setError(null); setTxid(null);
   };
 
   const handleClose = () => { reset(); onClose(); };
+
+  useEffect(() => {
+    if (isOpen && initialName?.trim()) {
+      setName(initialName.trim().toUpperCase());
+    }
+  }, [isOpen, initialName]);
 
   const nameError = (() => {
     if (!name.trim()) return null;
@@ -119,7 +127,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess })
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-2xl">
         <DialogHeader>
           <DialogTitle>Deploy New Ðune</DialogTitle>
         </DialogHeader>

@@ -111,8 +111,8 @@ export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSu
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-lg bg-bg-primary border border-border-primary rounded-lg shadow-xl overflow-y-auto max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border-primary bg-zinc-950 shadow-xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-primary">
           <h2 className="text-lg font-semibold text-text-primary">Mint Ðune</h2>
           <button type="button" onClick={handleClose} aria-label="Close" className="text-text-secondary hover:text-text-primary">

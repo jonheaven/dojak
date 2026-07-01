@@ -168,6 +168,7 @@ export function DunesToolsPanel({
       <DuneDeployModal
         isOpen={deployOpen}
         onClose={() => setDeployOpen(false)}
+        initialName={initialDune || undefined}
         onSuccess={() => {
           onModalSuccess();
           setDeployOpen(false);
