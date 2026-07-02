@@ -6,14 +6,39 @@ import type { InputHTMLAttributes } from 'react';
  */
 export const ignoreBrowserPasswordManager: Pick<
   InputHTMLAttributes<HTMLInputElement>,
-  'autoComplete' | 'data-form-type' | 'data-lpignore' | 'data-1p-ignore' | 'data-bwignore'
+  | 'autoComplete'
+  | 'data-form-type'
+  | 'data-lpignore'
+  | 'data-1p-ignore'
+  | 'data-bwignore'
+  | 'data-protonpass-ignore'
 > = {
-  autoComplete: 'off',
+  autoComplete: 'new-password',
   'data-form-type': 'other',
   'data-lpignore': 'true',
   'data-1p-ignore': 'true',
   'data-bwignore': 'true',
+  'data-protonpass-ignore': 'true',
 };
+
+/** Decoy fields — Chrome scans the first password-ish input in a form. */
+export const walletSecretDecoyFields: InputHTMLAttributes<HTMLInputElement>[] = [
+  {
+    tabIndex: -1,
+    autoComplete: 'username',
+    name: 'dojakweb-decoy-user',
+    'aria-hidden': true,
+    className: 'pointer-events-none absolute h-0 w-0 opacity-0',
+  },
+  {
+    tabIndex: -1,
+    type: 'password',
+    autoComplete: 'current-password',
+    name: 'dojakweb-decoy-pass',
+    'aria-hidden': true,
+    className: 'pointer-events-none absolute h-0 w-0 opacity-0',
+  },
+];
 
 /** Chrome often ignores `off` until first focus — brief readonly blocks autofill heuristics. */
 export function walletSecretInputProps(
@@ -23,12 +48,16 @@ export function walletSecretInputProps(
   return {
     ...ignoreBrowserPasswordManager,
     name: fieldName,
+    id: fieldName,
     readOnly: true,
+    spellCheck: false,
+    autoCorrect: 'off',
+    autoCapitalize: 'off',
     onFocus: (event) => {
       event.currentTarget.removeAttribute('readonly');
     },
     ...(options?.pin
-      ? { inputMode: 'numeric', pattern: '[0-9]*' }
+      ? { inputMode: 'numeric', pattern: '[0-9]*', autoComplete: 'one-time-code' }
       : {}),
   };
 }

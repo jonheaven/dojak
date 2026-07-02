@@ -5,10 +5,12 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   CpuChipIcon,
+  LockClosedIcon,
   PlusIcon,
   WalletIcon,
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
+import { WalletProviderIcon } from './WalletProviderIcon';
 import type { DojakwebTranslate } from '../../contexts/DojakwebLocaleContext';
 import type { BrowserWalletSeedGroup } from '../../lib/wallet-seed-groups';
 import type { WalletType } from '../../types/wallet';
@@ -47,6 +49,10 @@ function walletDotClass(type: WalletType, active: boolean): string {
   }
 }
 
+function walletTypeIcon(type: WalletType, active: boolean): ReactNode {
+  return <WalletProviderIcon walletType={type} size="sm" framed className={active ? 'border-[#FCD34D]/30' : undefined} />;
+}
+
 export type WalletAccountSwitcherPanelProps = {
   localSeedGroups: BrowserWalletSeedGroup[];
   extensionWallets: WalletSwitcherSummary[];
@@ -65,6 +71,17 @@ export type WalletAccountSwitcherPanelProps = {
 
 function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
+}
+
+function SectionHeader({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-0.5">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/45">
+        {icon}
+      </span>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">{label}</span>
+    </div>
+  );
 }
 
 export function WalletAccountSwitcherPanel({
@@ -86,14 +103,9 @@ export function WalletAccountSwitcherPanel({
 
   if (localSeedGroups.length > 0) {
     sections.push(
-      <section key="local" className="space-y-2" title={t('modal.walletSwitcher.group.localHint')}>
-        <div className="flex items-center gap-2 px-0.5">
-          <CpuChipIcon className="h-4 w-4 shrink-0 text-white/40" aria-hidden />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
-            {t('modal.walletSwitcher.tab.local')}
-          </span>
-        </div>
-        <div className="space-y-2">
+      <section key="local" className="space-y-2.5" title={t('modal.walletSwitcher.group.localHint')}>
+        <SectionHeader icon={<CpuChipIcon className="h-4 w-4" aria-hidden />} label={t('modal.walletSwitcher.tab.local')} />
+        <div className="space-y-2.5">
           {localSeedGroups.map((group) => {
             const primary = group.accounts[0];
             const seedTitle =
@@ -106,22 +118,25 @@ export function WalletAccountSwitcherPanel({
               <div
                 key={group.id}
                 className={cx(
-                  'rounded-lg border bg-white/[0.03]',
-                  groupActive ? 'border-[#FCD34D]/35' : 'border-white/10',
+                  'overflow-hidden rounded-xl border bg-white/[0.02]',
+                  groupActive ? 'border-[#FCD34D]/35 shadow-[inset_0_1px_0_rgba(252,211,77,0.08)]' : 'border-white/10',
                 )}
               >
-                <div className="border-b border-white/10 px-3 py-2">
-                  <div className="truncate text-xs font-semibold text-white/85">{seedTitle}</div>
-                  {group.accounts.length > 1 ? (
-                    <div className="mt-0.5 text-[10px] text-white/40">
-                      {t('modal.walletSwitcher.accountsInSeed', { count: String(group.accounts.length) })}
-                    </div>
-                  ) : null}
+                <div className="border-b border-white/10 bg-white/[0.03] px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="truncate text-sm font-semibold text-white/90">{seedTitle}</div>
+                    {group.accounts.length > 1 ? (
+                      <span className="shrink-0 rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-white/45">
+                        {t('modal.walletSwitcher.accountsInSeed', { count: String(group.accounts.length) })}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="space-y-1 p-2">
+                <div className="space-y-1.5 p-2">
                   {group.accounts.map((acc) => {
                     const isActive = acc.address === activeAddress && walletType === 'browser';
                     const idx = acc.accountIndex ?? 0;
+                    const encrypted = Boolean((acc as { encrypted?: boolean }).encrypted);
                     return (
                       <button
                         key={acc.address}
@@ -131,20 +146,33 @@ export function WalletAccountSwitcherPanel({
                           if (!isActive) void onSelectLocalAddress(acc.address);
                         }}
                         className={cx(
-                          'flex w-full items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition',
+                          'flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition',
                           isActive
                             ? 'border-[#FCD34D]/40 bg-[#FCD34D]/10 text-white'
-                            : 'border-transparent bg-white/5 text-white/70 hover:border-white/15 hover:bg-white/10 hover:text-white',
+                            : 'border-transparent bg-white/[0.03] text-white/70 hover:border-white/15 hover:bg-white/[0.06] hover:text-white',
+                          isBusy && 'cursor-wait opacity-70',
                         )}
                         aria-pressed={isActive}
                       >
                         <span
-                          className={cx('h-2 w-2 shrink-0 rounded-full', walletDotClass('browser', isActive))}
-                        />
+                          className={cx(
+                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border',
+                            isActive
+                              ? 'border-[#FCD34D]/30 bg-[#FCD34D]/10'
+                              : encrypted
+                                ? 'border-amber-400/25 bg-amber-500/10'
+                                : 'border-white/10 bg-white/5',
+                          )}
+                        >
+                          {encrypted && !isActive ? (
+                            <LockClosedIcon className="h-4 w-4 text-amber-300/90" aria-hidden />
+                          ) : (
+                            <WalletProviderIcon walletType="browser" size="sm" />
+                          )}
+                        </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium">
-                            {acc.nickname?.trim() ||
-                              t('modal.savedWallets.account', { index: String(idx) })}
+                            {acc.nickname?.trim() || t('modal.savedWallets.account', { index: String(idx) })}
                           </span>
                           <span className="block font-mono text-[11px] text-white/45">
                             {truncateAddress(acc.address)}
@@ -152,11 +180,11 @@ export function WalletAccountSwitcherPanel({
                           </span>
                         </span>
                         {isActive ? (
-                          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#FCD34D]">
+                          <span className="shrink-0 rounded-md border border-[#FCD34D]/30 bg-[#FCD34D]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FCD34D]">
                             {t('modal.walletSwitcher.active')}
                           </span>
                         ) : (
-                          <span className="shrink-0 text-[10px] text-white/30">→</span>
+                          <span className="shrink-0 text-xs text-white/25">→</span>
                         )}
                       </button>
                     );
@@ -166,7 +194,7 @@ export function WalletAccountSwitcherPanel({
                       type="button"
                       disabled={isBusy}
                       onClick={() => void onAddHdAccount()}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-white/15 bg-transparent px-2 py-2 text-xs font-semibold text-white/55 transition hover:border-[#D4A017]/40 hover:text-[#FCD34D]"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 bg-transparent px-2 py-2.5 text-xs font-semibold text-white/55 transition hover:border-[#D4A017]/40 hover:bg-[#FCD34D]/5 hover:text-[#FCD34D]"
                     >
                       <PlusIcon className="h-3.5 w-3.5" aria-hidden />
                       {t('modal.walletSwitcher.addAccount')}
@@ -190,40 +218,45 @@ export function WalletAccountSwitcherPanel({
         if (!wallet.isActive) onSelectWalletType(wallet.type);
       }}
       className={cx(
-        'flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition',
+        'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition',
         wallet.isActive
-          ? 'border-[#FCD34D] bg-[#FCD34D]/10 text-white'
-          : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white',
+          ? 'border-[#FCD34D]/45 bg-[#FCD34D]/10 text-white shadow-[inset_0_1px_0_rgba(252,211,77,0.08)]'
+          : 'border-white/10 bg-white/[0.03] text-white/70 hover:border-white/18 hover:bg-white/[0.06] hover:text-white',
+        isBusy && 'cursor-wait opacity-70',
       )}
       aria-pressed={wallet.isActive}
       title={t('modal.walletSwitcher.useAsActive', { label: wallet.label })}
     >
-      <span className={cx('h-2.5 w-2.5 shrink-0 rounded-full', walletDotClass(wallet.type, wallet.isActive))} />
+      <span
+        className={cx(
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border',
+          wallet.isActive
+            ? 'border-[#FCD34D]/30 bg-[#FCD34D]/10 text-[#FCD34D]'
+            : 'border-white/10 bg-white/5 text-white/45',
+        )}
+      >
+        {walletTypeIcon(wallet.type, wallet.isActive)}
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold">{wallet.label}</span>
-        <span className="block text-xs text-white/50">
+        <span className="block font-mono text-[11px] text-white/45">
           {wallet.address ? truncateAddress(wallet.address) : t('modal.walletSwitcher.connected')}
         </span>
       </span>
       {wallet.isActive ? (
-        <span className="shrink-0 rounded border border-[#FCD34D]/30 bg-[#FCD34D]/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[#FCD34D]">
+        <span className="shrink-0 rounded-md border border-[#FCD34D]/30 bg-[#FCD34D]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FCD34D]">
           {t('modal.walletSwitcher.active')}
         </span>
       ) : (
-        <span className="shrink-0 text-xs text-white/30">→</span>
+        <span className="shrink-0 text-xs text-white/25">→</span>
       )}
     </button>
   );
 
   if (extensionWallets.length > 0) {
     sections.push(
-      <section key="ext" className="space-y-2" title={t('modal.walletSwitcher.group.extHint')}>
-        <div className="flex items-center gap-2 px-0.5">
-          <WalletIcon className="h-4 w-4 shrink-0 text-white/40" aria-hidden />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
-            {t('modal.walletSwitcher.tab.ext')}
-          </span>
-        </div>
+      <section key="ext" className="space-y-2.5" title={t('modal.walletSwitcher.group.extHint')}>
+        <SectionHeader icon={<WalletIcon className="h-4 w-4" aria-hidden />} label={t('modal.walletSwitcher.tab.ext')} />
         <div className="space-y-2">{extensionWallets.map(renderWalletRow)}</div>
       </section>,
     );
@@ -231,19 +264,14 @@ export function WalletAccountSwitcherPanel({
 
   if (hardwareWallets.length > 0) {
     sections.push(
-      <section key="hw" className="space-y-2" title={t('modal.walletSwitcher.group.hwHint')}>
-        <div className="flex items-center gap-2 px-0.5">
-          <Usb className="h-4 w-4 shrink-0 text-white/40" aria-hidden />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
-            {t('modal.walletSwitcher.tab.hw')}
-          </span>
-        </div>
+      <section key="hw" className="space-y-2.5" title={t('modal.walletSwitcher.group.hwHint')}>
+        <SectionHeader icon={<Usb className="h-4 w-4" aria-hidden />} label={t('modal.walletSwitcher.tab.hw')} />
         <div className="space-y-2">
           {hardwareWallets.map((wallet) => (
-            <div key={wallet.type} className="space-y-1">
+            <div key={wallet.type} className="space-y-1.5">
               {renderWalletRow(wallet)}
               {wallet.type === 'ledger' && wallet.isActive && ledgerAccountIndex != null ? (
-                <div className="flex items-center justify-end gap-2 px-1 pb-1">
+                <div className="flex items-center justify-end gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-2 py-1.5">
                   <span className="text-[10px] uppercase tracking-wide text-white/40">
                     {t('modal.localNav.account')}
                   </span>
@@ -251,7 +279,7 @@ export function WalletAccountSwitcherPanel({
                     type="button"
                     disabled={isBusy || ledgerAccountIndex <= 0}
                     onClick={() => void onLedgerAccountDelta(-1)}
-                    className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-35"
+                    className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-35"
                     aria-label={t('modal.localNav.prevAccount')}
                   >
                     <ChevronUpIcon className="h-3.5 w-3.5" />
@@ -263,7 +291,7 @@ export function WalletAccountSwitcherPanel({
                     type="button"
                     disabled={isBusy}
                     onClick={() => void onLedgerAccountDelta(1)}
-                    className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-35"
+                    className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-35"
                     aria-label={t('modal.localNav.nextAccount')}
                   >
                     <ChevronDownIcon className="h-3.5 w-3.5" />
@@ -279,11 +307,11 @@ export function WalletAccountSwitcherPanel({
 
   if (sections.length === 0) {
     return (
-      <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-4 text-center text-sm text-white/50">
+      <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-6 text-center text-sm text-white/50">
         {t('modal.walletSwitcher.empty')}
       </p>
     );
   }
 
-  return <div className="space-y-5">{sections}</div>;
+  return <div className="space-y-6">{sections}</div>;
 }

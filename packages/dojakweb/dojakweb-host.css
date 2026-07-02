@@ -1063,3 +1063,13 @@ html[data-theme="light"] .wallet-input::placeholder,
   min-height: 0;
   -webkit-overflow-scrolling: touch;
 }
+
+/* PIN numpad — wallet unlock / set-PIN flows */
+.ds-pin-numpad__key:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.ds-pin-numpad__key:focus-visible {
+  outline: 2px solid rgba(252, 211, 77, 0.45);
+  outline-offset: 2px;
+}
