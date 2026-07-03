@@ -1064,7 +1064,102 @@ html[data-theme="light"] .wallet-input::placeholder,
   -webkit-overflow-scrolling: touch;
 }
 
-/* PIN numpad — wallet unlock / set-PIN flows */
+/* PIN numpad — telephone dialpad (no Tailwind grid in wallet bundle) */
+.ds-pin-numpad {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ds-pin-numpad__dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.25rem 0;
+}
+
+.ds-pin-numpad__dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ds-pin-numpad__dot--filled {
+  border-color: #fcd34d;
+  background: #fcd34d;
+  box-shadow: 0 0 10px rgba(252, 211, 77, 0.35);
+}
+
+.ds-pin-numpad__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 15rem;
+  margin: 0 auto;
+}
+
+.ds-pin-numpad__key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    transform 0.08s ease;
+}
+
+.ds-pin-numpad__key--digit {
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-pin-numpad__key--digit:hover:not(:disabled) {
+  border-color: rgba(252, 211, 77, 0.3);
+  background: rgba(252, 211, 77, 0.1);
+}
+
+.ds-pin-numpad__key--back {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.ds-pin-numpad__key--back:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ds-pin-numpad__key--go {
+  border-color: rgba(252, 211, 77, 0.35);
+  background: rgba(252, 211, 77, 0.15);
+  color: #fcd34d;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ds-pin-numpad__key--go:hover:not(:disabled) {
+  background: rgba(252, 211, 77, 0.25);
+}
+
+.ds-pin-numpad__key:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
 .ds-pin-numpad__key:active:not(:disabled) {
   transform: scale(0.97);
 }
@@ -1072,4 +1167,9 @@ html[data-theme="light"] .wallet-input::placeholder,
 .ds-pin-numpad__key:focus-visible {
   outline: 2px solid rgba(252, 211, 77, 0.45);
   outline-offset: 2px;
+}
+
+.ds-pin-numpad__icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
