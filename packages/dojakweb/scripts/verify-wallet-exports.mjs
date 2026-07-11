@@ -11,7 +11,6 @@ const REQUIRED = [
   'DojakwebProvider',
   'ConnectWalletButton',
   'WalletDrawer',
-  'WalletPawDrawer',
   'useUnifiedWallet',
   'setWalletDataProviderConfig',
 ];

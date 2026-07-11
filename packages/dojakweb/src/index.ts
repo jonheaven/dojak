@@ -15,11 +15,6 @@ export {
   default as WalletDrawer,
   type WalletDrawerProps,
 } from './components/WalletDrawer';
-/** @deprecated Alias of WalletDrawer — paw is built into the web wallet. */
-export {
-  WalletPawDrawer,
-  type WalletPawDrawerProps,
-} from './components/WalletPawDrawer';
 export { default as DoginalDrawer } from './components/DoginalDrawer';
 export { DoginalDrawerProvider, useDoginalDrawer } from './contexts/DoginalDrawerContext';
 export type { DrawerData } from './contexts/DoginalDrawerContext';

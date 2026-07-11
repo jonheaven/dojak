@@ -14,11 +14,6 @@ export {
   default as WalletDrawer,
   type WalletDrawerProps,
 } from '../components/WalletDrawer';
-/** @deprecated Alias of WalletDrawer — paw is built into the web wallet. */
-export {
-  WalletPawDrawer,
-  type WalletPawDrawerProps,
-} from '../components/WalletPawDrawer';
 export { default as WalletSelectionModal } from '../components/WalletSelectionModal';
 export { default as SimpleWalletConnect } from '../components/SimpleWalletConnect';
 export { default as DojakwebWalletModal } from '../components/DojakwebWalletModal';

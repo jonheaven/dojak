@@ -10,7 +10,7 @@ import { useDxHostStore } from '../stores/dxHostStore';
 export interface ConnectWalletButtonProps {
   className?: string;
   isDark?: boolean;
-  /** drawer (default) opens the web wallet with built-in Shiba paw; modal is a centered sheet. */
+  /** drawer (default) or centered modal. */
   mode?: 'drawer' | 'modal';
 }
 

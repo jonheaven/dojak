@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import DojakwebWalletModal from './DojakwebWalletModal';
-/** Bundled Shiba paw — ships with @dojak/web; hosts do not supply or reimplement this. */
+/** Bundled Shiba paw — part of the web wallet; hosts do not supply this. */
 import bundledPawSrc from '../assets/paw.png';
 
 export interface WalletDrawerProps {
@@ -14,13 +14,6 @@ export interface WalletDrawerProps {
   initialStep?: 'entry' | 'dashboard' | 'settings';
   /** Host override (e.g. ConnectWalletButton isDark). Falls back to DojakwebThemeProvider. */
   isDark?: boolean;
-  /**
-   * Optional override for the paw image URL. Default is the bundled Shiba paw asset.
-   * Hosts should almost never set this — the paw is part of the web wallet product.
-   */
-  pawSrc?: string;
-  /** Set false only for rare layout experiments. Default true. */
-  showPaw?: boolean;
 }
 
 const gripVariants: Variants = {
@@ -71,28 +64,25 @@ const pawImgVariants: Variants = {
 };
 
 /**
- * Dojakweb wallet drawer — always includes the Shiba Inu paw grip.
- * This is the single implementation; host dApps must not reimplement the paw.
+ * Dojakweb wallet drawer with built-in Shiba Inu paw grip.
+ * This is the only implementation — open it from hosts via WalletDrawer / ConnectWalletButton.
  */
 export default function WalletDrawer({
   isOpen,
   onClose,
   initialStep,
   isDark: isDarkProp,
-  pawSrc = bundledPawSrc,
-  showPaw = true,
 }: WalletDrawerProps) {
   const { theme } = useDojakwebTheme();
   const isDark = isDarkProp ?? theme === 'dark';
 
   useEffect(() => {
-    if (!showPaw) return;
     document.body.classList.toggle('wallet-drawer-paw-open', isOpen);
     return () => document.body.classList.remove('wallet-drawer-paw-open');
-  }, [isOpen, showPaw]);
+  }, [isOpen]);
 
   const paw =
-    showPaw && typeof document !== 'undefined'
+    typeof document !== 'undefined'
       ? createPortal(
           <AnimatePresence>
             {isOpen ? (
@@ -107,7 +97,7 @@ export default function WalletDrawer({
                 aria-hidden
               >
                 <motion.img
-                  src={pawSrc}
+                  src={bundledPawSrc}
                   alt=""
                   draggable={false}
                   variants={pawImgVariants}
