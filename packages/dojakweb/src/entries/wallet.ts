@@ -10,7 +10,11 @@ export {
 } from '../providers/DojakWalletProvider';
 
 export { ConnectWalletButton, type ConnectWalletButtonProps } from '../components/ConnectWalletButton';
-export { default as WalletDrawer } from '../components/WalletDrawer';
+export {
+  default as WalletDrawer,
+  type WalletDrawerProps,
+} from '../components/WalletDrawer';
+/** @deprecated Alias of WalletDrawer — paw is built into the web wallet. */
 export {
   WalletPawDrawer,
   type WalletPawDrawerProps,

@@ -58,6 +58,8 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
     minify: true,
+    // Bundle the Shiba paw PNG into wallet.js so hosts need no public/paw.png.
+    assetsInlineLimit: 600_000,
     lib: {
       entry: path.resolve(__dirname, 'src/entries/wallet.ts'),
       name: 'DojakWallet',
