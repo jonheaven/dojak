@@ -207,6 +207,8 @@ function estimateRevealTxBytes(
   lockScript: Buffer,
   inscriptionScriptPubKey: Buffer,
   changeScriptPubKey: Buffer,
+  /** Extra P2PKH (or similar 34-vB) outputs on the reveal — e.g. ÐLaunch creator payment. */
+  extraOutputCount = 0,
 ): number {
   const partialLen = chunksToBuffer(partial).length;
   const sigLen = 73;
@@ -219,18 +221,21 @@ function estimateRevealTxBytes(
   const scriptSigLen = partialLen + 1 + sigLen + lockPushLen;
   const scriptSigVarint = scriptSigLen < 0xfd ? 1 : 3;
   const inputBytes = 36 + scriptSigVarint + scriptSigLen + 4;
+  // Standard P2PKH output ~34 vB (used as upper bound for extra payments).
+  const extraOutBytes = Math.max(0, extraOutputCount) * 34;
 
   return (
     10 +
     inputBytes +
     legacyOutputVbytes(inscriptionScriptPubKey) +
-    legacyOutputVbytes(changeScriptPubKey)
+    legacyOutputVbytes(changeScriptPubKey) +
+    extraOutBytes
   );
 }
 
 /**
- * The P2SH output must hold enough for the reveal fee AND the inscription
- * destination amount.  Dynamic so high fee-rates still work correctly.
+ * The P2SH output must hold enough for the reveal fee, inscription dust,
+ * and optional same-tx payment outputs (ÐLaunch buy → creator).
  */
 function computeP2shAmount(
   partial: ScriptChunk[],
@@ -238,12 +243,20 @@ function computeP2shAmount(
   feeRate: number,
   inscriptionScriptPubKey: Buffer,
   changeScriptPubKey: Buffer,
+  extraPaymentSatoshis = 0,
+  extraOutputCount = 0,
 ): number {
   const revealFee = feeFor(
-    estimateRevealTxBytes(partial, lockScript, inscriptionScriptPubKey, changeScriptPubKey),
+    estimateRevealTxBytes(
+      partial,
+      lockScript,
+      inscriptionScriptPubKey,
+      changeScriptPubKey,
+      extraOutputCount,
+    ),
     feeRate,
   );
-  return INSCRIPTION_DEST_AMOUNT + revealFee;
+  return INSCRIPTION_DEST_AMOUNT + Math.max(0, extraPaymentSatoshis) + revealFee;
 }
 
 // ── Helpers exported to UI ────────────────────────────────────────────────────
@@ -298,8 +311,15 @@ function filterExcluded(utxos: NormUtxo[], excluded?: string[]): NormUtxo[] {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+export interface RevealPaymentOutput {
+  /** Dogecoin address that receives payment on the *reveal* (inscription) tx. */
+  address: string;
+  /** Amount in koinu (1 DOGE = 1e8). */
+  satoshis: number;
+}
+
 export interface SignInscriptionParams {
-  /** Plain text to inscribe. */
+  /** Plain text / JSON string to inscribe. */
   text: string;
   /** Sender's Dogecoin address (funds and change). */
   fromAddress: string;
@@ -311,6 +331,16 @@ export interface SignInscriptionParams {
   excludedOutpoints?: string[];
   /** Recipient of the inscribed UTXO; defaults to `fromAddress`. */
   inscriptionReceiveAddress?: string;
+  /**
+   * MIME type for the inscription envelope (default text/plain;charset=utf-8).
+   * Use `application/json` for ÐLaunch / protocol JSON.
+   */
+  contentType?: string;
+  /**
+   * Extra outputs on the reveal tx — paid from the P2SH reserve.
+   * Spec-compliant path for ÐLaunch `buy`: same-tx payment to creator.
+   */
+  extraRevealPayments?: RevealPaymentOutput[];
 }
 
 export interface SignedInscriptionPair {
@@ -326,6 +356,8 @@ export interface SignedInscriptionPair {
   inscriptionId: string;
   commitFeeSatoshis: number;
   revealFeeSatoshis: number;
+  /** Sum of extra reveal payments (koinu), if any. */
+  paymentSatoshis: number;
 }
 
 /**
@@ -360,6 +392,8 @@ export async function signInscriptionTxs(
     feeRate = 1000,
     excludedOutpoints,
     inscriptionReceiveAddress: inscriptionReceiveRaw,
+    contentType: contentTypeRaw,
+    extraRevealPayments = [],
   } = params;
 
   // ── Input validation ────────────────────────────────────────────────────────
@@ -371,6 +405,15 @@ export async function signInscriptionTxs(
       `(max ${INSCRIPTION_MAX_CONTENT_BYTES} for a 2-transaction inscription).`,
     );
   }
+  const contentType = (contentTypeRaw?.trim() || INSCRIPTION_CONTENT_TYPE).slice(0, 80);
+
+  const payments = extraRevealPayments
+    .map((p) => ({
+      address: p.address.trim(),
+      satoshis: Math.floor(Number(p.satoshis)),
+    }))
+    .filter((p) => p.address && p.satoshis >= 100_000);
+  const paymentSatoshis = payments.reduce((s, p) => s + p.satoshis, 0);
 
   // ── Key material ────────────────────────────────────────────────────────────
   const privKeyBytes = decodePrivateKeyFromWIF(privateKeyWIF);
@@ -380,8 +423,14 @@ export async function signInscriptionTxs(
   const { scriptPubKey: inscriptionScriptPubKey } = parseDogecoinReceiveAddress(inscriptionReceiveDisplay);
   const changeScriptPubKey = bitcoin.payments.p2pkh({ address: fromAddress, network: DOGE_NETWORK }).output!;
 
+  const paymentScripts: { script: Buffer; satoshis: number; address: string }[] = [];
+  for (const p of payments) {
+    const { scriptPubKey } = parseDogecoinReceiveAddress(p.address);
+    paymentScripts.push({ script: scriptPubKey, satoshis: p.satoshis, address: p.address });
+  }
+
   // ── Plan the inscription ─────────────────────────────────────────────────────
-  const allChunks = buildInscriptionChunks(contentBuf, INSCRIPTION_CONTENT_TYPE);
+  const allChunks = buildInscriptionChunks(contentBuf, contentType);
   const queue     = [...allChunks];
   const partial   = extractPartial(queue, true);
 
@@ -400,8 +449,10 @@ export async function signInscriptionTxs(
     feeRate,
     inscriptionScriptPubKey,
     changeScriptPubKey,
+    paymentSatoshis,
+    paymentScripts.length,
   );
-  const revealFee     = p2shAmount - INSCRIPTION_DEST_AMOUNT;
+  const revealFee     = p2shAmount - INSCRIPTION_DEST_AMOUNT - paymentSatoshis;
 
   console.log('[inscribe] plan', {
     contentBytes:  contentBuf.length,
@@ -495,7 +546,8 @@ export async function signInscriptionTxs(
   });
 
   // ── Build and sign reveal tx ────────────────────────────────────────────────
-  // One P2SH input with canonical Doginals scriptSig → inscription output (doginals.js `tx.to(address, 100000)`).
+  // One P2SH input with canonical Doginals scriptSig → inscription UTXO (+ optional payments).
+  // All outputs MUST be present before signing (SIGHASH_ALL).
   const revealTx = new bitcoin.Transaction();
   revealTx.version = 1;
 
@@ -507,6 +559,9 @@ export async function signInscriptionTxs(
   );
 
   revealTx.addOutput(Buffer.from(inscriptionScriptPubKey), BigInt(INSCRIPTION_DEST_AMOUNT));
+  for (const pay of paymentScripts) {
+    revealTx.addOutput(Buffer.from(pay.script), BigInt(pay.satoshis));
+  }
 
   // Sign input 0 — P2SH convention: sign against the redeemScript (lockScript)
   const SIGHASH_ALL = 0x01;
@@ -548,6 +603,8 @@ export async function signInscriptionTxs(
     revealTxid,
     inscriptionId,
     revealFee,
+    paymentSatoshis,
+    paymentOutputs: paymentScripts.length,
     commitTxHex,
     revealTxHex,
   });
@@ -560,5 +617,33 @@ export async function signInscriptionTxs(
     inscriptionId,
     commitFeeSatoshis: commitFee,
     revealFeeSatoshis: revealFee,
+    paymentSatoshis,
   };
+}
+
+/**
+ * High-level: sign + broadcast commit→reveal for JSON (or text) inscriptions.
+ * Used by ÐLaunch launch/buy one-flow UX.
+ */
+export async function signAndBroadcastInscription(params: SignInscriptionParams & {
+  /** Optional progress callback for UI. */
+  onProgress?: (step: string) => void;
+}): Promise<SignedInscriptionPair & { mode: 'on_chain' }> {
+  const { onProgress, ...signParams } = params;
+  onProgress?.('Signing commit + reveal…');
+  const pair = await signInscriptionTxs(signParams);
+
+  const { broadcastSignedTransaction } = await import('../broadcast/dogecoinTxBroadcast');
+
+  onProgress?.('Broadcasting commit…');
+  await broadcastSignedTransaction(pair.commitTxHex);
+
+  // Brief pause so relays see the commit before the child reveal.
+  await new Promise((r) => setTimeout(r, 900));
+
+  onProgress?.('Broadcasting reveal (inscription)…');
+  await broadcastSignedTransaction(pair.revealTxHex);
+
+  onProgress?.(`Inscribed ${pair.inscriptionId}`);
+  return { ...pair, mode: 'on_chain' };
 }

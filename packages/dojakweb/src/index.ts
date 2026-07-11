@@ -457,3 +457,15 @@ export {
   type InscribeJobItemInput,
   type InscribeJobItemResponse,
 } from './lib/inscribeJobs/commandDogInscribeJobs';
+
+/** Doginals P2SH commit–reveal (text/JSON) — ÐLaunch pay+inscribe uses this. */
+export {
+  signInscriptionTxs,
+  signAndBroadcastInscription,
+  estimateInscriptionFees,
+  INSCRIPTION_MAX_CONTENT_BYTES,
+  INSCRIPTION_CONTENT_TYPE,
+  type SignInscriptionParams,
+  type SignedInscriptionPair,
+  type RevealPaymentOutput,
+} from './lib/dogetag/inscribe';
