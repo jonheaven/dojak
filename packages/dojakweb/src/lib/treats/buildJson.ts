@@ -37,6 +37,29 @@ export function buildTreatsMintJson(tick: string, amt: string): string | null {
   return JSON.stringify({ p: 'dt', op: 'm', t, a });
 }
 
+export type TreatsMintPowFields = {
+  challengeId: string;
+  nonce: string;
+  difficulty: number;
+};
+
+export function buildTreatsMintPowJson(
+  tick: string,
+  amt: string,
+  pow: TreatsMintPowFields,
+): string | null {
+  const t = normalizeTicker(tick);
+  const a = positiveIntString(amt);
+  if (!t || !a) return null;
+  const c = pow.challengeId.trim().toLowerCase();
+  const n = pow.nonce.trim();
+  const d = pow.difficulty;
+  if (!/^[0-9a-f]{16}$/.test(c)) return null;
+  if (!/^[0-9]{1,12}$/.test(n) || (n.length > 1 && n.startsWith('0'))) return null;
+  if (!Number.isInteger(d) || d < 1 || d > 7) return null;
+  return JSON.stringify({ p: 'dt', op: 'm', t, a, d: String(d), c, n });
+}
+
 export function buildTreatsTransferJson(tick: string, amt: string): string | null {
   const t = normalizeTicker(tick);
   const a = positiveIntString(amt);
@@ -58,7 +81,15 @@ export function treatsPayloadBytes(op: TreatsOpKind, fields: Record<string, stri
       json = buildTreatsDeployJson(fields.tick ?? '', fields.max ?? '', fields.lim);
       break;
     case 'mint':
-      json = buildTreatsMintJson(fields.tick ?? '', fields.amt ?? '');
+      if (fields.powChallengeId && fields.powNonce && fields.powDifficulty) {
+        json = buildTreatsMintPowJson(fields.tick ?? '', fields.amt ?? '', {
+          challengeId: fields.powChallengeId,
+          nonce: fields.powNonce,
+          difficulty: Number(fields.powDifficulty),
+        });
+      } else {
+        json = buildTreatsMintJson(fields.tick ?? '', fields.amt ?? '');
+      }
       break;
     case 'transfer':
       json = buildTreatsTransferJson(fields.tick ?? '', fields.amt ?? '');

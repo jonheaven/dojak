@@ -1,13 +1,19 @@
 'use client';
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUnifiedWallet } from '../../contexts/useUnifiedWallet';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
 import {
   buildTreatsDeployJson,
   buildTreatsMintJson,
+  buildTreatsMintPowJson,
   buildTreatsTransferJson,
   signAndBroadcastTreats,
+  fetchTreatsPowConfig,
+  fetchTreatsPowChallenge,
+  mineTreatsPow,
+  estimatePowSeconds,
+  tickRequiresPow,
   type TreatsOpKind,
 } from '../../lib/treats';
 
@@ -22,6 +28,13 @@ export interface TreatsMintPanelProps {
   ops?: TreatsUiOp[];
   /** Hide hero block when embedded on a detail page */
   compact?: boolean;
+  /** When true, fetch indexer PoW policy and require mining before public mints. */
+  requireMintPow?: boolean;
+  /** On-chain deployer address — skips PoW during treasury phase only. */
+  tokenDeployerAddress?: string;
+  deployerMinted?: string;
+  deployerMintCap?: string | null;
+  publicMintOpen?: boolean;
   className?: string;
 }
 
@@ -33,6 +46,11 @@ export function TreatsMintPanel({
   lockTick = false,
   ops = DEFAULT_OPS,
   compact = false,
+  requireMintPow = false,
+  tokenDeployerAddress,
+  deployerMinted,
+  deployerMintCap,
+  publicMintOpen = false,
   className = '',
 }: TreatsMintPanelProps) {
   const wallet = useUnifiedWallet();
@@ -47,14 +65,46 @@ export function TreatsMintPanel({
   const [amt, setAmt] = useState('1000');
   const [transferTo, setTransferTo] = useState('');
   const [busy, setBusy] = useState(false);
+  const [mining, setMining] = useState(false);
+  const [mineProgress, setMineProgress] = useState<string | null>(null);
+  const [powConfig, setPowConfig] = useState<Awaited<ReturnType<typeof fetchTreatsPowConfig>>>(null);
+  const [powSolution, setPowSolution] = useState<{
+    challengeId: string;
+    nonce: string;
+    difficulty: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [txid, setTxid] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!requireMintPow) return;
+    void fetchTreatsPowConfig().then(setPowConfig);
+  }, [requireMintPow]);
+
+  const isTreasuryDeployer = useMemo(() => {
+    if (!address || !tokenDeployerAddress) return false;
+    return address.trim() === tokenDeployerAddress.trim();
+  }, [address, tokenDeployerAddress]);
+
+  const treasuryPhaseActive =
+    isTreasuryDeployer && !publicMintOpen && op === 'mint';
+
+  const powDifficulty = useMemo(() => {
+    if (treasuryPhaseActive) return null;
+    if (!requireMintPow || op !== 'mint') return null;
+    return tickRequiresPow(tick, powConfig);
+  }, [requireMintPow, op, tick, powConfig, treasuryPhaseActive]);
+
   const json = useMemo(() => {
     if (op === 'deploy') return buildTreatsDeployJson(tick, max, lim);
-    if (op === 'mint') return buildTreatsMintJson(tick, amt);
+    if (op === 'mint') {
+      if (powSolution) {
+        return buildTreatsMintPowJson(tick, amt, powSolution);
+      }
+      return buildTreatsMintJson(tick, amt);
+    }
     return buildTreatsTransferJson(tick, amt);
-  }, [op, tick, max, lim, amt]);
+  }, [op, tick, max, lim, amt, powSolution]);
 
   const isValid =
     Boolean(json) &&
@@ -67,7 +117,47 @@ export function TreatsMintPanel({
   const reset = useCallback(() => {
     setError(null);
     setTxid(null);
+    setPowSolution(null);
+    setMineProgress(null);
   }, []);
+
+  const handleMine = useCallback(async () => {
+    if (!address || !powDifficulty) return;
+    setMining(true);
+    setError(null);
+    setPowSolution(null);
+    setMineProgress('Requesting challenge…');
+    try {
+      const ch = await fetchTreatsPowChallenge(tick, amt, address);
+      if (ch.powRequired === false || !ch.preimage || !ch.challengeId || !ch.difficulty) {
+        setMineProgress(null);
+        setMining(false);
+        return;
+      }
+      const est = estimatePowSeconds(ch.difficulty);
+      setMineProgress(`Mining… ~${est}s on typical hardware`);
+      const nonce = await mineTreatsPow({
+        preimage: ch.preimage,
+        difficulty: ch.difficulty,
+        onProgress: (p) => {
+          setMineProgress(
+            `Mining… ${p.attempts.toLocaleString()} hashes (${p.hashesPerSec.toLocaleString()}/s)`,
+          );
+        },
+      });
+      setPowSolution({
+        challengeId: ch.challengeId,
+        nonce,
+        difficulty: ch.difficulty,
+      });
+      setMineProgress(`PoW solved — nonce ${nonce}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'PoW mining failed');
+      setMineProgress(null);
+    } finally {
+      setMining(false);
+    }
+  }, [address, powDifficulty, tick, amt]);
 
   async function handleBroadcast() {
     if (!isValid || !address) {
@@ -80,6 +170,10 @@ export function TreatsMintPanel({
     }
     if (op === 'transfer' && !transferTo.trim()) {
       setError('Enter a recipient Dogecoin address.');
+      return;
+    }
+    if (op === 'mint' && powDifficulty && !powSolution) {
+      setError('Complete the mint Proof-of-Work first (anti-bot).');
       return;
     }
 
@@ -96,6 +190,9 @@ export function TreatsMintPanel({
         max: op === 'deploy' ? max : undefined,
         lim: op === 'deploy' && lim.trim() ? lim : undefined,
         amt: op === 'mint' || op === 'transfer' ? amt : undefined,
+        powChallengeId: op === 'mint' ? powSolution?.challengeId : undefined,
+        powNonce: op === 'mint' ? powSolution?.nonce : undefined,
+        powDifficulty: op === 'mint' ? powSolution?.difficulty : undefined,
       });
       setTxid(id);
     } catch (e) {
@@ -137,6 +234,24 @@ export function TreatsMintPanel({
               {o}
             </button>
           ))}
+        </div>
+      )}
+
+      {op === 'mint' && tokenDeployerAddress && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
+          {treasuryPhaseActive ? (
+            <>
+              <strong>Treasury phase</strong> — deployer wallet mints without PoW until cap{' '}
+              {deployerMintCap ?? '?'} ({deployerMinted ?? '0'} minted so far).
+            </>
+          ) : publicMintOpen ? (
+            <>
+              <strong>Public PoW mint is open.</strong>{' '}
+              {isTreasuryDeployer
+                ? 'Deployer cap reached — use PoW like everyone else or earn via doge.cam bagwork.'
+                : 'Complete PoW below to mint fairly (anti-bot).'}
+            </>
+          ) : null}
         </div>
       )}
 
@@ -232,6 +347,32 @@ export function TreatsMintPanel({
             </p>
           )}
 
+          {op === 'mint' && powDifficulty && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-amber-200">
+                Mint Proof-of-Work (difficulty {powDifficulty})
+              </p>
+              <p className="text-xs text-zinc-400">
+                Public mints require browser mining — raises bot cost. Deployer/treasury wallets mint without PoW.
+                Typical wait ~{estimatePowSeconds(powDifficulty)}s.
+              </p>
+              {mineProgress && <p className="text-xs font-mono text-amber-100">{mineProgress}</p>}
+              {powSolution && (
+                <p className="text-xs text-emerald-300">
+                  Ready — challenge {powSolution.challengeId.slice(0, 8)}… nonce {powSolution.nonce}
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={!address || mining || busy}
+                onClick={() => void handleMine()}
+                className="w-full rounded-lg border border-amber-500/40 px-3 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/10 disabled:opacity-50"
+              >
+                {mining ? 'Mining…' : powSolution ? 'Re-mine (new challenge)' : 'Mine to unlock mint'}
+              </button>
+            </div>
+          )}
+
           {error && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
           )}
@@ -252,7 +393,13 @@ export function TreatsMintPanel({
 
           <button
             type="button"
-            disabled={!isValid || !address || busy}
+            disabled={
+              !isValid ||
+              !address ||
+              busy ||
+              mining ||
+              (op === 'mint' && Boolean(powDifficulty) && !powSolution)
+            }
             onClick={() => void handleBroadcast()}
             className="w-full rounded-xl bg-[#FCD34D] px-4 py-3 text-sm font-bold text-black transition hover:bg-[#fde68a] disabled:opacity-50"
           >

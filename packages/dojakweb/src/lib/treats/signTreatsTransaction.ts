@@ -37,6 +37,10 @@ export interface SignTreatsParams {
   amt?: string;
   feeRate?: number;
   excludedOutpoints?: string[];
+  /** Mint PoW solution (required when indexer enforces PoW for this tick). */
+  powChallengeId?: string;
+  powNonce?: string;
+  powDifficulty?: number;
 }
 
 export interface SignedTreatsTx {
@@ -70,7 +74,16 @@ export async function signTreatsTransaction(params: SignTreatsParams): Promise<S
     throw new Error('Recipient address required for ÐogeTreats deploy, mint, and transfer');
   }
 
-  const payload = treatsPayloadBytes(op, { tick, max: max ?? '', lim: lim ?? '', amt: amt ?? '' });
+  const payload = treatsPayloadBytes(op, {
+    tick,
+    max: max ?? '',
+    lim: lim ?? '',
+    amt: amt ?? '',
+    powChallengeId: params.powChallengeId,
+    powNonce: params.powNonce,
+    powDifficulty:
+      params.powDifficulty !== undefined ? String(params.powDifficulty) : undefined,
+  } as Record<string, string>);
   if (!payload?.length) {
     throw new Error('Invalid ÐogeTreats parameters — check ticker, amounts, and reserved names');
   }

@@ -3,3 +3,4 @@ export * from './buildJson';
 export * from './outputPlan';
 export * from './signTreatsTransaction';
 export * from './treatsApi';
+export * from './pow';
