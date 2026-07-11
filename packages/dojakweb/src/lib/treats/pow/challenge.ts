@@ -1,4 +1,4 @@
-import { getIndexerApiBase } from '../../utils/api';
+import { getIndexerApiBase } from '../../../utils/api';
 
 export type TreatsPowChallengeResponse = {
   powRequired?: boolean;

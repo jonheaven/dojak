@@ -7,6 +7,10 @@ export {
 } from './src/providers/DojakWalletProvider';
 export { ConnectWalletButton, type ConnectWalletButtonProps } from './src/components/ConnectWalletButton';
 export { default as WalletDrawer } from './src/components/WalletDrawer';
+export {
+  WalletPawDrawer,
+  type WalletPawDrawerProps,
+} from './src/components/WalletPawDrawer';
 export { default as WalletSelectionModal } from './src/components/WalletSelectionModal';
 export { default as SimpleWalletConnect } from './src/components/SimpleWalletConnect';
 export { default as DojakwebWalletModal } from './src/components/DojakwebWalletModal';

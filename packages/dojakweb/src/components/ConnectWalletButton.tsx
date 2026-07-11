@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import DojakwebWalletModal from './DojakwebWalletModal';
-import WalletDrawer from './WalletDrawer';
+import { WalletPawDrawer } from './WalletPawDrawer';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { useDxHostStore } from '../stores/dxHostStore';
@@ -10,13 +10,20 @@ import { useDxHostStore } from '../stores/dxHostStore';
 export interface ConnectWalletButtonProps {
   className?: string;
   isDark?: boolean;
+  /** drawer (default) uses the Shiba paw grip; modal is a centered sheet. */
   mode?: 'drawer' | 'modal';
+  /** Override paw image path (default `/paw.png`). */
+  pawSrc?: string;
+  /** Disable the gripping paw while keeping the drawer. */
+  showPaw?: boolean;
 }
 
 export function ConnectWalletButton({
   className = '',
   isDark = true,
   mode = 'drawer',
+  pawSrc = '/paw.png',
+  showPaw = true,
 }: ConnectWalletButtonProps) {
   const [open, setOpen] = useState(false);
   const { connected, address } = useUnifiedWallet();
@@ -48,11 +55,13 @@ export function ConnectWalletButton({
         {connected && address ? <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" /> : null}
       </button>
       {mode === 'drawer' ? (
-        <WalletDrawer
+        <WalletPawDrawer
           isOpen={open}
           onClose={() => setOpen(false)}
           initialStep={connected ? 'dashboard' : 'entry'}
           isDark={isDark}
+          pawSrc={pawSrc}
+          showPaw={showPaw}
         />
       ) : (
         <DojakwebWalletModal

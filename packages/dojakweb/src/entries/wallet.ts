@@ -11,6 +11,10 @@ export {
 
 export { ConnectWalletButton, type ConnectWalletButtonProps } from '../components/ConnectWalletButton';
 export { default as WalletDrawer } from '../components/WalletDrawer';
+export {
+  WalletPawDrawer,
+  type WalletPawDrawerProps,
+} from '../components/WalletPawDrawer';
 export { default as WalletSelectionModal } from '../components/WalletSelectionModal';
 export { default as SimpleWalletConnect } from '../components/SimpleWalletConnect';
 export { default as DojakwebWalletModal } from '../components/DojakwebWalletModal';

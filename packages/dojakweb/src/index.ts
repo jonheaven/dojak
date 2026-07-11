@@ -12,6 +12,10 @@ export { default as WalletSelectionModal } from './components/WalletSelectionMod
 export { ConnectWalletButton } from './components/ConnectWalletButton';
 export { default as SimpleWalletConnect } from './components/SimpleWalletConnect';
 export { default as WalletDrawer } from './components/WalletDrawer';
+export {
+  WalletPawDrawer,
+  type WalletPawDrawerProps,
+} from './components/WalletPawDrawer';
 export { default as DoginalDrawer } from './components/DoginalDrawer';
 export { DoginalDrawerProvider, useDoginalDrawer } from './contexts/DoginalDrawerContext';
 export type { DrawerData } from './contexts/DoginalDrawerContext';
