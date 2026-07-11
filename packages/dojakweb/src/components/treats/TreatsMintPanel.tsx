@@ -60,9 +60,15 @@ export function TreatsMintPanel({
   const firstOp = ops.includes(initialOp) ? initialOp : ops[0] ?? 'mint';
   const [op, setOp] = useState<TreatsUiOp>(firstOp);
   const [tick, setTick] = useState(initialTick);
-  const [max, setMax] = useState('21000000');
-  const [lim, setLim] = useState('1000');
-  const [amt, setAmt] = useState('1000');
+  /** Meme-default 1B open mint (pump.fun-style); not ORDI 21M. */
+  const [max, setMax] = useState(
+    initialTick.toUpperCase() === 'NOIZ' ? '1000000000' : '1000000000',
+  );
+  /** Empty = open mint (omit wire key `l`). */
+  const [lim, setLim] = useState('');
+  const [amt, setAmt] = useState(
+    initialTick.toUpperCase() === 'NOIZ' ? '1000000' : '1000',
+  );
   const [transferTo, setTransferTo] = useState('');
   const [busy, setBusy] = useState(false);
   const [mining, setMining] = useState(false);
@@ -96,7 +102,9 @@ export function TreatsMintPanel({
   }, [requireMintPow, op, tick, powConfig, treasuryPhaseActive]);
 
   const json = useMemo(() => {
-    if (op === 'deploy') return buildTreatsDeployJson(tick, max, lim);
+    if (op === 'deploy') {
+      return buildTreatsDeployJson(tick, max, lim.trim() ? lim : undefined);
+    }
     if (op === 'mint') {
       if (powSolution) {
         return buildTreatsMintPowJson(tick, amt, powSolution);
@@ -292,7 +300,9 @@ export function TreatsMintPanel({
                 }}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-white"
               />
-              <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">Mint limit (optional)</label>
+              <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Mint limit (optional — leave empty for open mint)
+              </label>
               <input
                 type="number"
                 min={1}
@@ -301,7 +311,8 @@ export function TreatsMintPanel({
                   setLim(e.target.value);
                   reset();
                 }}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-white"
+                placeholder="omit for open mint"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-white placeholder:text-zinc-600"
               />
             </>
           )}
