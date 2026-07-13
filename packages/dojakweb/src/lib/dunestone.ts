@@ -1,10 +1,11 @@
 /**
- * Dunestone encoder for the Dogecoin Dunes protocol.
- * Produces OP_RETURN scripts that index nodes interpret as dune operations.
+ * Dunestone encoder for Dogecoin Ðunes.
  *
- * Protocol spec derived from the dog/wonky-dogeord Rust implementations.
- * Tags, flags, and varint encoding must match exactly or the transaction
- * becomes a cenotaph (burned/invalid).
+ * **v1:** OP_RETURN + OP_PUSHNUM_13 (0x5d) — wonky / Runes parity
+ * **v2:** OP_RETURN + push 0xD0 (Ð) + push version 0x02 — Dogenals-native
+ *
+ * Tags/varints must match dogex or the tx becomes a cenotaph.
+ * Spec: dogenals/spec/protocols/dunes/{spec.md,V2.md}
  */
 
 // ── Tag constants (even = must-understand; odd = ignored-if-unknown) ─────────
@@ -23,6 +24,11 @@ const TAG_POINTER      = 22n;
 const TAG_DIVISIBILITY = 1n;
 const TAG_SPACERS      = 3n;
 const TAG_SYMBOL       = 5n;
+/** Ðunes v2 optional tags (even = critical if used). */
+const TAG_VERSION      = 24n;
+const TAG_AGENT        = 26n;
+const TAG_POOL         = 28n;
+const TAG_MIN_OUT      = 30n;
 
 // ── Flag bitmask constants ────────────────────────────────────────────────────
 const FLAG_ETCHING = 1n;  // bit 0
@@ -31,9 +37,14 @@ const FLAG_TURBO   = 4n;  // bit 2
 
 // ── Script opcodes ────────────────────────────────────────────────────────────
 const OP_RETURN      = 0x6a;
-const OP_PUSHNUM_13  = 0x5d; // magic number identifying a dunestone
+const OP_PUSHNUM_13  = 0x5d; // v1 magic (Runes parity)
+/** Ðunes v2 magic — 0xD0 is fucking cool. */
+export const DUNE_V2_MAGIC = 0xd0;
+export const DUNE_V2_VERSION = 0x02;
 const OP_PUSHDATA1   = 0x4c;
 const OP_PUSHDATA2   = 0x4d;
+
+export type DunestoneMagic = 'v1' | 'v2';
 
 // ── LEB128 varint encoding for u128 values ────────────────────────────────────
 
@@ -190,6 +201,10 @@ export interface DunestoneParams {
   pointer?: number;
   /** Transfer edicts (required for send operations). */
   edicts?: DuneEdict[];
+  /** Default **v2** (0xD0) for new etches; use v1 for wonky-era compatibility. */
+  magic?: DunestoneMagic;
+  /** v2 protocol version byte (default 0x02). */
+  protocolVersion?: number;
 }
 
 // ── Script push helpers ───────────────────────────────────────────────────────
@@ -205,15 +220,19 @@ function scriptPushSlice(data: number[]): number[] {
 // ── Main encoder ──────────────────────────────────────────────────────────────
 
 /**
- * Encode a dunestone into an OP_RETURN locking script.
+ * Encode a dunestone into an OP_RETURN locking script (value = 0).
  *
- * The returned bytes can be used directly as a transaction output's scriptPubKey
- * with value = 0 satoshis.
- *
- * Structure: OP_RETURN OP_PUSHNUM_13 push(payload)
+ * - **v1:** `OP_RETURN OP_PUSHNUM_13 [payload]`
+ * - **v2:** `OP_RETURN push(0xD0) push(version) [payload]`
  */
 export function encodeDunestone(params: DunestoneParams): Uint8Array {
   const payload: number[] = [];
+  const magic: DunestoneMagic = params.magic ?? 'v2';
+  const protocolVersion = params.protocolVersion ?? DUNE_V2_VERSION;
+
+  if (magic === 'v2') {
+    appendTagValue(TAG_VERSION, BigInt(protocolVersion), payload);
+  }
 
   // ── Etching fields ────────────────────────────────────────────────────────
   if (params.etching) {
@@ -246,7 +265,6 @@ export function encodeDunestone(params: DunestoneParams): Uint8Array {
   }
 
   // ── Mint ──────────────────────────────────────────────────────────────────
-  // Encoded as two consecutive Tag::Mint entries: one for block, one for tx
   if (params.mint) {
     appendTagValue(TAG_MINT, params.mint.block, payload);
     appendTagValue(TAG_MINT, params.mint.tx,    payload);
@@ -271,7 +289,6 @@ export function encodeDunestone(params: DunestoneParams): Uint8Array {
 
     for (const edict of sorted) {
       const blockDelta = edict.id.block - prevBlock;
-      // tx delta: if same block, relative; otherwise absolute
       const txDelta = edict.id.block === prevBlock
         ? edict.id.tx - prevTx
         : edict.id.tx;
@@ -287,8 +304,14 @@ export function encodeDunestone(params: DunestoneParams): Uint8Array {
   }
 
   // ── Assemble script ───────────────────────────────────────────────────────
-  // OP_RETURN OP_PUSHNUM_13 [push_slice(payload)]
-  const script: number[] = [OP_RETURN, OP_PUSHNUM_13];
+  const script: number[] = [OP_RETURN];
+  if (magic === 'v2') {
+    // OP_RETURN <push 0xD0> <push version> [payload]
+    script.push(...scriptPushSlice([DUNE_V2_MAGIC]));
+    script.push(...scriptPushSlice([protocolVersion & 0xff]));
+  } else {
+    script.push(OP_PUSHNUM_13);
+  }
   if (payload.length > 0) {
     script.push(...scriptPushSlice(payload));
   }
@@ -323,6 +346,7 @@ export function buildEtchScript(
   const premine = terms ? undefined : supply;
 
   return encodeDunestone({
+    magic: 'v2',
     etching: {
       dune,
       spacers: spacers > 0n ? spacers : undefined,
