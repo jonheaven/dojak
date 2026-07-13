@@ -163,7 +163,7 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
               <p className="mt-1 text-xs text-text-secondary">{t('walletPage.drc20.legacyBannerBody')}</p>
               <div className="mt-2 flex flex-wrap gap-3">
                 <a
-                  href="https://dogenals.org/docs/reference/which-protocol"
+                  href="https://dogenals.com/migrate"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs font-medium text-[#FCD34D] hover:underline"
