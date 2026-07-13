@@ -1,12 +1,10 @@
-import { TREATS_RESERVED_TICKERS, type TreatsOpKind } from './constants';
+import { TREATS_TICKER_MAX, type TreatsOpKind } from './constants';
 
 function normalizeTicker(raw: string): string | null {
   const t = raw.trim();
-  if (!t || t.length > 4) return null;
+  if (!t || t.length > TREATS_TICKER_MAX || t.length < 1) return null;
   if (!/^[a-zA-Z0-9]+$/.test(t)) return null;
-  const lower = t.toLowerCase();
-  if (TREATS_RESERVED_TICKERS.has(lower)) return null;
-  return lower;
+  return t.toLowerCase();
 }
 
 function positiveIntString(v: string): string | null {
@@ -30,11 +28,17 @@ export function buildTreatsDeployJson(tick: string, max: string, lim?: string): 
   return JSON.stringify(obj);
 }
 
-export function buildTreatsMintJson(tick: string, amt: string): string | null {
+export function buildTreatsMintJson(tick: string, amt: string, idPrefix?: string): string | null {
   const t = normalizeTicker(tick);
   const a = positiveIntString(amt);
   if (!t || !a) return null;
-  return JSON.stringify({ p: 'dt', op: 'm', t, a });
+  const obj: Record<string, string> = { p: 'dt', op: 'm', t, a };
+  if (idPrefix?.trim()) {
+    const i = idPrefix.trim().toLowerCase().slice(0, 16);
+    if (!/^[0-9a-f]{16}$/.test(i)) return null;
+    obj.i = i;
+  }
+  return JSON.stringify(obj);
 }
 
 export type TreatsMintPowFields = {
@@ -60,18 +64,35 @@ export function buildTreatsMintPowJson(
   return JSON.stringify({ p: 'dt', op: 'm', t, a, d: String(d), c, n });
 }
 
-export function buildTreatsTransferJson(tick: string, amt: string): string | null {
+export function buildTreatsTransferJson(tick: string, amt: string, idPrefix?: string): string | null {
   const t = normalizeTicker(tick);
   const a = positiveIntString(amt);
   if (!t || !a) return null;
-  return JSON.stringify({ p: 'dt', op: 't', t, a });
+  const obj: Record<string, string> = { p: 'dt', op: 't', t, a };
+  if (idPrefix?.trim()) {
+    const i = idPrefix.trim().toLowerCase().slice(0, 16);
+    if (!/^[0-9a-f]{16}$/.test(i)) return null;
+    obj.i = i;
+  }
+  return JSON.stringify(obj);
 }
 
-export function buildTreatsBurnJson(tick: string, amt: string): string | null {
+export function treatsIdPrefixFromAssetId(assetId: string): string {
+  const base = assetId.split('i', 1)[0].toLowerCase();
+  return base.slice(0, 16);
+}
+
+export function buildTreatsBurnJson(tick: string, amt: string, idPrefix?: string): string | null {
   const t = normalizeTicker(tick);
   const a = positiveIntString(amt);
   if (!t || !a) return null;
-  return JSON.stringify({ p: 'dt', op: 'b', t, a });
+  const obj: Record<string, string> = { p: 'dt', op: 'b', t, a };
+  if (idPrefix?.trim()) {
+    const i = idPrefix.trim().toLowerCase().slice(0, 16);
+    if (!/^[0-9a-f]{16}$/.test(i)) return null;
+    obj.i = i;
+  }
+  return JSON.stringify(obj);
 }
 
 export function treatsPayloadBytes(op: TreatsOpKind, fields: Record<string, string>): Buffer | null {

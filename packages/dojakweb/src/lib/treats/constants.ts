@@ -7,6 +7,7 @@ export const TREATS_DUST_KOINU = 1_000_000;
 /** Full OP_RETURN script cap per spec. */
 export const TREATS_MAX_OPRETURN_SCRIPT_BYTES = 80;
 
-export const TREATS_RESERVED_TICKERS = new Set(['doge', 'treat', 'dt']);
+export const TREATS_TICKER_MIN = 1;
+export const TREATS_TICKER_MAX = 8;
 
 export type TreatsOpKind = 'deploy' | 'mint' | 'transfer' | 'burn';

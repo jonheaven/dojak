@@ -267,11 +267,11 @@ export function TreatsMintPanel({
         <div className="space-y-4 rounded-2xl border border-zinc-800/80 bg-zinc-950/40 p-5">
           {!lockTick && (
             <>
-              <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">Ticker (1–4)</label>
+              <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">Ticker (1–8)</label>
               <input
                 value={tick}
                 onChange={(e) => {
-                  setTick(e.target.value.toUpperCase().slice(0, 4));
+                  setTick(e.target.value.toUpperCase().slice(0, 8));
                   reset();
                 }}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono uppercase text-white"
