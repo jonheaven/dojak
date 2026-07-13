@@ -158,6 +158,18 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
         badge: drc20Tokens?.length || 0,
         content: (
           <div className="space-y-4">
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+              <p className="font-medium text-amber-200">{t('walletPage.drc20.legacyBannerTitle')}</p>
+              <p className="mt-1 text-xs text-text-secondary">{t('walletPage.drc20.legacyBannerBody')}</p>
+              <a
+                href="https://dogenals.org/docs/reference/which-protocol"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-xs font-medium text-[#FCD34D] hover:underline"
+              >
+                {t('walletPage.drc20.migrateCta')} →
+              </a>
+            </div>
             {drc20Tokens?.length ? drc20Tokens.map((token) => (
               <div key={token.ticker} className="bg-bg-secondary rounded-lg p-4 border border-border-primary">
                 <div className="flex items-center justify-between">

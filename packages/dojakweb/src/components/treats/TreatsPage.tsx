@@ -26,8 +26,9 @@ export function TreatsPage() {
         </div>
         <h1 className="text-3xl font-bold text-white">ÐogeTreats</h1>
         <p className="mt-2 text-sm text-zinc-400">
-          Canonical OP_RETURN fungible standard from Dogenals genesis — wire <code className="text-zinc-200">p:&quot;dt&quot;</code>,
-          separate ledger from inscription DRC-20.
+          OP_RETURN meme/launch lane (<code className="text-zinc-200">p:&quot;dt&quot;</code>) — companion to{' '}
+          <strong className="text-zinc-300">Ðunes</strong> (hero fungible). Swap and pool via{' '}
+          <strong className="text-zinc-300">ÐSwap Core</strong> on dogenals.com (DOGE/TREATS). Classic inscription DRC-20 is legacy read-only.
         </p>
       </div>
 
