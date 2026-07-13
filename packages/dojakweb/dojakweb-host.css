@@ -1188,8 +1188,8 @@ body.wallet-drawer-paw-open {
   position: fixed;
   right: calc(var(--wallet-drawer-width, min(460px, 96vw)) - var(--wallet-paw-grip-offset, 200px));
   bottom: 0;
-  /* Below drawer (10050) but above backdrop (~9998) */
-  z-index: 10000;
+  /* Below drawer (10050) but above backdrop (9998) */
+  z-index: 9995;
   width: clamp(165px, 28vmin, 300px);
   line-height: 0;
   pointer-events: none;

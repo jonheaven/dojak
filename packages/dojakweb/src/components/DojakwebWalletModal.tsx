@@ -83,7 +83,7 @@ import {
   readWalletLockPreferences,
   writeWalletLockPreferences,
 } from '../lib/browser-wallet-lock-prefs';
-import { findSeedGroupIndexForAddress, groupBrowserWalletsBySeed } from '../lib/wallet-seed-groups';
+import { findSeedGroupIndexForAddress, groupBrowserWalletsBySeed, type BrowserWalletSeedGroup } from '../lib/wallet-seed-groups';
 import { ConfirmationReadSourcesBar } from './chain/ConfirmationReadSourcesBar';
 import { decryptText, encryptText, pbkdf2IterationsForSecretStrength } from '../lib/secureStorage';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
@@ -413,6 +413,65 @@ function getStoredPasswordFlag(address: string | null | undefined) {
 
 function getTemporaryBannerFlag(address: string | null | undefined) {
   return address ? `wallet_temporary_banner_${address}` : null;
+}
+
+function isSeedGroupBackedUp(group: BrowserWalletSeedGroup): boolean {
+  return group.accounts.some((account) => {
+    const key = getBackupFlag(account.address);
+    return key ? localStorage.getItem(key) === 'true' : false;
+  });
+}
+
+function markSeedGroupBackedUp(group: BrowserWalletSeedGroup) {
+  for (const account of group.accounts) {
+    const key = getBackupFlag(account.address);
+    if (key) localStorage.setItem(key, 'true');
+  }
+}
+
+function seedGroupHasPasswordSet(group: BrowserWalletSeedGroup): boolean {
+  return group.accounts.some((account) => {
+    const key = getStoredPasswordFlag(account.address);
+    return key ? localStorage.getItem(key) === 'true' : false;
+  });
+}
+
+function syncSeedGroupUiFlags(
+  groups: BrowserWalletSeedGroup[],
+  targetAddress: string,
+): { needsBackup: boolean; showTemporaryBanner: boolean } {
+  const groupIndex = findSeedGroupIndexForAddress(groups, targetAddress);
+  const group = groups[groupIndex];
+  if (!group) {
+    const backupKey = getBackupFlag(targetAddress);
+    const bannerKey = getTemporaryBannerFlag(targetAddress);
+    return {
+      needsBackup: backupKey ? localStorage.getItem(backupKey) !== 'true' : false,
+      showTemporaryBanner: bannerKey ? localStorage.getItem(bannerKey) === 'true' : false,
+    };
+  }
+
+  if (isSeedGroupBackedUp(group)) {
+    markSeedGroupBackedUp(group);
+  }
+
+  if (seedGroupHasPasswordSet(group)) {
+    for (const account of group.accounts) {
+      const bannerKey = getTemporaryBannerFlag(account.address);
+      if (bannerKey) localStorage.removeItem(bannerKey);
+    }
+  }
+
+  const backupKey = getBackupFlag(targetAddress);
+  const bannerKey = getTemporaryBannerFlag(targetAddress);
+  return {
+    needsBackup: isSeedGroupBackedUp(group) ? false : backupKey ? localStorage.getItem(backupKey) !== 'true' : false,
+    showTemporaryBanner: seedGroupHasPasswordSet(group)
+      ? false
+      : bannerKey
+        ? localStorage.getItem(bannerKey) === 'true'
+        : false,
+  };
 }
 
 async function copyTextWithFallback(value: string) {
@@ -1204,9 +1263,9 @@ export function DojakwebWalletModal({
       setNeedsBackup(false);
       return;
     }
-    const key = getBackupFlag(activeAddress);
-    setNeedsBackup(key ? localStorage.getItem(key) !== 'true' : false);
-  }, [activeAddress, step, connected]);
+    const { needsBackup: nextNeedsBackup } = syncSeedGroupUiFlags(localSeedWalletGroups, activeAddress);
+    setNeedsBackup(nextNeedsBackup);
+  }, [activeAddress, step, connected, localSeedWalletGroups]);
 
   useEffect(() => {
     if (step !== 'reveal') {
@@ -1467,7 +1526,7 @@ export function DojakwebWalletModal({
       } else if (!secret) {
         throw new Error(t('modal.errors.enterPassword'));
       }
-      const loaded = await browser.loadWallet(secret);
+      const loaded = await browser.loadWallet(secret, selectedLocalWalletAddress ?? undefined);
       if (!loaded) {
         throw new Error(t('modal.throws.unlockWrong'));
       }
@@ -1475,7 +1534,14 @@ export function DojakwebWalletModal({
       setWalletNameDraft(loaded.nickname?.trim() || '');
       setActivePassword(secret);
       setUnlockPassword('');
-      setShowTemporaryBanner(false);
+      try {
+        await createDojakwebSessionSecretStore().saveSecret(secret);
+      } catch {
+        // Session store is best-effort; in-memory password still enables HD account switching.
+      }
+      const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, loaded.address);
+      setNeedsBackup(uiFlags.needsBackup);
+      setShowTemporaryBanner(uiFlags.showTemporaryBanner);
       localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
       try {
         setActiveWallet('browser');
@@ -1564,27 +1630,79 @@ export function DojakwebWalletModal({
     }
   };
 
-  const handleConnectSavedLocalWallet = async (targetAddress: string) => {
-    setIsBusy(true);
-    setError(null);
+  const resolveBrowserSessionPassword = useCallback(async (): Promise<string | undefined> => {
+    if (activePassword) return activePassword;
     try {
-      localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
-      const storage = new BrowserWallet();
-      await storage.selectWallet(targetAddress);
-      setSelectedLocalWalletAddress(targetAddress);
-      const encrypted = await storage.isEncrypted(targetAddress);
-      setIsEncryptedWallet(encrypted);
-      if (encrypted) {
-        setStep('unlock');
-        return;
+      const session = await createDojakwebSessionSecretStore().getSecret();
+      if (session) {
+        setActivePassword(session);
+        return session;
       }
-      const loaded = await browser.loadWallet();
+    } catch {
+      // Ignore session read failures.
+    }
+    return undefined;
+  }, [activePassword]);
+
+  const connectSavedLocalWallet = async (targetAddress: string, sessionPassword?: string) => {
+    const storage = new BrowserWallet();
+    await storage.selectWallet(targetAddress);
+    setSelectedLocalWalletAddress(targetAddress);
+    const encrypted = await storage.isEncrypted(targetAddress);
+    setIsEncryptedWallet(encrypted);
+
+    if (encrypted) {
+      if (!sessionPassword) {
+        setStep('unlock');
+        return false;
+      }
+      const loaded = await browser.loadWallet(sessionPassword, targetAddress);
+      if (!loaded) {
+        setStep('unlock');
+        return false;
+      }
+      await browser.connect(loaded);
+      setWalletNameDraft(loaded.nickname?.trim() || '');
+    } else {
+      const loaded = await browser.loadWallet(undefined, targetAddress);
       if (!loaded) {
         throw new Error(t('modal.throws.loadSelectedWallet'));
       }
       await browser.connect(loaded);
       setWalletNameDraft(loaded.nickname?.trim() || '');
-      setStep('dashboard');
+    }
+
+    const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, targetAddress);
+    setNeedsBackup(uiFlags.needsBackup);
+    setShowTemporaryBanner(uiFlags.showTemporaryBanner);
+    try {
+      setActiveWallet('browser');
+    } catch {
+      try {
+        localStorage.setItem('wallet_type', 'browser');
+      } catch {
+        // Ignore localStorage failures.
+      }
+    }
+    setStep('dashboard');
+    setWalletSwitcherModalOpen(false);
+    await browser.refreshBalance({ silent: true });
+    return true;
+  };
+
+  const handleConnectSavedLocalWallet = async (targetAddress: string) => {
+    const currentAddr = browser.wallet?.address ?? activeAddress;
+    if (targetAddress === currentAddr && walletType === 'browser') {
+      setWalletSwitcherModalOpen(false);
+      return;
+    }
+
+    setIsBusy(true);
+    setError(null);
+    try {
+      localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
+      const sessionPassword = await resolveBrowserSessionPassword();
+      await connectSavedLocalWallet(targetAddress, sessionPassword);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : t('modal.errors.connectWallet'));
     } finally {
@@ -1599,7 +1717,8 @@ export function DojakwebWalletModal({
   }, [step, selectedLocalWalletAddress]);
 
   const handleAddBrowserAccount = async () => {
-    if (!isBrowserWallet || !activePassword) {
+    const sessionPassword = await resolveBrowserSessionPassword();
+    if (!isBrowserWallet || !sessionPassword) {
       toast.error(t('modal.toast.reunlockForAccountSwitch'));
       return;
     }
@@ -1612,9 +1731,12 @@ export function DojakwebWalletModal({
     setIsBusy(true);
     setError(null);
     try {
-      const switched = await browser.switchAccount(nextIdx, activePassword);
+      const switched = await browser.switchAccount(nextIdx, sessionPassword);
       await browser.connect(switched);
       setWalletNameDraft(switched.nickname?.trim() || '');
+      const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, switched.address);
+      setNeedsBackup(uiFlags.needsBackup);
+      setShowTemporaryBanner(uiFlags.showTemporaryBanner);
       await refreshSavedLocalWallets();
       await browser.refreshBalance({ silent: true });
       setWalletSwitcherModalOpen(false);
@@ -1780,9 +1902,16 @@ export function DojakwebWalletModal({
 
   const handleSavedSecretPhrase = () => {
     if (activeAddress) {
-      const key = getBackupFlag(activeAddress);
-      if (key) localStorage.setItem(key, 'true');
+      const groupIndex = findSeedGroupIndexForAddress(localSeedWalletGroups, activeAddress);
+      const group = localSeedWalletGroups[groupIndex];
+      if (group) {
+        markSeedGroupBackedUp(group);
+      } else {
+        const key = getBackupFlag(activeAddress);
+        if (key) localStorage.setItem(key, 'true');
+      }
     }
+    setNeedsBackup(false);
     toast.success(t('modal.toast.backupConfirmed'), { duration: 5000 });
     if (connected) {
       setStep('dashboard');
@@ -2525,7 +2654,7 @@ export function DojakwebWalletModal({
           as="div"
           className={cx('relative', isDrawerMode && 'pointer-events-none')}
           data-ds-theme={isDark ? 'dark' : 'light'}
-          style={{ zIndex: 9999 }}
+          style={{ zIndex: isDrawerMode ? 10050 : 9999 }}
           onClose={onClose}
           __demoMode={isDrawerMode}
         >

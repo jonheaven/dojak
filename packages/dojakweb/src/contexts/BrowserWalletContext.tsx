@@ -21,7 +21,7 @@ export interface UseBrowserWalletReturn {
     password?: string,
     options?: BrowserWalletSaveOptions
   ) => Promise<void>;
-  loadWallet: (password?: string) => Promise<WalletData | null>;
+  loadWallet: (password?: string, address?: string) => Promise<WalletData | null>;
   loadSeedMaterial: (password?: string, address?: string) => Promise<SeedMaterial | null>;
   hasSeedMaterial: (address?: string) => Promise<boolean>;
   hasWallet: () => Promise<boolean>;
@@ -222,9 +222,9 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
     []
   );
 
-  const loadWallet = useCallback(async (password?: string) => {
+  const loadWallet = useCallback(async (password?: string, targetAddress?: string) => {
     const storage = new BrowserWallet();
-    return storage.loadWallet(password);
+    return storage.loadWallet(password, targetAddress);
   }, []);
 
   const loadSeedMaterial = useCallback(async (password?: string, targetAddress?: string) => {
