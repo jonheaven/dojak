@@ -29,9 +29,4 @@ export {
   DojakwebThemeProvider,
   type DojakwebTheme,
 } from './src/contexts/DojakwebThemeContext';
-export {
-  DojakwebFeaturesProvider,
-  useDojakwebFeatures,
-  type DojakwebFeatures,
-} from './src/contexts/DojakwebFeaturesContext';
 export { toast } from 'sonner';

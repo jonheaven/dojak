@@ -9,17 +9,7 @@ import {
   createNativeAdapters,
   createNativeSessionSecretStore
 } from '@dojak/biometrics/mobile';
-import {
-  DOGEOS_ACTIVE_CONFIG,
-  createDogeOsPublicClient,
-  deriveDogeOsAddressFromMnemonic,
-  dogecoinKeyrings,
-  DOGEOS_DERIVATION_PATH,
-  getDogeOsBalance,
-  getDogeOsTransactions,
-  sendDogeOsTransaction
-} from '@dojak/core';
-import { HDNodeWallet, formatEther, parseEther } from 'ethers';
+import { dogecoinKeyrings } from '@dojak/core';
 import { DojakWallet, WalletCoreProvider, WalletTransaction } from '@dojak/ui';
 
 import './global.css';
@@ -27,8 +17,6 @@ import './global.css';
 const BALANCE_KEY = 'dojak.balance';
 const ADDRESS_KEY = 'dojak.address';
 const TXS_KEY = 'dojak.txs';
-const DOGEOS_BALANCE_KEY = 'dojak.dogeos.balance';
-const DOGEOS_TXS_KEY = 'dojak.dogeos.txs';
 const MNEMONIC_KEY = 'dojak.mnemonic';
 const MOBILE_LOCK_PASSWORD_KEY = 'dojak.mobile.lock.password';
 const MOBILE_BIOMETRIC_ENABLED_KEY = 'dojak.mobile.biometric.enabled';
@@ -36,8 +24,6 @@ const AUTO_LOCK_TIMEOUT_MS = 5 * 60 * 1000;
 
 const fallbackAddress = 'D8n4gQ8S4aQszM4xTq3w9fF6xR9H1skGgT';
 const fallbackMnemonic = 'test test test test test test test test test test test junk';
-
-const isHexAddress = (address: string) => /^0x[a-fA-F0-9]{40}$/.test(address.trim());
 
 export default function App() {
   const [lockPassword, setLockPassword] = useState('');
@@ -114,18 +100,6 @@ export default function App() {
     const memoryStore = new dogecoinKeyrings.MemoryStorageAdapter();
     void memoryStore;
 
-    const getMnemonic = async () => {
-      if (!isUnlocked || !sessionMnemonicRef.current) {
-        throw new Error('Wallet is locked. Unlock with password or biometric first.');
-      }
-      return sessionMnemonicRef.current;
-    };
-
-    const getDogeOsAddress = async () => {
-      const mnemonic = await getMnemonic();
-      return deriveDogeOsAddressFromMnemonic(mnemonic) as `0x${string}`;
-    };
-
     return {
       getBalance: async () => {
         const stored = await SecureStore.getItemAsync(BALANCE_KEY);
@@ -143,33 +117,13 @@ export default function App() {
         } as any;
       },
       getAddress: async () => (await SecureStore.getItemAsync(ADDRESS_KEY)) ?? fallbackAddress,
-      getDogeOsAddress,
-      getDogeOsBalance: async () => {
-        try {
-          const address = await getDogeOsAddress();
-          return await getDogeOsBalance(address);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown RPC error';
-          throw new Error(`Unable to load DogeOS balance. Please try again in a moment. (${message})`);
-        }
-      },
       getUsdRate: async () => 0.12,
       getTransactions: async () => {
         const raw = await SecureStore.getItemAsync(TXS_KEY);
         return raw ? (JSON.parse(raw) as WalletTransaction[]) : [];
       },
-      getDogeOsTransactions: async () => {
-        try {
-          const address = await getDogeOsAddress();
-          return (await getDogeOsTransactions(address)) as WalletTransaction[];
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown explorer error';
-          throw new Error(`Unable to load DogeOS transactions right now. (${message})`);
-        }
-      },
       getConnectedAccounts: async () => [((await SecureStore.getItemAsync(ADDRESS_KEY)) as string) ?? fallbackAddress],
       validateAddress: (address: string) => /^D[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(address.trim()),
-      validateDogeOsAddress: isHexAddress,
       copyText: async (value: string) => {
         await Clipboard.setStringAsync(value);
       },
@@ -192,70 +146,14 @@ export default function App() {
 
         return { txid: tx.txid };
       },
-      sendDogeOs: async ({ amount, to }: { amount: string; to: `0x${string}` }) => {
-        try {
-          const mnemonic = await getMnemonic();
-          const provider = createDogeOsPublicClient();
-          const derivedAddress = deriveDogeOsAddressFromMnemonic(mnemonic, DOGEOS_DERIVATION_PATH).toLowerCase();
-          const signer = HDNodeWallet.fromPhrase(mnemonic, undefined, DOGEOS_DERIVATION_PATH).connect(provider);
-          const signerAddress = (await signer.getAddress()).toLowerCase();
-
-          if (signerAddress !== derivedAddress) {
-            throw new Error('Derived DogeOS signer address mismatch');
-          }
-
-          const tx = await sendDogeOsTransaction(signer, { to, amount });
-          await tx.wait(1);
-
-          const [balance, txs] = await Promise.all([getDogeOsBalance(await signer.getAddress()), getDogeOsTransactions(await signer.getAddress())]);
-          await Promise.all([SecureStore.setItemAsync(DOGEOS_BALANCE_KEY, balance), SecureStore.setItemAsync(DOGEOS_TXS_KEY, JSON.stringify(txs))]);
-
-          return { txid: tx.hash };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown signing error';
-          throw new Error(`DogeOS send failed. Please confirm recipient, amount, and network status. (${message})`);
-        }
-      },
-      estimateDogeOsGas: async ({ amount, to }: { amount: string; to: `0x${string}` }) => {
-        try {
-          const mnemonic = await getMnemonic();
-          const provider = createDogeOsPublicClient();
-          const signer = HDNodeWallet.fromPhrase(mnemonic, undefined, DOGEOS_DERIVATION_PATH).connect(provider);
-          const [gasLimit, feeData] = await Promise.all([
-            signer.estimateGas({ to, value: parseEther(amount || '0') }),
-            provider.getFeeData()
-          ]);
-          const gasPrice = feeData.gasPrice ?? feeData.maxFeePerGas ?? 0n;
-          const totalFeeWei = gasLimit * gasPrice;
-          return { gasLimit: gasLimit.toString(), gasPriceWei: gasPrice.toString(), feeInDoge: formatEther(totalFeeWei) };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown gas estimation error';
-          throw new Error(`Unable to estimate DogeOS gas right now. (${message})`);
-        }
-      },
-      bridgeDogeOs: async ({ amount, direction }: { amount: string; direction: 'l1-to-dogeos' | 'dogeos-to-l1' }) => {
-        try {
-          const txid = `0xbridge-${direction}-${Date.now().toString(16)}`;
-          // Placeholder bridge call. Replace with official DogeOS bridge contract address when published.
-          void DOGEOS_ACTIVE_CONFIG.bridgeContractAddress;
-          void amount;
-          return { txid };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown bridge error';
-          throw new Error(`Bridge request could not be created. Please try again. (${message})`);
-        }
-      },
       logout: async () => {
         await lockSession();
         await Promise.all([
           SecureStore.setItemAsync(BALANCE_KEY, '0'),
-          SecureStore.setItemAsync(DOGEOS_BALANCE_KEY, '0'),
-          SecureStore.setItemAsync(TXS_KEY, JSON.stringify([])),
-          SecureStore.setItemAsync(DOGEOS_TXS_KEY, JSON.stringify([]))
+          SecureStore.setItemAsync(TXS_KEY, JSON.stringify([]))
         ]);
       },
-      getSeedPhraseForDogeOsTesting: async () => getMnemonic(),
-      getVersion: async () => '0.2.0-dogeos-testnet'
+      getVersion: async () => '0.2.0-l1'
     };
   }, [isUnlocked]);
 

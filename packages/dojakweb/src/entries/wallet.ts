@@ -37,10 +37,4 @@ export {
   type DojakwebTheme,
 } from '../contexts/DojakwebThemeContext';
 
-export {
-  DojakwebFeaturesProvider,
-  useDojakwebFeatures,
-  type DojakwebFeatures,
-} from '../contexts/DojakwebFeaturesContext';
-
 export { toast } from 'sonner';

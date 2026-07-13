@@ -1,10 +1,6 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** HTTPS RPC endpoint for DogeOS (EVM) */
-  readonly VITE_DOGEOS_RPC?: string;
-  /** Numeric chain id for DogeOS */
-  readonly VITE_DOGEOS_CHAIN_ID?: string;
   /** Inscription id (e.g. txid + i0) of the shared Doge𝕏 Check image — required for HTML wallet-card inscriptions. */
   readonly VITE_DX_BADGE_INSCRIPTION_ID?: string;
   /** Base URL for recursive image fetch (no trailing slash). Default https://api.mydoge.com */

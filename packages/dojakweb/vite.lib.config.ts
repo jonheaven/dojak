@@ -102,7 +102,7 @@ export default defineConfig({
       /** Rolldown/Vite 8 can drop `useUnifiedWallet` etc. from context chunks; lib output must match `index` imports. */
       treeshake: false,
       output: {
-        /** `preserveModules: true` triggers Rolldown bugs that strip most `export { … }` from small chunks (e.g. dogeos-chain, seedDerivation). */
+        /** `preserveModules: true` triggers Rolldown bugs that strip most `export { … }` from small chunks (e.g. seedDerivation). */
         preserveModules: false,
         /** Single `dist/index.js` for `package.json` `"."` export (no orphan chunk files). */
         codeSplitting: false,

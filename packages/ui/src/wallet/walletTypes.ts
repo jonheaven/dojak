@@ -1,4 +1,4 @@
-export type WalletTab = 'home' | 'receive' | 'send' | 'dogeos' | 'settings';
+export type WalletTab = 'home' | 'receive' | 'send' | 'settings';
 
 export type FeePreset = 'low' | 'medium' | 'high' | 'custom';
 
@@ -6,7 +6,6 @@ export const WALLET_TABS: { key: WalletTab; label: string }[] = [
   { key: 'home', label: 'Home' },
   { key: 'receive', label: 'Receive' },
   { key: 'send', label: 'Send' },
-  { key: 'dogeos', label: 'DogeOS Apps (Testnet)' },
   { key: 'settings', label: 'Settings' }
 ];
 

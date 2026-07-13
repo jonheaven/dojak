@@ -12,7 +12,7 @@ export default defineConfig({
       fileName: 'wallet-web',
     },
     rollupOptions: {
-      external: ['@scure/bip32', '@scure/bip39', 'viem', 'viem/accounts'],
+      external: ['@scure/bip32', '@scure/bip39'],
     },
   },
 });

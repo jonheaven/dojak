@@ -1,5 +1,5 @@
 /**
- * Facade for Dogecoin raw-tx broadcast + confirmation polling (file inscriptions, quantum, etc.).
+ * Facade for Dogecoin raw-tx broadcast + confirmation polling (file inscriptions, etc.).
  * Core relay + verification: `./dogecoinTxBroadcast.ts`. Prefer importing from this file in UIs so
  * stack traces read as chain broadcast, not “OP_RETURN-only”.
  */

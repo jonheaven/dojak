@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import JSZip from 'jszip';
 import { Dialog, Menu, Transition } from '@headlessui/react';
 import {
@@ -17,6 +17,7 @@ import {
   LockClosedIcon,
   PaperAirplaneIcon,
   PowerIcon,
+  PlusIcon,
   QrCodeIcon,
   ShareIcon,
   TagIcon,
@@ -33,7 +34,6 @@ import {
   XMarkIcon,
   SunIcon,
   MoonIcon,
-  CpuChipIcon,
   PhotoIcon,
   MusicalNoteIcon,
 } from '@heroicons/react/24/outline';
@@ -114,15 +114,7 @@ import {
   type DogeTxExplorerId,
 } from '../utils/dogeTxExplorer';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
-import { QuantumToggle } from './QuantumToggle';
-import {
-  broadcastQuantumCommitmentTx,
-  type QuantumTxResult,
-} from '../lib/dogetag/broadcastQuantumTx';
-import { getQuantumConfig } from '../utils/quantum-settings';
-import type { PQCAlgorithm } from '../lib/quantum';
 import { useGlobalStore } from '../stores/globalStore';
-import { useWalletStore } from '../stores/walletStore';
 import {
   buildDxRegisterPayload,
   buildDxSigningMessage,
@@ -155,19 +147,6 @@ import {
   defaultDxContentApiBase,
   dxBadgeInscriptionIdFromEnv,
 } from '../lib/dx/displayHtml';
-import { NetworkChainBadge } from './dogeos/NetworkChainBadge';
-import { ChainTxBanner } from './dogeos/ChainTxBanner';
-import { NetworkSwitcher } from './dogeos/NetworkSwitcher';
-import { DogecoinL1BalanceCard } from './dogeos/DogecoinL1BalanceCard';
-import { DogeOSBalanceCard } from './dogeos/DogeOSBalanceCard';
-import { DogeosSeedSync } from './dogeos/DogeosSeedSync';
-import { DogeosEcosystemSettings } from './dogeos/DogeosEcosystemSettings';
-import { useDojakwebFeatures } from '@/contexts/DojakwebFeaturesContext';
-
-const DogeosBalanceHydratorLazy = lazy(async () => {
-  const m = await import('./dogeos/DogeosBalanceHydrator');
-  return { default: m.DogeosBalanceHydrator };
-});
 import { AddressBookModal } from './AddressBookModal';
 import { DogePFPAvatar } from './DogePFPAvatar';
 import { DogePFAHeaderControl } from './DogePFAHeaderControl';
@@ -204,7 +183,7 @@ type WalletStep =
   | 'send_inscription'
   | 'list_inscription';
 
-type SettingsTab = 'data' | 'network' | 'display' | 'ecosystem';
+type SettingsTab = 'data' | 'network' | 'display';
 type BroadcastRelayProvider = 'blockchair' | 'blockcypher' | 'tatum' | 'rpc' | 'commanddog';
 type BroadcastProvider = 'auto' | BroadcastRelayProvider;
 const DEFAULT_BROADCAST_PRIORITY: BroadcastRelayProvider[] = [
@@ -229,12 +208,6 @@ interface BroadcastConfig {
 }
 
 type DisplayDogeTransaction = DogeTransaction & {
-  quantumProtected?: boolean;
-  quantumCommitment?: {
-    algorithm: string;
-    tag: string;
-    commitmentHex: string;
-  };
   localOnly?: boolean;
 };
 
@@ -599,9 +572,6 @@ export function DojakwebWalletModal({
   const [sendStatus, setSendStatus] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendTxid, setSendTxid] = useState<string | null>(null);
-  const [sendQuantumResult, setSendQuantumResult] = useState<QuantumTxResult | null>(null);
-  const [quantumEnabled, setQuantumEnabled] = useState(() => getQuantumConfig().suggestQuantumByDefault);
-  const [quantumAlgorithm, setQuantumAlgorithm] = useState<PQCAlgorithm>(() => getQuantumConfig().defaultAlgorithm);
   const [platformFeeTip, setPlatformFeeTip] = useState<number>(0);
   const [localRecentTransactions, setLocalRecentTransactions] = useState<DisplayDogeTransaction[]>([]);
 
@@ -652,26 +622,11 @@ export function DojakwebWalletModal({
     () => groupBrowserWalletsBySeed(savedLocalWallets),
     [savedLocalWallets]
   );
-
-  const dogeosEnabled = useWalletStore((s) => s.dogeosEnabled);
-  const pureDogeosMode = useWalletStore((s) => s.pureDogeosMode);
-  const currentNetwork = useWalletStore((s) => s.currentNetwork);
-  const dogeosAddress = useWalletStore((s) => s.dogeosAddress);
-  const dogeosBalance = useWalletStore((s) => s.dogeosBalance);
-  const setDogecoinBalance = useWalletStore((s) => s.setDogecoinBalance);
-  const resetEvmSession = useWalletStore((s) => s.resetEvmSession);
-  const { dogeosEvm: dogeosFeatureOn } = useDojakwebFeatures();
-  const dogeosUi = dogeosFeatureOn && dogeosEnabled;
-
-  useEffect(() => {
-    if (!connected) {
-      setDogecoinBalance('');
-      return;
-    }
-    setDogecoinBalance(
-      Number.isFinite(balance) ? balance.toLocaleString(undefined, { maximumFractionDigits: 8 }) : String(balance)
-    );
-  }, [balance, connected, setDogecoinBalance]);
+  const activeBrowserSeedGroup = useMemo(() => {
+    if (!isBrowserWallet || !activeAddress) return null;
+    const groupIndex = findSeedGroupIndexForAddress(localSeedWalletGroups, activeAddress);
+    return groupIndex >= 0 ? localSeedWalletGroups[groupIndex] : null;
+  }, [isBrowserWallet, activeAddress, localSeedWalletGroups]);
 
   useEffect(() => {
     if (step !== 'verification') {
@@ -888,17 +843,13 @@ export function DojakwebWalletModal({
 
 
 
-  const describeSendError = useCallback((rawError: unknown, quantum: boolean): string => {
+  const describeSendError = useCallback((rawError: unknown): string => {
     const message = rawError instanceof Error ? rawError.message : String(rawError ?? 'Unknown error');
     if (/insufficient funds/i.test(message)) {
-      return quantum
-        ? 'Insufficient funds for this send. The optional PQC attachment adds a small extra output fee on top of the DOGE amount.'
-        : 'Insufficient funds for this send.';
+      return 'Insufficient funds for this send.';
     }
     if (/wallet.*locked/i.test(message) || /private key/i.test(message)) {
-      return quantum
-        ? 'PQC attachment requires your local Dojakweb browser wallet unlocked so it can generate the commitment locally.'
-        : 'Unlock your wallet and try again.';
+      return 'Unlock your wallet and try again.';
     }
     if (/address/i.test(message)) {
       return 'Enter a valid Dogecoin recipient address.';
@@ -931,38 +882,12 @@ export function DojakwebWalletModal({
     }
 
     setSendBusy(true);
-    setSendStatus(quantumEnabled ? 'Preparing PQC attachment…' : 'Broadcasting transaction…');
+    setSendStatus('Broadcasting transaction…');
     setSendError(null);
     setSendTxid(null);
-    setSendQuantumResult(null);
 
     try {
-      let txid = '';
-      let quantumResult: QuantumTxResult | null = null;
-
-      if (quantumEnabled) {
-        if (!isBrowserWallet) {
-          throw new Error('Optional PQC attachment currently requires the local Dojakweb browser wallet.');
-        }
-        const wallet = browser.wallet ?? await browser.loadWallet(activePassword);
-        if (!wallet?.privateKey) {
-          throw new Error('Local browser wallet is locked.');
-        }
-        setSendStatus('Generating PQC attachment and signing…');
-        quantumResult = await broadcastQuantumCommitmentTx({
-          toAddress: trimmedRecipient,
-          amountSatoshis: Math.round(amount * 100_000_000),
-          fromAddress: activeAddress,
-          privateKeyWIF: wallet.privateKey,
-          algorithm: quantumAlgorithm,
-          includeCarrier: false,
-          feeRate: 1000,
-        });
-        txid = quantumResult.txid;
-        setSendQuantumResult(quantumResult);
-      } else {
-        txid = await sendTransaction(trimmedRecipient, amount);
-      }
+      const txid = await sendTransaction(trimmedRecipient, amount);
 
       setSendTxid(txid);
       pushLocalTransaction({
@@ -973,38 +898,21 @@ export function DojakwebWalletModal({
         confirmations: 0,
         timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
         pending: true,
-        quantumProtected: quantumEnabled,
-        quantumCommitment: quantumEnabled && quantumResult ? {
-          algorithm: quantumAlgorithm,
-          tag: quantumAlgorithm === 'falcon512' ? 'FLC1' : 'DIL2',
-          commitmentHex: [...quantumResult.commitment.commitment]
-            .map((b) => b.toString(16).padStart(2, '0'))
-            .join(''),
-        } : undefined,
         localOnly: true,
       });
       void refreshBalance().catch(() => {});
-      toast.success(
-        quantumEnabled
-          ? `Transaction sent (${txid.slice(0, 12)}…) — OP_RETURN PQC R&D tag included`
-          : `Transaction broadcast: ${txid.slice(0, 12)}…`,
-      );
+      toast.success(`Transaction broadcast: ${txid.slice(0, 12)}…`);
     } catch (err) {
-      setSendError(describeSendError(err, quantumEnabled));
+      setSendError(describeSendError(err));
     } finally {
       setSendBusy(false);
       setSendStatus(null);
     }
   }, [
     activeAddress,
-    activePassword,
-    browser,
     connected,
     describeSendError,
-    isBrowserWallet,
     pushLocalTransaction,
-    quantumAlgorithm,
-    quantumEnabled,
     recipientAddress,
     refreshBalance,
     sendAmount,
@@ -1075,11 +983,6 @@ export function DojakwebWalletModal({
   const [walletSwitcherModalOpen, setWalletSwitcherModalOpen] = useState(false);
   const [isAddressBookModalOpen, setIsAddressBookModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (!dogeosFeatureOn && settingsTab === 'ecosystem') {
-      setSettingsTab('data');
-    }
-  }, [dogeosFeatureOn, settingsTab]);
   const [walletDrawerHostEl, setWalletDrawerHostEl] = useState<HTMLDivElement | null>(null);
   const walletDrawerHostRef = useCallback((node: HTMLDivElement | null) => {
     setWalletDrawerHostEl(node);
@@ -1121,7 +1024,6 @@ export function DojakwebWalletModal({
     setSendStatus(null);
     setSendError(null);
     setSendTxid(null);
-    setSendQuantumResult(null);
   }, []);
 
   const refreshSavedLocalWallets = useCallback(async () => {
@@ -1773,7 +1675,7 @@ export function DojakwebWalletModal({
     setError(null);
     try {
       await switchAccount(nextIdx);
-      await refreshBalance({ silent: true });
+      await refreshBalance();
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : t('modal.errors.connectWallet'));
     } finally {
@@ -1815,7 +1717,6 @@ export function DojakwebWalletModal({
     try {
       await createDojakwebSessionSecretStore().clearSecret();
       await disconnect();
-      resetEvmSession();
       localStorage.setItem(BROWSER_WALLET_RESTORE_BLOCK_KEY, 'true');
       setPendingWallet(null);
       setPendingSeed(null);
@@ -2795,9 +2696,6 @@ export function DojakwebWalletModal({
                                           ? (
                                               <div className="flex items-center gap-1.5 flex-wrap">
                                                 <span>{t('modal.title.myWallet')}</span>
-                                                {dogeosUi && connected ? (
-                                                  <NetworkChainBadge network={pureDogeosMode ? 'dogeos' : currentNetwork} />
-                                                ) : null}
                                                 {connected && (
                                                   <>
                                                     <button
@@ -2888,17 +2786,6 @@ export function DojakwebWalletModal({
                         {error}
                       </div>
                     ) : null}
-
-                    {(step === 'dashboard' || (step === 'settings' && settingsTab === 'ecosystem')) && dogeosFeatureOn && (
-                      <DogeosSeedSync
-                        dogecoinAddress={activeAddress}
-                        isBrowserWallet={isBrowserWallet}
-                        dogeosEnabled={dogeosEnabled}
-                        unlockPassword={activePassword}
-                        pendingMnemonic={pendingSeed?.mnemonic ?? null}
-                        pendingPassphrase={pendingSeed?.passphrase}
-                      />
-                    )}
 
                     {step === 'entry' && (
                       <div className="space-y-4">
@@ -3395,121 +3282,79 @@ export function DojakwebWalletModal({
 
                     {step === 'dashboard' && (
                       <div className="space-y-3">
-                        {connected && isBrowserWallet && savedLocalWallets.length > 0 ? (
-                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2">
-                            <div className="flex min-w-0 flex-1 items-center gap-2">
-                              <span className="hidden shrink-0 text-[10px] uppercase tracking-wide text-white/40 sm:inline">
-                                {t('modal.localNav.hdWallet')}
+                        <button
+                          type="button"
+                          onClick={() => setWalletSwitcherModalOpen(true)}
+                          disabled={isBusy}
+                          className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 py-2.5 text-left transition hover:border-white/20 hover:bg-white/[0.04] disabled:opacity-60"
+                          aria-label={t('modal.walletSwitcher.title')}
+                        >
+                          <WalletProviderIcon walletType={activeWalletType} size="sm" framed />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="truncate text-sm font-medium text-white/90">
+                                {activeWalletSummary?.label || activeWalletName || getWalletSourceIndicator(activeWalletType, t).label}
+                              </span>
+                              {isBrowserWallet && browser.wallet?.accountIndex != null ? (
+                                <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-white/55">
+                                  {t('modal.dashboard.accountBadge', { index: String(browser.wallet.accountIndex) })}
+                                </span>
+                              ) : null}
+                            </div>
+                            {activeAddress ? (
+                              <span className="mt-0.5 block truncate font-mono text-[11px] text-white/40">
+                                {truncateAddress(activeAddress)}
+                              </span>
+                            ) : null}
+                          </div>
+                          <ChevronDownIcon className="h-4 w-4 shrink-0 text-white/40" aria-hidden />
+                        </button>
+
+                        {connected && isBrowserWallet && activeBrowserSeedGroup ? (
+                          <div className="rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2.5">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                                {t('modal.dashboard.hdAccountsLabel')}
                               </span>
                               <button
                                 type="button"
-                                onClick={() => void handleSwitchBrowserSeedWallet(-1)}
-                                disabled={isBusy || localSeedWalletGroups.length <= 1}
-                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
-                                aria-label={t('modal.localNav.prevSeed')}
-                                title={t('modal.localNav.prevSeed')}
+                                onClick={() => void handleAddBrowserAccount()}
+                                disabled={isBusy}
+                                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-medium text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
                               >
-                                <ChevronLeftIcon className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void handleSwitchBrowserSeedWallet(1)}
-                                disabled={isBusy || localSeedWalletGroups.length <= 1}
-                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
-                                aria-label={t('modal.localNav.nextSeed')}
-                                title={t('modal.localNav.nextSeed')}
-                              >
-                                <ChevronRightIcon className="h-4 w-4" />
+                                <PlusIcon className="h-3 w-3" aria-hidden />
+                                {t('modal.walletSwitcher.addAccount')}
                               </button>
                             </div>
-                            <div className="flex items-center gap-2 border-l border-white/10 pl-3 sm:pl-4">
-                              <span className="hidden shrink-0 text-[10px] uppercase tracking-wide text-white/40 sm:inline">
-                                {t('modal.localNav.account')}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => void handleSwitchBrowserAccount(-1)}
-                                disabled={isBusy || (browser.wallet?.accountIndex ?? 0) <= 0}
-                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
-                                aria-label={t('modal.localNav.prevAccount')}
-                                title={t('modal.localNav.prevAccount')}
-                              >
-                                <ChevronUpIcon className="h-4 w-4" />
-                              </button>
-                              <span className="min-w-[2.5rem] text-center text-xs font-semibold tabular-nums text-white/80">
-                                #{browser.wallet?.accountIndex ?? 0}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => void handleSwitchBrowserAccount(1)}
-                                disabled={isBusy}
-                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
-                                aria-label={t('modal.localNav.nextAccount')}
-                                title={t('modal.localNav.nextAccount')}
-                              >
-                                <ChevronDownIcon className="h-4 w-4" />
-                              </button>
+                            <div className="flex flex-wrap gap-1.5">
+                              {activeBrowserSeedGroup.accounts.map((acc) => {
+                                const isActiveAccount = acc.address === activeAddress;
+                                return (
+                                  <button
+                                    key={acc.address}
+                                    type="button"
+                                    onClick={() => {
+                                      if (!isActiveAccount) void handleConnectSavedLocalWallet(acc.address);
+                                    }}
+                                    disabled={isBusy || isActiveAccount}
+                                    title={acc.address}
+                                    className={cx(
+                                      'rounded-lg border px-2.5 py-1 text-xs font-semibold tabular-nums transition',
+                                      isActiveAccount
+                                        ? 'border-[#FCD34D]/50 bg-[#FCD34D]/15 text-[#FCD34D]'
+                                        : 'border-white/10 bg-white/5 text-white/65 hover:border-white/20 hover:bg-white/10 hover:text-white',
+                                      isBusy && 'cursor-wait',
+                                    )}
+                                  >
+                                    #{acc.accountIndex}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         ) : null}
-                        {dogeosFeatureOn ? (
-                          <Suspense fallback={null}>
-                            <DogeosBalanceHydratorLazy
-                              enabled={dogeosEnabled && isBrowserWallet && Boolean(activeAddress)}
-                            />
-                          </Suspense>
-                        ) : null}
-                        {/* ── Broadcast provider indicator ───────── */}
-                        <div className="flex flex-wrap items-center gap-2 self-start">
-                        </div>
 
                         <div className="rounded-xl border border-white/10 bg-[#0A0A0A] px-3 py-3">
-                          {availableWallets.length > 1 && (() => {
-                            const activeIdx = availableWallets.findIndex((w) => w.isActive);
-                            const prevIdx = (activeIdx - 1 + availableWallets.length) % availableWallets.length;
-                            const nextIdx = (activeIdx + 1) % availableWallets.length;
-                            return (
-                              <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2 mb-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveWallet(availableWallets[prevIdx].type)}
-                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
-                                  aria-label="Previous wallet"
-                                  title={`Switch to ${availableWallets[prevIdx].label}`}
-                                >
-                                  <ChevronLeftIcon className="h-4 w-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setWalletSwitcherModalOpen(true);
-                                  }}
-                                  className="flex-1 flex items-center justify-center gap-2 rounded border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 transition hover:bg-white/10 hover:text-white"
-                                  title="Switch Connected Wallet"
-                                >
-                                  {(() => {
-                                    const src = getWalletSourceIndicator(activeWalletType, t);
-                                    return (
-                                      <>
-                                        <WalletProviderIcon walletType={activeWalletType} size="xs" />
-                                        <span className="font-medium truncate">{activeWalletSummary?.label || src.label}</span>
-                                        <span className="text-white/35 shrink-0">{activeIdx + 1}/{availableWallets.length}</span>
-                                      </>
-                                    );
-                                  })()}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveWallet(availableWallets[nextIdx].type)}
-                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
-                                  aria-label="Next wallet"
-                                  title={`Switch to ${availableWallets[nextIdx].label}`}
-                                >
-                                  <ChevronRightIcon className="h-4 w-4" />
-                                </button>
-                              </div>
-                            );
-                          })()}
                           {/*
                             Grid: row 1 = balance | send/disconnect/menu (narrow col).
                             Row 2 = full-width address + copy/QR/lock so the address isn’t squeezed beside the action column.
@@ -3530,104 +3375,6 @@ export function DojakwebWalletModal({
                               </div>
                             ) : null}
 
-                            {dogeosUi && isBrowserWallet ? (
-                              <>
-                                <div className="col-span-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                  <NetworkChainBadge network={pureDogeosMode ? 'dogeos' : currentNetwork} />
-                                  {!pureDogeosMode ? <NetworkSwitcher className="sm:ml-auto" /> : null}
-                                </div>
-                                {connected ? (
-                                  <div className="col-span-2 flex min-w-0 items-center gap-2">
-                                    <Menu as="div" className="relative shrink-0">
-                                      <Menu.Button
-                                        type="button"
-                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                                        aria-label={t('modal.profileDpfp.avatarMenuAria')}
-                                        title={t('modal.profileDpfp.avatarMenuAria')}
-                                      >
-                                        <DogePFPAvatar
-                                          size="md"
-                                          fallback={<WalletProviderIcon walletType={activeWalletType} size="lg" framed />}
-                                        />
-                                      </Menu.Button>
-                                      <WalletMenuItems
-                                        theme={isDark ? 'dark' : 'light'}
-                                        anchor="bottom start"
-                                        className="min-w-[13rem] max-w-[16rem]"
-                                      >
-                                          <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
-                                            {t('modal.profileDpfp.menuHint')}
-                                          </div>
-                                          {pfpInscriptionId ? (
-                                            <Menu.Item>
-                                              {({ active }) => (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    clearDogePFP();
-                                                    toast.message(t('modal.toast.dpfpCleared'));
-                                                  }}
-                                                  className={cx(
-                                                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                    active ? 'bg-gray-700' : 'hover:bg-gray-800',
-                                                  )}
-                                                >
-                                                  <PhotoIcon className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
-                                                  <span className="leading-tight">{t('modal.profileDpfp.clearPfp')}</span>
-                                                </button>
-                                              )}
-                                            </Menu.Item>
-                                          ) : null}
-                                          {pfaInscriptionId ? (
-                                            <Menu.Item>
-                                              {({ active }) => (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    clearDogePFA();
-                                                    toast.message(t('modal.toast.dpfaCleared'));
-                                                  }}
-                                                  className={cx(
-                                                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                    active ? 'bg-gray-700' : 'hover:bg-gray-800',
-                                                  )}
-                                                >
-                                                  <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/80" aria-hidden />
-                                                  <span className="leading-tight">{t('modal.profileDpfa.clearPfa')}</span>
-                                                </button>
-                                              )}
-                                            </Menu.Item>
-                                          ) : null}
-                                      </WalletMenuItems>
-                                    </Menu>
-                                    <DogePFAHeaderControl />
-                                  </div>
-                                ) : null}
-                                {!pureDogeosMode ? (
-                                  <div className="col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                    <DogecoinL1BalanceCard
-                                      balanceDisplay={`${hideBalance ? '••••••' : balance.toLocaleString(undefined, { maximumFractionDigits: 8 })} DOGE`}
-                                    />
-                                    <DogeOSBalanceCard
-                                      balanceDisplay={`${dogeosBalance || '…'} DOGE`}
-                                      addressShort={
-                                        dogeosAddress ? `${dogeosAddress.slice(0, 6)}…${dogeosAddress.slice(-4)}` : undefined
-                                      }
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="col-span-2">
-                                    <DogeOSBalanceCard
-                                      balanceDisplay={`${dogeosBalance || '…'} DOGE`}
-                                      addressShort={
-                                        dogeosAddress ? `${dogeosAddress.slice(0, 6)}…${dogeosAddress.slice(-4)}` : undefined
-                                      }
-                                    />
-                                    <p className="mt-2 text-xs text-indigo-200/80">{t('modal.dogeos.pureDashboardHint')}</p>
-                                  </div>
-                                )}
-                              </>
-                            ) : (
                             <div className="flex min-w-0 items-start gap-3">
                               {connected ? (
                                 <div className="flex shrink-0 items-center gap-2 self-center pt-0.5">
@@ -3704,7 +3451,7 @@ export function DojakwebWalletModal({
                                       ? <span>–</span>
                                       : (
                                         <span className="inline-flex items-center gap-1.5">
-                                          <DogeCurrencyIcon size="md" className="opacity-90" />
+                                          <span className="text-[#FCD34D] text-lg font-semibold leading-none" aria-hidden>Ð</span>
                                           {hideBalance ? '••••••' : balance.toLocaleString(undefined, { maximumFractionDigits: 8 })}
                                         </span>
                                       )
@@ -3732,10 +3479,8 @@ export function DojakwebWalletModal({
                               </button>
                             </div>
                             </div>
-                            )}
 
                             <div className="flex shrink-0 items-center gap-1.5 self-center">
-                              {!(dogeosUi && isBrowserWallet && pureDogeosMode) ? (
                               <button
                                 type="button"
                                 onClick={() => setStep('send')}
@@ -3745,7 +3490,6 @@ export function DojakwebWalletModal({
                               >
                                 <PaperAirplaneIcon className="h-4 w-4" />
                               </button>
-                              ) : null}
                               <button
                                 type="button"
                                 onClick={handleDisconnectWallet}
@@ -3762,12 +3506,8 @@ export function DojakwebWalletModal({
                                 </Menu.Button>
                                     <WalletMenuItems theme={isDark ? 'dark' : 'light'} className="w-52 max-w-[min(18rem,calc(100vw-2rem))]">
                                       {[
-                                        ...(dogeosUi && isBrowserWallet && pureDogeosMode
-                                          ? []
-                                          : ([
-                                              { key: 'send', label: t('modal.dashboard.menu.send'), Icon: PaperAirplaneIcon, action: () => setStep('send') },
-                                              { key: 'receive', label: t('modal.dashboard.menu.receive'), Icon: QrCodeIcon, action: () => setStep('receive') },
-                                            ] as const)),
+                                        { key: 'send', label: t('modal.dashboard.menu.send'), Icon: PaperAirplaneIcon, action: () => setStep('send') },
+                                        { key: 'receive', label: t('modal.dashboard.menu.receive'), Icon: QrCodeIcon, action: () => setStep('receive') },
                                         { key: 'setName', label: t('modal.dashboard.menu.setName'), Icon: TagIcon, action: () => setStep('set_name') },
                                         ...(isBrowserWallet
                                           ? ([
@@ -3849,11 +3589,9 @@ export function DojakwebWalletModal({
                                 <button type="button" onClick={handleCopyAddress} className="flex h-7 w-7 items-center justify-center rounded-none transition hover:bg-white/5" aria-label={t('modal.aria.copyAddress')}>
                                   <ClipboardDocumentIcon className="h-5 w-5" />
                                 </button>
-                                {!(dogeosUi && isBrowserWallet && pureDogeosMode) ? (
                                 <button type="button" onClick={() => setStep('receive')} className="flex h-7 w-7 items-center justify-center rounded-none transition hover:bg-white/5" aria-label={t('modal.aria.receiveQr')}>
                                   <QrCodeIcon className="h-5 w-5" />
                                 </button>
-                                ) : null}
                                 {isBrowserWallet ? (
                                   <button
                                     type="button"
@@ -4160,37 +3898,6 @@ export function DojakwebWalletModal({
                                           </button>
                                         )}
                                       </div>
-                                      {selectedTx.quantumProtected && (
-                                        <div
-                                          className="mb-2 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-zinc-600"
-                                          title={t('modal.tx.opReturnBadgeTitle')}
-                                        >
-                                          <TagIcon className="h-3 w-3 shrink-0" aria-hidden />
-                                          OP_RETURN · PQC R&amp;D tag
-                                        </div>
-                                      )}
-                                      {selectedTx.quantumCommitment && (
-                                        <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-left">
-                                          <TechDetails
-                                            summary={t('modal.tx.opReturnPayloadSummary')}
-                                            className="text-[11px] text-emerald-900"
-                                            summaryClassName="text-emerald-900 font-medium"
-                                            contentClassName="border-emerald-200 text-emerald-800"
-                                          >
-                                            <div>
-                                              <strong>{t('modal.tx.opReturnAlgo')}:</strong>{' '}
-                                              {selectedTx.quantumCommitment.algorithm === 'falcon512' ? 'Falcon-512' : 'ML-DSA-44'}
-                                            </div>
-                                            <div>
-                                              <strong>{t('modal.tx.opReturnTag')}:</strong> {selectedTx.quantumCommitment.tag}
-                                            </div>
-                                            <div>
-                                              <strong>{t('modal.tx.opReturnCommitment')}:</strong>{' '}
-                                              <span className="font-mono">{selectedTx.quantumCommitment.commitmentHex.slice(0, 16)}…</span>
-                                            </div>
-                                          </TechDetails>
-                                        </div>
-                                      )}
                                       <div className="my-4 text-4xl font-bold text-zinc-900">
                                         Ð{selectedTx.amount % 1 === 0 ? selectedTx.amount.toLocaleString() : selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
                                       </div>
@@ -4279,14 +3986,7 @@ export function DojakwebWalletModal({
                                               {initials}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                              <div className="flex items-center gap-2">
-                                                <div className="truncate text-sm font-semibold text-white">{addrShort}</div>
-                                                {tx.quantumProtected && (
-                                                  <span className="shrink-0 text-white/40" title={t('modal.tx.opReturnListHint')}>
-                                                    <CpuChipIcon className="h-3.5 w-3.5" aria-label={t('modal.tx.opReturnListHint')} />
-                                                  </span>
-                                                )}
-                                              </div>
+                                              <div className="truncate text-sm font-semibold text-white">{addrShort}</div>
                                               <div className="text-xs text-white/40">{timeAgo || (tx.pending ? t('modal.tx.pending') : '')}</div>
                                             </div>
                                             <div className={cx(
@@ -4728,9 +4428,6 @@ export function DojakwebWalletModal({
                     {/* ── List inscription ─────────────────────────────── */}
                     {step === 'list_inscription' && selectedInscription && (
                       <div className="space-y-4">
-                        {dogeosUi && isBrowserWallet ? (
-                          <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerListing')}</ChainTxBanner>
-                        ) : null}
                         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-3">
                           {selectedInscription.contentType?.startsWith('image/') ? (
                             <img src={selectedInscription.content} alt="" className="h-14 w-14 rounded-lg object-cover" />
@@ -5091,9 +4788,6 @@ export function DojakwebWalletModal({
                               {t('modal.verification.back')}
                             </button>
                             <p className="text-sm text-[#D4D4D4]">{t('modal.verification.dxStep2Intro')}</p>
-                            {dogeosUi && isBrowserWallet ? (
-                              <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerDxSign')}</ChainTxBanner>
-                            ) : null}
                             {isCommandDogDxConfigured() && dxSessionExpiresAtUnix != null ? (
                               <p className="text-xs text-amber-200/90">
                                 {t('modal.verification.dxSessionDeadline', {
@@ -5260,9 +4954,6 @@ export function DojakwebWalletModal({
                               ) : null;
                             })()}
                             <p className="text-sm text-green-200">{t('modal.verification.dxDone')}</p>
-                            {dogeosUi && isBrowserWallet ? (
-                              <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerDxInscribe')}</ChainTxBanner>
-                            ) : null}
                             <textarea
                               readOnly
                               value={dxPayload ? JSON.stringify(dxPayload, null, 2) : ''}
@@ -5341,9 +5032,6 @@ export function DojakwebWalletModal({
                       <div className="space-y-4">
                         {!sendTxid ? (
                           <>
-                            {dogeosUi && isBrowserWallet ? (
-                              <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerSend')}</ChainTxBanner>
-                            ) : null}
                             <div className="text-sm text-[#D4D4D4]">{t('modal.send.introShort')}</div>
                             <label className="block text-sm text-white">
                               <span className="mb-2 block">{t('modal.send.recipientLabel')}</span>
@@ -5374,32 +5062,6 @@ export function DojakwebWalletModal({
                                 disabled={sendBusy}
                               />
                             </label>
-
-                            <details className="group rounded-xl border border-white/10 bg-[#0A0A0A] text-left">
-                              <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs text-white/55 [&::-webkit-details-marker]:hidden">
-                                <TagIcon className="h-4 w-4 shrink-0 text-white/40" aria-hidden />
-                                <span className="min-w-0 flex-1 leading-snug">{t('modal.send.opReturnSectionTitle')}</span>
-                                <ChevronDownIcon className="h-4 w-4 shrink-0 text-white/35 transition group-open:-rotate-180" aria-hidden />
-                              </summary>
-                              <div className="space-y-3 border-t border-white/10 px-3 pb-3 pt-2">
-                                <TechDetails
-                                  summary={t('modal.wallet.geekDetails')}
-                                  className="text-[11px] text-white/45"
-                                  summaryClassName="text-white/55"
-                                  contentClassName="border-white/15"
-                                >
-                                  <p className="leading-relaxed">{t('modal.send.opReturnHelp')}</p>
-                                </TechDetails>
-                                <QuantumToggle
-                                  variant="subtle"
-                                  enabled={quantumEnabled}
-                                  algorithm={quantumAlgorithm}
-                                  onChange={setQuantumEnabled}
-                                  onAlgorithmChange={setQuantumAlgorithm}
-                                  showAlgorithmSelector={quantumEnabled}
-                                />
-                              </div>
-                            </details>
 
                             {/* Fee Transparency */}
                             <div className="rounded-xl border border-white/10 bg-[#0A0A0A] px-4 py-3">
@@ -5453,7 +5115,7 @@ export function DojakwebWalletModal({
                               <div className="flex items-center gap-2 text-emerald-300">
                                 <CheckCircleIcon className="h-5 w-5" />
                                 <div className="font-semibold">
-                                  {quantumEnabled ? t('modal.send.successWithTag') : t('modal.send.successPlain')}
+                                  {t('modal.send.successPlain')}
                                 </div>
                               </div>
                               <div className="mt-3 space-y-2 text-sm text-white/75">
@@ -5461,25 +5123,6 @@ export function DojakwebWalletModal({
                                   <span className="text-white/45">{t('modal.send.successTxid')}</span>{' '}
                                   <span className="font-mono break-all">{sendTxid}</span>
                                 </div>
-                                {sendQuantumResult && (
-                                  <TechDetails
-                                    summary={t('modal.wallet.geekDetails')}
-                                    className="text-xs text-white/50"
-                                    summaryClassName="text-white/55"
-                                    contentClassName="border-white/15"
-                                  >
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <TagIcon className="h-3.5 w-3.5 shrink-0 text-emerald-400/70" aria-hidden />
-                                      <span>
-                                        {t('modal.send.successTagLine', {
-                                          algo:
-                                            sendQuantumResult.commitment.algorithm === 'falcon512' ? 'Falcon-512' : 'ML-DSA-44',
-                                          commitment: sendQuantumResult.proof.commitment.slice(0, 18),
-                                        })}
-                                      </span>
-                                    </div>
-                                  </TechDetails>
-                                )}
                               </div>
                             </div>
 
@@ -5510,9 +5153,6 @@ export function DojakwebWalletModal({
 
                     {step === 'receive' && (
                       <div className="space-y-4">
-                        {dogeosUi && isBrowserWallet ? (
-                          <ChainTxBanner chain="dogecoin">{t('modal.dogeos.txBannerReceive')}</ChainTxBanner>
-                        ) : null}
                         <div className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-[#0A0A0A] p-5">
                           <QRCodeSVG
                             value={activeAddress ?? ''}
@@ -5583,9 +5223,7 @@ export function DojakwebWalletModal({
                       <form className="space-y-3" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
                         {/* ── Settings tabs ── */}
                         <div className="flex border-b border-white/10">
-                          {(['data', 'network', 'display', 'ecosystem'] as SettingsTab[])
-                            .filter((tabId) => tabId !== 'ecosystem' || dogeosFeatureOn)
-                            .map((tabId) => (
+                          {(['data', 'network', 'display'] as SettingsTab[]).map((tabId) => (
                             <button
                               key={tabId}
                               type="button"
@@ -5601,9 +5239,7 @@ export function DojakwebWalletModal({
                                 ? 'Data'
                                 : tabId === 'network'
                                   ? 'Network'
-                                  : tabId === 'display'
-                                    ? 'Display'
-                                    : t('modal.settings.tabEcosystem')}
+                                  : 'Display'}
                             </button>
                           ))}
                         </div>
@@ -6144,15 +5780,6 @@ export function DojakwebWalletModal({
                             </div>
                           </div>
                         )}
-
-                        {settingsTab === 'ecosystem' && dogeosFeatureOn ? (
-                          <div className="space-y-3">
-                            <div className="text-[10px] font-semibold uppercase tracking-widest text-white/35">
-                              {t('modal.dogeos.ecosystemSection')}
-                            </div>
-                            <DogeosEcosystemSettings t={t} canUseDogeosFromSeed={isBrowserWallet} />
-                          </div>
-                        ) : null}
 
                         <div className="flex gap-2 pt-1">
                           <button type="button" onClick={() => setStep('dashboard')} className={cx('flex-1', SECONDARY_BUTTON)}>

@@ -9,7 +9,6 @@ import {
   ShoppingBagIcon,
   ShoppingCartIcon,
   PhotoIcon,
-  CpuChipIcon,
   LockClosedIcon,
   ChartBarIcon,
   InboxStackIcon,
@@ -47,7 +46,6 @@ const navigationItems = [
 const inscriptionsItems = [
   { id: 'inscribe',  label: 'Inscribe file', icon: PhotoIcon },
   { id: 'dogetags',  label: 'Create DogeTag', icon: TagIcon },
-  { id: 'quantum',   label: 'Quantum',       icon: CpuChipIcon },
 ] as const;
 
 const dogeTokensItems = [

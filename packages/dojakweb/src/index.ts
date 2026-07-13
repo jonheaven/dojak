@@ -24,11 +24,6 @@ export {
   DojakWalletProvider,
   type DojakWalletProviderProps,
 } from './providers/DojakWalletProvider';
-export {
-  DojakwebFeaturesProvider,
-  useDojakwebFeatures,
-  type DojakwebFeatures,
-} from './contexts/DojakwebFeaturesContext';
 
 export { useDojakwebTheme, DojakwebThemeProvider } from './contexts/DojakwebThemeContext';
 export type { DojakwebTheme } from './contexts/DojakwebThemeContext';
@@ -93,27 +88,10 @@ export * from './wallet/getConnectedWalletAddress';
 
 export { DojakwebWalletModal } from './components/DojakwebWalletModal';
 
-export { useWalletStore } from './stores/walletStore';
-export type { WalletState, DogeNetworkId } from './stores/walletStore';
 export {
-  deriveDogeosAddressFromMnemonic,
   derivePrivateKeyAtPath,
-  DOGEOS_EVM_DEFAULT_PATH,
   DOGECOIN_L1_REFERENCE_PATH,
 } from './lib/seedDerivation';
-export { dogeosChain, getDogeosRpcUrl, getDogeosChainId } from './lib/dogeos-chain';
-export { dogeosWagmiConfig } from './lib/dogeos-wagmi-config';
-export { createDogeosPublicClient, fetchDogeosNativeBalance } from './lib/dogeos';
-export { NetworkChainBadge } from './components/dogeos/NetworkChainBadge';
-export { NetworkSwitcher } from './components/dogeos/NetworkSwitcher';
-export { ChainTxBanner } from './components/dogeos/ChainTxBanner';
-export {
-  createDogeosEip1193Provider,
-  getDogeosChainIdHex,
-  type DogeosEip1193Provider,
-  type DogeosEip1193ProviderOptions,
-  type Eip1193RequestArguments,
-} from './lib/evm/dogeosEip1193Provider';
 
 export {
   signAndBroadcastOpReturnDogetag,
@@ -316,72 +294,6 @@ export {
   decodeDogePsdtUriToBase64,
   isDogePsdtUri,
 } from './lib/psdt';
-
-// ── Quantum / Post-Quantum Commitment Protocol ───────────────────────────────
-// Phase 1 OP_RETURN commitment scheme per Dogecoin Foundation BIP draft
-// (libdogecoin 0.1.5-dev, Ed Tubbs / Michi Lumin / Timothy Stebbing, April 2026).
-// See src/lib/quantum.ts for full protocol documentation.
-export {
-  // Algorithm constants
-  PQC_ALGORITHM_INFO,
-  PQC_TAGS,
-  PQC_COMMITMENT_PAYLOAD_BYTES,
-  QUANTUM_OPRETURN_OUTPUT_BYTES,
-  QUANTUM_CARRIER_OUTPUT_BYTES,
-  QUANTUM_CARRIER_VALUE_KOINU,
-  // Commitment generation
-  generateQuantumCommitment,
-  generateFalconCommitment,
-  generateDilithiumCommitment,
-  // OP_RETURN builders
-  buildQuantumCommitmentScript,
-  buildQuantumRevealReferenceScript,
-  // Off-chain verification
-  verifyQuantumCommitment,
-  // OP_RETURN parser (for indexers / explorers / SPV)
-  parseQuantumCommitmentScript,
-  parseQuantumRevealReferenceScript,
-  // Proof serialization
-  exportProofAsJson,
-  importProofFromJson,
-  // Preload helper
-  preloadQuantumModules,
-} from './lib/quantum';
-export type {
-  PQCAlgorithm,
-  QuantumKeyPair,
-  QuantumCommitment,
-  QuantumProofExport,
-} from './lib/quantum';
-
-// Quantum broadcast flow (TX_C + TX_R)
-export {
-  estimateQuantumTxFee,
-  signQuantumCommitmentTx,
-  broadcastQuantumCommitmentTx,
-  signQuantumRevealTx,
-  broadcastQuantumRevealTx,
-} from './lib/dogetag/broadcastQuantumTx';
-export type {
-  BroadcastQuantumParams,
-  QuantumTxResult,
-  BroadcastQuantumRevealParams,
-  QuantumRevealResult,
-  QuantumFeeEstimate,
-} from './lib/dogetag/broadcastQuantumTx';
-
-// Quantum UI components
-export { QuantumToggle } from './components/QuantumToggle';
-export type { QuantumToggleProps } from './components/QuantumToggle';
-export { QuantumDemoPage } from './components/QuantumDemoPage';
-
-// Quantum settings
-export {
-  getQuantumConfig,
-  setQuantumConfig,
-  QUANTUM_CONFIG_CHANGED_EVENT,
-} from './utils/quantum-settings';
-export type { QuantumAlgorithmPreference, QuantumConfig } from './utils/quantum-settings';
 
 // Local listing store
 export {

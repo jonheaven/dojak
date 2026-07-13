@@ -1,7 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { WagmiProvider } from 'wagmi';
 import { ReactNode, useEffect, useState } from 'react';
-import { dogeosWagmiConfig } from '@/lib/dogeos-wagmi-config';
 import { I18nProvider } from './I18nProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { MyDogeWalletProvider } from '@/contexts/MyDogeWalletContext';
@@ -20,8 +18,8 @@ import { getMessages } from '@/i18n/getMessages';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 10, // 10 minutes
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
     },
   },
 });
@@ -40,7 +38,6 @@ export function AppProvider({ children }: AppProviderProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <WagmiProvider config={dogeosWagmiConfig}>
       <I18nProvider locale={language} messages={messages}>
         <ThemeProvider>
           <DojakwebLocaleProvider>
@@ -64,7 +61,6 @@ export function AppProvider({ children }: AppProviderProps) {
           </DojakwebLocaleProvider>
         </ThemeProvider>
       </I18nProvider>
-      </WagmiProvider>
     </QueryClientProvider>
   );
 }

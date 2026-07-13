@@ -8,7 +8,6 @@ import {
   CubeIcon,
   CircleStackIcon,
   SparklesIcon,
-  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useDataProvider } from '../providers/DataProvider';
@@ -19,12 +18,6 @@ import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { DunesTab } from './DunesTab';
 import { CharmsTab } from './CharmsTab';
-import { useWalletStore } from '../stores/walletStore';
-import { NetworkChainBadge } from './dogeos/NetworkChainBadge';
-import { NetworkSwitcher } from './dogeos/NetworkSwitcher';
-import { DogeosBalanceHydrator } from './dogeos/DogeosBalanceHydrator';
-import { DogecoinL1BalanceCard } from './dogeos/DogecoinL1BalanceCard';
-import { DogeOSBalanceCard } from './dogeos/DogeOSBalanceCard';
 
 interface WalletProps {
   onNavigateToSection?: (section: string) => void;
@@ -32,12 +25,7 @@ interface WalletProps {
 
 export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
   const { t } = useDojakwebI18n();
-  const { connected: walletConnected, address: walletAddress, walletType } = useUnifiedWallet();
-  const dogeosEnabled = useWalletStore((s) => s.dogeosEnabled);
-  const pureDogeosMode = useWalletStore((s) => s.pureDogeosMode);
-  const currentNetwork = useWalletStore((s) => s.currentNetwork);
-  const dogeosAddress = useWalletStore((s) => s.dogeosAddress);
-  const dogeosBalance = useWalletStore((s) => s.dogeosBalance);
+  const { connected: walletConnected, address: walletAddress } = useUnifiedWallet();
   const {
     walletInfo,
     walletInfoError,
@@ -79,8 +67,7 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
   const filteredInscriptions = inscriptions?.filter((insc) => !drc20Tokens?.some((token) => token.inscriptionId === insc.inscriptionId)) || [];
   const utxoCount = utxos?.length ?? walletInfo?.totalUtxos ?? 0;
 
-  const tabs = useMemo(() => {
-    const baseTabs = [
+  const tabs = useMemo(() => [
       {
         id: 'balance',
         name: t('walletPage.tab.balance'),
@@ -226,38 +213,8 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
           />
         ),
       },
-    ];
-    if (dogeosEnabled && pureDogeosMode && walletType === 'browser') {
-      return [
-        {
-          id: 'dogeos',
-          name: t('walletPage.dogeos.tab'),
-          icon: CpuChipIcon,
-          badge: dogeosBalance || '0',
-          content: (
-            <div className="space-y-4">
-              <DogeosBalanceHydrator enabled={Boolean(dogeosAddress)} />
-              {!dogeosAddress ? (
-                <p className="text-sm text-text-secondary">{t('walletPage.dogeos.hintSync')}</p>
-              ) : (
-                <>
-                  <div className="rounded-lg border border-border-primary bg-bg-secondary p-4">
-                    <p className="text-xs uppercase tracking-wide text-text-secondary">{t('walletPage.dogeos.addressLabel')}</p>
-                    <p className="mt-2 break-all font-mono text-sm text-text-primary">{dogeosAddress}</p>
-                  </div>
-                  <div className="rounded-lg border border-border-primary bg-bg-secondary p-4">
-                    <p className="text-xs uppercase tracking-wide text-text-secondary">DogeOS</p>
-                    <p className="mt-2 text-2xl font-semibold text-text-primary">{dogeosBalance || '…'} DOGE</p>
-                  </div>
-                </>
-              )}
-            </div>
-          ),
-        },
-      ];
-    }
-    return baseTabs;
-  }, [
+    ],
+  [
       t,
       walletInfo?.balance,
       walletAddress,
@@ -275,13 +232,7 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
       dunesError,
       isLoadingCharms,
       charmsError,
-      onNavigateToSection,
       refreshCharms,
-      dogeosEnabled,
-      pureDogeosMode,
-      walletType,
-      dogeosAddress,
-      dogeosBalance,
     ]
   );
 
@@ -305,20 +256,11 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      {dogeosEnabled && walletType === 'browser' ? (
-        <DogeosBalanceHydrator enabled={Boolean(walletAddress)} />
-      ) : null}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
               <h1 className="text-3xl font-bold text-text-primary">{t('walletPage.title')}</h1>
-              {dogeosEnabled && walletType === 'browser' ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <NetworkChainBadge network={pureDogeosMode ? 'dogeos' : currentNetwork} />
-                  {!pureDogeosMode ? <NetworkSwitcher /> : null}
-                </div>
-              ) : null}
             </div>
             <p className="text-text-secondary mt-1">{t('walletPage.subtitle')}</p>
           </div>
@@ -347,21 +289,6 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
           </div>
         </div>
 
-        {dogeosEnabled && walletType === 'browser' && !pureDogeosMode ? (
-          <div className="mb-6 grid gap-3 md:grid-cols-2">
-            <DogecoinL1BalanceCard
-              balanceDisplay={`${(walletInfo?.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 4 })} DOGE`}
-            />
-            <DogeOSBalanceCard
-              balanceDisplay={`${dogeosBalance || '…'} DOGE`}
-              addressShort={
-                dogeosAddress ? `${dogeosAddress.slice(0, 6)}…${dogeosAddress.slice(-4)}` : undefined
-              }
-            />
-          </div>
-        ) : null}
-
-        {!(dogeosEnabled && pureDogeosMode && walletType === 'browser') ? (
         <div className="grid md:grid-cols-3 gap-4">
           <div className="bg-bg-secondary rounded-lg p-4 border border-border-primary">
             <p className="text-sm text-text-secondary">{t('walletPage.connectedWallet')}</p>
@@ -397,7 +324,6 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
             </div>
           </div>
         </div>
-        ) : null}
       </div>
 
       {isLoading && (

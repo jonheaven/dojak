@@ -10,7 +10,7 @@ interface TopBarProps {
   balance?: number;
   balanceVerified?: boolean;
   isSidebarOpen: boolean;
-  /** When DogeOS is enabled (browser wallet), shows active chain pill — gold L1 vs violet DogeOS. */
+  /** Optional chain indicator pill in the top bar. */
   chainIndicator?: React.ReactNode;
   onHelpClick?: () => void;
   onSwitchAccount?: () => void;

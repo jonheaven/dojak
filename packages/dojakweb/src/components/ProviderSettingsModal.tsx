@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, EyeIcon, EyeSlashIcon, TagIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useConfig, ProviderType } from '../utils/providers/ConfigProvider';
 import { getDefaultWalletDataProviderUrl, WalletDataProviderType } from '../utils/api';
-import { getQuantumConfig, setQuantumConfig, type QuantumAlgorithmPreference } from '../utils/quantum-settings';
 import { getInscriptionConfig, setInscriptionConfig, type InscriptionMarker } from '../utils/inscription-settings';
 import { getFeeSettings, setFeeSettings, type FeeSettings } from '../utils/fee-settings';
 import { toast } from 'sonner';
@@ -31,10 +30,6 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Quantum settings
-  const [quantumDefaultAlgorithm, setQuantumDefaultAlgorithm] = useState<QuantumAlgorithmPreference>('falcon512');
-  const [quantumSuggestByDefault, setQuantumSuggestByDefault] = useState(false);
-
   // Inscription settings
   const [inscriptionMarker, setInscriptionMarker] = useState<InscriptionMarker>('ord');
 
@@ -52,11 +47,6 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
       setCustomUsername(config.username || '');
       setCustomPassword(config.password || '');
       setShowPassword(false);
-
-      // Load quantum settings
-      const quantumConfig = getQuantumConfig();
-      setQuantumDefaultAlgorithm(quantumConfig.defaultAlgorithm);
-      setQuantumSuggestByDefault(quantumConfig.suggestQuantumByDefault);
 
       // Load inscription settings
       const inscriptionConfig = getInscriptionConfig();
@@ -102,12 +92,6 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
       };
 
       await setConfig(newConfig);
-
-      // Save quantum settings
-      setQuantumConfig({
-        defaultAlgorithm: quantumDefaultAlgorithm,
-        suggestQuantumByDefault: quantumSuggestByDefault,
-      });
 
       // Save inscription settings
       setInscriptionConfig({
@@ -228,43 +212,6 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
                   </div>
                 </div>
               )}
-
-              <details className="group border-t border-border-primary pt-6">
-                <summary className="flex cursor-pointer list-none items-center gap-2 text-text-primary [&::-webkit-details-marker]:hidden">
-                  <TagIcon className="h-5 w-5 shrink-0 text-text-tertiary" aria-hidden />
-                  <span className="text-lg font-semibold">OP_RETURN tags (send flow)</span>
-                  <ChevronDownIcon className="ml-auto h-5 w-5 shrink-0 text-text-tertiary transition group-open:rotate-180" aria-hidden />
-                </summary>
-                <div className="mt-4 space-y-4">
-                  <p className="text-xs text-text-secondary">
-                    Optional on-chain data via OP_RETURN. The wallet currently exposes one tag type: a <strong className="text-text-primary">PQC R&amp;D commitment</strong> (not protocol-level quantum security). Full context on the <strong className="text-text-primary">Quantum</strong> demo page.
-                  </p>
-
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">Default PQC tag algorithm</label>
-                    <Select value={quantumDefaultAlgorithm} onValueChange={(value) => setQuantumDefaultAlgorithm(value as QuantumAlgorithmPreference)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select algorithm" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="falcon512">Falcon-512</SelectItem>
-                        <SelectItem value="dilithium2">ML-DSA-44 (Dilithium2)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <Checkbox
-                      id="quantum-suggest-default"
-                      checked={quantumSuggestByDefault}
-                      onCheckedChange={(checked) => setQuantumSuggestByDefault(checked === true)}
-                    />
-                    <label htmlFor="quantum-suggest-default" className="text-sm text-text-primary">
-                      Open send flow with PQC R&amp;D OP_RETURN tag toggle pre-enabled
-                    </label>
-                  </div>
-                </div>
-              </details>
 
               <div className="border-t border-border-primary pt-6 space-y-4">
                 <h3 className="text-lg font-semibold text-text-primary">Inscription Protocol</h3>

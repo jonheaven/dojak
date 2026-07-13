@@ -6,7 +6,6 @@ export type FeatureId =
   | 'inscription-hub'
   | 'dogetags'
   | 'inscribe'
-  | 'quantum'
   | 'utxo-manager'
   | 'time-locks'
   | 'dogenal-locker'
@@ -49,7 +48,6 @@ const DEFAULT_FEATURES: Record<FeatureId, boolean> = {
   'inscription-hub': true,
   dogetags: true,
   inscribe: true,
-  quantum: true,
   'utxo-manager': true,
   'time-locks': true,
   'dogenal-locker': true,
