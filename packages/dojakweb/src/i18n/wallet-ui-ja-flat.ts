@@ -255,9 +255,6 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
   'utxo.viewOnExplorer': 'SoChain で表示 ↗',
   'utxo.confirmPendingNote':
     'トランザクションをブロードキャスト済み — 新しい出力は確認後に表示されます。Dogecoin は約 1 分でブロックします。Blockchair をデータソースにしている場合、未確認の出力は確認まで表示されないことがあります。',
-  'walletPage.dogeos.tab': 'DogeOS',
-  'walletPage.dogeos.hintSync': '同じシードから DogeOS アドレスを導出するには、ウォレットドロワーを開いて一度ロック解除してください。',
-  'walletPage.dogeos.addressLabel': 'DogeOS（EVM）アドレス',
 
   'chain.confirmReads.title': 'Tx 確認チェック',
   'chain.confirmReads.subtitle':

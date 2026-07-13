@@ -268,10 +268,6 @@ export const WALLET_UI_EN_FLAT: Record<string, string> = {
   'utxo.viewOnExplorer': 'View on SoChain ↗',
   'utxo.confirmPendingNote': 'Transaction broadcast — new outputs appear once confirmed. Dogecoin blocks every ~1 min. If using Blockchair as data source, unconfirmed outputs won\'t appear until confirmed.',
 
-  'walletPage.dogeos.tab': 'DogeOS',
-  'walletPage.dogeos.hintSync': 'Open and unlock the wallet drawer once so we can derive your DogeOS address from the same seed.',
-  'walletPage.dogeos.addressLabel': 'DogeOS (EVM) address',
-
   'chain.confirmReads.title': 'Tx confirmation checks',
   'chain.confirmReads.subtitle':
     'Dojakweb takes the highest confirmation count from every ● source below (each tx cached ~28s). Gray ○ sources are off — hover for why. With Command.dog in your relay list, reads hit your Core-backed API before public explorers.',

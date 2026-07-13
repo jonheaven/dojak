@@ -14,25 +14,6 @@ import dts from 'vite-plugin-dts';
  * ship CJS-only with no ESM exports, and the require is not a static top-level
  * call that esmExternalRequirePlugin can hoist.
  */
-/**
- * API Extractor sometimes emits `from 'node_modules/viem/_types/...'`, which does not resolve
- * for package consumers. Rewrite to viem's public export paths / public type names.
- */
-function normalizeRolledDtsForConsumers(content: string): string {
-  let c = content.replace(/\r\n/g, '\n');
-  c = c.replace(
-    /^import \{ CcipRequestReturnType \} from 'node_modules\/viem\/_types\/utils\/ccip';$/m,
-    '',
-  );
-  c = c.replace(/\bCcipRequestReturnType\b/g, 'Hex');
-  c = c.replace(
-    /^import \{ VerifySiweMessageParameters \} from 'node_modules\/viem\/_types\/actions\/siwe\/verifySiweMessage';\nimport \{ VerifySiweMessageReturnType \} from 'node_modules\/viem\/_types\/actions\/siwe\/verifySiweMessage';$/m,
-    "import type { VerifySiweMessageParameters, VerifySiweMessageReturnType } from 'viem/siwe';",
-  );
-  c = c.replace(/from 'node_modules\/viem\/_types\//g, "from 'viem/");
-  return c;
-}
-
 function useSyncExternalStoreEsmShimPlugin(): Plugin {
   const withSelectorShim = path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector-shim.ts');
   const baseShim = path.resolve(__dirname, './src/shims/use-sync-external-store-shim.ts');
@@ -65,11 +46,6 @@ export default defineConfig({
       // Emit declaration files next to chunks; package "types" still points at dist/index.d.ts.
       rollupTypes: false,
       tsconfigPath: './tsconfig.json',
-      beforeWriteFile: (filePath, content) => {
-        if (path.basename(filePath) !== 'index.d.ts') return;
-        if (!content.includes('node_modules/viem/_types')) return;
-        return { filePath, content: normalizeRolledDtsForConsumers(content) };
-      },
     }),
   ],
   resolve: {

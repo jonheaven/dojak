@@ -52,12 +52,6 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.savedWallets.passwordless': 'パスワードなし',
   'modal.savedWallets.account': 'アカウント {index}',
   'modal.savedWallets.connect': '接続',
-  'modal.localNav.hdWallet': '保存ウォレット（シード）',
-  'modal.localNav.account': 'HD アカウント',
-  'modal.localNav.prevSeed': '前の保存ウォレット',
-  'modal.localNav.nextSeed': '次の保存ウォレット',
-  'modal.localNav.prevAccount': '前のアカウント（低い番号）',
-  'modal.localNav.nextAccount': '次のアカウント（探索 / 高い番号）',
   'modal.entry.createNew': '新しいウォレットを作成',
   'modal.entry.import': 'ウォレットをインポート',
   'modal.unlock.enterPassword': 'パスワードを入力',
@@ -133,14 +127,6 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.tx.timestamp': 'タイムスタンプ',
   'modal.tx.viewOnSoChain': 'SoChain で表示',
   'modal.tx.loadMore': 'さらに読み込む',
-  'modal.tx.opReturnBadgeTitle':
-    'この送金には OP_RETURN タグ（PQC R&D 種別）が含まれます。Quantum デモページを参照 — プロトコル全体の量子耐性ではありません。',
-  'modal.tx.opReturnListHint':
-    '実験的な PQC OP_RETURN（R&D のみ — 詳細は Quantum デモページ）。',
-  'modal.tx.opReturnPayloadSummary': 'OP_RETURN タグ（技術データ）',
-  'modal.tx.opReturnAlgo': 'アルゴリズム',
-  'modal.tx.opReturnTag': 'タグ',
-  'modal.tx.opReturnCommitment': 'コミットメント',
   'modal.assets.nftOption': 'NFT / Doginals',
   'modal.assets.treatsOption': 'ÐogeTreats',
   'modal.assets.noTreatsTitle': 'ÐogeTreats がありません',
@@ -349,11 +335,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.send.maxInsufficient': '手数料用に {reserve} DOGE を残すと送れる額がありません。',
   'modal.send.continue': '続行',
   'modal.wallet.geekDetails': '詳しく（技術）',
-  'modal.send.introShort':
-    '有効なアドレスへ DOGE を送れます。タグでオプションのオンチェーンデータを追加できます。',
-  'modal.send.opReturnSectionTitle': 'OP_RETURN タグ（任意）',
-  'modal.send.opReturnHelp':
-    '追加の出力でオンチェーンにデータを残せます。現在は PQC ラボのコミットメント（OP_RETURN、R&D のみ — チェーン全体の「量子耐性」ではありません）が利用できます。他のタグ種別は今後追加される可能性があります。詳しくは Quantum デモページへ。',
+  'modal.send.introShort': '有効な Dogecoin アドレスへ DOGE を送れます。',
   'modal.send.feeHeading': '手数料',
   'modal.send.feeNetwork': 'ネットワーク手数料',
   'modal.send.feePlatform': 'プラットフォームチップ（任意）',
@@ -361,13 +343,9 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.send.feeExplain':
     'ネットワーク手数料は Dogecoin のマイナーへ行きます。プラットフォームチップは開発支援用で完全に任意です。',
   'modal.send.successPlain': 'トランザクションをブロードキャストしました',
-  'modal.send.successWithTag': 'トランザクションをブロードキャストしました（OP_RETURN タグを含む）',
   'modal.send.successTxid': 'トランザクション ID',
-  'modal.send.successTagLine': 'OP_RETURN タグ · PQC R&D ({algo}): {commitment}…',
   'modal.send.viewExplorer': 'エクスプローラーでトランザクションを見る',
   'modal.send.sendAnother': '別の送金をする',
-  'modal.send.demoToast':
-    '送信フローはデモモードのみです。Dojakweb のトランザクションフローに接続してください。',
   'modal.receive.back': '戻る',
   'modal.setName.label': 'ウォレット名',
   'modal.setName.placeholder': 'ウォレット名（任意）',
@@ -509,6 +487,9 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.walletSwitcher.seedGroup': 'HD ウォレット（{count} アカウント）',
   'modal.walletSwitcher.accountsInSeed': '同一シードから {count} アカウント',
   'modal.walletSwitcher.addAccount': 'アカウントを追加',
+  'modal.walletSwitcher.ledgerAccount': 'Ledger アカウント',
+  'modal.walletSwitcher.ledgerPrevAccount': '前の Ledger アカウント',
+  'modal.walletSwitcher.ledgerNextAccount': '次の Ledger アカウント',
   'modal.walletSwitcher.empty': '接続中のウォレットがありません。',
   'modal.walletSource.local': 'ローカル',
   'modal.walletSource.mydoge': 'MyDoge',
@@ -617,33 +598,4 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.placeholders.rpcUrl': 'http://127.0.0.1:22555',
   'modal.placeholders.rpcuser': 'rpcuser',
   'modal.placeholders.rpcpassword': 'rpcpassword',
-
-  'modal.settings.tabEcosystem': 'エコシステム',
-  'modal.dogeos.ecosystemSection': 'エコシステム',
-  'modal.dogeos.enableTitle': 'DogeOS サポートを有効化',
-  'modal.dogeos.enableDesc':
-    'DogeOS（EVM チェーン）を有効にします。同じシードで Dogecoin L1 と DogeOS の両方を利用できます。',
-  'modal.dogeos.pureTitle': 'Pure DogeOS モード',
-  'modal.dogeos.pureDesc':
-    'Dogecoin L1 の機能と残高をすべて非表示にします。DogeOS のみに集中したいときに使います。',
-  'modal.dogeos.localWalletOnly': 'DogeOS のシード連携はローカルブラウザウォレットのみ利用できます。',
-  'modal.dogeos.disableWarnTitle': 'DogeOS をオフにしますか？',
-  'modal.dogeos.disableWarnBody':
-    'このブラウザで DogeOS を利用した記録があります。オフにすると DogeOS の残高カードは非表示になります（再有効化で戻ります）。L1 機能は変わりません。',
-  'modal.dogeos.cancel': 'キャンセル',
-  'modal.dogeos.disableConfirm': 'オフにする',
-  'modal.dogeos.pureDashboardHint':
-    'Pure DogeOS モード: L1 の送受信や Doginals ツールは非表示です。この画面からの DogeOS 送金は今後対応予定です。',
-  'modal.dogeos.txBannerSend':
-    'この送信は Dogecoin L1（オンチェーン DOGE）です。この画面から DogeOS（EVM）送金は行われません。',
-  'modal.dogeos.txBannerReceive':
-    'この QR は Dogecoin L1 の受取アドレスです。DogeOS（EVM）のアドレスではありません。',
-  'modal.dogeos.txBannerDxSign':
-    'この署名は Dogecoin L1 の Ð𝕏 認証専用です。DogeOS（EVM）の送金やコントラクト操作を承認するものではありません。',
-  'modal.dogeos.txBannerDxInscribe':
-    'Ð𝕏 の JSON または HTML カードの inscription は Dogecoin L1（Doginals）で行われます。DogeOS のスマートコントラクトTxではありません。',
-  'modal.dogeos.txBannerListing':
-    '出品と PSDT 署名は Dogecoin L1 です。オファーの決済 DOGE も L1 上で、DogeOS（EVM）ではありません。',
-  'modal.dogeos.txBannerSendInscription':
-    'この inscription の送信は Dogecoin L1 の転送です。受取先は L1 の Dogecoin アドレスである必要があり、EVM（0x）アドレスには送れません。',
 };

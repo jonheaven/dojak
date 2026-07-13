@@ -51,12 +51,6 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.savedWallets.passwordless': 'Passwordless',
   'modal.savedWallets.account': 'Account {index}',
   'modal.savedWallets.connect': 'Connect',
-  'modal.localNav.hdWallet': 'Saved wallet (seed)',
-  'modal.localNav.account': 'HD account',
-  'modal.localNav.prevSeed': 'Previous saved wallet',
-  'modal.localNav.nextSeed': 'Next saved wallet',
-  'modal.localNav.prevAccount': 'Previous account (lower index)',
-  'modal.localNav.nextAccount': 'Next account (explore / higher index)',
   'modal.entry.createNew': 'Create new wallet',
   'modal.entry.import': 'Import wallet',
   'modal.unlock.enterPassword': 'Enter password',
@@ -128,14 +122,6 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.tx.timestamp': 'Timestamp',
   'modal.tx.viewOnSoChain': 'View on SoChain',
   'modal.tx.loadMore': 'Load more',
-  'modal.tx.opReturnBadgeTitle':
-    'This send includes an OP_RETURN tag (PQC R&D type). See the Quantum demo page — not protocol-level quantum protection.',
-  'modal.tx.opReturnListHint':
-    'Experimental PQC OP_RETURN (R&D only — Quantum demo page has full context).',
-  'modal.tx.opReturnPayloadSummary': 'OP_RETURN tag (technical)',
-  'modal.tx.opReturnAlgo': 'Algorithm',
-  'modal.tx.opReturnTag': 'Tag',
-  'modal.tx.opReturnCommitment': 'Commitment',
   'modal.assets.nftOption': 'NFTs / Doginals',
   'modal.assets.treatsOption': 'ÐogeTreats',
   'modal.assets.noTreatsTitle': 'No ÐogeTreats yet',
@@ -336,10 +322,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.send.maxInsufficient': 'No amount left to send after reserving {reserve} DOGE for fees.',
   'modal.send.continue': 'Continue',
   'modal.wallet.geekDetails': 'Geek details',
-  'modal.send.introShort': 'Send DOGE to any valid address. Optional tags add extra on-chain data.',
-  'modal.send.opReturnSectionTitle': 'OP_RETURN tags (optional)',
-  'modal.send.opReturnHelp':
-    'Extra outputs record data on-chain. This wallet currently offers one tag type: a PQC lab commitment (OP_RETURN, R&D only — not full-chain “quantum proofing”). More tag types may arrive later; the Quantum demo page has the full story.',
+  'modal.send.introShort': 'Send DOGE to any valid Dogecoin address.',
   'modal.send.feeHeading': 'Transaction fees',
   'modal.send.feeNetwork': 'Network fee',
   'modal.send.feePlatform': 'Platform tip (optional)',
@@ -347,12 +330,9 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.send.feeExplain':
     'Network fees go to Dogecoin miners. Platform tips support ongoing development and are completely optional.',
   'modal.send.successPlain': 'Transaction broadcast',
-  'modal.send.successWithTag': 'Transaction broadcast (includes an OP_RETURN tag)',
   'modal.send.successTxid': 'Transaction ID',
-  'modal.send.successTagLine': 'OP_RETURN tag · PQC R&D ({algo}): {commitment}…',
   'modal.send.viewExplorer': 'View transaction on explorer',
   'modal.send.sendAnother': 'Send another transaction',
-  'modal.send.demoToast': 'Send flow UI only in demo mode. Wire this action to your Dojakweb transaction flow next.',
   'modal.receive.back': 'Back',
   'modal.setName.label': 'Wallet name',
   'modal.setName.placeholder': 'Name this wallet (optional)',
@@ -487,6 +467,9 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.walletSwitcher.seedGroup': 'HD wallet ({count} accounts)',
   'modal.walletSwitcher.accountsInSeed': '{count} accounts from the same seed',
   'modal.walletSwitcher.addAccount': 'Add account',
+  'modal.walletSwitcher.ledgerAccount': 'Ledger account',
+  'modal.walletSwitcher.ledgerPrevAccount': 'Previous Ledger account',
+  'modal.walletSwitcher.ledgerNextAccount': 'Next Ledger account',
   'modal.walletSwitcher.empty': 'No connected wallets yet.',
   'modal.walletSource.local': 'Local',
   'modal.walletSource.mydoge': 'MyDoge',
@@ -585,33 +568,4 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.placeholders.rpcUrl': 'http://127.0.0.1:22555',
   'modal.placeholders.rpcuser': 'rpcuser',
   'modal.placeholders.rpcpassword': 'rpcpassword',
-
-  'modal.settings.tabEcosystem': 'Ecosystem',
-  'modal.dogeos.ecosystemSection': 'Ecosystem',
-  'modal.dogeos.enableTitle': 'Enable DogeOS Support',
-  'modal.dogeos.enableDesc':
-    'Unlock DogeOS (EVM chain) support. You can use both Dogecoin L1 and DogeOS from the same seed.',
-  'modal.dogeos.pureTitle': 'Pure DogeOS Mode',
-  'modal.dogeos.pureDesc':
-    'Hide all Dogecoin L1 features and balances. Use this when you only want to work on DogeOS.',
-  'modal.dogeos.localWalletOnly': 'DogeOS seed pairing is available for the local browser wallet only.',
-  'modal.dogeos.disableWarnTitle': 'Turn off DogeOS?',
-  'modal.dogeos.disableWarnBody':
-    'You have used DogeOS in this browser. Disabling removes the DogeOS balance card until you turn it on again. L1 features stay unchanged.',
-  'modal.dogeos.cancel': 'Cancel',
-  'modal.dogeos.disableConfirm': 'Turn off',
-  'modal.dogeos.pureDashboardHint':
-    'Pure DogeOS mode: L1 send, receive, and Doginals tools are hidden. DogeOS transfers from this UI are coming soon.',
-  'modal.dogeos.txBannerSend':
-    'This send uses Dogecoin L1 (native on-chain DOGE). DogeOS EVM transfers are not sent from this screen.',
-  'modal.dogeos.txBannerReceive':
-    'This QR is your Dogecoin L1 receive address. It is not your DogeOS (EVM) address.',
-  'modal.dogeos.txBannerDxSign':
-    'This signature is for Dogecoin L1 Ð𝕏 verification only. It does not authorize any DogeOS (EVM) transaction.',
-  'modal.dogeos.txBannerDxInscribe':
-    'Inscribing Ð𝕏 JSON or the HTML card runs on Dogecoin L1 (Doginals). It is not a DogeOS smart-contract action.',
-  'modal.dogeos.txBannerListing':
-    'Listings and PSDT signing are Dogecoin L1. Settlement and DOGE in the offer are on L1, not the DogeOS EVM chain.',
-  'modal.dogeos.txBannerSendInscription':
-    'Sending this inscription is a Dogecoin L1 transfer. The recipient must be a valid Dogecoin L1 address — not an EVM (0x) address.',
 };

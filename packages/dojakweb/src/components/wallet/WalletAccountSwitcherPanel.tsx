@@ -273,14 +273,14 @@ export function WalletAccountSwitcherPanel({
               {wallet.type === 'ledger' && wallet.isActive && ledgerAccountIndex != null ? (
                 <div className="flex items-center justify-end gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-2 py-1.5">
                   <span className="text-[10px] uppercase tracking-wide text-white/40">
-                    {t('modal.localNav.account')}
+                    {t('modal.walletSwitcher.ledgerAccount')}
                   </span>
                   <button
                     type="button"
                     disabled={isBusy || ledgerAccountIndex <= 0}
                     onClick={() => void onLedgerAccountDelta(-1)}
                     className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-35"
-                    aria-label={t('modal.localNav.prevAccount')}
+                    aria-label={t('modal.walletSwitcher.ledgerPrevAccount')}
                   >
                     <ChevronUpIcon className="h-3.5 w-3.5" />
                   </button>
@@ -292,7 +292,7 @@ export function WalletAccountSwitcherPanel({
                     disabled={isBusy}
                     onClick={() => void onLedgerAccountDelta(1)}
                     className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-35"
-                    aria-label={t('modal.localNav.nextAccount')}
+                    aria-label={t('modal.walletSwitcher.ledgerNextAccount')}
                   >
                     <ChevronDownIcon className="h-3.5 w-3.5" />
                   </button>

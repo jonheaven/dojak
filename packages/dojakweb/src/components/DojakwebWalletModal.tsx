@@ -28,9 +28,7 @@ import {
   Bars3Icon,
   ArrowLeftIcon,
   ChevronLeftIcon,
-  ChevronRightIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
   XMarkIcon,
   SunIcon,
   MoonIcon,
@@ -1600,44 +1598,6 @@ export function DojakwebWalletModal({
     setUnlockMode(prefs?.primary === 'pin' ? 'pin' : 'password');
   }, [step, selectedLocalWalletAddress]);
 
-  const handleSwitchBrowserSeedWallet = async (delta: -1 | 1) => {
-    if (!isBrowserWallet) return;
-    const groups = localSeedWalletGroups;
-    if (groups.length <= 1) return;
-    const addr = browser.wallet?.address ?? activeAddress ?? undefined;
-    const gi = findSeedGroupIndexForAddress(groups, addr);
-    const nextGi = (gi + delta + groups.length) % groups.length;
-    const target = groups[nextGi]?.accounts[0];
-    if (!target?.address) return;
-    setIsBusy(true);
-    setError(null);
-    try {
-      await createDojakwebSessionSecretStore().clearSecret();
-      await browser.selectWallet(target.address);
-      setSelectedLocalWalletAddress(target.address);
-      const enc = await new BrowserWallet().isEncrypted(target.address);
-      setIsEncryptedWallet(enc);
-      if (enc) {
-        setActivePassword(undefined);
-        setUnlockPassword('');
-        setStep('unlock');
-      } else {
-        const loaded = await browser.loadWallet();
-        if (!loaded) {
-          throw new Error(t('modal.throws.loadSelectedWallet'));
-        }
-        await browser.connect(loaded);
-        setWalletNameDraft(loaded.nickname?.trim() || '');
-        setStep('dashboard');
-        await browser.refreshBalance({ silent: true });
-      }
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : t('modal.errors.connectWallet'));
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
   const handleAddBrowserAccount = async () => {
     if (!isBrowserWallet || !activePassword) {
       toast.error(t('modal.toast.reunlockForAccountSwitch'));
@@ -1687,29 +1647,6 @@ export function DojakwebWalletModal({
     if (!walletSwitcherModalOpen) return;
     void refreshSavedLocalWallets();
   }, [walletSwitcherModalOpen, refreshSavedLocalWallets]);
-
-  const handleSwitchBrowserAccount = async (delta: -1 | 1) => {
-    if (!isBrowserWallet || !activePassword) {
-      toast.error(t('modal.toast.reunlockForAccountSwitch'));
-      return;
-    }
-    const currentIdx = browser.wallet?.accountIndex ?? 0;
-    const nextIdx = currentIdx + delta;
-    if (nextIdx < 0) return;
-    setIsBusy(true);
-    setError(null);
-    try {
-      const switched = await browser.switchAccount(nextIdx, activePassword);
-      await browser.connect(switched);
-      setWalletNameDraft(switched.nickname?.trim() || '');
-      await refreshSavedLocalWallets();
-      await browser.refreshBalance({ silent: true });
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : t('modal.errors.connectWallet'));
-    } finally {
-      setIsBusy(false);
-    }
-  };
 
   const handleDisconnectWallet = async () => {
     setIsBusy(true);
