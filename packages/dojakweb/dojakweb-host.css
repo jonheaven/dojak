@@ -1183,12 +1183,21 @@ body.wallet-drawer-paw-open {
   --wallet-paw-grip-offset: 200px;
 }
 
-/* Paw sits UNDER the drawer panel so the drawer rests on the grip (holding effect). */
+/* Portal must participate in stacking (position + z-index) or the fixed
+   paw grip (z-index 9995) paints above the entire wallet drawer tree. */
+#headlessui-portal-root,
+[data-headlessui-portal],
+.ds-wallet-modal-backdrop,
+.ds-wallet-modal-backdrop--drawer {
+  position: relative;
+  z-index: 10040;
+}
+
+/* Paw sits under the drawer panel (holding / grip effect). */
 .wallet-paw-grip {
   position: fixed;
   right: calc(var(--wallet-drawer-width, min(460px, 96vw)) - var(--wallet-paw-grip-offset, 200px));
   bottom: 0;
-  /* Below drawer (10050) but above backdrop (9998) */
   z-index: 9995;
   width: clamp(165px, 28vmin, 300px);
   line-height: 0;
@@ -1216,6 +1225,7 @@ body.wallet-drawer-paw-open {
   opacity: 0.94;
 }
 
+/* Drawer panel above paw; portal root stacking is set above. */
 body.wallet-drawer-paw-open .ds-wallet-modal--drawer,
 body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   width: var(--wallet-drawer-width) !important;
@@ -1225,7 +1235,7 @@ body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   top: auto !important;
   height: min(88vh, 900px) !important;
   max-height: 100vh !important;
-  /* Above .wallet-paw-grip (10000) so the paw sits under the panel */
+  /* Above .wallet-paw-grip (9995) so the paw sits under the panel */
   z-index: 10050 !important;
   border-radius: 1.75rem 0 0 0 !important;
   border: 4px solid #e8d48b !important;
@@ -1298,13 +1308,6 @@ body.wallet-drawer-paw-open .ds-wallet-modal-backdrop--drawer {
 .ds-wallet-dashboard.flex.flex-col > .flex-1 {
   min-height: 0;
   -webkit-overflow-scrolling: touch;
-}
-
-/* Portal above paw (10000) so drawer content always rests on the grip */
-[data-headlessui-portal],
-.ds-wallet-modal-backdrop,
-.ds-wallet-modal-backdrop--drawer {
-  z-index: 10040;
 }
 
 :root:not([data-theme="light"]) [data-headlessui-portal] .ds-wallet-dashboard,

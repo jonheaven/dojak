@@ -6,6 +6,7 @@ export type TreatsPowChallengeResponse = {
   preimage?: string;
   difficulty?: number;
   tick?: string;
+  asset_id?: string;
   amt?: string;
   expiresAtUnix?: number;
   algorithm?: string;
@@ -16,6 +17,7 @@ export type TreatsPowChallengeResponse = {
 export type TreatsPowConfig = {
   enabled: boolean;
   ticks: Record<string, number>;
+  assetIds?: Record<string, number>;
   challengeTtlSecs: number;
   algorithm: string;
 };
@@ -36,6 +38,7 @@ export async function fetchTreatsPowChallenge(
   amt: string,
   address: string,
   baseUrl?: string,
+  assetId?: string,
 ): Promise<TreatsPowChallengeResponse> {
   const base = (baseUrl ?? getIndexerApiBase()).replace(/\/+$/, '');
   const params = new URLSearchParams({
@@ -43,6 +46,9 @@ export async function fetchTreatsPowChallenge(
     amt: amt.trim(),
     address: address.trim(),
   });
+  if (assetId?.trim()) {
+    params.set('asset_id', assetId.trim().toLowerCase());
+  }
   const res = await fetch(`${base}/api/treats/pow/challenge?${params}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -58,8 +64,14 @@ export async function fetchTreatsPowChallenge(
 export function tickRequiresPow(
   tick: string,
   config: TreatsPowConfig | null | undefined,
+  assetId?: string,
 ): number | null {
   if (!config?.enabled) return null;
+  const aid = assetId?.trim().toLowerCase();
+  if (aid && config.assetIds?.[aid]) {
+    const d = config.assetIds[aid];
+    return typeof d === 'number' && d > 0 ? d : null;
+  }
   const d = config.ticks[tick.trim().toLowerCase()];
   return typeof d === 'number' && d > 0 ? d : null;
 }

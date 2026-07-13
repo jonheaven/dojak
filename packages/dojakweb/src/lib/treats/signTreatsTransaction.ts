@@ -85,7 +85,7 @@ export async function signTreatsTransaction(params: SignTreatsParams): Promise<S
       params.powDifficulty !== undefined ? String(params.powDifficulty) : undefined,
   } as Record<string, string>);
   if (!payload?.length) {
-    throw new Error('Invalid ÐogeTreats parameters — check ticker, amounts, and reserved names');
+    throw new Error('Invalid ÐogeTreats parameters — check ticker length (1–8) and amounts');
   }
 
   const payloadJson = new TextDecoder().decode(payload);
