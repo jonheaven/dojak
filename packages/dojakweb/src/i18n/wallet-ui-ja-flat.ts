@@ -32,8 +32,8 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
   'walletPage.balance.address': 'アドレス',
   'walletPage.balance.snapshot': '保有スナップショット',
   'walletPage.balance.snapshotInscriptions': 'inscription {n} 件',
-  'walletPage.balance.snapshotDrc20': 'DRC-20 残高 {n} 件',
-  'walletPage.balance.snapshotDunes': 'dune {n} 件',
+  'walletPage.balance.snapshotDrc20': 'レガシー DRC-20 {n} 件',
+  'walletPage.balance.snapshotDunes': 'Ðune {n} 件',
   'walletPage.balance.snapshotUtxos': 'UTXO {n} 件',
   'walletPage.inscriptions.value': '価値',
   'walletPage.inscriptions.empty': 'このウォレットに inscription はありません。',
@@ -44,9 +44,16 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
   'walletPage.drc20.legacyBannerBody':
     '刻印→送付の二段階転送は新規デプロイでは非推奨です。残高はここに表示されます。ワンステップ送付・プール・Era 2 機能には Ðunes へ移行してください。',
   'walletPage.drc20.migrateCta': '移行ガイド',
+  'walletPage.drc20.migrateToDunesCta': 'Ðunes タブを開く',
   'walletPage.dunes.fallbackName': 'Ðune 資産',
   'walletPage.dunes.fallbackSymbol': 'Ðune 保有',
-  'walletPage.dunes.empty': 'dune 残高がありません。',
+  'walletPage.dunes.empty': 'Ðune 残高はまだありません。エッチ・ミント・受取で Era 2 の主力ファンジブルを始めましょう。',
+  'walletPage.dunes.heroBannerTitle': 'Ðunes — UTXO ネイティブの主力トークン',
+  'walletPage.dunes.heroBannerBody':
+    'edict によるワンステップ送付。誤った出力は残高をバーン（cenotaph）します。必ず Ðune を照会し、受取先と数量を再確認してください。',
+  'walletPage.dunes.flagshipCta': 'THE•BLACK•DOGE をエッチ / ミント',
+  'walletPage.dunes.burnWarning':
+    '安全: 未割当 Ðunes は pointer（または最初の非 OP_RETURN）に従います。不正な Dunestone は cenotaph で入力を燃やします。Ðune UTXO を通常の DOGE おつりに使わないでください。',
   'walletPage.utxos.needWallet': 'UTXO の確認・分割にはウォレット接続が必要です。',
   'providerModal.title': 'ウォレットデータプロバイダー',
   'providerModal.walletDataLabel': 'ウォレットデータプロバイダー',

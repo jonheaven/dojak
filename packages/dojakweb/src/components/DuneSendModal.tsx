@@ -119,6 +119,16 @@ export const DuneSendModal: React.FC<Props> = ({ isOpen, onClose, holding, onSuc
         </div>
 
         <div className="px-6 py-5 space-y-4">
+          {(step === 'form' || step === 'lookup' || step === 'confirm') && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100/90">
+              <p className="font-medium text-amber-200">Prevent accidental burns</p>
+              <p className="mt-1 text-text-secondary">
+                Ðunes ride on UTXOs. Malformed Dunestones become cenotaphs and burn balances. Confirm recipient
+                is a Dogecoin address you control (or trust), amount ≤ balance, and never spend a Ðune UTXO as
+                ordinary DOGE change without an edict.
+              </p>
+            </div>
+          )}
           {(step === 'form' || step === 'lookup') && (
             <>
               {/* Dune name lookup */}

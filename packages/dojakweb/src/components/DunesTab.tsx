@@ -36,10 +36,36 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
     setTimeout(onRefresh, 2000);
   };
 
+  const FLAGSHIP = 'THE•BLACK•DOGE';
+
   return (
     <div className="space-y-4">
+      <div className="rounded-lg border border-primary-500/30 bg-primary-500/10 p-4 text-sm">
+        <p className="font-medium text-[#FCD34D]">{t('walletPage.dunes.heroBannerTitle')}</p>
+        <p className="mt-1 text-xs text-text-secondary">{t('walletPage.dunes.heroBannerBody')}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setDeployOpen(true);
+            }}
+            className="text-xs font-medium text-[#FCD34D] hover:underline"
+          >
+            {t('walletPage.dunes.flagshipCta')}
+          </button>
+          <a
+            href="https://dogenals.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-text-secondary hover:text-primary-500 hover:underline"
+          >
+            CORE_SUITE · Ðunes hero →
+          </a>
+        </div>
+      </div>
+
       {/* Action bar */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setDeployOpen(true)}
@@ -47,6 +73,18 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
         >
           <PlusIcon className="w-3.5 h-3.5" />
           Deploy New Ðune
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMintDuneName(FLAGSHIP);
+            setMintOpen(true);
+          }}
+          className="flex items-center gap-1.5 px-3 py-2 bg-bg-secondary border border-primary-500/40 rounded text-text-primary text-xs hover:border-primary-500 transition-colors"
+          title={FLAGSHIP}
+        >
+          <SparklesIcon className="w-3.5 h-3.5" />
+          Mint {FLAGSHIP}
         </button>
         <button
           type="button"
@@ -117,6 +155,7 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
       <DuneDeployModal
         isOpen={deployOpen}
         onClose={() => setDeployOpen(false)}
+        initialName={FLAGSHIP}
         onSuccess={handleSuccess}
       />
       <DuneMintModal

@@ -39,15 +39,17 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const { address, connected } = useUnifiedWallet();
   const resolveSigner = useDuneTxSigner();
 
-  // Form state
+  // Form state — flagship THE•BLACK•DOGE defaults when prefilled (see dogenals/docs/THE_BLACK_DOGE.md)
+  const isFlagship =
+    (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase() === 'THEBLACKDOGE';
   const [name, setName]               = useState(initialName ?? '');
-  const [supply, setSupply]           = useState('1000000');
+  const [supply, setSupply]           = useState(isFlagship ? '50000000' : '1000000');
   const [divisibility, setDivisibility] = useState('0');
-  const [symbol, setSymbol]           = useState('');
+  const [symbol, setSymbol]           = useState(isFlagship ? '🐕' : '');
   const [feeRate, setFeeRate]         = useState('1000');
-  const [enableMint, setEnableMint]   = useState(false);
-  const [mintAmount, setMintAmount]   = useState('');
-  const [mintCap, setMintCap]         = useState('');
+  const [enableMint, setEnableMint]   = useState(isFlagship);
+  const [mintAmount, setMintAmount]   = useState(isFlagship ? '1000' : '');
+  const [mintCap, setMintCap]         = useState(isFlagship ? '950000' : '');
   const [turbo, setTurbo]             = useState(false);
 
   // UI state
@@ -58,16 +60,36 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const [signingAddress, setSigningAddress] = useState<string | null>(null);
 
   const reset = () => {
-    setName(initialName ?? ''); setSupply('1000000'); setDivisibility('0'); setSymbol('');
-    setFeeRate('1000'); setEnableMint(false); setMintAmount(''); setMintCap('');
-    setTurbo(false); setStep('form'); setError(null); setTxid(null);
+    const flagship =
+      (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase() === 'THEBLACKDOGE';
+    setName(initialName ?? '');
+    setSupply(flagship ? '50000000' : '1000000');
+    setDivisibility('0');
+    setSymbol(flagship ? '🐕' : '');
+    setFeeRate('1000');
+    setEnableMint(flagship);
+    setMintAmount(flagship ? '1000' : '');
+    setMintCap(flagship ? '950000' : '');
+    setTurbo(false);
+    setStep('form');
+    setError(null);
+    setTxid(null);
   };
 
   const handleClose = () => { reset(); onClose(); };
 
   useEffect(() => {
     if (isOpen && initialName?.trim()) {
-      setName(initialName.trim().toUpperCase());
+      const n = initialName.trim().toUpperCase();
+      setName(n);
+      if (n.replace(/[•.\s]/g, '') === 'THEBLACKDOGE') {
+        setSupply('50000000');
+        setSymbol('🐕');
+        setEnableMint(true);
+        setMintAmount('1000');
+        setMintCap('950000');
+        setDivisibility('0');
+      }
     }
   }, [isOpen, initialName]);
 
