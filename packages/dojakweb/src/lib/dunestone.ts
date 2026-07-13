@@ -24,11 +24,16 @@ const TAG_POINTER      = 22n;
 const TAG_DIVISIBILITY = 1n;
 const TAG_SPACERS      = 3n;
 const TAG_SYMBOL       = 5n;
-/** Ðunes v2 optional tags (even = critical if used). */
+/** Ðunes v2 tags (even = must-understand when present). */
 const TAG_VERSION      = 24n;
 const TAG_AGENT        = 26n;
 const TAG_POOL         = 28n;
 const TAG_MIN_OUT      = 30n;
+const TAG_BURN_TO_MINT = 32n;
+const TAG_PARENT       = 34n;
+const TAG_SOUL         = 36n;
+const TAG_FAST_MINT    = 38n;
+const TAG_CONTRACT     = 40n;
 
 // ── Flag bitmask constants ────────────────────────────────────────────────────
 const FLAG_ETCHING = 1n;  // bit 0
@@ -205,6 +210,22 @@ export interface DunestoneParams {
   magic?: DunestoneMagic;
   /** v2 protocol version byte (default 0x02). */
   protocolVersion?: number;
+  /** v2: agent mode crumb */
+  agent?: bigint;
+  /** v2: pool intent crumb */
+  pool?: bigint;
+  /** v2: min output (slippage) */
+  minOut?: bigint;
+  /** v2: burn-to-mint koinu */
+  burnToMint?: bigint;
+  /** v2: parent dune id */
+  parent?: { block: bigint; tx: bigint };
+  /** v2: soulbound hint */
+  soul?: boolean;
+  /** v2: fast-mint offset blocks */
+  fastMint?: bigint;
+  /** v2: lightweight contract class */
+  contract?: bigint;
 }
 
 // ── Script push helpers ───────────────────────────────────────────────────────
@@ -273,6 +294,21 @@ export function encodeDunestone(params: DunestoneParams): Uint8Array {
   // ── Pointer ───────────────────────────────────────────────────────────────
   if (params.pointer !== undefined) {
     appendTagValue(TAG_POINTER, BigInt(params.pointer), payload);
+  }
+
+  // ── v2 extensions (safe optional construction) ────────────────────────────
+  if (magic === 'v2') {
+    appendTagValueOpt(TAG_AGENT, params.agent, payload);
+    appendTagValueOpt(TAG_POOL, params.pool, payload);
+    appendTagValueOpt(TAG_MIN_OUT, params.minOut, payload);
+    appendTagValueOpt(TAG_BURN_TO_MINT, params.burnToMint, payload);
+    if (params.parent) {
+      appendTagValue(TAG_PARENT, params.parent.block, payload);
+      appendTagValue(TAG_PARENT, params.parent.tx, payload);
+    }
+    if (params.soul) appendTagValue(TAG_SOUL, 1n, payload);
+    appendTagValueOpt(TAG_FAST_MINT, params.fastMint, payload);
+    appendTagValueOpt(TAG_CONTRACT, params.contract, payload);
   }
 
   // ── Edicts ────────────────────────────────────────────────────────────────
