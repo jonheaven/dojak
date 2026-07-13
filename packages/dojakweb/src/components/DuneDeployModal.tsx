@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { toast } from 'sonner';
@@ -25,6 +25,23 @@ function singleCodePointSymbol(raw: string): string {
   return cp === undefined ? '' : String.fromCodePoint(cp);
 }
 
+/** Black Doge meme tokenomics (div 0 units = whole tokens). */
+const BLACK_PRESET = {
+  premine: '42069000',
+  mintAmount: '420',
+  mintCap: '901479',
+  divisibility: '0',
+  symbol: '🐕',
+} as const;
+
+const MANIFESTO_PRESET = {
+  premine: '10000000',
+  mintAmount: '1000',
+  mintCap: '990000',
+  divisibility: '0',
+  symbol: 'Ð',
+} as const;
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -39,89 +56,149 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const { address, connected } = useUnifiedWallet();
   const resolveSigner = useDuneTxSigner();
 
-  // Form state — dual flagship presets (THE•BLACK•DOGE liquidity · DOGENALS•OVER•DOGINALS manifesto)
   const plainInitial = (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase();
   const isBlack = plainInitial === 'THEBLACKDOGE';
   const isManifesto = plainInitial === 'DOGENALSOVERDOGINALS';
-  const isEra2Preset = isBlack || isManifesto;
-  const [name, setName]               = useState(initialName ?? '');
-  const [supply, setSupply]           = useState(isBlack ? '50000000' : isManifesto ? '10000000' : '1000000');
-  const [divisibility, setDivisibility] = useState('0');
-  const [symbol, setSymbol]           = useState(isBlack ? '🐕' : isManifesto ? 'Ð' : '');
-  const [feeRate, setFeeRate]         = useState('1000');
-  const [enableMint, setEnableMint]   = useState(isEra2Preset);
-  const [mintAmount, setMintAmount]   = useState(isEra2Preset ? '1000' : '');
-  const [mintCap, setMintCap]         = useState(isBlack ? '950000' : isManifesto ? '990000' : '');
-  const [turbo, setTurbo]             = useState(false);
 
-  // UI state
-  const [step, setStep]               = useState<Step>('form');
-  const [error, setError]             = useState<string | null>(null);
-  const [txid, setTxid]               = useState<string | null>(null);
-  const [isLoading, setIsLoading]     = useState(false);
+  const [name, setName] = useState(initialName ?? '');
+  const [divisibility, setDivisibility] = useState(
+    isBlack ? BLACK_PRESET.divisibility : isManifesto ? MANIFESTO_PRESET.divisibility : '0',
+  );
+  const [symbol, setSymbol] = useState(
+    isBlack ? BLACK_PRESET.symbol : isManifesto ? MANIFESTO_PRESET.symbol : '',
+  );
+  const [feeRate, setFeeRate] = useState('1000');
+  // Premine + open mint are independent — both can be on (hero dune pattern)
+  const [enablePremine, setEnablePremine] = useState(true);
+  const [premine, setPremine] = useState(
+    isBlack ? BLACK_PRESET.premine : isManifesto ? MANIFESTO_PRESET.premine : '1000000',
+  );
+  const [enableMint, setEnableMint] = useState(isBlack || isManifesto);
+  const [mintAmount, setMintAmount] = useState(
+    isBlack ? BLACK_PRESET.mintAmount : isManifesto ? MANIFESTO_PRESET.mintAmount : '',
+  );
+  const [mintCap, setMintCap] = useState(
+    isBlack ? BLACK_PRESET.mintCap : isManifesto ? MANIFESTO_PRESET.mintCap : '',
+  );
+  const [turbo, setTurbo] = useState(true);
+
+  const [step, setStep] = useState<Step>('form');
+  const [error, setError] = useState<string | null>(null);
+  const [txid, setTxid] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [signingAddress, setSigningAddress] = useState<string | null>(null);
+
+  const applyPreset = (kind: 'black' | 'manifesto' | 'clear') => {
+    if (kind === 'black') {
+      setPremine(BLACK_PRESET.premine);
+      setMintAmount(BLACK_PRESET.mintAmount);
+      setMintCap(BLACK_PRESET.mintCap);
+      setDivisibility(BLACK_PRESET.divisibility);
+      setSymbol(BLACK_PRESET.symbol);
+      setEnablePremine(true);
+      setEnableMint(true);
+      setTurbo(true);
+    } else if (kind === 'manifesto') {
+      setPremine(MANIFESTO_PRESET.premine);
+      setMintAmount(MANIFESTO_PRESET.mintAmount);
+      setMintCap(MANIFESTO_PRESET.mintCap);
+      setDivisibility(MANIFESTO_PRESET.divisibility);
+      setSymbol(MANIFESTO_PRESET.symbol);
+      setEnablePremine(true);
+      setEnableMint(true);
+      setTurbo(true);
+    }
+  };
 
   const reset = () => {
     const plain = (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase();
-    const black = plain === 'THEBLACKDOGE';
-    const manifesto = plain === 'DOGENALSOVERDOGINALS';
     setName(initialName ?? '');
-    setSupply(black ? '50000000' : manifesto ? '10000000' : '1000000');
-    setDivisibility('0');
-    setSymbol(black ? '🐕' : manifesto ? 'Ð' : '');
     setFeeRate('1000');
-    setEnableMint(black || manifesto);
-    setMintAmount(black || manifesto ? '1000' : '');
-    setMintCap(black ? '950000' : manifesto ? '990000' : '');
-    setTurbo(false);
     setStep('form');
     setError(null);
     setTxid(null);
+    if (plain === 'THEBLACKDOGE') applyPreset('black');
+    else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
+    else {
+      setPremine('1000000');
+      setMintAmount('');
+      setMintCap('');
+      setDivisibility('0');
+      setSymbol('');
+      setEnablePremine(true);
+      setEnableMint(false);
+      setTurbo(true);
+    }
   };
 
-  const handleClose = () => { reset(); onClose(); };
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
 
   useEffect(() => {
     if (isOpen && initialName?.trim()) {
       const n = initialName.trim().toUpperCase();
       setName(n);
       const plain = n.replace(/[•.\s]/g, '');
-      if (plain === 'THEBLACKDOGE') {
-        setSupply('50000000');
-        setSymbol('🐕');
-        setEnableMint(true);
-        setMintAmount('1000');
-        setMintCap('950000');
-        setDivisibility('0');
-      } else if (plain === 'DOGENALSOVERDOGINALS') {
-        setSupply('10000000');
-        setSymbol('Ð');
-        setEnableMint(true);
-        setMintAmount('1000');
-        setMintCap('990000');
-        setDivisibility('0');
-      }
+      if (plain === 'THEBLACKDOGE') applyPreset('black');
+      else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
     }
   }, [isOpen, initialName]);
 
   const nameError = (() => {
     if (!name.trim()) return null;
-    try { parseSpacedDune(name.trim()); return null; }
-    catch (e: any) { return e.message as string; }
+    try {
+      parseSpacedDune(name.trim());
+      return null;
+    } catch (e: any) {
+      return e.message as string;
+    }
   })();
+
+  const openMintSupply = useMemo(() => {
+    if (!enableMint || !mintAmount.trim() || !mintCap.trim()) return null;
+    try {
+      return BigInt(mintAmount.replace(/,/g, '')) * BigInt(mintCap.replace(/,/g, ''));
+    } catch {
+      return null;
+    }
+  }, [enableMint, mintAmount, mintCap]);
+
+  const premineBig = useMemo(() => {
+    if (!enablePremine || !premine.trim()) return 0n;
+    try {
+      return BigInt(premine.replace(/,/g, ''));
+    } catch {
+      return 0n;
+    }
+  }, [enablePremine, premine]);
+
+  const maxSupplyApprox =
+    premineBig + (openMintSupply ?? 0n);
 
   const handleConfirm = async () => {
     setError(null);
     if (!name.trim()) return setError('Ðune name is required');
     if (nameError) return setError(nameError);
-    if (!enableMint && (!supply.trim() || isNaN(Number(supply)))) return setError('Supply must be a valid number');
-    if (Number(divisibility) < 0 || Number(divisibility) > 38) return setError('Divisibility must be 0-38');
+    if (!enablePremine && !enableMint) {
+      return setError('Enable premine and/or open mint — both can be on together');
+    }
+    if (enablePremine && (!premine.trim() || isNaN(Number(premine.replace(/,/g, ''))))) {
+      return setError('Premine amount must be a valid number');
+    }
+    if (enablePremine && Number(premine.replace(/,/g, '')) <= 0) {
+      return setError('Premine must be greater than zero when enabled');
+    }
+    if (Number(divisibility) < 0 || Number(divisibility) > 38) {
+      return setError('Divisibility must be 0-38');
+    }
     if (symbol && singleCodePointSymbol(symbol) !== symbol) {
-      return setError('Symbol must be a single Unicode character (e.g. Ð or 🐕, not Ð>Ð)');
+      return setError('Symbol must be a single Unicode character (e.g. Ð or 🐕)');
     }
     if (enableMint) {
-      if (!mintAmount.trim()) return setError('Mint amount per call is required when open-mint is enabled');
-      if (!mintCap.trim()) return setError('Mint cap is required when open-mint is enabled');
+      if (!mintAmount.trim()) return setError('Tokens per mint is required when open mint is on');
+      if (!mintCap.trim()) return setError('Mint cap is required when open mint is on');
     }
     if (!connected || !address) {
       return setError('Connect MyDoge, Dojak, SpookyDoge, or your in-browser Dojak wallet first.');
@@ -139,19 +216,20 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     setStep('broadcasting');
     try {
       const resolved = await resolveSigner();
-      if (!resolved.ok) {
-        throw new Error(resolved.message);
-      }
+      if (!resolved.ok) throw new Error(resolved.message);
       setSigningAddress(resolved.signer.fromAddress);
 
-      const terms: DuneTerms | undefined = enableMint ? {
-        amount: BigInt(mintAmount.replace(/,/g, '')),
-        cap: BigInt(mintCap.replace(/,/g, '')),
-      } : undefined;
+      const terms: DuneTerms | undefined = enableMint
+        ? {
+            amount: BigInt(mintAmount.replace(/,/g, '')),
+            cap: BigInt(mintCap.replace(/,/g, '')),
+          }
+        : undefined;
 
       const result = await etchDune({
         name: name.trim(),
-        supply: enableMint ? '0' : supply.trim(),
+        // Premine amount (0 when premine off)
+        supply: enablePremine ? premine.trim() : '0',
         divisibility: Number(divisibility),
         symbol: symbol.trim() || undefined,
         terms,
@@ -162,7 +240,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
 
       setTxid(result.txid ?? null);
       setStep('done');
-      toast.success('Ðune deployed successfully!');
+      toast.success('Ðune deployed (v2 / 0xÐ)!');
       onSuccess?.(result.txid ?? '');
     } catch (e: any) {
       setError(e.message ?? 'Transaction failed');
@@ -174,178 +252,173 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-2xl">
+      {/* Theme tokens — follow light/dark app theme (not forced zinc-950) */}
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border border-border-primary bg-bg-primary text-text-primary shadow-2xl">
         <DialogHeader>
-          <DialogTitle>Deploy New Ðune</DialogTitle>
+          <DialogTitle className="text-text-primary">Deploy New Ðune (v2 · 0xÐ)</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {step === 'form' && (
             <>
-              {/* Name */}
+              <p className="rounded-lg border border-border-primary bg-bg-secondary px-3 py-2 text-xs text-text-secondary">
+                <strong className="text-text-primary">Premine + open mint are independent.</strong> Turn both on for
+                hero launches (treasury LP + community mint). Max supply ≈ premine + (tokens per mint × cap).
+              </p>
+
               <div>
-                <Label className="block mb-1">
-                  Ðune Name <span className="text-yellow-400">*</span>
+                <Label className="mb-1 block text-text-primary">
+                  Ðune Name <span className="text-amber-500">*</span>
                 </Label>
                 <Input
                   type="text"
                   value={name}
-                  onChange={e => setName(e.target.value.toUpperCase())}
-                  placeholder="e.g. DOGE•COIN or DOGECOIN"
+                  onChange={(e) => setName(e.target.value.toUpperCase())}
+                  placeholder="e.g. THE•BLACK•DOGE"
                   className="font-mono"
                 />
-                {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
-                <p className="text-xs text-text-secondary mt-1">
-                  Uppercase A-Z only. Use • or . as spacers (e.g. DOGE•COIN).
+                {nameError && <p className="mt-1 text-xs text-red-500">{nameError}</p>}
+                <p className="mt-1 text-xs text-text-secondary">
+                  A–Z only. Use • or . as spacers. Wire: Ðunes v2 magic <span className="font-mono">0xD0</span>.
                 </p>
               </div>
 
-              {/* Divisibility */}
               <div>
-                <Label className="block mb-1">
-                  Divisibility (0–38)
-                </Label>
+                <Label className="mb-1 block text-text-primary">Divisibility (0–38)</Label>
                 <Input
                   type="number"
-                  min={0} max={38}
+                  min={0}
+                  max={38}
                   value={divisibility}
-                  onChange={e => setDivisibility(e.target.value)}
+                  onChange={(e) => setDivisibility(e.target.value)}
                 />
-                <p className="text-xs text-text-secondary mt-1">
-                  Decimal places. 0 = whole tokens only. 8 = like DOGE.
+                <p className="mt-1 text-xs text-text-secondary">
+                  0 = whole tokens (recommended for memes). 8 = DOGE-like decimals.
                 </p>
               </div>
 
-              {/* Symbol — protocol allows one code point only (same as Bitcoin Runes) */}
               <div>
-                <Label className="block mb-1">
-                  Symbol (optional)
-                </Label>
+                <Label className="mb-1 block text-text-primary">Symbol (optional)</Label>
                 <Input
                   type="text"
                   value={symbol}
-                  onChange={e => setSymbol(singleCodePointSymbol(e.target.value))}
-                  placeholder="e.g. Ð"
+                  onChange={(e) => setSymbol(singleCodePointSymbol(e.target.value))}
+                  placeholder="🐕"
                   className="max-w-[5rem] text-center text-lg font-medium"
                 />
-                <p className="text-xs text-text-secondary mt-1">
-                  One Unicode character only — how wallets display balances (like 🐕 on DOG Runes).
-                  Not a ticker; <span className="text-text-primary">Ð&gt;Ð</span> cannot be encoded on-chain.
-                </p>
+                <p className="mt-1 text-xs text-text-secondary">One Unicode character only.</p>
               </div>
 
-              {/* Supply mode — premine vs open mint */}
-              <div>
-                <Label className="block mb-2">How is supply created?</Label>
-                <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setEnableMint(false)}
-                    className={cn(
-                      'rounded-md px-3 py-2.5 text-left transition-colors',
-                      !enableMint
-                        ? 'bg-amber-500/20 text-zinc-100 ring-1 ring-amber-500/40'
-                        : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200',
-                    )}
-                  >
-                    <span className="block text-sm font-medium">Premine to wallet</span>
-                    <span className="mt-0.5 block text-[11px] leading-snug opacity-80">
-                      Fixed supply — all tokens to you at etch
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEnableMint(true)}
-                    className={cn(
-                      'rounded-md px-3 py-2.5 text-left transition-colors',
-                      enableMint
-                        ? 'bg-amber-500/20 text-zinc-100 ring-1 ring-amber-500/40'
-                        : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200',
-                    )}
-                  >
-                    <span className="block text-sm font-medium">Open mint</span>
-                    <span className="mt-0.5 block text-[11px] leading-snug opacity-80">
-                      Anyone mints until cap is reached
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {enableMint ? (
-                <div className="space-y-3 border border-border-primary rounded p-3 bg-bg-secondary">
-                  <p className="text-xs text-text-secondary">
-                    With open minting, anyone can call mint to receive tokens. Supply is cap × amount.
-                  </p>
+              {/* Premine — independent toggle */}
+              <div className="space-y-3 rounded-lg border border-border-primary bg-bg-secondary p-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <Label className="block mb-1 text-xs">
-                      Tokens per mint <span className="text-yellow-400">*</span>
-                    </Label>
-                    <Input
-                      type="text"
-                      value={mintAmount}
-                      onChange={e => setMintAmount(e.target.value)}
-                      placeholder="e.g. 1000"
-                    />
+                    <p className="text-sm font-medium text-text-primary">Premine to wallet</p>
+                    <p className="text-xs text-text-secondary">
+                      Tokens you receive at etch (pool seed, rewards, treasury)
+                    </p>
                   </div>
-                  <div>
-                    <Label className="block mb-1 text-xs">
-                      Max mint count (cap) <span className="text-yellow-400">*</span>
-                    </Label>
-                    <Input
-                      type="text"
-                      value={mintCap}
-                      onChange={e => setMintCap(e.target.value)}
-                      placeholder="e.g. 1000"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <Label className="block mb-1">
-                    Total Supply <span className="text-yellow-400">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    value={supply}
-                    onChange={e => setSupply(e.target.value)}
-                    placeholder="e.g. 1000000"
+                  <Switch
+                    checked={enablePremine}
+                    onCheckedChange={setEnablePremine}
+                    aria-label="Enable premine"
                   />
-                  <p className="text-xs text-text-secondary mt-1">
-                    Human-readable units. All tokens are premined to your wallet.
+                </div>
+                {enablePremine && (
+                  <div>
+                    <Label className="mb-1 block text-xs text-text-primary">
+                      Premine amount <span className="text-amber-500">*</span>
+                    </Label>
+                    <Input
+                      type="text"
+                      value={premine}
+                      onChange={(e) => setPremine(e.target.value)}
+                      placeholder="e.g. 42069000"
+                      className="font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Open mint — independent toggle */}
+              <div className="space-y-3 rounded-lg border border-border-primary bg-bg-secondary p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Open mint</p>
+                    <p className="text-xs text-text-secondary">
+                      Anyone can mint until mint-count cap is reached
+                    </p>
+                  </div>
+                  <Switch
+                    checked={enableMint}
+                    onCheckedChange={setEnableMint}
+                    aria-label="Enable open mint"
+                  />
+                </div>
+                {enableMint && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label className="mb-1 block text-xs text-text-primary">
+                        Tokens per mint <span className="text-amber-500">*</span>
+                      </Label>
+                      <Input
+                        type="text"
+                        value={mintAmount}
+                        onChange={(e) => setMintAmount(e.target.value)}
+                        placeholder="420"
+                        className="font-mono"
+                      />
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs text-text-primary">
+                        Max mint count (cap) <span className="text-amber-500">*</span>
+                      </Label>
+                      <Input
+                        type="text"
+                        value={mintCap}
+                        onChange={(e) => setMintCap(e.target.value)}
+                        placeholder="901479"
+                        className="font-mono"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {(enablePremine || enableMint) && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-text-secondary">
+                  <p className="font-medium text-text-primary">Approx max supply</p>
+                  <p className="mt-1 font-mono text-text-primary">
+                    {maxSupplyApprox.toLocaleString()}
+                    {enablePremine && enableMint
+                      ? ` = premine ${premineBig.toLocaleString()} + open ${(openMintSupply ?? 0n).toLocaleString()}`
+                      : enablePremine
+                        ? ' (premine only)'
+                        : ' (open mint only)'}
                   </p>
                 </div>
               )}
 
-              {/* Turbo */}
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 px-3 py-3">
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-border-primary px-3 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-primary flex items-center gap-1">
+                  <p className="flex items-center gap-1 text-sm font-medium text-text-primary">
                     Turbo mode
-                    <InformationCircleIcon className="w-4 h-4 text-text-secondary" title="Enables future protocol features; harmless if unused." />
+                    <InformationCircleIcon className="h-4 w-4 text-text-secondary" title="Future protocol features" />
                   </p>
-                  <p className="text-xs text-text-secondary mt-0.5">
-                    Optional Runes-compatible flag for future features
-                  </p>
+                  <p className="mt-0.5 text-xs text-text-secondary">Optional flag for future Ðunes features</p>
                 </div>
-                <Switch
-                  checked={turbo}
-                  onCheckedChange={setTurbo}
-                  aria-label="Turbo mode"
-                />
+                <Switch checked={turbo} onCheckedChange={setTurbo} aria-label="Turbo mode" />
               </div>
 
-              {/* Fee rate */}
               <div>
-                <Label className="block mb-1">
-                  Fee Rate (koinu/kB)
-                </Label>
+                <Label className="mb-1 block text-text-primary">Fee rate (koinu/kB)</Label>
                 <Input
                   type="number"
                   value={feeRate}
-                  onChange={e => setFeeRate(e.target.value)}
+                  onChange={(e) => setFeeRate(e.target.value)}
                   min={100}
                 />
-                <p className="text-xs text-text-secondary mt-1">1000 koinu/kB ≈ 1 sat/byte (recommended minimum)</p>
+                <p className="mt-1 text-xs text-text-secondary">1000 koinu/kB recommended minimum</p>
               </div>
 
               {!connected && (
@@ -363,10 +436,18 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
               )}
 
               <div className="flex gap-3 pt-2">
-                <button onClick={handleClose} className="flex-1 py-2 border border-border-primary rounded text-text-secondary hover:text-text-primary hover:border-text-primary text-sm transition-colors">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="flex-1 rounded border border-border-primary py-2 text-sm text-text-secondary transition-colors hover:border-text-primary hover:text-text-primary"
+                >
                   Cancel
                 </button>
-                <button onClick={handleConfirm} className="flex-1 py-2 bg-primary-500 hover:bg-primary-400 text-bg-primary rounded text-sm font-medium transition-colors">
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  className="flex-1 rounded bg-primary-500 py-2 text-sm font-medium text-bg-primary transition-colors hover:bg-primary-400"
+                >
                   Review
                 </button>
               </div>
@@ -375,25 +456,26 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
 
           {step === 'confirm' && (
             <>
-              <div className="bg-bg-secondary rounded-lg p-4 space-y-2 text-sm">
-                <h3 className="font-medium text-text-primary mb-3">Confirm Etch Transaction</h3>
+              <div className="space-y-2 rounded-lg border border-border-primary bg-bg-secondary p-4 text-sm">
+                <h3 className="mb-3 font-medium text-text-primary">Confirm etch (v2 · 0xÐ)</h3>
                 <Row label="Ðune name" value={name.trim()} mono />
+                <Row label="Magic" value="0xD0 (Ðunes v2)" />
                 <Row label="Divisibility" value={divisibility} />
                 {symbol && <Row label="Symbol" value={symbol} />}
-                {enableMint ? (
+                {enablePremine && (
+                  <Row label="Premine" value={Number(premine.replace(/,/g, '')).toLocaleString()} />
+                )}
+                {enableMint && (
                   <>
-                    <Row label="Distribution" value="Open mint" />
-                    <Row label="Tokens per mint" value={mintAmount} />
-                    <Row label="Mint cap" value={mintCap} />
-                    <Row label="Total supply" value={`${mintAmount} × ${mintCap} = ${(BigInt(mintAmount.replace(/,/g, '')) * BigInt(mintCap.replace(/,/g, ''))).toLocaleString()}`} />
-                  </>
-                ) : (
-                  <>
-                    <Row label="Distribution" value="Premine to wallet" />
-                    <Row label="Premine supply" value={Number(supply).toLocaleString()} />
+                    <Row label="Open mint" value={`${mintAmount} × ${mintCap} mints`} />
+                    <Row
+                      label="Open mint supply"
+                      value={(openMintSupply ?? 0n).toLocaleString()}
+                    />
                   </>
                 )}
-                {turbo && <Row label="Turbo" value="enabled" />}
+                <Row label="≈ Max supply" value={maxSupplyApprox.toLocaleString()} />
+                {turbo && <Row label="Turbo" value="on" />}
                 <Row label="Fee rate" value={`${Number(feeRate).toLocaleString()} koinu/kB`} />
                 <Row
                   label="Signing wallet"
@@ -403,11 +485,11 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
               </div>
 
               <Alert>
-                <AlertDescription className="flex items-start gap-2 text-xs text-yellow-400">
-                  <InformationCircleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <AlertDescription className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
+                  <InformationCircleIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
                   <span>
-                    Extension wallets will prompt you to sign a PSBT. In-browser wallets sign locally.
-                    Ðune parameters cannot be changed after etching.
+                    Name is claimed on first valid etch. Parameters cannot change after. Prefer etching before any
+                    public DLaunch marketing so no one snipes the name.
                   </span>
                 </AlertDescription>
               </Alert>
@@ -419,13 +501,18 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
               )}
 
               <div className="flex gap-3">
-                <button onClick={() => setStep('form')} className="flex-1 py-2 border border-border-primary rounded text-text-secondary hover:text-text-primary text-sm transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setStep('form')}
+                  className="flex-1 rounded border border-border-primary py-2 text-sm text-text-secondary transition-colors hover:text-text-primary"
+                >
                   Back
                 </button>
                 <button
+                  type="button"
                   onClick={handleBroadcast}
                   disabled={isLoading}
-                  className="flex-1 py-2 bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-bg-primary rounded text-sm font-medium transition-colors"
+                  className="flex-1 rounded bg-primary-500 py-2 text-sm font-medium text-bg-primary transition-colors hover:bg-primary-400 disabled:opacity-50"
                 >
                   {isLoading ? 'Signing…' : 'Confirm & Deploy'}
                 </button>
@@ -434,30 +521,37 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
           )}
 
           {step === 'broadcasting' && (
-            <div className="text-center py-8 space-y-3">
-              <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-text-secondary text-sm">Signing and broadcasting transaction…</p>
+            <div className="space-y-3 py-8 text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary-500 border-t-transparent" />
+              <p className="text-sm text-text-secondary">Signing and broadcasting…</p>
             </div>
           )}
 
           {step === 'done' && (
             <div className="space-y-4">
-              <div className="text-center py-4">
-                <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="py-4 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/20">
+                  <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary">Ðune Deployed!</h3>
-                <p className="text-sm text-text-secondary mt-1">Your Ðune <strong>{name}</strong> has been submitted to the network.</p>
+                <h3 className="text-lg font-semibold text-text-primary">Ðune deployed (0xÐ)</h3>
+                <p className="mt-1 text-sm text-text-secondary">
+                  <strong className="text-text-primary">{name}</strong> submitted. Confirm on dogex after a few
+                  blocks.
+                </p>
               </div>
               {txid && (
-                <div className="bg-bg-secondary rounded p-3">
-                  <p className="text-xs text-text-secondary mb-1">Transaction ID</p>
-                  <p className="font-mono text-xs text-text-primary break-all">{txid}</p>
+                <div className="rounded border border-border-primary bg-bg-secondary p-3">
+                  <p className="mb-1 text-xs text-text-secondary">Transaction ID</p>
+                  <p className="break-all font-mono text-xs text-text-primary">{txid}</p>
                 </div>
               )}
-              <button onClick={handleClose} className="w-full py-2 bg-primary-500 hover:bg-primary-400 text-bg-primary rounded text-sm font-medium transition-colors">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="w-full rounded bg-primary-500 py-2 text-sm font-medium text-bg-primary transition-colors hover:bg-primary-400"
+              >
                 Close
               </button>
             </div>
@@ -471,6 +565,6 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
 const Row: React.FC<{ label: string; value: string; mono?: boolean }> = ({ label, value, mono }) => (
   <div className="flex justify-between gap-4">
     <span className="text-text-secondary">{label}</span>
-    <span className={`text-text-primary text-right break-all ${mono ? 'font-mono text-xs' : ''}`}>{value}</span>
+    <span className={cn('text-right text-text-primary break-all', mono && 'font-mono text-xs')}>{value}</span>
   </div>
 );

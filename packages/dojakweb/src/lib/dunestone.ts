@@ -360,26 +360,28 @@ export function encodeDunestone(params: DunestoneParams): Uint8Array {
 /**
  * Build the OP_RETURN script for an etch (deploy) transaction.
  *
+ * Premine and open-mint terms are **independent** and may both be set:
+ * - `premineUnits` → amount allocated to the etcher (edict to output 1)
+ * - `terms` → open mint (anyone can mint until cap × amount)
+ * Max supply ≈ premine + amount × cap when both are set.
+ *
  * @param name         Dune name with optional spacers, e.g. "DOGE•COIN"
- * @param supply       Total supply in smallest units (premine = supply when no terms)
+ * @param premineUnits Premine in smallest units (0 = no premine)
  * @param divisibility Decimal places (0-38)
  * @param symbol       Optional single-char symbol
- * @param terms        Optional open-mint terms (makes the dune mintable)
+ * @param terms        Optional open-mint terms
  * @param turbo        Enable turbo flag
  */
 export function buildEtchScript(
   name: string,
-  supply: bigint,
+  premineUnits: bigint,
   divisibility: number,
   symbol?: string,
   terms?: DuneTerms,
   turbo = false,
 ): Uint8Array {
   const { dune, spacers } = parseSpacedDune(name);
-
-  // If there are open-mint terms the supply is cap * amount + premine.
-  // The premine edict uses id {0,0} (self-reference in etching tx, output 1).
-  const premine = terms ? undefined : supply;
+  const premine = premineUnits > 0n ? premineUnits : undefined;
 
   return encodeDunestone({
     magic: 'v2',
@@ -392,8 +394,9 @@ export function buildEtchScript(
       turbo,
       terms,
     },
-    edicts: supply > 0n && !terms
-      ? [{ id: { block: 0n, tx: 0n }, amount: supply, output: 1 }]
+    // Self-ref edict (0:0) assigns premine to output 1 (postage dust to etcher)
+    edicts: premineUnits > 0n
+      ? [{ id: { block: 0n, tx: 0n }, amount: premineUnits, output: 1 }]
       : undefined,
   });
 }

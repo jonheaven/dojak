@@ -302,8 +302,8 @@ export interface EtchResult {
 /**
  * Build, sign, and optionally broadcast an etch (deploy) transaction.
  *
- * The entire token supply is premined to the sender's address unless
- * open-mint `terms` are provided.
+ * `supply` is the **premine** amount (human-readable). Optional `terms` enable open mint.
+ * Both may be set: premine to etcher + open mint for the pack.
  */
 export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
   const {
@@ -314,16 +314,20 @@ export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
   // Validate name
   parseSpacedDune(name); // throws on invalid chars
 
-  // Convert human-readable supply to smallest units
-  const supplyBig = humanToSmallestUnits(supply, divisibility);
-  if (supplyBig < 0n) throw new Error('Supply must be non-negative');
+  // Convert human-readable premine to smallest units (0 allowed when open-mint only)
+  const premineBig = humanToSmallestUnits(supply || '0', divisibility);
+  if (premineBig < 0n) throw new Error('Premine must be non-negative');
+  if (premineBig === 0n && !terms) {
+    throw new Error('Set a premine amount and/or open-mint terms — supply cannot be empty');
+  }
 
-  const opReturnScript = buildEtchScript(name, supplyBig, divisibility, symbol, terms, turbo);
+  const opReturnScript = buildEtchScript(name, premineBig, divisibility, symbol, terms, turbo);
   if (opReturnScript.length > 83) {
     throw new Error(`Dunestone is ${opReturnScript.length} bytes — exceeds the 83-byte OP_RETURN limit. Shorten the name or reduce parameters.`);
   }
 
-  const extraOutputs = supplyBig > 0n && !terms
+  // Postage dust for premine-bearing output (edict → output 1)
+  const extraOutputs = premineBig > 0n
     ? [{ address: signer.fromAddress, value: POSTAGE_KOINU }]
     : [];
 
