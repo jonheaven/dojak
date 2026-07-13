@@ -36,30 +36,47 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
     setTimeout(onRefresh, 2000);
   };
 
-  const FLAGSHIP = 'THE•BLACK•DOGE';
+  const BLACK = 'THE•BLACK•DOGE';
+  const MANIFESTO = 'DOGENALS•OVER•DOGINALS';
+  const [deployName, setDeployName] = useState(BLACK);
 
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-primary-500/30 bg-primary-500/10 p-4 text-sm">
         <p className="font-medium text-[#FCD34D]">{t('walletPage.dunes.heroBannerTitle')}</p>
         <p className="mt-1 text-xs text-text-secondary">{t('walletPage.dunes.heroBannerBody')}</p>
+        <p className="mt-2 text-xs text-text-secondary">
+          Dual Era 2 flagships: <span className="font-mono text-text-primary">{MANIFESTO}</span> (manifesto) +{' '}
+          <span className="font-mono text-text-primary">{BLACK}</span> (liquidity / come-home).
+        </p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => {
+              setDeployName(BLACK);
               setDeployOpen(true);
             }}
             className="text-xs font-medium text-[#FCD34D] hover:underline"
           >
-            {t('walletPage.dunes.flagshipCta')}
+            Etch {BLACK}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDeployName(MANIFESTO);
+              setDeployOpen(true);
+            }}
+            className="text-xs font-medium text-[#FCD34D] hover:underline"
+          >
+            Etch {MANIFESTO}
           </button>
           <a
-            href="https://dogenals.org"
+            href="https://dogenals.com/come-home"
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-text-secondary hover:text-primary-500 hover:underline"
           >
-            CORE_SUITE · Ðunes hero →
+            Come home (SOL→Doge) →
           </a>
         </div>
       </div>
@@ -68,7 +85,10 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => setDeployOpen(true)}
+          onClick={() => {
+            setDeployName(BLACK);
+            setDeployOpen(true);
+          }}
           className="flex items-center gap-1.5 px-3 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary text-xs hover:border-primary-500 transition-colors"
         >
           <PlusIcon className="w-3.5 h-3.5" />
@@ -77,14 +97,26 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
         <button
           type="button"
           onClick={() => {
-            setMintDuneName(FLAGSHIP);
+            setMintDuneName(BLACK);
             setMintOpen(true);
           }}
           className="flex items-center gap-1.5 px-3 py-2 bg-bg-secondary border border-primary-500/40 rounded text-text-primary text-xs hover:border-primary-500 transition-colors"
-          title={FLAGSHIP}
+          title={BLACK}
         >
           <SparklesIcon className="w-3.5 h-3.5" />
-          Mint {FLAGSHIP}
+          Mint {BLACK}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMintDuneName(MANIFESTO);
+            setMintOpen(true);
+          }}
+          className="flex items-center gap-1.5 px-3 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary text-xs hover:border-primary-500 transition-colors"
+          title={MANIFESTO}
+        >
+          <SparklesIcon className="w-3.5 h-3.5" />
+          Mint manifesto
         </button>
         <button
           type="button"
@@ -155,7 +187,7 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
       <DuneDeployModal
         isOpen={deployOpen}
         onClose={() => setDeployOpen(false)}
-        initialName={FLAGSHIP}
+        initialName={deployName}
         onSuccess={handleSuccess}
       />
       <DuneMintModal

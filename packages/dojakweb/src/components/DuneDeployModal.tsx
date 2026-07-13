@@ -39,17 +39,19 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const { address, connected } = useUnifiedWallet();
   const resolveSigner = useDuneTxSigner();
 
-  // Form state — flagship THE•BLACK•DOGE defaults when prefilled (see dogenals/docs/THE_BLACK_DOGE.md)
-  const isFlagship =
-    (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase() === 'THEBLACKDOGE';
+  // Form state — dual flagship presets (THE•BLACK•DOGE liquidity · DOGENALS•OVER•DOGINALS manifesto)
+  const plainInitial = (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase();
+  const isBlack = plainInitial === 'THEBLACKDOGE';
+  const isManifesto = plainInitial === 'DOGENALSOVERDOGINALS';
+  const isEra2Preset = isBlack || isManifesto;
   const [name, setName]               = useState(initialName ?? '');
-  const [supply, setSupply]           = useState(isFlagship ? '50000000' : '1000000');
+  const [supply, setSupply]           = useState(isBlack ? '50000000' : isManifesto ? '10000000' : '1000000');
   const [divisibility, setDivisibility] = useState('0');
-  const [symbol, setSymbol]           = useState(isFlagship ? '🐕' : '');
+  const [symbol, setSymbol]           = useState(isBlack ? '🐕' : isManifesto ? 'Ð' : '');
   const [feeRate, setFeeRate]         = useState('1000');
-  const [enableMint, setEnableMint]   = useState(isFlagship);
-  const [mintAmount, setMintAmount]   = useState(isFlagship ? '1000' : '');
-  const [mintCap, setMintCap]         = useState(isFlagship ? '950000' : '');
+  const [enableMint, setEnableMint]   = useState(isEra2Preset);
+  const [mintAmount, setMintAmount]   = useState(isEra2Preset ? '1000' : '');
+  const [mintCap, setMintCap]         = useState(isBlack ? '950000' : isManifesto ? '990000' : '');
   const [turbo, setTurbo]             = useState(false);
 
   // UI state
@@ -60,16 +62,17 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const [signingAddress, setSigningAddress] = useState<string | null>(null);
 
   const reset = () => {
-    const flagship =
-      (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase() === 'THEBLACKDOGE';
+    const plain = (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase();
+    const black = plain === 'THEBLACKDOGE';
+    const manifesto = plain === 'DOGENALSOVERDOGINALS';
     setName(initialName ?? '');
-    setSupply(flagship ? '50000000' : '1000000');
+    setSupply(black ? '50000000' : manifesto ? '10000000' : '1000000');
     setDivisibility('0');
-    setSymbol(flagship ? '🐕' : '');
+    setSymbol(black ? '🐕' : manifesto ? 'Ð' : '');
     setFeeRate('1000');
-    setEnableMint(flagship);
-    setMintAmount(flagship ? '1000' : '');
-    setMintCap(flagship ? '950000' : '');
+    setEnableMint(black || manifesto);
+    setMintAmount(black || manifesto ? '1000' : '');
+    setMintCap(black ? '950000' : manifesto ? '990000' : '');
     setTurbo(false);
     setStep('form');
     setError(null);
@@ -82,12 +85,20 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     if (isOpen && initialName?.trim()) {
       const n = initialName.trim().toUpperCase();
       setName(n);
-      if (n.replace(/[•.\s]/g, '') === 'THEBLACKDOGE') {
+      const plain = n.replace(/[•.\s]/g, '');
+      if (plain === 'THEBLACKDOGE') {
         setSupply('50000000');
         setSymbol('🐕');
         setEnableMint(true);
         setMintAmount('1000');
         setMintCap('950000');
+        setDivisibility('0');
+      } else if (plain === 'DOGENALSOVERDOGINALS') {
+        setSupply('10000000');
+        setSymbol('Ð');
+        setEnableMint(true);
+        setMintAmount('1000');
+        setMintCap('990000');
         setDivisibility('0');
       }
     }
