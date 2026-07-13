@@ -109,8 +109,10 @@ export default function WalletDrawer({
         )
       : null;
 
+  // Render paw first (under), then drawer — stacking + CSS z-index keep grip beneath panel
   return (
     <>
+      {paw}
       <DojakwebWalletModal
         isOpen={isOpen}
         onClose={onClose}
@@ -118,7 +120,6 @@ export default function WalletDrawer({
         initialStep={initialStep}
         mode="drawer"
       />
-      {paw}
     </>
   );
 }

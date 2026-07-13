@@ -102,6 +102,17 @@ export async function resolveDuneTxSigner(
     };
   }
 
+  // Browser may be ready even when unified.connected is still false
+  if (browserAddress && (browser.connected || unified.walletType === 'browser')) {
+    return {
+      ok: true,
+      signer: {
+        fromAddress: browserAddress,
+        signPsbt: signPSBTOnly,
+      },
+    };
+  }
+
   if (!unified.connected || !unified.address) {
     return {
       ok: false,

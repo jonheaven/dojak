@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { XMarkIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
-import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { toast } from 'sonner';
 import { mintDune } from '../services/duneService';
 import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
+import { useDuneWalletConnection } from '../hooks/useDuneWalletConnection';
 import { walletDataApi, type DuneInfo } from '../utils/api';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,7 @@ interface Props {
 type Step = 'form' | 'lookup' | 'confirm' | 'broadcasting' | 'done';
 
 export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSuccess }) => {
-  const { address, connected } = useUnifiedWallet();
+  const { address, connected } = useDuneWalletConnection();
   const resolveSigner = useDuneTxSigner();
 
   const [inputName, setInputName]       = useState(duneName ?? '');
@@ -107,9 +107,9 @@ export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSu
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border-primary bg-zinc-950 shadow-xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-primary">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border-primary bg-bg-primary text-text-primary shadow-xl">
+        <div className="flex items-center justify-between border-b border-border-primary px-6 py-4">
           <h2 className="text-lg font-semibold text-text-primary">Mint Ðune</h2>
           <button type="button" onClick={handleClose} aria-label="Close" className="text-text-secondary hover:text-text-primary">
             <XMarkIcon className="w-5 h-5" />

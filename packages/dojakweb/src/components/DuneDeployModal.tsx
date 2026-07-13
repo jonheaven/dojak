@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
-import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { toast } from 'sonner';
 import { etchDune } from '../services/duneService';
 import { parseSpacedDune } from '../lib/dunestone';
 import type { DuneTerms } from '../lib/dunestone';
 import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
+import { useDuneWalletConnection } from '../hooks/useDuneWalletConnection';
 import {
   Dialog,
   DialogContent,
@@ -53,7 +53,7 @@ interface Props {
 type Step = 'form' | 'confirm' | 'broadcasting' | 'done';
 
 export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, initialName }) => {
-  const { address, connected } = useUnifiedWallet();
+  const { address, connected } = useDuneWalletConnection();
   const resolveSigner = useDuneTxSigner();
 
   const plainInitial = (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase();
@@ -200,12 +200,14 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
       if (!mintAmount.trim()) return setError('Tokens per mint is required when open mint is on');
       if (!mintCap.trim()) return setError('Mint cap is required when open mint is on');
     }
-    if (!connected || !address) {
-      return setError('Connect MyDoge, Dojak, SpookyDoge, or your in-browser Dojak wallet first.');
-    }
-
+    // Prefer resolveSigner — it knows browser WIF/PSBT even when unified.connected lags
     const resolved = await resolveSigner();
-    if (!resolved.ok) return setError(resolved.message);
+    if (!resolved.ok) {
+      return setError(
+        resolved.message ||
+          'Connect MyDoge, Dojak, SpookyDoge, or your in-browser Dojak wallet first.',
+      );
+    }
     setSigningAddress(resolved.signer.fromAddress);
     setStep('confirm');
   };
@@ -421,7 +423,16 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 <p className="mt-1 text-xs text-text-secondary">1000 koinu/kB recommended minimum</p>
               </div>
 
-              {!connected && (
+              {connected && address ? (
+                <Alert>
+                  <AlertDescription className="text-xs text-text-secondary">
+                    Ready to sign with{' '}
+                    <span className="font-mono text-text-primary">
+                      {address.slice(0, 8)}…{address.slice(-6)}
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              ) : (
                 <Alert>
                   <AlertDescription className="text-xs">
                     Connect MyDoge, Dojak, SpookyDoge, or your in-browser Dojak wallet to deploy.
