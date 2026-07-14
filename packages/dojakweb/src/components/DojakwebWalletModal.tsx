@@ -2,11 +2,12 @@
 
 import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import JSZip from 'jszip';
-import { Dialog, Menu, Transition } from '@headlessui/react';
+import { Dialog, Listbox, ListboxButton, ListboxOption, ListboxOptions, Menu, Transition } from '@headlessui/react';
 import {
   ArrowPathIcon,
   CheckBadgeIcon,
   CheckCircleIcon,
+  CheckIcon,
   ClipboardDocumentIcon,
   Cog6ToothIcon,
   EllipsisHorizontalIcon,
@@ -616,6 +617,8 @@ export function DojakwebWalletModal({
   const [isBusy, setIsBusy] = useState(false);
   const [activePassword, setActivePassword] = useState<string | undefined>();
   const lockAfterSetPasswordRef = React.useRef(false);
+  const stepRef = React.useRef<WalletStep>(step);
+  stepRef.current = step;
   const [savedLocalWallets, setSavedLocalWallets] = useState<WalletData[]>([]);
   const [selectedLocalWalletAddress, setSelectedLocalWalletAddress] = useState<string | null>(null);
   const [walletNameDraft, setWalletNameDraft] = useState('');
@@ -1163,6 +1166,18 @@ export function DojakwebWalletModal({
       URL.revokeObjectURL(url);
     }, 100);
     toast.success(encryptPassword ? t('modal.toast.backupZipEncrypted') : t('modal.toast.backupZipPlain'));
+    // Downloading a recovery archive counts as backing up.
+    if (currentWallet.address) {
+      const groupIndex = findSeedGroupIndexForAddress(localSeedWalletGroups, currentWallet.address);
+      const group = localSeedWalletGroups[groupIndex];
+      if (group) {
+        markSeedGroupBackedUp(group);
+      } else {
+        const key = getBackupFlag(currentWallet.address);
+        if (key) localStorage.setItem(key, 'true');
+      }
+      setNeedsBackup(false);
+    }
   };
 
   const importWalletFromRaw = async (rawInput: string) => {
@@ -1295,18 +1310,40 @@ export function DojakwebWalletModal({
       setImportValue('');
       setRecipientAddress('');
       setSendAmount('');
-      setShowSecretPhrase(false);
+      // Don't clobber an in-progress seed backup / password / import flow when
+      // connect() flips browser.connected (turnkey create lands on reveal).
+      const holdWizardStep = (
+        [
+          'reveal',
+          'password',
+          'import',
+          'send',
+          'receive',
+          'send_inscription',
+          'list_inscription',
+          'settings',
+          'remove',
+          'set_name',
+          'verification',
+        ] as WalletStep[]
+      ).includes(stepRef.current);
+      if (!holdWizardStep) {
+        setShowSecretPhrase(false);
+      }
       await refreshSavedLocalWallets();
 
       if (!connected && !browserSessionActive && localStorage.getItem(BROWSER_WALLET_RESTORE_BLOCK_KEY) === 'true') {
-        setStep('entry');
+        if (!holdWizardStep) setStep('entry');
         return;
       }
 
       if (browserSessionActive && browser.address) {
-        const bannerKey = getTemporaryBannerFlag(browser.address);
-        setShowTemporaryBanner(bannerKey ? localStorage.getItem(bannerKey) === 'true' : false);
-        setStep('dashboard');
+        const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, browser.address);
+        setNeedsBackup(uiFlags.needsBackup);
+        setShowTemporaryBanner(uiFlags.showTemporaryBanner);
+        if (!holdWizardStep) {
+          setStep('dashboard');
+        }
         if (walletType !== 'browser') {
           try {
             setActiveWallet('browser');
@@ -1318,9 +1355,12 @@ export function DojakwebWalletModal({
       }
 
       if (connected && address) {
-        const bannerKey = getTemporaryBannerFlag(address);
-        setShowTemporaryBanner(bannerKey ? localStorage.getItem(bannerKey) === 'true' : false);
-        setStep('dashboard');
+        const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, address);
+        setNeedsBackup(uiFlags.needsBackup);
+        setShowTemporaryBanner(uiFlags.showTemporaryBanner);
+        if (!holdWizardStep) {
+          setStep('dashboard');
+        }
         return;
       }
 
@@ -1351,8 +1391,9 @@ export function DojakwebWalletModal({
         const loaded = await browser.loadWallet();
         if (loaded) {
           await browser.connect(loaded);
-          const bannerKey = getTemporaryBannerFlag(loaded.address);
-          setShowTemporaryBanner(bannerKey ? localStorage.getItem(bannerKey) === 'true' : false);
+          const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, loaded.address);
+          setNeedsBackup(uiFlags.needsBackup);
+          setShowTemporaryBanner(uiFlags.showTemporaryBanner);
           setStep('dashboard');
           if (walletType !== 'browser') {
             try {
@@ -1397,11 +1438,30 @@ export function DojakwebWalletModal({
       if (!created.mnemonic) {
         throw new Error(t('modal.throws.mnemonicUnavailableCreated'));
       }
+      const seed: SeedMaterial = { mnemonic: created.mnemonic, passphrase: '' };
       setPendingWallet(created);
-      setPendingSeed({ mnemonic: created.mnemonic, passphrase: '' });
+      setPendingSeed(seed);
       setShowSecretPhrase(true);
-      setStep('reveal');
-      toast.success(t('modal.toast.newWalletBackupPhrase'), { duration: 5000 });
+
+      // Persist + connect immediately so the dApp is usable without extra steps.
+      // Recovery backup stays pending until phrase confirm, password/PIN, or ZIP.
+      const saved = await finalizeWallet(undefined, created, seed, undefined, {
+        afterStep: 'reveal',
+        markNeedsBackup: true,
+        toastKey: 'modal.toast.newWalletReady',
+      });
+      if (!saved) {
+        throw new Error(t('modal.errors.createWallet'));
+      }
+      try {
+        setActiveWallet('browser');
+      } catch {
+        try {
+          localStorage.setItem('wallet_type', 'browser');
+        } catch {
+          // Ignore localStorage failures.
+        }
+      }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : t('modal.errors.createWallet'));
     } finally {
@@ -1425,7 +1485,12 @@ export function DojakwebWalletModal({
     nextPassword?: string,
     walletOverride?: WalletData | null,
     seedOverride?: SeedMaterial | null,
-    saveOpts?: { pbkdf2Iterations?: number }
+    saveOpts?: { pbkdf2Iterations?: number },
+    uiOpts?: {
+      afterStep?: 'dashboard' | 'reveal' | 'password';
+      markNeedsBackup?: boolean;
+      toastKey?: string;
+    },
   ): Promise<WalletData | null> => {
     const walletToPersist =
       walletOverride ??
@@ -1442,6 +1507,7 @@ export function DojakwebWalletModal({
     await browser.connect(walletToPersist);
     const passwordKey = getStoredPasswordFlag(walletToPersist.address);
     const bannerKey = getTemporaryBannerFlag(walletToPersist.address);
+    const backupKey = getBackupFlag(walletToPersist.address);
     if (passwordKey) {
       if (persistPassword) {
         localStorage.setItem(passwordKey, 'true');
@@ -1458,12 +1524,27 @@ export function DojakwebWalletModal({
         setShowTemporaryBanner(true);
       }
     }
+    // Password/PIN encrypts seed on-device — counts as a recovery backup.
+    if (persistPassword && backupKey) {
+      localStorage.setItem(backupKey, 'true');
+      setNeedsBackup(false);
+    } else if (uiOpts?.markNeedsBackup && backupKey) {
+      localStorage.removeItem(backupKey);
+      setNeedsBackup(true);
+    } else if (backupKey) {
+      const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, walletToPersist.address);
+      setNeedsBackup(uiFlags.needsBackup);
+    }
     setPendingWallet(walletToPersist);
     await refreshSavedLocalWallets();
-    setStep('dashboard');
-    toast.success(persistPassword ? t('modal.toast.walletSecured') : t('modal.toast.walletReadyNoPw'), {
-      duration: 5000,
-    });
+    setStep(uiOpts?.afterStep ?? 'dashboard');
+    if (uiOpts?.toastKey === 'modal.toast.newWalletReady') {
+      toast.success(t('modal.toast.newWalletReady'), { duration: 5500 });
+    } else {
+      toast.success(persistPassword ? t('modal.toast.walletSecured') : t('modal.toast.walletReadyNoPw'), {
+        duration: 5000,
+      });
+    }
 
     // If the user hit "lock" while no password existed yet, immediately lock again
     // after we persist the password (and close the modal).
@@ -1917,11 +1998,20 @@ export function DojakwebWalletModal({
     }
     setNeedsBackup(false);
     toast.success(t('modal.toast.backupConfirmed'), { duration: 5000 });
-    if (connected) {
+    // Wallet is already live after turnkey create — never force password as a blocker.
+    if (connected || browser.connected) {
       setStep('dashboard');
       return;
     }
     setStep('password');
+  };
+
+  const handleDismissBackupReveal = () => {
+    if (connected || browser.connected) {
+      setStep('dashboard');
+      return;
+    }
+    setStep('entry');
   };
 
   const handleRemoveWallet = async () => {
@@ -2802,13 +2892,27 @@ export function DojakwebWalletModal({
                             </button>
                           </div>
                         ) : null}
-                        {(step === 'unlock' || step === 'dashboard') && isBrowserWallet && showTemporaryBanner ? (
+                        {(step === 'unlock' || step === 'dashboard') &&
+                        isBrowserWallet &&
+                        (needsBackup || showTemporaryBanner) ? (
                           <button
                             type="button"
-                            onClick={() => toast.warning(t('modal.toast.setPasswordBanner'))}
+                            onClick={() => {
+                              if (needsBackup) {
+                                void handleBackupNow();
+                                return;
+                              }
+                              toast.warning(t('modal.toast.setPasswordBanner'));
+                            }}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/15 text-amber-300 transition hover:bg-amber-500/25"
-                            aria-label={t('modal.aria.checkWalletStatus')}
-                            title={t('modal.aria.setPasswordSecureTitle')}
+                            aria-label={
+                              needsBackup ? t('modal.aria.backupNeeded') : t('modal.aria.checkWalletStatus')
+                            }
+                            title={
+                              needsBackup
+                                ? t('modal.aria.backupNeededTitle')
+                                : t('modal.aria.setPasswordSecureTitle')
+                            }
                           >
                             <ExclamationTriangleIcon className="h-3.5 w-3.5" />
                           </button>
@@ -2925,12 +3029,15 @@ export function DojakwebWalletModal({
                             </div>
                           </div>
                         ) : null}
-                        <Button onClick={handleCreateWallet} disabled={isBusy} className={cx('w-full', PRIMARY_BUTTON)}>
-                          {t('modal.entry.createNew')}
-                        </Button>
-                        <Button onClick={() => setStep('import')} disabled={isBusy} className={cx('w-full', SECONDARY_BUTTON)}>
-                          {t('modal.entry.import')}
-                        </Button>
+                        <div className="space-y-3">
+                          <Button onClick={handleCreateWallet} disabled={isBusy} className={cx('w-full', PRIMARY_BUTTON)}>
+                            {isBusy ? t('modal.entry.creating') : t('modal.entry.createNew')}
+                          </Button>
+                          <p className="text-center text-xs leading-5 text-white/45">{t('modal.entry.createHint')}</p>
+                          <Button onClick={() => setStep('import')} disabled={isBusy} className={cx('w-full', SECONDARY_BUTTON)}>
+                            {t('modal.entry.import')}
+                          </Button>
+                        </div>
                       </div>
                     )}
 
@@ -3177,8 +3284,10 @@ export function DojakwebWalletModal({
                           {t('modal.reveal.warningLine2')}
                         </div>
                         <div className="flex flex-col gap-3 sm:flex-row">
-                          <Button onClick={() => (connected ? setStep("dashboard") : setStep("entry"))} className={cx("flex-1", SECONDARY_BUTTON)}>
-                            {t('modal.reveal.goBack')}
+                          <Button onClick={handleDismissBackupReveal} className={cx("flex-1", SECONDARY_BUTTON)}>
+                            {connected || browser.connected
+                              ? t('modal.reveal.doLater')
+                              : t('modal.reveal.goBack')}
                           </Button>
                           {pendingSeed?.mnemonic && (
                             <Button onClick={handleSavedSecretPhrase} className={cx("flex-1", PRIMARY_BUTTON)}>
@@ -3417,14 +3526,11 @@ export function DojakwebWalletModal({
                                 <Menu as="div" className="relative shrink-0">
                                   <Menu.Button
                                     type="button"
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.05] text-white/70 transition hover:bg-white/10 hover:text-white"
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-0 bg-transparent p-0 transition hover:opacity-90"
                                     aria-label={t('modal.profileDpfp.avatarMenuAria')}
                                     title={t('modal.profileDpfp.avatarMenuAria')}
                                   >
-                                    <DogePFPAvatar
-                                      size="md"
-                                      fallback={<WalletProviderIcon walletType={activeWalletType} size="lg" framed />}
-                                    />
+                                    <DogePFPAvatar size="md" address={activeAddress} />
                                   </Menu.Button>
                                   <WalletMenuItems
                                     theme={isDark ? 'dark' : 'light'}
@@ -3588,13 +3694,20 @@ export function DojakwebWalletModal({
                             </button>
                             <Menu as="div" className="relative flex flex-col items-center gap-1.5">
                               <Menu.Button
+                                type="button"
                                 className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white transition hover:bg-white/[0.1]"
                                 aria-label={t('modal.aria.moreActions')}
                               >
                                 <EllipsisHorizontalIcon className="h-5 w-5" />
                               </Menu.Button>
-                              <span className="text-[10px] font-medium text-white/55">More</span>
-                              <WalletMenuItems theme={isDark ? 'dark' : 'light'} className="w-52 max-w-[min(18rem,calc(100vw-2rem))]">
+                              <span className="text-[10px] font-medium text-white/55" aria-hidden>
+                                More
+                              </span>
+                              <WalletMenuItems
+                                theme={isDark ? 'dark' : 'light'}
+                                anchor="bottom end"
+                                className="w-52 max-w-[min(18rem,calc(100vw-2rem))]"
+                              >
                                 {[
                                   { key: 'send', label: t('modal.dashboard.menu.send'), Icon: PaperAirplaneIcon, action: () => setStep('send') },
                                   { key: 'receive', label: t('modal.dashboard.menu.receive'), Icon: QrCodeIcon, action: () => setStep('receive') },
@@ -3632,13 +3745,14 @@ export function DojakwebWalletModal({
                                   { key: 'disconnect', label: t('modal.dashboard.menu.disconnect'), Icon: PowerIcon, action: handleDisconnectWallet },
                                 ].map(({ key, label, Icon, action }) => (
                                   <Menu.Item key={key}>
-                                    {({ active }) => (
+                                    {({ focus, active }) => (
                                       <button
                                         type="button"
                                         onClick={action}
                                         className={cx(
-                                          'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-white transition',
-                                          active ? 'bg-zinc-800' : 'hover:bg-zinc-900',
+                                          'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-white transition',
+                                          'hover:bg-zinc-800 focus:bg-zinc-800 focus:outline-none',
+                                          (focus || active) && 'bg-zinc-800',
                                         )}
                                       >
                                         <Icon className="h-5 w-5 shrink-0 text-white/90" aria-hidden />
@@ -3648,13 +3762,14 @@ export function DojakwebWalletModal({
                                   </Menu.Item>
                                 ))}
                                 <Menu.Item>
-                                  {({ active }) => (
+                                  {({ focus, active }) => (
                                     <button
                                       type="button"
                                       onClick={() => setStep('remove')}
                                       className={cx(
-                                        'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-300 transition',
-                                        active ? 'bg-red-500/20' : 'hover:bg-red-500/10',
+                                        'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-red-300 transition',
+                                        'hover:bg-red-500/15 focus:bg-red-500/15 focus:outline-none',
+                                        (focus || active) && 'bg-red-500/20',
                                       )}
                                     >
                                       <TrashIcon className="h-5 w-5 shrink-0 text-red-300/90" aria-hidden />
@@ -3668,12 +3783,15 @@ export function DojakwebWalletModal({
                         </div>
 
                         {isBrowserWallet && needsBackup ? (
-                          <div className="flex flex-col gap-4 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <div className="font-semibold text-zinc-100">{t('modal.backup.title')}</div>
-                              <div className="mt-1 text-sm text-zinc-300">{t('modal.backup.subtitle')}</div>
+                          <div className="flex items-center gap-3 rounded-2xl border border-amber-400/25 bg-amber-500/10 px-3 py-2.5">
+                            <ExclamationTriangleIcon className="h-5 w-5 shrink-0 text-amber-300" aria-hidden />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-semibold text-zinc-100">{t('modal.backup.title')}</div>
+                              <div className="mt-0.5 text-xs text-zinc-300">{t('modal.backup.subtitle')}</div>
                             </div>
-                            <Button onClick={() => handleBackupNow()} className={PRIMARY_BUTTON}>{t('modal.backup.now')}</Button>
+                            <Button onClick={() => handleBackupNow()} className={cx(PRIMARY_BUTTON, 'shrink-0 !px-3 !py-2 text-xs')}>
+                              {t('modal.backup.now')}
+                            </Button>
                           </div>
                         ) : null}
 
@@ -3701,20 +3819,88 @@ export function DojakwebWalletModal({
                               <div className="overflow-visible">
                                 {/* NFT / DRC-20 sub-selector */}
                                 <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2.5">
-                                  <select
+                                  <Listbox
                                     value={assetType}
-                                    onChange={(e) => setAssetType(e.target.value as 'nft' | 'drc20' | 'treats')}
-                                    aria-label={t('modal.aria.assetType')}
-                                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-semibold text-white/85 outline-none focus:border-[#FCD34D]/50"
+                                    onChange={(v: 'nft' | 'drc20' | 'treats') => setAssetType(v)}
                                   >
-                                    <option value="nft">{t('modal.assets.nftOption')}</option>
-                                    <option value="treats">{t('modal.assets.treatsOption')}</option>
-                                    <option value="drc20">{t('modal.assets.drc20Option')}</option>
-                                  </select>
+                                    <div className="relative min-w-0">
+                                      <ListboxButton
+                                        aria-label={t('modal.aria.assetType')}
+                                        className={cx(
+                                          'inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-left text-sm font-semibold outline-none transition',
+                                          isDark
+                                            ? 'border-white/10 bg-white/[0.06] text-white/90 hover:bg-white/[0.09] focus:border-[#FCD34D]/50'
+                                            : 'border-black/10 bg-white text-zinc-900 hover:bg-zinc-50 focus:border-[#C9A84C]/70',
+                                        )}
+                                      >
+                                        <span className="truncate">
+                                          {assetType === 'nft'
+                                            ? t('modal.assets.nftOption')
+                                            : assetType === 'treats'
+                                              ? t('modal.assets.treatsOption')
+                                              : t('modal.assets.drc20Option')}
+                                        </span>
+                                        <ChevronDownIcon
+                                          className={cx(
+                                            'h-4 w-4 shrink-0',
+                                            isDark ? 'text-white/45' : 'text-zinc-500',
+                                          )}
+                                          aria-hidden
+                                        />
+                                      </ListboxButton>
+                                      <ListboxOptions
+                                        anchor="bottom start"
+                                        className={cx(
+                                          'z-[10060] mt-1 max-h-60 w-[min(16rem,calc(100vw-3rem))] overflow-auto rounded-xl border py-1 shadow-2xl outline-none',
+                                          isDark
+                                            ? 'border-white/10 bg-zinc-900 text-white'
+                                            : 'border-black/10 bg-white text-zinc-900',
+                                        )}
+                                      >
+                                        {(
+                                          [
+                                            { id: 'nft' as const, label: t('modal.assets.nftOption') },
+                                            { id: 'treats' as const, label: t('modal.assets.treatsOption') },
+                                            { id: 'drc20' as const, label: t('modal.assets.drc20Option') },
+                                          ] as const
+                                        ).map((opt) => (
+                                          <ListboxOption
+                                            key={opt.id}
+                                            value={opt.id}
+                                            className={({ focus, selected }) =>
+                                              cx(
+                                                'relative flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-sm outline-none',
+                                                focus && (isDark ? 'bg-white/10' : 'bg-zinc-100'),
+                                                selected && (isDark ? 'text-[#FCD34D]' : 'text-amber-700'),
+                                              )
+                                            }
+                                          >
+                                            {({ selected }) => (
+                                              <>
+                                                <span className={cx('flex-1 truncate', selected && 'font-semibold')}>
+                                                  {opt.label}
+                                                </span>
+                                                {selected ? (
+                                                  <CheckIcon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                                                ) : (
+                                                  <span className="h-4 w-4 shrink-0" aria-hidden />
+                                                )}
+                                              </>
+                                            )}
+                                          </ListboxOption>
+                                        ))}
+                                      </ListboxOptions>
+                                    </div>
+                                  </Listbox>
                                   <button
                                     type="button"
                                     onClick={() => activeAddress && fetchAssets(activeAddress)}
-                                    className="p-1 text-white/50 transition hover:text-white"
+                                    className={cx(
+                                      'rounded-lg p-1.5 transition',
+                                      isDark
+                                        ? 'text-white/50 hover:bg-white/5 hover:text-white'
+                                        : 'text-zinc-500 hover:bg-black/5 hover:text-zinc-800',
+                                    )}
                                     aria-label={t('modal.aria.refreshAssets')}
                                   >
                                     <ArrowPathIcon className={cx('h-4 w-4', assetsLoading && 'animate-spin')} />

@@ -12,12 +12,15 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.title.sendInscription': '送信 #{num}',
   'modal.title.listInscription': '出品 #{num}',
   'modal.tagline.builtIn':
-    'Dojakweb には内蔵ウォレットがあります。ブラウザ拡張のダウンロードは不要です。秘密鍵はブラウザに保存され、サーバーには送信されません。',
+    '拡張機能不要の内蔵 Dogecoin ウォレット。一度作成すれば、すぐにこの dApp を使えます。',
   'modal.aria.backToWallet': 'ウォレットに戻る',
   'modal.aria.switchWallet': 'ウォレットを切り替え',
   'modal.aria.signingWallet': '署名ウォレット: {label}',
   'modal.aria.walletSigningHint': 'このセッションのトランザクション署名に使うウォレット',
   'modal.aria.checkWalletStatus': 'ウォレット状態を確認',
+  'modal.aria.backupNeeded': 'バックアップが必要です',
+  'modal.aria.backupNeededTitle':
+    'シードフレーズをバックアップするか、パスワードでウォレットを保護してください',
   'modal.aria.setPasswordSecureTitle': 'パスワードを設定してウォレットを保護',
   'modal.aria.settings': '設定',
   'modal.aria.walletSettingsTitle': 'ウォレット設定',
@@ -52,8 +55,10 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.savedWallets.passwordless': 'パスワードなし',
   'modal.savedWallets.account': 'アカウント {index}',
   'modal.savedWallets.connect': '接続',
-  'modal.entry.createNew': '新しいウォレットを作成',
-  'modal.entry.import': 'ウォレットをインポート',
+  'modal.entry.createNew': 'Dogecoin ウォレットを作成',
+  'modal.entry.creating': 'ウォレット作成中…',
+  'modal.entry.createHint': 'ワンタップ。サイトデータを消すまで、鍵はこのブラウザに保存されます。',
+  'modal.entry.import': '既存ウォレットをインポート',
   'modal.unlock.enterPassword': 'パスワードを入力',
   'modal.unlock.enterPin': 'PIN を入力（6桁以上）',
   'modal.unlock.modePassword': 'パスワード',
@@ -80,6 +85,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.reveal.warningLine2':
     '他のウォレットにインポートする前に、doginals プロトコルに対応しているか確認してください。',
   'modal.reveal.goBack': '戻る',
+  'modal.reveal.doLater': 'あとで行う',
   'modal.reveal.savedWords': '単語を保存しました',
   'modal.password.enter': 'パスワードを入力',
   'modal.password.primaryLabel': 'ロック方式',
@@ -108,8 +114,9 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.dashboard.menu.disconnect': '切断',
   'modal.dashboard.menu.remove': '削除',
   'modal.backup.title': 'バックアップが必要です',
-  'modal.backup.subtitle': 'ウォレットを守るためにシークレットフレーズを保存してください。',
-  'modal.backup.now': '今すぐバックアップ',
+  'modal.backup.subtitle':
+    'シードフレーズを確認するか、パスワード / PIN バックアップで保護してください。',
+  'modal.backup.now': 'バックアップ',
   'modal.tabs.assets': '資産',
   'modal.tabs.transactions': '取引履歴',
   'modal.tabs.listings': '出品',
@@ -518,6 +525,8 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.toast.walletImportedSetPw': 'ウォレットをインポートしました。この端末を守るためパスワードを設定してください。',
   'modal.toast.walletImportedZip': 'ZIP からインポートしました。パスワードを設定して保護してください。',
   'modal.toast.importFailedPrefix': 'インポートに失敗: ',
+  'modal.toast.newWalletReady':
+    'ウォレット準備完了 — すぐに dApp を使えます。できればシードフレーズも保存してください。',
   'modal.toast.newWalletBackupPhrase': '新しいウォレットを作成しました。続行前にシークレットフレーズをバックアップしてください。',
   'modal.toast.walletSecured': 'ウォレットを保護しました。利用できます。',
   'modal.toast.walletReadyNoPw':
@@ -551,7 +560,8 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.toast.listingCancelledChain':
     '出品をオンチェーンでキャンセルしました! TX: {txShort}… — PSDT は永久に無効になりました。',
   'modal.toast.listingUrlCopied': '出品 URL をコピーしました。',
-  'modal.toast.setPasswordBanner': 'ウォレット確認: セッション間でも保護するようパスワードを設定してください。',
+  'modal.toast.setPasswordBanner':
+    '任意: セッションをまたいで保護したい場合はパスワードを設定してください。',
   'modal.toast.balanceRefreshed': 'ウォレット残高を更新しました。',
   'modal.errors.loadWallet': 'ウォレットを読み込めませんでした。',
   'modal.errors.createWallet': 'ウォレットを作成できませんでした。',

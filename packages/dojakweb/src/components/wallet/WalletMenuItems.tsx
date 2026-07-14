@@ -19,6 +19,9 @@ type WalletMenuItemsProps = {
 /**
  * Headless UI menu panel portaled above drawer overflow clipping.
  * Use for all wallet flyouts inside the scrollable drawer body.
+ *
+ * z-index must beat the paw-open phone chassis (10050) and Dialog (10050),
+ * otherwise the panel covers the flyout — items look dead (no hover/clicks).
  */
 export function WalletMenuItems({
   children,
@@ -37,8 +40,8 @@ export function WalletMenuItems({
       anchor={{ to: anchor, gap: 6, padding: 16 }}
       data-ds-theme={theme}
       className={cn(
-        'ds-wallet-menu z-[10002] min-w-[11rem] origin-top rounded-xl border py-1 shadow-2xl outline-none',
-        'transition duration-100 ease-out data-closed:scale-95 data-closed:opacity-0',
+        'ds-wallet-menu z-[10120] min-w-[11rem] origin-top rounded-xl border py-1 shadow-2xl outline-none',
+        'pointer-events-auto transition duration-100 ease-out data-closed:scale-95 data-closed:opacity-0',
         isLight ? 'border-black/10 bg-[#f5f4f1]' : 'border-white/10 bg-zinc-900',
         className,
       )}

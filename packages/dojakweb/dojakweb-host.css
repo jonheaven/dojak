@@ -963,7 +963,13 @@
   color: #713f12 !important;
 }
 
-/* Portaled flyout menus (Headless UI portal — outside .ds-wallet-dashboard) */
+/* Portaled flyout menus (Headless UI portal — outside .ds-wallet-dashboard).
+ * Must sit above paw-open drawer / Dialog (z-index 10050) or items receive no pointer events. */
+.ds-wallet-menu {
+  z-index: 10120 !important;
+  pointer-events: auto !important;
+}
+
 :is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) {
   border-color: rgba(0, 0, 0, 0.12) !important;
   background-color: #f5f4f1 !important;
@@ -1189,7 +1195,9 @@ body.wallet-drawer-paw-open {
 }
 
 /* Portal must participate in stacking (position + z-index) or the fixed
-   paw grip (z-index 9995) paints above the entire wallet drawer tree. */
+   paw grip (z-index 9995) paints above the entire wallet drawer tree.
+   Keep this above the drawer chassis (10050) so portaled Menu/Listbox
+   panels (z ~10120) can compete and receive pointer events. */
 #headlessui-portal-root,
 [data-headlessui-portal],
 .ds-wallet-modal-backdrop,
@@ -1346,4 +1354,23 @@ body.wallet-drawer-paw-open .ds-wallet-modal-backdrop--drawer {
 :root:not([data-theme="light"]) [data-headlessui-portal] .ds-wallet-dashboard,
 :root:not([data-theme="light"]) .ds-wallet-modal-backdrop .ds-wallet-dashboard {
   color-scheme: dark;
+}
+
+/* Native <select> leftovers — option popups follow color-scheme where supported */
+.ds-wallet-dashboard select {
+  color-scheme: dark;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"], .ds-light) .ds-wallet-dashboard select {
+  color-scheme: light;
+}
+
+.ds-wallet-dashboard select option {
+  background-color: #121212;
+  color: #f0ece0;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"], .ds-light) .ds-wallet-dashboard select option {
+  background-color: #ffffff;
+  color: #0f0e0d;
 }
