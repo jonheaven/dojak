@@ -10,6 +10,7 @@ node_modules/
 dist/
 build/
 *.zip
+packages/dojakweb/.publish-github/
 
 # Testing
 /coverage

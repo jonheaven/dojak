@@ -11,8 +11,32 @@ This file is for **agents and engineers already working inside the Dojak workspa
 
 ## 1. Monorepo wiring (internal only)
 
-- **`@dojak/web`** and **`@dojak/core`** resolve via the **pnpm workspace** (`workspace:*` / `file:` where configured). Do not document or imply a public install path (`npm install @dojak/web`, etc.).
-- The **[dojakweb-demo](https://github.com/jonheaven/dojakweb-demo)** repo is an **internal** Vite app that links into `../dojak/packages/*` for QA and UX iteration—not a template for external npm consumers.
+- **Inside `dojak`:** `@dojak/web` resolves via the **pnpm workspace** (`workspace:*`).
+- **First-party host apps** (doge.cam, drok, …): install the private GitHub Package
+  **`@jonheaven/dojak-web`**, aliased as `@dojak/web` so imports stay stable:
+
+```json
+{
+  "dependencies": {
+    "@dojak/web": "npm:@jonheaven/dojak-web@^2.0.1"
+  }
+}
+```
+
+```ini
+# .npmrc (host repo)
+@jonheaven:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+Publish from this monorepo:
+
+```bash
+pnpm --filter @dojak/web run publish:github
+# or tag: dojak-web-v2.0.1  → GitHub Actions workflow
+```
+
+Do **not** document a public npm install path. GitHub Packages is **restricted** to our org/user.
 
 ---
 

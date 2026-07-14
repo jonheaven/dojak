@@ -1,6 +1,6 @@
 {
   "name": "@dojak/web",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Proprietary first-party module — shared @dojak/web layer for our dApps on the open Dogenals standard (not for public npm / third-party use).",
   "type": "module",
@@ -25,6 +25,8 @@
     "build:wallet": "vite build --config vite.wallet.config.ts && node scripts/verify-wallet-exports.mjs",
     "build:wallet-web-core": "pnpm --filter @dojak/core run build:wallet-web",
     "build:npm": "vite build --config vite.npm.config.ts",
+    "prepare:github-package": "node scripts/prepare-github-package.mjs",
+    "publish:github": "node scripts/prepare-github-package.mjs && npm publish --access restricted --prefix .publish-github",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "preview": "vite preview"
   },
