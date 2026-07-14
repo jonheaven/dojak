@@ -1206,7 +1206,8 @@ body.wallet-drawer-paw-open {
   z-index: 10040;
 }
 
-/* Paw sits under the drawer panel (holding / grip effect). */
+/* Paw sits under the drawer panel (holding / grip effect).
+   The protruding left/bottom pad is the drag handle to reposition the phone. */
 .wallet-paw-grip {
   position: fixed;
   right: calc(
@@ -1217,19 +1218,47 @@ body.wallet-drawer-paw-open {
   z-index: 9995;
   width: clamp(150px, 26vmin, 280px);
   line-height: 0;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
   transform-origin: 100% 100%;
   will-change: transform, opacity;
+}
+
+.wallet-paw-grip:active,
+body.wallet-drawer-dragging .wallet-paw-grip {
+  cursor: grabbing;
+}
+
+body.wallet-drawer-dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body.wallet-drawer-dragging .ds-wallet-modal--drawer,
+body.wallet-drawer-dragging [data-headlessui-portal] .ds-wallet-dashboard {
+  transition: none !important;
 }
 
 .wallet-paw-grip img {
   display: block;
   width: 100%;
   height: auto;
+  pointer-events: none;
+  -webkit-user-drag: none;
   transform: scaleX(-1);
   transform-origin: 100% 100%;
   filter: drop-shadow(-10px 6px 22px rgba(0, 0, 0, 0.55));
+}
+
+@media (max-width: 480px) {
+  .wallet-paw-grip {
+    pointer-events: none;
+    cursor: default;
+  }
 }
 
 :root:not([data-theme="light"]) .wallet-paw-grip img {

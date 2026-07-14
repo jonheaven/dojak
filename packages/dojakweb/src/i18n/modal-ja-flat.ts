@@ -9,6 +9,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.title.removeWallet': 'ウォレットを削除',
   'modal.title.myWallet': 'マイウォレット',
   'modal.title.walletSettings': 'ウォレット設定',
+  'modal.title.addressBook': 'アドレス帳',
   'modal.title.sendInscription': '送信 #{num}',
   'modal.title.listInscription': '出品 #{num}',
   'modal.tagline.builtIn':

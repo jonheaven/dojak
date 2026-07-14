@@ -9,6 +9,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.title.removeWallet': 'Remove Wallet',
   'modal.title.myWallet': 'My Wallet',
   'modal.title.walletSettings': 'Wallet Settings',
+  'modal.title.addressBook': 'Address Book',
   'modal.title.sendInscription': 'Send #{num}',
   'modal.title.listInscription': 'List #{num}',
   'modal.tagline.builtIn':

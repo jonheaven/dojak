@@ -146,7 +146,7 @@ import {
   defaultDxContentApiBase,
   dxBadgeInscriptionIdFromEnv,
 } from '../lib/dx/displayHtml';
-import { AddressBookModal } from './AddressBookModal';
+import { AddressBookView } from './AddressBookModal';
 import { DogePFPAvatar } from './DogePFPAvatar';
 import { DogePFAHeaderControl } from './DogePFAHeaderControl';
 import { useDogePFP } from '../hooks/useDogePFP';
@@ -178,6 +178,8 @@ type WalletStep =
   | 'remove'
   | 'unlock'
   | 'settings'
+  | 'switch_wallet'
+  | 'address_book'
   | 'set_name'
   | 'send_inscription'
   | 'list_inscription';
@@ -1044,13 +1046,6 @@ export function DojakwebWalletModal({
     () => getDogePriceSourceConfig().sources
   );
   const [draggedPriceSourceId, setDraggedPriceSourceId] = useState<DogePriceSourceId | null>(null);
-  const [walletSwitcherModalOpen, setWalletSwitcherModalOpen] = useState(false);
-  const [isAddressBookModalOpen, setIsAddressBookModalOpen] = useState(false);
-
-  const [walletDrawerHostEl, setWalletDrawerHostEl] = useState<HTMLDivElement | null>(null);
-  const walletDrawerHostRef = useCallback((node: HTMLDivElement | null) => {
-    setWalletDrawerHostEl(node);
-  }, []);
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [rpcTestStatus, setRpcTestStatus] = useState<'idle' | 'loading' | 'ok' | 'err'>('idle');
   const [rpcTestBlocks, setRpcTestBlocks] = useState<number | null>(null);
@@ -1322,6 +1317,8 @@ export function DojakwebWalletModal({
           'send_inscription',
           'list_inscription',
           'settings',
+          'switch_wallet',
+          'address_book',
           'remove',
           'set_name',
           'verification',
@@ -1851,9 +1848,9 @@ export function DojakwebWalletModal({
   };
 
   useEffect(() => {
-    if (!walletSwitcherModalOpen) return;
+    if (step !== 'switch_wallet') return;
     void refreshSavedLocalWallets();
-  }, [walletSwitcherModalOpen, refreshSavedLocalWallets]);
+  }, [step, refreshSavedLocalWallets]);
 
   const handleDisconnectWallet = async () => {
     setIsBusy(true);
@@ -2700,18 +2697,6 @@ export function DojakwebWalletModal({
     toast.success(t('modal.toast.listingUrlCopied'));
   };
 
-  useEffect(() => {
-    if (mode !== 'drawer' || !walletSwitcherModalOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      e.stopPropagation();
-      setWalletSwitcherModalOpen(false);
-    };
-    document.addEventListener('keydown', onKey, true);
-    return () => document.removeEventListener('keydown', onKey, true);
-  }, [mode, walletSwitcherModalOpen]);
-
   const renderWalletSwitcherGroups = () => (
     <WalletAccountSwitcherPanel
       localSeedGroups={localSeedWalletGroups}
@@ -2724,12 +2709,12 @@ export function DojakwebWalletModal({
       ledgerAccountIndex={walletType === 'ledger' ? unifiedAccountIndex : null}
       onSelectLocalAddress={async (targetAddress) => {
         await handleConnectSavedLocalWallet(targetAddress);
-        setWalletSwitcherModalOpen(false);
+        setStep('dashboard');
       }}
       onAddHdAccount={handleAddBrowserAccount}
       onSelectWalletType={(type) => {
         setActiveWallet(type);
-        setWalletSwitcherModalOpen(false);
+        setStep('dashboard');
       }}
       onLedgerAccountDelta={handleLedgerAccountDelta}
       t={t}
@@ -2802,7 +2787,6 @@ export function DojakwebWalletModal({
                 }
               >
                 <Dialog.Panel
-                  ref={walletDrawerHostRef}
                   data-ds-theme={isDark ? 'dark' : 'light'}
                   className={cx(
                     'ds-wallet-dashboard relative flex flex-col overflow-hidden',
@@ -2851,21 +2835,25 @@ export function DojakwebWalletModal({
                                         ? t('modal.title.removeWallet')
                                         : step === 'settings'
                                           ? t('modal.title.walletSettings')
-                                          : step === 'send_inscription'
-                                            ? t('modal.title.sendInscription', {
-                                                num: String(selectedInscription?.inscriptionNumber ?? ''),
-                                              })
-                                            : step === 'list_inscription'
-                                              ? t('modal.title.listInscription', {
-                                                  num: String(selectedInscription?.inscriptionNumber ?? ''),
-                                                })
-                                              : t('modal.title.myWallet')}
+                                          : step === 'switch_wallet'
+                                            ? t('modal.walletSwitcher.title')
+                                            : step === 'address_book'
+                                              ? t('modal.title.addressBook')
+                                              : step === 'send_inscription'
+                                                ? t('modal.title.sendInscription', {
+                                                    num: String(selectedInscription?.inscriptionNumber ?? ''),
+                                                  })
+                                                : step === 'list_inscription'
+                                                  ? t('modal.title.listInscription', {
+                                                      num: String(selectedInscription?.inscriptionNumber ?? ''),
+                                                    })
+                                                  : t('modal.title.myWallet')}
                         </Dialog.Title>
                         {step === 'dashboard' && connected ? (
                           <div className="ml-1 flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => setIsAddressBookModalOpen(true)}
+                              onClick={() => setStep('address_book')}
                               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 transition hover:bg-white/10 hover:text-white"
                               aria-label="Address Book"
                               title="Address Book"
@@ -2874,7 +2862,7 @@ export function DojakwebWalletModal({
                             </button>
                             <button
                               type="button"
-                              onClick={() => setWalletSwitcherModalOpen(true)}
+                              onClick={() => setStep('switch_wallet')}
                               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 transition hover:bg-white/10 hover:text-white"
                               aria-label={t('modal.aria.switchWallet')}
                               title="Switch Connected Wallet"
@@ -3449,7 +3437,7 @@ export function DojakwebWalletModal({
                       <div className="space-y-3">
                         <button
                           type="button"
-                          onClick={() => setWalletSwitcherModalOpen(true)}
+                          onClick={() => setStep('switch_wallet')}
                           disabled={isBusy}
                           className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 py-2.5 text-left transition hover:border-white/20 hover:bg-white/[0.04] disabled:opacity-60"
                           aria-label={t('modal.walletSwitcher.title')}
@@ -6035,102 +6023,18 @@ export function DojakwebWalletModal({
                         </div>
                       </form>
                     )}
-                  </div>
 
-                    {isDrawerMode && walletSwitcherModalOpen ? (
-                      <div
-                        className="absolute inset-0 z-[130] flex min-h-0 flex-col overflow-hidden bg-[var(--ds-bg,#0A0A0A)]"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="wallet-switcher-drawer-title"
-                      >
-                        <div className="shrink-0 border-b border-white/10 px-4 py-3">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0">
-                              <h2 id="wallet-switcher-drawer-title" className="text-lg font-bold text-white">
-                                {t('modal.walletSwitcher.title')}
-                              </h2>
-                              <p className="mt-1 text-xs text-white/50">{t('modal.walletSwitcher.subtitle')}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setWalletSwitcherModalOpen(false)}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                              aria-label={t('modal.walletSwitcher.closeAria')}
-                              title="Close"
-                            >
-                              <XMarkIcon className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{renderWalletSwitcherGroups()}</div>
+                    {step === 'switch_wallet' && (
+                      <div className="space-y-3">
+                        <p className="text-xs leading-relaxed text-white/50">{t('modal.walletSwitcher.subtitle')}</p>
+                        {renderWalletSwitcherGroups()}
                       </div>
-                    ) : null}
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
+                    )}
 
-      {/* Address Book Modal */}
-      <AddressBookModal
-        isOpen={isAddressBookModalOpen}
-        onClose={() => setIsAddressBookModalOpen(false)}
-        nestInWalletDrawer={mode === 'drawer'}
-        walletDrawerHost={walletDrawerHostEl}
-      />
-
-      {/* Wallet Switcher Modal (centered only; drawer mode uses in-panel stack above) */}
-      <Transition appear show={!isDrawerMode && walletSwitcherModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative" data-ds-theme={isDark ? 'dark' : 'light'} style={{ zIndex: 10000 }} onClose={() => setWalletSwitcherModalOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
-          </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-8">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-200"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-150"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className={cx('w-full max-w-md', MODAL_SURFACE)}>
-                  <div className="border-b border-white/10 px-4 py-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <Dialog.Title className="text-lg font-bold text-white">
-                          {t('modal.walletSwitcher.title')}
-                        </Dialog.Title>
-                        <p className="mt-1 text-sm text-white/70">
-                          {t('modal.walletSwitcher.subtitle')}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setWalletSwitcherModalOpen(false)}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                        aria-label={t('modal.walletSwitcher.closeAria')}
-                        title="Close"
-                      >
-                        <XMarkIcon className="h-5 w-5" />
-                      </button>
-                    </div>
+                    {step === 'address_book' && (
+                      <AddressBookView onAfterSelect={() => setStep('dashboard')} />
+                    )}
                   </div>
-
-                  <div className="px-4 py-4">{renderWalletSwitcherGroups()}</div>
                 </Dialog.Panel>
               </Transition.Child>
             </div>
