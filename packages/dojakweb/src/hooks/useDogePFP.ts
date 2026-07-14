@@ -41,10 +41,24 @@ export const useDogePFP = () => {
       };
       if (url) rec.contentUrl = url;
       localStorage.setItem(DOGE_PFP_STORAGE_KEY, JSON.stringify(rec));
+      try {
+        window.dispatchEvent(
+          new CustomEvent('dojakweb-doge-pfp-changed', { detail: rec }),
+        );
+      } catch {
+        /* ignore */
+      }
     } else {
       setPfpInscriptionId(null);
       setPfpContentUrl(null);
       localStorage.removeItem(DOGE_PFP_STORAGE_KEY);
+      try {
+        window.dispatchEvent(
+          new CustomEvent('dojakweb-doge-pfp-changed', { detail: null }),
+        );
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 
