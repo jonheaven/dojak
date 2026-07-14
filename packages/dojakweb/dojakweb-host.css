@@ -44,7 +44,6 @@
 .ds-wallet-dashboard select {
   appearance: none;
   -webkit-appearance: none;
-  border-radius: 0;
 }
 
 .ds-connect-shell {
@@ -56,14 +55,15 @@
 
 .wallet-input {
   width: 100%;
-  border-radius: 0;
-  border: 1px solid rgba(80, 80, 80, 1);
-  background: #0f0f0f;
-  padding: 0.75rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.8rem 1rem;
   color: #f0ece0;
   transition:
     border-color 180ms ease,
-    box-shadow 180ms ease;
+    box-shadow 180ms ease,
+    background-color 180ms ease;
 }
 
 .wallet-input::placeholder {
@@ -173,7 +173,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border-radius: 0;
+  border-radius: 999px;
   padding: 0.45rem 0.8rem;
   font-size: 0.72rem;
   font-weight: 600;
@@ -191,7 +191,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  border-radius: 0;
+  border-radius: 0.85rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(26, 26, 26, 0.8);
   padding: 0.95rem 1rem;
@@ -1175,12 +1175,17 @@ html[data-theme="light"] .wallet-input::placeholder,
 }
 
 
-/* ── Shiba paw wallet drawer (shared by all @dojak/web hosts) ── */
+/* ── Shiba paw + phone-chassis drawer (default embed UX for all hosts) ──
+ * Goal: first-person “holding my phone” — solid opaque chassis like Phantom /
+ * MetaMask mobile, with the bundled Shiba paw gripping the bottom-left bezel.
+ */
 
 body.wallet-drawer-paw-open {
-  --wallet-drawer-width: min(460px, 96vw);
-  --wallet-drawer-bottom: 0;
-  --wallet-paw-grip-offset: 200px;
+  --wallet-drawer-width: min(390px, 94vw);
+  --wallet-drawer-bottom: 18px;
+  --wallet-drawer-right: 14px;
+  --wallet-paw-grip-offset: 168px;
+  --wallet-phone-radius: 1.85rem;
 }
 
 /* Portal must participate in stacking (position + z-index) or the fixed
@@ -1196,10 +1201,13 @@ body.wallet-drawer-paw-open {
 /* Paw sits under the drawer panel (holding / grip effect). */
 .wallet-paw-grip {
   position: fixed;
-  right: calc(var(--wallet-drawer-width, min(460px, 96vw)) - var(--wallet-paw-grip-offset, 200px));
-  bottom: 0;
+  right: calc(
+    var(--wallet-drawer-right, 14px) + var(--wallet-drawer-width, min(390px, 94vw)) -
+      var(--wallet-paw-grip-offset, 168px)
+  );
+  bottom: max(0px, calc(var(--wallet-drawer-bottom, 18px) - 8px));
   z-index: 9995;
-  width: clamp(165px, 28vmin, 300px);
+  width: clamp(150px, 26vmin, 280px);
   line-height: 0;
   pointer-events: none;
   user-select: none;
@@ -1213,7 +1221,7 @@ body.wallet-drawer-paw-open {
   height: auto;
   transform: scaleX(-1);
   transform-origin: 100% 100%;
-  filter: drop-shadow(-8px 4px 20px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(-10px 6px 22px rgba(0, 0, 0, 0.55));
 }
 
 :root:not([data-theme="light"]) .wallet-paw-grip img {
@@ -1222,34 +1230,31 @@ body.wallet-drawer-paw-open {
 
 :root[data-theme="light"] .wallet-paw-grip img {
   mix-blend-mode: multiply;
-  opacity: 0.94;
+  opacity: 0.96;
 }
 
-/* Drawer panel above paw; portal root stacking is set above. */
+/* Phone chassis: opaque, rounded, floating off the bottom — not a glass window. */
 body.wallet-drawer-paw-open .ds-wallet-modal--drawer,
 body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   width: var(--wallet-drawer-width) !important;
   max-width: var(--wallet-drawer-width) !important;
-  right: 0 !important;
+  right: var(--wallet-drawer-right) !important;
   bottom: var(--wallet-drawer-bottom) !important;
   top: auto !important;
-  height: min(88vh, 900px) !important;
-  max-height: 100vh !important;
+  height: min(86vh, 820px) !important;
+  max-height: calc(100dvh - 36px) !important;
   /* Above .wallet-paw-grip (9995) so the paw sits under the panel */
   z-index: 10050 !important;
-  border-radius: 1.75rem 0 0 0 !important;
-  border: 4px solid #e8d48b !important;
-  border-right: none !important;
-  border-bottom: none !important;
-  background: rgba(8, 8, 12, 0.68) !important;
-  backdrop-filter: blur(20px) saturate(1.12);
-  -webkit-backdrop-filter: blur(20px) saturate(1.12);
+  border-radius: var(--wallet-phone-radius) !important;
+  border: 3px solid #e8d48b !important;
+  background: #0c0c0e !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow:
-    -6px 0 0 0 #c9a227,
-    -20px 0 56px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(247, 201, 72, 0.55),
-    inset 0 1px 0 rgba(255, 236, 179, 0.22),
-    inset 4px 0 16px rgba(0, 0, 0, 0.28) !important;
+    0 28px 64px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(247, 201, 72, 0.35),
+    inset 0 1px 0 rgba(255, 236, 179, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04) !important;
   overflow: hidden;
 }
 
@@ -1259,35 +1264,43 @@ body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard > .min
   background: transparent;
 }
 
+:root[data-theme="light"] body.wallet-drawer-paw-open .ds-wallet-modal--drawer,
 :root[data-theme="light"] body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
-  background: rgba(245, 244, 241, 0.78) !important;
-  backdrop-filter: blur(22px) saturate(1.05);
-  -webkit-backdrop-filter: blur(22px) saturate(1.05);
+  background: #f7f5f0 !important;
+  border-color: #c9a84c !important;
+  box-shadow:
+    0 28px 64px rgba(40, 30, 10, 0.22),
+    0 0 0 1px rgba(201, 168, 76, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
 }
 
 body.wallet-drawer-paw-open .ds-wallet-modal--drawer .ds-wallet-dashboard,
 body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(212, 160, 23, 0.4);
-  border-left: 2px solid rgba(247, 201, 72, 0.28);
+  box-shadow: none;
+  border: none;
 }
 
+/* Subtle top “status / bezel” sheen — phone glass edge */
 body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard::before {
   content: "";
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 28%;
-  max-width: 9rem;
+  left: 18%;
+  right: 18%;
+  top: 7px;
+  height: 4px;
+  border-radius: 999px;
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
   background: linear-gradient(
     90deg,
-    rgba(247, 201, 72, 0.06) 0%,
-    rgba(8, 8, 12, 0.02) 55%,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 35%,
+    rgba(255, 236, 179, 0.35) 50%,
+    rgba(255, 255, 255, 0.18) 65%,
     transparent 100%
   );
+  opacity: 0.7;
 }
 
 body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard > * {
@@ -1296,8 +1309,28 @@ body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard > * {
 }
 
 body.wallet-drawer-paw-open .ds-wallet-modal-backdrop--drawer {
-  background: rgba(0, 0, 0, 0.62) !important;
+  background: rgba(0, 0, 0, 0.55) !important;
   z-index: 9998 !important;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+@media (max-width: 480px) {
+  body.wallet-drawer-paw-open {
+    --wallet-drawer-width: 100vw;
+    --wallet-drawer-bottom: 0;
+    --wallet-drawer-right: 0;
+    --wallet-phone-radius: 1.25rem 1.25rem 0 0;
+    --wallet-paw-grip-offset: 140px;
+  }
+
+  body.wallet-drawer-paw-open .ds-wallet-modal--drawer,
+  body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
+    height: min(92dvh, 900px) !important;
+    max-height: 92dvh !important;
+    border-right: 3px solid #e8d48b !important;
+    border-bottom: none !important;
+  }
 }
 
 .ds-wallet-dashboard.flex.flex-col {

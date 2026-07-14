@@ -514,10 +514,14 @@ function formatDogeAmountForInput(doge: number): string {
   return trimmed === '' ? '0' : trimmed;
 }
 
-const PRIMARY_BUTTON = 'bg-neutral-200 hover:bg-white text-black font-bold py-2 px-4 rounded-none shadow-md transition';
-const SECONDARY_BUTTON = 'bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-none shadow-md transition border border-zinc-700';
-const DANGER_BUTTON = 'bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-4 rounded-none shadow-md transition';
-const MODAL_SURFACE = 'bg-[#0A0A0A]/95 text-text-primary rounded-none p-6 shadow-doge border border-border-primary';
+const PRIMARY_BUTTON =
+  'bg-[#FCD34D] hover:bg-[#FDE68A] text-[#161109] font-bold py-2.5 px-4 rounded-2xl shadow-[0_8px_24px_rgba(252,211,77,0.22)] transition';
+const SECONDARY_BUTTON =
+  'bg-white/[0.06] hover:bg-white/[0.1] text-white font-bold py-2.5 px-4 rounded-2xl shadow-sm transition border border-white/10';
+const DANGER_BUTTON =
+  'bg-red-500/15 hover:bg-red-500/25 text-red-200 font-bold py-2.5 px-4 rounded-2xl shadow-sm transition border border-red-400/25';
+const MODAL_SURFACE =
+  'bg-[#0A0A0A] text-text-primary rounded-3xl p-5 shadow-doge border border-white/10';
 const INPUT_CLASS = 'wallet-input';
 
 function recommendedFeeRateForDxChain(baseFeeRateKoinuPerKb: number, stageCount: number): number {
@@ -533,7 +537,7 @@ function Button({ className, type = 'button', ...props }: React.ButtonHTMLAttrib
       type={type}
       {...props}
       className={cx(
-        'min-h-9 rounded-none px-3 py-2 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50',
+        'min-h-10 rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
     />
@@ -554,11 +558,11 @@ export function DojakwebWalletModal({
   const { theme: walletTheme } = useDojakwebTheme();
   const isDark = isDarkProp ?? walletTheme === 'dark';
   const drawerSurfacePhoneRight = isDark
-    ? 'bg-[#0A0A0A] text-text-primary border-l border-border-primary shadow-2xl'
-    : 'bg-[#f5f4f1] text-zinc-950 border-l border-zinc-200 shadow-2xl';
+    ? 'bg-[#0c0c0e] text-text-primary border-l border-white/10 shadow-2xl'
+    : 'bg-[#f7f5f0] text-zinc-950 border-l border-zinc-200 shadow-2xl';
   const drawerSurfacePhoneLeft = isDark
-    ? 'bg-[#0A0A0A] text-text-primary border-r border-border-primary shadow-2xl'
-    : 'bg-[#f5f4f1] text-zinc-950 border-r border-zinc-200 shadow-2xl';
+    ? 'bg-[#0c0c0e] text-text-primary border-r border-white/10 shadow-2xl'
+    : 'bg-[#f7f5f0] text-zinc-950 border-r border-zinc-200 shadow-2xl';
   const {
     walletInterface: gsWalletInterface,
     setWalletInterface: gsSetWalletInterface,
@@ -2726,22 +2730,21 @@ export function DojakwebWalletModal({
                       : MODAL_SURFACE,
                   )}
                 >
-                  <div className="shrink-0 border-b border-white/10 px-4 py-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {step !== 'dashboard' && step !== 'unlock' && (
-                            <button
-                              type="button"
-                              onClick={() => setStep('dashboard')}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                              aria-label={t('modal.aria.backToWallet')}
-                              title={t('modal.aria.backToWallet')}
-                            >
-                              <ArrowLeftIcon className="h-4 w-4" />
-                            </button>
-                          )}
-                          <Dialog.Title className="text-xl font-bold text-white">
+                  <div className="shrink-0 border-b border-white/[0.08] px-4 pb-3 pt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        {step !== 'dashboard' && step !== 'unlock' && (
+                          <button
+                            type="button"
+                            onClick={() => setStep('dashboard')}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/75 transition hover:bg-white/10 hover:text-white"
+                            aria-label={t('modal.aria.backToWallet')}
+                            title={t('modal.aria.backToWallet')}
+                          >
+                            <ArrowLeftIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                        <Dialog.Title className="truncate text-[15px] font-semibold tracking-tight text-white/95">
                           {step === 'import'
                             ? t('modal.title.importWallet')
                             : step === 'reveal'
@@ -2755,95 +2758,82 @@ export function DojakwebWalletModal({
                                     : step === 'receive'
                                       ? t('modal.title.receiveDoge')
                                       : step === 'remove'
-                                      ? t('modal.title.removeWallet')
-                                      : step === 'unlock'
-                                          ? t('modal.title.myWallet')
-                                          : step === 'dashboard'
-                                          ? (
-                                              <div className="flex items-center gap-1.5 flex-wrap">
-                                                <span>{t('modal.title.myWallet')}</span>
-                                                {connected && (
-                                                  <>
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => setIsAddressBookModalOpen(true)}
-                                                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                                                      aria-label="Address Book"
-                                                      title="Address Book"
-                                                    >
-                                                      <TagIcon className="h-4 w-4" />
-                                                    </button>
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => {
-                                                        setWalletSwitcherModalOpen(true);
-                                                      }}
-                                                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                                                      aria-label={t('modal.aria.switchWallet')}
-                                                      title="Switch Connected Wallet"
-                                                    >
-                                                      <WalletProviderIcon walletType={activeWalletType} size="xs" />
-                                                    </button>
-                                                    <button
-                                                      type="button"
-                                                      onClick={openSettings}
-                                                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                                                      aria-label={t('modal.aria.settings')}
-                                                      title={t('modal.aria.walletSettingsTitle')}
-                                                    >
-                                                      <Cog6ToothIcon className="h-4 w-4" />
-                                                    </button>
-                                                  </>
-                                                )}
-                                              </div>
-                                            )
-                                          : step === 'settings'
+                                        ? t('modal.title.removeWallet')
+                                        : step === 'settings'
                                           ? t('modal.title.walletSettings')
                                           : step === 'send_inscription'
-                                          ? t('modal.title.sendInscription', {
-                                              num: String(selectedInscription?.inscriptionNumber ?? ''),
-                                            })
-                                          : step === 'list_inscription'
-                                          ? t('modal.title.listInscription', {
-                                              num: String(selectedInscription?.inscriptionNumber ?? ''),
-                                            })
-                                          : t('modal.title.myWallet')}
-                          </Dialog.Title>
-                          {(step === 'unlock' || step === 'dashboard') && isBrowserWallet && showTemporaryBanner ? (
+                                            ? t('modal.title.sendInscription', {
+                                                num: String(selectedInscription?.inscriptionNumber ?? ''),
+                                              })
+                                            : step === 'list_inscription'
+                                              ? t('modal.title.listInscription', {
+                                                  num: String(selectedInscription?.inscriptionNumber ?? ''),
+                                                })
+                                              : t('modal.title.myWallet')}
+                        </Dialog.Title>
+                        {step === 'dashboard' && connected ? (
+                          <div className="ml-1 flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => toast.warning(t('modal.toast.setPasswordBanner'))}
-                              className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-400/40 bg-amber-500/15 text-amber-300 transition hover:bg-amber-500/25"
-                              aria-label={t('modal.aria.checkWalletStatus')}
-                              title={t('modal.aria.setPasswordSecureTitle')}
+                              onClick={() => setIsAddressBookModalOpen(true)}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 transition hover:bg-white/10 hover:text-white"
+                              aria-label="Address Book"
+                              title="Address Book"
                             >
-                              <ExclamationTriangleIcon className="h-4 w-4" />
+                              <TagIcon className="h-3.5 w-3.5" />
                             </button>
-                          ) : null}
-                        </div>
-                        {step === 'entry' && (
-                          <p className="mt-3 text-center text-sm leading-6 text-[#D4D4D4] sm:pr-8">
-                            {t('modal.tagline.builtIn')}
-                          </p>
-                        )}
-                        {step === 'unlock' && (
-                          <p className="mt-3 text-sm leading-6 text-[#D4D4D4]">
-                            {t('modal.tagline.builtIn')}
-                          </p>
-                        )}
+                            <button
+                              type="button"
+                              onClick={() => setWalletSwitcherModalOpen(true)}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 transition hover:bg-white/10 hover:text-white"
+                              aria-label={t('modal.aria.switchWallet')}
+                              title="Switch Connected Wallet"
+                            >
+                              <WalletProviderIcon walletType={activeWalletType} size="xs" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={openSettings}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 transition hover:bg-white/10 hover:text-white"
+                              aria-label={t('modal.aria.settings')}
+                              title={t('modal.aria.walletSettingsTitle')}
+                            >
+                              <Cog6ToothIcon className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : null}
+                        {(step === 'unlock' || step === 'dashboard') && isBrowserWallet && showTemporaryBanner ? (
+                          <button
+                            type="button"
+                            onClick={() => toast.warning(t('modal.toast.setPasswordBanner'))}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/15 text-amber-300 transition hover:bg-amber-500/25"
+                            aria-label={t('modal.aria.checkWalletStatus')}
+                            title={t('modal.aria.setPasswordSecureTitle')}
+                          >
+                            <ExclamationTriangleIcon className="h-3.5 w-3.5" />
+                          </button>
+                        ) : null}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={onClose}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                          aria-label={t('modal.aria.closeWallet')}
-                          title="Close"
-                        >
-                          <XMarkIcon className="h-5 w-5" />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/70 transition hover:bg-white/10 hover:text-white"
+                        aria-label={t('modal.aria.closeWallet')}
+                        title="Close"
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                      </button>
                     </div>
+                    {step === 'entry' && (
+                      <p className="mt-2 text-center text-sm leading-6 text-white/55">
+                        {t('modal.tagline.builtIn')}
+                      </p>
+                    )}
+                    {step === 'unlock' && (
+                      <p className="mt-2 text-sm leading-6 text-white/55">
+                        {t('modal.tagline.builtIn')}
+                      </p>
+                    )}
                   </div>
 
                   <div className="min-h-0 flex-1 overflow-x-visible overflow-y-auto overscroll-contain px-4 py-4">
@@ -3420,117 +3410,101 @@ export function DojakwebWalletModal({
                           </div>
                         ) : null}
 
-                        <div className="rounded-xl border border-white/10 bg-[#0A0A0A] px-3 py-3">
-                          {/*
-                            Grid: row 1 = balance | send/disconnect/menu (narrow col).
-                            Row 2 = full-width address + copy/QR/lock so the address isn’t squeezed beside the action column.
-                          */}
-                          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2">
-                            {activeWalletName ? (
-                              <div className="col-span-2 flex items-center gap-1.5">
-                                <span className="max-w-[180px] truncate text-sm text-white/80">{activeWalletName}</span>
-                                {availableWallets.length <= 1 && (() => {
-                                  const src = getWalletSourceIndicator(activeWalletType, t);
-                                  return (
-                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5">
-                                      <WalletProviderIcon walletType={activeWalletType} size="xs" />
-                                      <span className={cx('text-[9px] font-semibold tracking-wide', src.text)}>{src.label}</span>
-                                    </span>
-                                  );
-                                })()}
-                              </div>
-                            ) : null}
-
-                            <div className="flex min-w-0 items-start gap-3">
+                        <div className="overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.02] px-4 pb-4 pt-3">
+                          <div className="mb-3 flex items-center justify-between gap-2">
+                            <div className="flex min-w-0 items-center gap-2.5">
                               {connected ? (
-                                <div className="flex shrink-0 items-center gap-2 self-center pt-0.5">
-                                  <Menu as="div" className="relative shrink-0">
-                                    <Menu.Button
-                                      type="button"
-                                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                                      aria-label={t('modal.profileDpfp.avatarMenuAria')}
-                                      title={t('modal.profileDpfp.avatarMenuAria')}
-                                    >
-                                      <DogePFPAvatar
-                                        size="md"
-                                        fallback={<WalletProviderIcon walletType={activeWalletType} size="lg" framed />}
-                                      />
-                                    </Menu.Button>
-                                    <WalletMenuItems
-                                      theme={isDark ? 'dark' : 'light'}
-                                      anchor="bottom start"
-                                      className="min-w-[13rem] max-w-[16rem]"
-                                    >
-                                        <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
-                                          {t('modal.profileDpfp.menuHint')}
-                                        </div>
-                                        {pfpInscriptionId ? (
-                                          <Menu.Item>
-                                            {({ active }) => (
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  clearDogePFP();
-                                                  toast.message(t('modal.toast.dpfpCleared'));
-                                                }}
-                                                className={cx(
-                                                  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                  active ? 'bg-gray-700' : 'hover:bg-gray-800',
-                                                )}
-                                              >
-                                                <PhotoIcon className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
-                                                <span className="leading-tight">{t('modal.profileDpfp.clearPfp')}</span>
-                                              </button>
+                                <Menu as="div" className="relative shrink-0">
+                                  <Menu.Button
+                                    type="button"
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.05] text-white/70 transition hover:bg-white/10 hover:text-white"
+                                    aria-label={t('modal.profileDpfp.avatarMenuAria')}
+                                    title={t('modal.profileDpfp.avatarMenuAria')}
+                                  >
+                                    <DogePFPAvatar
+                                      size="md"
+                                      fallback={<WalletProviderIcon walletType={activeWalletType} size="lg" framed />}
+                                    />
+                                  </Menu.Button>
+                                  <WalletMenuItems
+                                    theme={isDark ? 'dark' : 'light'}
+                                    anchor="bottom start"
+                                    className="min-w-[13rem] max-w-[16rem]"
+                                  >
+                                    <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
+                                      {t('modal.profileDpfp.menuHint')}
+                                    </div>
+                                    {pfpInscriptionId ? (
+                                      <Menu.Item>
+                                        {({ active }) => (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              clearDogePFP();
+                                              toast.message(t('modal.toast.dpfpCleared'));
+                                            }}
+                                            className={cx(
+                                              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                              active ? 'bg-gray-700' : 'hover:bg-gray-800',
                                             )}
-                                          </Menu.Item>
-                                        ) : null}
-                                        {pfaInscriptionId ? (
-                                          <Menu.Item>
-                                            {({ active }) => (
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  clearDogePFA();
-                                                  toast.message(t('modal.toast.dpfaCleared'));
-                                                }}
-                                                className={cx(
-                                                  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                  active ? 'bg-gray-700' : 'hover:bg-gray-800',
-                                                )}
-                                              >
-                                                <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/80" aria-hidden />
-                                                <span className="leading-tight">{t('modal.profileDpfa.clearPfa')}</span>
-                                              </button>
+                                          >
+                                            <PhotoIcon className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
+                                            <span className="leading-tight">{t('modal.profileDpfp.clearPfp')}</span>
+                                          </button>
+                                        )}
+                                      </Menu.Item>
+                                    ) : null}
+                                    {pfaInscriptionId ? (
+                                      <Menu.Item>
+                                        {({ active }) => (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              clearDogePFA();
+                                              toast.message(t('modal.toast.dpfaCleared'));
+                                            }}
+                                            className={cx(
+                                              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                              active ? 'bg-gray-700' : 'hover:bg-gray-800',
                                             )}
-                                          </Menu.Item>
-                                        ) : null}
-                                    </WalletMenuItems>
-                                  </Menu>
-                                  <DogePFAHeaderControl />
-                                </div>
+                                          >
+                                            <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/80" aria-hidden />
+                                            <span className="leading-tight">{t('modal.profileDpfa.clearPfa')}</span>
+                                          </button>
+                                        )}
+                                      </Menu.Item>
+                                    ) : null}
+                                  </WalletMenuItems>
+                                </Menu>
                               ) : null}
-                              <div className="min-w-0 flex flex-1 flex-wrap items-center gap-2 text-xl font-bold text-white">
-                              {balanceRefreshing
-                                ? <span className="opacity-60">{t('modal.dashboard.refreshingBalance')}</span>
-                                : (
-                                    (!balanceVerified && balance === 0)
-                                      ? <span>–</span>
-                                      : (
-                                        <span className="inline-flex items-center gap-1.5">
-                                          <span className="text-[#FCD34D] text-lg font-semibold leading-none" aria-hidden>Ð</span>
-                                          {hideBalance ? '••••••' : balance.toLocaleString(undefined, { maximumFractionDigits: 8 })}
-                                        </span>
-                                      )
-                                  )
-                              }
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-medium text-white/90">
+                                  {activeWalletName ||
+                                    activeWalletSummary?.label ||
+                                    getWalletSourceIndicator(activeWalletType, t).label}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={handleCopyAddress}
+                                  className="mt-0.5 flex max-w-full items-center gap-1 font-mono text-[11px] text-white/45 transition hover:text-white/70"
+                                  title={activeAddress ?? undefined}
+                                  aria-label={t('modal.aria.copyAddress')}
+                                >
+                                  <span className="truncate">{truncateAddress(activeAddress)}</span>
+                                  <ClipboardDocumentIcon className="h-3.5 w-3.5 shrink-0" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <DogePFAHeaderControl />
                               <button
                                 type="button"
                                 onClick={() => setHideBalance((v) => !v)}
                                 aria-label={hideBalance ? t('modal.aria.showBalance') : t('modal.aria.hideBalance')}
-                                className="flex h-6 w-6 items-center justify-center rounded-none transition hover:bg-white/5"
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-white/55 transition hover:bg-white/5 hover:text-white"
                                 title={hideBalance ? t('modal.aria.showBalance') : t('modal.aria.hideBalance')}
                               >
-                                {hideBalance ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                {hideBalance ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                               </button>
                               <button
                                 type="button"
@@ -3538,145 +3512,163 @@ export function DojakwebWalletModal({
                                   await refreshBalance();
                                   toast.success(t('modal.toast.balanceRefreshed'));
                                 }}
-                                className="flex h-6 w-6 items-center justify-center rounded-none transition hover:bg-white/5"
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-white/55 transition hover:bg-white/5 hover:text-white"
                                 aria-label={t('modal.aria.refreshBalance')}
                               >
-                                <ArrowPathIcon className="h-5 w-5" />
+                                <ArrowPathIcon className="h-4 w-4" />
                               </button>
                             </div>
-                            </div>
+                          </div>
 
-                            <div className="flex shrink-0 items-center gap-1.5 self-center">
-                              <button
-                                type="button"
-                                onClick={() => setStep('send')}
-                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
-                                aria-label={t('modal.aria.sendDoge')}
-                                title={t('modal.aria.sendDoge')}
-                              >
-                                <PaperAirplaneIcon className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleDisconnectWallet}
-                                disabled={isBusy}
-                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
-                                aria-label={t('modal.aria.disconnectWallet')}
-                                title={t('modal.aria.disconnectWallet')}
-                              >
-                                <PowerIcon className="h-4 w-4" />
-                              </button>
-                              <Menu as="div" className="relative">
-                                <Menu.Button className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white" aria-label={t('modal.aria.moreActions')}>
-                                  <EllipsisHorizontalIcon className="h-4 w-4" />
-                                </Menu.Button>
-                                    <WalletMenuItems theme={isDark ? 'dark' : 'light'} className="w-52 max-w-[min(18rem,calc(100vw-2rem))]">
-                                      {[
-                                        { key: 'send', label: t('modal.dashboard.menu.send'), Icon: PaperAirplaneIcon, action: () => setStep('send') },
-                                        { key: 'receive', label: t('modal.dashboard.menu.receive'), Icon: QrCodeIcon, action: () => setStep('receive') },
-                                        { key: 'setName', label: t('modal.dashboard.menu.setName'), Icon: TagIcon, action: () => setStep('set_name') },
-                                        ...(isBrowserWallet
-                                          ? ([
-                                              {
-                                                key: 'backupZip',
-                                                label: t('modal.dashboard.menu.backupZip'),
-                                                Icon: WalletIcon,
-                                                action: () => void handleBackupZip(),
-                                              },
-                                              {
-                                                key: 'showSecrets',
-                                                label: t('modal.dashboard.menu.showSecrets'),
-                                                Icon: EyeIcon,
-                                                action: () => void handleBackupNow(),
-                                              },
-                                              {
-                                                key: 'setPassword',
-                                                label: t('modal.dashboard.menu.setPassword'),
-                                                Icon: KeyIcon,
-                                                action: () => setStep('password'),
-                                              },
-                                            ] as const)
-                                          : []),
-                                        { key: 'xVerify', label: t('modal.dashboard.menu.xVerify'), Icon: CheckBadgeIcon, action: () => setStep('verification') },
-                                        { key: 'settings', label: t('modal.dashboard.menu.settings'), Icon: Cog6ToothIcon, action: openSettings },
-                                        { key: 'disconnect', label: t('modal.dashboard.menu.disconnect'), Icon: PowerIcon, action: handleDisconnectWallet },
-                                      ].map(({ key, label, Icon, action }) => (
-                                        <Menu.Item key={key}>
-                                          {({ active }) => (
-                                            <button
-                                              type="button"
-                                              onClick={action}
-                                              className={cx(
-                                                'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-white transition',
-                                                active ? 'bg-zinc-800' : 'hover:bg-zinc-900'
-                                              )}
-                                            >
-                                              <Icon className="h-5 w-5 shrink-0 text-white/90" aria-hidden />
-                                              <span className="leading-tight">{label}</span>
-                                            </button>
-                                          )}
-                                        </Menu.Item>
-                                      ))}
-                                    <Menu.Item>
-                                      {({ active }) => (
-                                        <button
-                                          type="button"
-                                          onClick={() => setStep('remove')}
-                                          className={cx(
-                                            'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-300 transition',
-                                            active ? 'bg-red-500/20' : 'hover:bg-red-500/10'
-                                          )}
-                                        >
-                                          <TrashIcon className="h-5 w-5 shrink-0 text-red-300/90" aria-hidden />
-                                          <span className="leading-tight">{t('modal.dashboard.menu.remove')}</span>
-                                        </button>
-                                      )}
-                                    </Menu.Item>
-                                    </WalletMenuItems>
-                              </Menu>
-                            </div>
-
-                            <div className="col-span-2 flex min-w-0 items-center gap-1.5 border-t border-white/5 pt-2 text-[#D4D4D4]">
-                              {/* Reserve space for address utilities; avoids flex-grow dead space before icons */}
-                              <div
-                                className={cx(
-                                  'min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-                                  isBrowserWallet ? 'max-w-[calc(100%-8.5rem)]' : 'max-w-[calc(100%-5.75rem)]',
-                                )}
-                              >
-                                <span
-                                  className="inline-block whitespace-nowrap font-mono text-sm leading-snug tracking-tight"
-                                  title={activeAddress ?? undefined}
-                                >
-                                  {activeAddress ?? truncateAddress(activeAddress)}
-                                </span>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-1.5">
-                                <button type="button" onClick={handleCopyAddress} className="flex h-7 w-7 items-center justify-center rounded-none transition hover:bg-white/5" aria-label={t('modal.aria.copyAddress')}>
-                                  <ClipboardDocumentIcon className="h-5 w-5" />
-                                </button>
-                                <button type="button" onClick={() => setStep('receive')} className="flex h-7 w-7 items-center justify-center rounded-none transition hover:bg-white/5" aria-label={t('modal.aria.receiveQr')}>
-                                  <QrCodeIcon className="h-5 w-5" />
-                                </button>
-                                {isBrowserWallet ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleLockWallet()}
-                                    className="flex h-7 w-7 items-center justify-center rounded-none transition hover:bg-white/5"
-                                    aria-label={isEncryptedWallet ? 'Lock local wallet' : 'Set password and lock wallet'}
-                                    title={isEncryptedWallet ? 'Lock local wallet' : 'Set password and lock wallet'}
-                                    disabled={isBusy}
-                                  >
-                                    <LockClosedIcon className="h-5 w-5" />
-                                  </button>
+                          <div className="px-1 pb-1 pt-2 text-center">
+                            {balanceRefreshing ? (
+                              <div className="text-2xl font-semibold text-white/50">{t('modal.dashboard.refreshingBalance')}</div>
+                            ) : !balanceVerified && balance === 0 ? (
+                              <div className="text-3xl font-semibold tracking-tight text-white/40">–</div>
+                            ) : (
+                              <>
+                                <div className="text-4xl font-semibold leading-none tracking-tight text-white">
+                                  {hideBalance ? (
+                                    '••••••'
+                                  ) : (
+                                    <span className="inline-flex items-baseline gap-1.5">
+                                      <span className="text-2xl font-semibold text-[#FCD34D]" aria-hidden>
+                                        Ð
+                                      </span>
+                                      <span>
+                                        {balance.toLocaleString(undefined, {
+                                          maximumFractionDigits: balance >= 1000 ? 2 : 8,
+                                        })}
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
+                                {fiatPrefs && !hideBalance && balanceVerified ? (
+                                  <div className="mt-2 text-sm font-medium text-white/45">
+                                    {fiatPrefs.formatFiat(fiatPrefs.convert(balance))}
+                                  </div>
                                 ) : null}
-                              </div>
-                            </div>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-4 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setStep('send')}
+                              className="flex flex-col items-center gap-1.5"
+                              aria-label={t('modal.aria.sendDoge')}
+                            >
+                              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#FCD34D]/45 bg-[#FCD34D] text-[#161109] shadow-[0_8px_20px_rgba(252,211,77,0.28)] transition hover:bg-[#FDE68A]">
+                                <PaperAirplaneIcon className="h-5 w-5" />
+                              </span>
+                              <span className="text-[10px] font-medium text-white/55">{t('modal.dashboard.menu.send')}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setStep('receive')}
+                              className="flex flex-col items-center gap-1.5"
+                              aria-label={t('modal.aria.receiveQr')}
+                            >
+                              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white transition hover:bg-white/[0.1]">
+                                <QrCodeIcon className="h-5 w-5" />
+                              </span>
+                              <span className="text-[10px] font-medium text-white/55">{t('modal.dashboard.menu.receive')}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCopyAddress}
+                              className="flex flex-col items-center gap-1.5"
+                              aria-label={t('modal.aria.copyAddress')}
+                            >
+                              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white transition hover:bg-white/[0.1]">
+                                <ClipboardDocumentIcon className="h-5 w-5" />
+                              </span>
+                              <span className="text-[10px] font-medium text-white/55">Copy</span>
+                            </button>
+                            <Menu as="div" className="relative flex flex-col items-center gap-1.5">
+                              <Menu.Button
+                                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white transition hover:bg-white/[0.1]"
+                                aria-label={t('modal.aria.moreActions')}
+                              >
+                                <EllipsisHorizontalIcon className="h-5 w-5" />
+                              </Menu.Button>
+                              <span className="text-[10px] font-medium text-white/55">More</span>
+                              <WalletMenuItems theme={isDark ? 'dark' : 'light'} className="w-52 max-w-[min(18rem,calc(100vw-2rem))]">
+                                {[
+                                  { key: 'send', label: t('modal.dashboard.menu.send'), Icon: PaperAirplaneIcon, action: () => setStep('send') },
+                                  { key: 'receive', label: t('modal.dashboard.menu.receive'), Icon: QrCodeIcon, action: () => setStep('receive') },
+                                  { key: 'setName', label: t('modal.dashboard.menu.setName'), Icon: TagIcon, action: () => setStep('set_name') },
+                                  ...(isBrowserWallet
+                                    ? ([
+                                        {
+                                          key: 'backupZip',
+                                          label: t('modal.dashboard.menu.backupZip'),
+                                          Icon: WalletIcon,
+                                          action: () => void handleBackupZip(),
+                                        },
+                                        {
+                                          key: 'showSecrets',
+                                          label: t('modal.dashboard.menu.showSecrets'),
+                                          Icon: EyeIcon,
+                                          action: () => void handleBackupNow(),
+                                        },
+                                        {
+                                          key: 'setPassword',
+                                          label: t('modal.dashboard.menu.setPassword'),
+                                          Icon: KeyIcon,
+                                          action: () => setStep('password'),
+                                        },
+                                        {
+                                          key: 'lock',
+                                          label: isEncryptedWallet ? 'Lock wallet' : 'Set password and lock',
+                                          Icon: LockClosedIcon,
+                                          action: () => void handleLockWallet(),
+                                        },
+                                      ] as const)
+                                    : []),
+                                  { key: 'xVerify', label: t('modal.dashboard.menu.xVerify'), Icon: CheckBadgeIcon, action: () => setStep('verification') },
+                                  { key: 'settings', label: t('modal.dashboard.menu.settings'), Icon: Cog6ToothIcon, action: openSettings },
+                                  { key: 'disconnect', label: t('modal.dashboard.menu.disconnect'), Icon: PowerIcon, action: handleDisconnectWallet },
+                                ].map(({ key, label, Icon, action }) => (
+                                  <Menu.Item key={key}>
+                                    {({ active }) => (
+                                      <button
+                                        type="button"
+                                        onClick={action}
+                                        className={cx(
+                                          'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-white transition',
+                                          active ? 'bg-zinc-800' : 'hover:bg-zinc-900',
+                                        )}
+                                      >
+                                        <Icon className="h-5 w-5 shrink-0 text-white/90" aria-hidden />
+                                        <span className="leading-tight">{label}</span>
+                                      </button>
+                                    )}
+                                  </Menu.Item>
+                                ))}
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      type="button"
+                                      onClick={() => setStep('remove')}
+                                      className={cx(
+                                        'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-300 transition',
+                                        active ? 'bg-red-500/20' : 'hover:bg-red-500/10',
+                                      )}
+                                    >
+                                      <TrashIcon className="h-5 w-5 shrink-0 text-red-300/90" aria-hidden />
+                                      <span className="leading-tight">{t('modal.dashboard.menu.remove')}</span>
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                              </WalletMenuItems>
+                            </Menu>
                           </div>
                         </div>
 
                         {isBrowserWallet && needsBackup ? (
-                          <div className="flex flex-col gap-4 rounded-none border border-zinc-700 bg-zinc-900 p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex flex-col gap-4 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <div className="font-semibold text-zinc-100">{t('modal.backup.title')}</div>
                               <div className="mt-1 text-sm text-zinc-300">{t('modal.backup.subtitle')}</div>
@@ -3686,17 +3678,17 @@ export function DojakwebWalletModal({
                         ) : null}
 
                         <div>
-                          <div className="flex gap-2 border-b border-zinc-700">
+                          <div className="flex gap-1 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-1">
                             {(['assets', 'transactions', 'listings'] as DashboardTab[]).map((item) => (
                               <button
                                 key={item}
                                 type="button"
                                 onClick={() => setTab(item)}
                                 className={cx(
-                                  'relative -mb-px border border-b-0 px-4 py-2 text-sm font-semibold capitalize tracking-wide transition',
+                                  'flex-1 rounded-xl px-3 py-2 text-xs font-semibold capitalize tracking-wide transition',
                                   tab === item
-                                    ? 'z-10 border-zinc-600 bg-zinc-800 text-white shadow-[inset_0_2px_0_#D4A017]'
-                                    : 'border-zinc-700 bg-zinc-950 text-white/40 hover:bg-white/5 hover:text-white/70'
+                                    ? 'bg-[#FCD34D]/15 text-[#FCD34D] shadow-[inset_0_0_0_1px_rgba(252,211,77,0.35)]'
+                                    : 'text-white/45 hover:bg-white/[0.04] hover:text-white/75'
                                 )}
                               >
                                 {item === 'assets' ? t('modal.tabs.assets') : item === 'transactions' ? t('modal.tabs.transactions') : t('modal.tabs.listings')}
@@ -3704,16 +3696,16 @@ export function DojakwebWalletModal({
                             ))}
                           </div>
 
-                          <div className="overflow-visible border border-zinc-700 bg-zinc-950">
+                          <div className="mt-2 overflow-visible rounded-2xl border border-white/[0.08] bg-black/25">
                             {tab === 'assets' ? (
                               <div className="overflow-visible">
                                 {/* NFT / DRC-20 sub-selector */}
-                                <div className="flex items-center justify-between border-b border-zinc-700 px-4 py-2">
+                                <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2.5">
                                   <select
                                     value={assetType}
                                     onChange={(e) => setAssetType(e.target.value as 'nft' | 'drc20' | 'treats')}
                                     aria-label={t('modal.aria.assetType')}
-                                    className="rounded-none border border-border-primary bg-bg-secondary px-3 py-1 text-sm font-semibold text-text-primary outline-none focus:border-primary-500"
+                                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-semibold text-white/85 outline-none focus:border-[#FCD34D]/50"
                                   >
                                     <option value="nft">{t('modal.assets.nftOption')}</option>
                                     <option value="treats">{t('modal.assets.treatsOption')}</option>

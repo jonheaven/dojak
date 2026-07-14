@@ -12,8 +12,13 @@ This file is for **agents and engineers already working inside the Dojak workspa
 ## 1. Monorepo wiring (internal only)
 
 - **Inside `dojak`:** `@dojak/web` resolves via the **pnpm workspace** (`workspace:*`).
-- **First-party host apps** (doge.cam, drok, …): install the private GitHub Package
-  **`@jonheaven/dojak-web`**, aliased as `@dojak/web` so imports stay stable:
+- **Day-to-day host apps** (doge.cam beside this checkout): rebuild wallet and let the host Vite alias to `packages/dojakweb/dist/wallet.js`. **Do not publish on every WIP push.**
+
+```bash
+pnpm --filter @dojak/web run build:wallet
+```
+
+- **Production hosts** install the private GitHub Package **`@jonheaven/dojak-web`** (aliased as `@dojak/web`) when cutting a release:
 
 ```json
 {
@@ -23,17 +28,9 @@ This file is for **agents and engineers already working inside the Dojak workspa
 }
 ```
 
-```ini
-# .npmrc (host repo)
-@jonheaven:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-```
-
-Publish from this monorepo:
-
 ```bash
 pnpm --filter @dojak/web run publish:github
-# or tag: dojak-web-v2.0.1  → GitHub Actions workflow
+# or tag: dojak-web-v2.0.1
 ```
 
 Do **not** document a public npm install path. GitHub Packages is **restricted** to our org/user.
