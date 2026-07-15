@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
+import { useIsMobileWallet } from '../hooks/useMediaQuery';
 import DojakwebWalletModal from './DojakwebWalletModal';
-/** Bundled Shiba paw — part of the web wallet; hosts do not supply this. */
+/** Bundled Shiba paw — desktop phone-chassis only; never shown on mobile. */
 import bundledPawSrc from '../assets/paw.png';
 
 export interface WalletDrawerProps {
@@ -116,9 +117,9 @@ function clampPos(right: number, bottom: number): DrawerPos {
 }
 
 /**
- * Dojakweb wallet drawer with built-in Shiba Inu paw grip.
- * This is the only implementation — open it from hosts via WalletDrawer / ConnectWalletButton.
- * Drag the paw to park the phone anywhere on screen (position remembered).
+ * Dojakweb wallet drawer.
+ * Desktop: floating phone chassis + Shiba paw grip (draggable).
+ * Mobile (≤768px): full-screen app sheet — no paw, no floating panel.
  */
 export default function WalletDrawer({
   isOpen,
@@ -128,6 +129,7 @@ export default function WalletDrawer({
 }: WalletDrawerProps) {
   const { theme } = useDojakwebTheme();
   const isDark = isDarkProp ?? theme === 'dark';
+  const isMobile = useIsMobileWallet();
   const [pos, setPos] = useState<DrawerPos | null>(() => readStoredPos());
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{
@@ -139,9 +141,27 @@ export default function WalletDrawer({
   } | null>(null);
 
   useEffect(() => {
-    document.body.classList.toggle('wallet-drawer-paw-open', isOpen);
-    return () => document.body.classList.remove('wallet-drawer-paw-open');
-  }, [isOpen]);
+    const body = document.body;
+    body.classList.remove('wallet-drawer-paw-open', 'wallet-drawer-mobile-open');
+    if (!isOpen) return;
+    if (isMobile) {
+      body.classList.add('wallet-drawer-mobile-open');
+    } else {
+      body.classList.add('wallet-drawer-paw-open');
+    }
+    return () => {
+      body.classList.remove('wallet-drawer-paw-open', 'wallet-drawer-mobile-open');
+    };
+  }, [isOpen, isMobile]);
+
+  useEffect(() => {
+    if (!isOpen || !isMobile) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen, isMobile]);
 
   useEffect(() => {
     document.body.classList.toggle('wallet-drawer-dragging', dragging);
@@ -149,9 +169,9 @@ export default function WalletDrawer({
   }, [dragging]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isMobile) return;
     applyPosVars(pos);
-  }, [isOpen, pos]);
+  }, [isOpen, isMobile, pos]);
 
   useEffect(() => {
     return () => {
@@ -160,9 +180,8 @@ export default function WalletDrawer({
     };
   }, []);
 
-  // Keep parked phone on-screen when the viewport resizes
   useEffect(() => {
-    if (!isOpen || !pos) return;
+    if (!isOpen || isMobile || !pos) return;
     const onResize = () => {
       setPos((prev) => {
         if (!prev) return prev;
@@ -177,7 +196,7 @@ export default function WalletDrawer({
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [isOpen, pos]);
+  }, [isOpen, isMobile, pos]);
 
   const persistPos = useCallback((next: DrawerPos) => {
     setPos(next);
@@ -190,9 +209,7 @@ export default function WalletDrawer({
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (e.button !== 0) return;
-      // Narrow viewports stay docked; skip drag
-      if (window.innerWidth <= 480) return;
+      if (e.button !== 0 || isMobile) return;
       e.preventDefault();
       e.stopPropagation();
       const origin = pos ?? { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
@@ -206,7 +223,7 @@ export default function WalletDrawer({
       setDragging(true);
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [pos],
+    [pos, isMobile],
   );
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -242,17 +259,19 @@ export default function WalletDrawer({
   );
 
   const onDoubleClick = useCallback(() => {
-    if (window.innerWidth <= 480) return;
+    if (isMobile) return;
     const next = { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
     persistPos(next);
     applyPosVars(next);
-  }, [persistPos]);
+  }, [persistPos, isMobile]);
+
+  const showPaw = isOpen && !isMobile;
 
   const paw =
     typeof document !== 'undefined'
       ? createPortal(
           <AnimatePresence>
-            {isOpen ? (
+            {showPaw ? (
               <motion.div
                 key="wallet-paw"
                 className="wallet-paw-grip"
@@ -283,7 +302,6 @@ export default function WalletDrawer({
         )
       : null;
 
-  // Render paw first (under), then drawer — stacking + CSS z-index keep grip beneath panel
   return (
     <>
       {paw}

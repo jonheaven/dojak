@@ -40,7 +40,7 @@ export function WalletMenuItems({
       anchor={{ to: anchor, gap: 6, padding: 16 }}
       data-ds-theme={theme}
       className={cn(
-        'ds-wallet-menu z-[10120] min-w-[11rem] origin-top rounded-xl border py-1 shadow-2xl outline-none',
+        'ds-wallet-menu z-[10140] min-w-[11rem] origin-top rounded-xl border py-1 shadow-2xl outline-none',
         'pointer-events-auto transition duration-100 ease-out data-closed:scale-95 data-closed:opacity-0',
         isLight ? 'border-black/10 bg-[#f5f4f1]' : 'border-white/10 bg-zinc-900',
         className,

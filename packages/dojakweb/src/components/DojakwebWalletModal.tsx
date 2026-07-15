@@ -2807,6 +2807,82 @@ export function DojakwebWalletModal({
                   <div className="shrink-0 border-b border-white/[0.08] px-4 pb-3 pt-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-2">
+                        {step === 'dashboard' && connected ? (
+                          <Menu as="div" className="relative shrink-0">
+                            <Menu.Button
+                              type="button"
+                              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-transparent p-0 transition hover:opacity-90"
+                              aria-label={t('modal.profileDpfp.avatarMenuAria')}
+                              title={t('modal.profileDpfp.avatarMenuAria')}
+                            >
+                              <DogePFPAvatar size="md" address={activeAddress} />
+                            </Menu.Button>
+                            <WalletMenuItems
+                              theme={isDark ? 'dark' : 'light'}
+                              anchor="bottom start"
+                              className="min-w-[13rem] max-w-[16rem]"
+                            >
+                              <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
+                                {t('modal.profileDpfp.menuHint')}
+                              </div>
+                              {pfpInscriptionId ? (
+                                <Menu.Item>
+                                  {({ focus, active }) => (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        clearDogePFP();
+                                        toast.message(t('modal.toast.dpfpCleared'));
+                                      }}
+                                      className={cx(
+                                        'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                        (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                      )}
+                                    >
+                                      <PhotoIcon className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
+                                      <span className="leading-tight">{t('modal.profileDpfp.clearPfp')}</span>
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                              ) : null}
+                              {pfaInscriptionId ? (
+                                <Menu.Item>
+                                  {({ focus, active }) => (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        clearDogePFA();
+                                        toast.message(t('modal.toast.dpfaCleared'));
+                                      }}
+                                      className={cx(
+                                        'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                        (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                      )}
+                                    >
+                                      <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/80" aria-hidden />
+                                      <span className="leading-tight">{t('modal.profileDpfa.clearPfa')}</span>
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                              ) : null}
+                              <Menu.Item>
+                                {({ focus, active }) => (
+                                  <button
+                                    type="button"
+                                    onClick={() => setStep('switch_wallet')}
+                                    className={cx(
+                                      'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                      (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                    )}
+                                  >
+                                    <WalletIcon className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
+                                    <span className="leading-tight">{t('modal.walletSwitcher.title')}</span>
+                                  </button>
+                                )}
+                              </Menu.Item>
+                            </WalletMenuItems>
+                          </Menu>
+                        ) : null}
                         {step !== 'dashboard' && step !== 'unlock' && (
                           <button
                             type="button"
@@ -2859,15 +2935,6 @@ export function DojakwebWalletModal({
                               title="Address Book"
                             >
                               <TagIcon className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setStep('switch_wallet')}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 transition hover:bg-white/10 hover:text-white"
-                              aria-label={t('modal.aria.switchWallet')}
-                              title="Switch Connected Wallet"
-                            >
-                              <WalletProviderIcon walletType={activeWalletType} size="xs" />
                             </button>
                             <button
                               type="button"
@@ -3435,161 +3502,31 @@ export function DojakwebWalletModal({
 
                     {step === 'dashboard' && (
                       <div className="space-y-3">
-                        <button
-                          type="button"
-                          onClick={() => setStep('switch_wallet')}
-                          disabled={isBusy}
-                          className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 py-2.5 text-left transition hover:border-white/20 hover:bg-white/[0.04] disabled:opacity-60"
-                          aria-label={t('modal.walletSwitcher.title')}
-                        >
-                          <WalletProviderIcon walletType={activeWalletType} size="sm" framed />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="truncate text-sm font-medium text-white/90">
-                                {activeWalletSummary?.label || activeWalletName || getWalletSourceIndicator(activeWalletType, t).label}
-                              </span>
-                              {isBrowserWallet && browser.wallet?.accountIndex != null ? (
-                                <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-white/55">
-                                  {t('modal.dashboard.accountBadge', { index: String(browser.wallet.accountIndex) })}
-                                </span>
-                              ) : null}
-                            </div>
-                            {activeAddress ? (
-                              <span className="mt-0.5 block truncate font-mono text-[11px] text-white/40">
-                                {truncateAddress(activeAddress)}
-                              </span>
-                            ) : null}
-                          </div>
-                          <ChevronDownIcon className="h-4 w-4 shrink-0 text-white/40" aria-hidden />
-                        </button>
-
-                        {connected && isBrowserWallet && activeBrowserSeedGroup ? (
-                          <div className="rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2.5">
-                            <div className="mb-2 flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
-                                {t('modal.dashboard.hdAccountsLabel')}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => void handleAddBrowserAccount()}
-                                disabled={isBusy}
-                                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-medium text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
-                              >
-                                <PlusIcon className="h-3 w-3" aria-hidden />
-                                {t('modal.walletSwitcher.addAccount')}
-                              </button>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {activeBrowserSeedGroup.accounts.map((acc) => {
-                                const isActiveAccount = acc.address === activeAddress;
-                                return (
-                                  <button
-                                    key={acc.address}
-                                    type="button"
-                                    onClick={() => {
-                                      if (!isActiveAccount) void handleConnectSavedLocalWallet(acc.address);
-                                    }}
-                                    disabled={isBusy || isActiveAccount}
-                                    title={acc.address}
-                                    className={cx(
-                                      'rounded-lg border px-2.5 py-1 text-xs font-semibold tabular-nums transition',
-                                      isActiveAccount
-                                        ? 'border-[#FCD34D]/50 bg-[#FCD34D]/15 text-[#FCD34D]'
-                                        : 'border-white/10 bg-white/5 text-white/65 hover:border-white/20 hover:bg-white/10 hover:text-white',
-                                      isBusy && 'cursor-wait',
-                                    )}
-                                  >
-                                    #{acc.accountIndex}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : null}
-
                         <div className="overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.02] px-4 pb-4 pt-3">
-                          <div className="mb-3 flex items-center justify-between gap-2">
-                            <div className="flex min-w-0 items-center gap-2.5">
-                              {connected ? (
-                                <Menu as="div" className="relative shrink-0">
-                                  <Menu.Button
-                                    type="button"
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-0 bg-transparent p-0 transition hover:opacity-90"
-                                    aria-label={t('modal.profileDpfp.avatarMenuAria')}
-                                    title={t('modal.profileDpfp.avatarMenuAria')}
-                                  >
-                                    <DogePFPAvatar size="md" address={activeAddress} />
-                                  </Menu.Button>
-                                  <WalletMenuItems
-                                    theme={isDark ? 'dark' : 'light'}
-                                    anchor="bottom start"
-                                    className="min-w-[13rem] max-w-[16rem]"
-                                  >
-                                    <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
-                                      {t('modal.profileDpfp.menuHint')}
-                                    </div>
-                                    {pfpInscriptionId ? (
-                                      <Menu.Item>
-                                        {({ active }) => (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              clearDogePFP();
-                                              toast.message(t('modal.toast.dpfpCleared'));
-                                            }}
-                                            className={cx(
-                                              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                              active ? 'bg-gray-700' : 'hover:bg-gray-800',
-                                            )}
-                                          >
-                                            <PhotoIcon className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
-                                            <span className="leading-tight">{t('modal.profileDpfp.clearPfp')}</span>
-                                          </button>
-                                        )}
-                                      </Menu.Item>
-                                    ) : null}
-                                    {pfaInscriptionId ? (
-                                      <Menu.Item>
-                                        {({ active }) => (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              clearDogePFA();
-                                              toast.message(t('modal.toast.dpfaCleared'));
-                                            }}
-                                            className={cx(
-                                              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                              active ? 'bg-gray-700' : 'hover:bg-gray-800',
-                                            )}
-                                          >
-                                            <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/80" aria-hidden />
-                                            <span className="leading-tight">{t('modal.profileDpfa.clearPfa')}</span>
-                                          </button>
-                                        )}
-                                      </Menu.Item>
-                                    ) : null}
-                                  </WalletMenuItems>
-                                </Menu>
-                              ) : null}
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-medium text-white/90">
+                          <div className="mb-1 flex items-start justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setStep('switch_wallet')}
+                              disabled={isBusy}
+                              className="min-w-0 flex-1 rounded-xl px-1 py-0.5 text-left transition hover:bg-white/[0.04] disabled:opacity-60"
+                              aria-label={t('modal.walletSwitcher.title')}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <WalletProviderIcon walletType={activeWalletType} size="xs" />
+                                <span className="truncate text-sm font-medium text-white/90">
                                   {activeWalletName ||
                                     activeWalletSummary?.label ||
                                     getWalletSourceIndicator(activeWalletType, t).label}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={handleCopyAddress}
-                                  className="mt-0.5 flex max-w-full items-center gap-1 font-mono text-[11px] text-white/45 transition hover:text-white/70"
-                                  title={activeAddress ?? undefined}
-                                  aria-label={t('modal.aria.copyAddress')}
-                                >
-                                  <span className="truncate">{truncateAddress(activeAddress)}</span>
-                                  <ClipboardDocumentIcon className="h-3.5 w-3.5 shrink-0" />
-                                </button>
+                                </span>
+                                <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-white/35" aria-hidden />
                               </div>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1">
+                              {activeAddress ? (
+                                <span className="mt-0.5 block truncate font-mono text-[11px] text-white/40">
+                                  {truncateAddress(activeAddress)}
+                                </span>
+                              ) : null}
+                            </button>
+                            <div className="flex shrink-0 items-center gap-0.5">
                               <DogePFAHeaderControl />
                               <button
                                 type="button"
@@ -3614,7 +3551,45 @@ export function DojakwebWalletModal({
                             </div>
                           </div>
 
-                          <div className="px-1 pb-1 pt-2 text-center">
+                          {connected && isBrowserWallet && activeBrowserSeedGroup && activeBrowserSeedGroup.accounts.length > 1 ? (
+                            <div className="mb-2 flex flex-wrap items-center gap-1.5 px-1">
+                              {activeBrowserSeedGroup.accounts.map((acc) => {
+                                const isActiveAccount = acc.address === activeAddress;
+                                return (
+                                  <button
+                                    key={acc.address}
+                                    type="button"
+                                    onClick={() => {
+                                      if (!isActiveAccount) void handleConnectSavedLocalWallet(acc.address);
+                                    }}
+                                    disabled={isBusy || isActiveAccount}
+                                    title={acc.address}
+                                    className={cx(
+                                      'rounded-md border px-2 py-0.5 text-[11px] font-semibold tabular-nums transition',
+                                      isActiveAccount
+                                        ? 'border-[#FCD34D]/50 bg-[#FCD34D]/15 text-[#FCD34D]'
+                                        : 'border-white/10 bg-white/5 text-white/65 hover:border-white/20 hover:bg-white/10 hover:text-white',
+                                      isBusy && 'cursor-wait',
+                                    )}
+                                  >
+                                    #{acc.accountIndex}
+                                  </button>
+                                );
+                              })}
+                              <button
+                                type="button"
+                                onClick={() => void handleAddBrowserAccount()}
+                                disabled={isBusy}
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-dashed border-white/15 text-white/45 transition hover:border-[#D4A017]/40 hover:text-[#FCD34D] disabled:opacity-40"
+                                aria-label={t('modal.walletSwitcher.addAccount')}
+                                title={t('modal.walletSwitcher.addAccount')}
+                              >
+                                <PlusIcon className="h-3 w-3" aria-hidden />
+                              </button>
+                            </div>
+                          ) : null}
+
+                          <div className="px-1 pb-1 pt-3 text-center">
                             {balanceRefreshing ? (
                               <div className="text-2xl font-semibold text-white/50">{t('modal.dashboard.refreshingBalance')}</div>
                             ) : !balanceVerified && balance === 0 ? (
@@ -3968,7 +3943,7 @@ export function DojakwebWalletModal({
                                               <WalletMenuItems theme={isDark ? 'dark' : 'light'} anchor="bottom end" className="min-w-[12rem]">
                                                   {item.contentType?.startsWith('image/') ? (
                                                     <Menu.Item>
-                                                      {({ active }) => (
+                                                      {({ focus, active }) => (
                                                         <button
                                                           type="button"
                                                           onClick={() => {
@@ -3978,7 +3953,7 @@ export function DojakwebWalletModal({
                                                           }}
                                                           className={cx(
                                                             'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                            active ? 'bg-gray-700' : 'hover:bg-gray-800',
+                                                            (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
                                                           )}
                                                         >
                                                           <PhotoIcon className="h-4 w-4 shrink-0 text-yellow-200/90" aria-hidden />
@@ -3989,7 +3964,7 @@ export function DojakwebWalletModal({
                                                   ) : null}
                                                   {item.contentType?.startsWith('audio/') ? (
                                                     <Menu.Item>
-                                                      {({ active }) => (
+                                                      {({ focus, active }) => (
                                                         <button
                                                           type="button"
                                                           onClick={() => {
@@ -4003,7 +3978,7 @@ export function DojakwebWalletModal({
                                                           }}
                                                           className={cx(
                                                             'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                            active ? 'bg-gray-700' : 'hover:bg-gray-800',
+                                                            (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
                                                           )}
                                                         >
                                                           <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/90" aria-hidden />
@@ -4013,13 +3988,13 @@ export function DojakwebWalletModal({
                                                     </Menu.Item>
                                                   ) : null}
                                                   <Menu.Item>
-                                                    {({ active }) => (
+                                                    {({ focus, active }) => (
                                                       <button
                                                         type="button"
                                                         onClick={() => openSendInscription(item)}
                                                         className={cx(
                                                           'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                          active ? 'bg-gray-700' : 'hover:bg-gray-800',
+                                                          (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
                                                         )}
                                                       >
                                                         <PaperAirplaneIcon className="h-4 w-4 shrink-0 text-white/90" aria-hidden />
@@ -4028,13 +4003,13 @@ export function DojakwebWalletModal({
                                                     )}
                                                   </Menu.Item>
                                                   <Menu.Item>
-                                                    {({ active }) => (
+                                                    {({ focus, active }) => (
                                                       <button
                                                         type="button"
                                                         onClick={() => openListInscription(item)}
                                                         className={cx(
                                                           'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                          active ? 'bg-yellow-500/20' : 'hover:bg-yellow-500/10',
+                                                          (focus || active) ? 'bg-yellow-500/20' : 'hover:bg-yellow-500/10',
                                                         )}
                                                       >
                                                         <TagIcon className="h-4 w-4 shrink-0 text-yellow-200/90" aria-hidden />

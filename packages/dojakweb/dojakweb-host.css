@@ -100,6 +100,18 @@
   color: var(--ds-accent-foreground);
 }
 
+/* Compact wallet control for mobile chrome (icon only) */
+.ds-connect-button.ds-connect-button--icon {
+  border-radius: 999px;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.ds-connect-button.ds-connect-button--icon:hover:not(:disabled) {
+  transform: none;
+}
+
 .ds-connect-button:hover:not(:disabled),
 .ds-disconnect-button:hover,
 .ds-wallet-option:hover:not(:disabled),
@@ -964,10 +976,34 @@
 }
 
 /* Portaled flyout menus (Headless UI portal — outside .ds-wallet-dashboard).
- * Must sit above paw-open drawer / Dialog (z-index 10050) or items receive no pointer events. */
+ * Must sit above paw-open drawer / Dialog (z-index 10050) or items receive no pointer events.
+ * Portal ancestors also need a high stacking context — a child z-index cannot escape a 10040 parent. */
+#headlessui-portal-root:has(.ds-wallet-menu),
+[data-headlessui-portal]:has(.ds-wallet-menu) {
+  z-index: 10130 !important;
+  pointer-events: none;
+}
+
 .ds-wallet-menu {
-  z-index: 10120 !important;
+  z-index: 10140 !important;
   pointer-events: auto !important;
+}
+
+.ds-wallet-menu [role='menuitem'],
+.ds-wallet-menu button {
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
+.ds-wallet-menu [role='menuitem']:hover,
+.ds-wallet-menu button:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+:is([data-ds-theme='light'].ds-wallet-menu, html[data-theme='light'] .ds-wallet-menu)
+  [role='menuitem']:hover,
+:is([data-ds-theme='light'].ds-wallet-menu, html[data-theme='light'] .ds-wallet-menu) button:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
 }
 
 :is([data-ds-theme="light"].ds-wallet-menu, html[data-theme="light"] .ds-wallet-menu) {
@@ -1194,10 +1230,8 @@ body.wallet-drawer-paw-open {
   --wallet-phone-radius: 1.85rem;
 }
 
-/* Portal must participate in stacking (position + z-index) or the fixed
-   paw grip (z-index 9995) paints above the entire wallet drawer tree.
-   Keep this above the drawer chassis (10050) so portaled Menu/Listbox
-   panels (z ~10120) can compete and receive pointer events. */
+/* Portal participates in stacking vs paw grip (9995). Dialog chassis sits at
+   10050; menus bump their portal via :has(.ds-wallet-menu) to 10130+. */
 #headlessui-portal-root,
 [data-headlessui-portal],
 .ds-wallet-modal-backdrop,
@@ -1254,13 +1288,6 @@ body.wallet-drawer-dragging [data-headlessui-portal] .ds-wallet-dashboard {
   filter: drop-shadow(-10px 6px 22px rgba(0, 0, 0, 0.55));
 }
 
-@media (max-width: 480px) {
-  .wallet-paw-grip {
-    pointer-events: none;
-    cursor: default;
-  }
-}
-
 :root:not([data-theme="light"]) .wallet-paw-grip img {
   mix-blend-mode: screen;
 }
@@ -1268,6 +1295,85 @@ body.wallet-drawer-dragging [data-headlessui-portal] .ds-wallet-dashboard {
 :root[data-theme="light"] .wallet-paw-grip img {
   mix-blend-mode: multiply;
   opacity: 0.96;
+}
+
+/* Mobile: full-screen wallet app — no floating phone, no paw */
+body.wallet-drawer-mobile-open {
+  overflow: hidden;
+}
+
+body.wallet-drawer-mobile-open .wallet-paw-grip {
+  display: none !important;
+}
+
+body.wallet-drawer-mobile-open .ds-wallet-modal--drawer,
+body.wallet-drawer-mobile-open [data-headlessui-portal] .ds-wallet-dashboard {
+  inset: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  z-index: 10050 !important;
+  background: #0c0c0e !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+:root[data-theme="light"] body.wallet-drawer-mobile-open .ds-wallet-modal--drawer,
+:root[data-theme="light"] body.wallet-drawer-mobile-open [data-headlessui-portal] .ds-wallet-dashboard {
+  background: #f7f5f0 !important;
+}
+
+body.wallet-drawer-mobile-open .ds-wallet-modal--drawer .ds-wallet-dashboard,
+body.wallet-drawer-mobile-open [data-headlessui-portal] .ds-wallet-dashboard {
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+}
+
+body.wallet-drawer-mobile-open [data-headlessui-portal] .ds-wallet-dashboard::before {
+  display: none;
+}
+
+body.wallet-drawer-mobile-open .ds-wallet-modal-backdrop--drawer {
+  background: #000 !important;
+  z-index: 9998 !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (max-width: 768px) {
+  .wallet-paw-grip {
+    display: none !important;
+  }
+
+  /* Safety: if desktop class leaks onto a narrow viewport, still go fullscreen */
+  body.wallet-drawer-paw-open .ds-wallet-modal--drawer,
+  body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
+    inset: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard::before {
+    display: none;
+  }
 }
 
 /* Phone chassis: opaque, rounded, floating off the bottom — not a glass window. */
@@ -1350,24 +1456,6 @@ body.wallet-drawer-paw-open .ds-wallet-modal-backdrop--drawer {
   z-index: 9998 !important;
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
-}
-
-@media (max-width: 480px) {
-  body.wallet-drawer-paw-open {
-    --wallet-drawer-width: 100vw;
-    --wallet-drawer-bottom: 0;
-    --wallet-drawer-right: 0;
-    --wallet-phone-radius: 1.25rem 1.25rem 0 0;
-    --wallet-paw-grip-offset: 140px;
-  }
-
-  body.wallet-drawer-paw-open .ds-wallet-modal--drawer,
-  body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
-    height: min(92dvh, 900px) !important;
-    max-height: 92dvh !important;
-    border-right: 3px solid #e8d48b !important;
-    border-bottom: none !important;
-  }
 }
 
 .ds-wallet-dashboard.flex.flex-col {
