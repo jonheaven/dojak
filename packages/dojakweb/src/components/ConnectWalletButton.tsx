@@ -39,6 +39,8 @@ export function ConnectWalletButton({
       ? `${t('wallet.openConnectedAria')} ${address}`
       : t('wallet.connect');
 
+  const initialStep = connected ? 'dashboard' : 'chooser';
+
   return (
     <>
       <button
@@ -82,7 +84,7 @@ export function ConnectWalletButton({
         <WalletDrawer
           isOpen={open}
           onClose={() => setOpen(false)}
-          initialStep={connected ? 'dashboard' : 'entry'}
+          initialStep={initialStep}
           isDark={isDark}
         />
       ) : (
@@ -90,7 +92,7 @@ export function ConnectWalletButton({
           isOpen={open}
           onClose={() => setOpen(false)}
           isDark={isDark}
-          initialStep={connected ? 'dashboard' : 'entry'}
+          initialStep={initialStep}
           mode="modal"
         />
       )}

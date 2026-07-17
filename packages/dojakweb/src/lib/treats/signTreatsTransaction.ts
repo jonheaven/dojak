@@ -6,6 +6,7 @@ import {
   MIN_FEE_RATE_KOINU_PER_BYTE,
   type NormalisedUtxo,
 } from '../broadcast/dogecoinTxBroadcast';
+import { coerceSignedPsdtToRawTxHex, getTxHex } from '../doginal-psdt';
 import { estimateOpReturnOutputsTxWeight } from '../tx/opReturn';
 import { TREATS_DUST_KOINU, type TreatsOpKind } from './constants';
 import { treatsPayloadBytes } from './buildJson';
@@ -25,11 +26,27 @@ function filterExcludedUtxos(
   return { spendable, excludedCount: utxos.length - spendable.length };
 }
 
+/** Dogecoin mainnet params for bitcoinjs-lib PSBT flows. */
+const DOGE_NETWORK = {
+  messagePrefix: '\x19Dogecoin Signed Message:\n',
+  bech32: 'dc',
+  bip32: { public: 0x02facafd, private: 0x02fac398 },
+  pubKeyHash: 0x1e,
+  scriptHash: 0x16,
+  wif: 0x9e,
+};
+
 export interface SignTreatsParams {
   op: TreatsOpKind;
   tick: string;
   fromAddress: string;
-  privateKeyWIF: string;
+  /** Local unlocked browser wallet — preferred when present. */
+  privateKeyWIF?: string;
+  /**
+   * Extension / locked-browser path: sign an unsigned PSBT (base64) and return
+   * either a signed PSBT or raw tx hex (same contract as Ðune `signPsbt`).
+   */
+  signPsbt?: (psbtBase64: string) => Promise<string>;
   /** Paired dust recipient for deploy/mint/transfer; ignored for burn. */
   recipientAddress?: string;
   max?: string;
@@ -52,12 +69,30 @@ export interface SignedTreatsTx {
   inputCount: number;
 }
 
-export async function signTreatsTransaction(params: SignTreatsParams): Promise<SignedTreatsTx> {
+export interface BuiltTreatsPsbt {
+  psbtBase64: string;
+  payloadJson: string;
+  feeSatoshis: number;
+  changeSatoshis: number;
+  totalInputSatoshis: number;
+  inputCount: number;
+}
+
+type PlannedTreatsTx = {
+  payload: Uint8Array;
+  payloadJson: string;
+  selected: NormalisedUtxo[];
+  outputs: Array<{ value: number; script?: Uint8Array; address?: string }>;
+  feeSatoshis: number;
+  changeAmount: number;
+  totalSats: number;
+};
+
+async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> {
   const {
     op,
     tick,
     fromAddress,
-    privateKeyWIF,
     recipientAddress,
     max,
     lim,
@@ -72,6 +107,9 @@ export async function signTreatsTransaction(params: SignTreatsParams): Promise<S
 
   if (needsPair && !recipient) {
     throw new Error('Recipient address required for ÐogeTreats deploy, mint, and transfer');
+  }
+  if (!params.privateKeyWIF && !params.signPsbt) {
+    throw new Error('ÐogeTreats require privateKeyWIF or signPsbt');
   }
 
   const payload = treatsPayloadBytes(op, {
@@ -150,24 +188,88 @@ export async function signTreatsTransaction(params: SignTreatsParams): Promise<S
     return { value: o.value };
   });
 
-  const signer = DogeMemoryWallet.fromWIF(privateKeyWIF, 'doge');
-  const signedTx = await createP2PKHTransaction(signer, {
-    address: fromAddress,
-    inputs: selected.map((u) => ({
-      txid: u.tx_hash,
-      vout: u.tx_output_n,
-      value: u.value,
-    })),
-    outputs: outputs as Parameters<typeof createP2PKHTransaction>[1]['outputs'],
-  }).finalizeAndSign();
+  return {
+    payload,
+    payloadJson,
+    selected,
+    outputs,
+    feeSatoshis,
+    changeAmount,
+    totalSats,
+  };
+}
+
+/** Build an unsigned Treats PSBT for extension wallets. */
+export async function buildTreatsPsbt(params: SignTreatsParams): Promise<BuiltTreatsPsbt> {
+  const planned = await planTreatsTx(params);
+  const bitcoin = await import('bitcoinjs-lib');
+  const psbt = new bitcoin.Psbt({ network: DOGE_NETWORK as any });
+  psbt.setVersion(1);
+
+  const rawTxHexes = await Promise.all(planned.selected.map((u) => getTxHex(u.tx_hash)));
+  for (let i = 0; i < planned.selected.length; i++) {
+    const u = planned.selected[i]!;
+    psbt.addInput({
+      hash: u.tx_hash,
+      index: u.tx_output_n,
+      nonWitnessUtxo: Buffer.from(rawTxHexes[i]!, 'hex'),
+      sighashType: bitcoin.Transaction.SIGHASH_ALL,
+    });
+  }
+
+  for (const o of planned.outputs) {
+    if (o.script) {
+      psbt.addOutput({ script: Buffer.from(o.script), value: BigInt(o.value) } as any);
+    } else if (o.address) {
+      psbt.addOutput({ address: o.address, value: BigInt(o.value) } as any);
+    }
+  }
 
   return {
-    rawHex: signedTx.toHex(),
-    payloadJson,
-    feeSatoshis,
-    changeSatoshis: changeAmount,
-    totalInputSatoshis: totalSats,
-    inputCount: selected.length,
+    psbtBase64: psbt.toBase64(),
+    payloadJson: planned.payloadJson,
+    feeSatoshis: planned.feeSatoshis,
+    changeSatoshis: planned.changeAmount,
+    totalInputSatoshis: planned.totalSats,
+    inputCount: planned.selected.length,
+  };
+}
+
+export async function signTreatsTransaction(params: SignTreatsParams): Promise<SignedTreatsTx> {
+  const planned = await planTreatsTx(params);
+
+  if (params.privateKeyWIF) {
+    const signer = DogeMemoryWallet.fromWIF(params.privateKeyWIF, 'doge');
+    const signedTx = await createP2PKHTransaction(signer, {
+      address: params.fromAddress,
+      inputs: planned.selected.map((u) => ({
+        txid: u.tx_hash,
+        vout: u.tx_output_n,
+        value: u.value,
+      })),
+      outputs: planned.outputs as Parameters<typeof createP2PKHTransaction>[1]['outputs'],
+    }).finalizeAndSign();
+
+    return {
+      rawHex: signedTx.toHex(),
+      payloadJson: planned.payloadJson,
+      feeSatoshis: planned.feeSatoshis,
+      changeSatoshis: planned.changeAmount,
+      totalInputSatoshis: planned.totalSats,
+      inputCount: planned.selected.length,
+    };
+  }
+
+  const built = await buildTreatsPsbt(params);
+  const signedPayload = await params.signPsbt!(built.psbtBase64);
+  const rawHex = coerceSignedPsdtToRawTxHex(signedPayload);
+  return {
+    rawHex,
+    payloadJson: built.payloadJson,
+    feeSatoshis: built.feeSatoshis,
+    changeSatoshis: built.changeSatoshis,
+    totalInputSatoshis: built.totalInputSatoshis,
+    inputCount: built.inputCount,
   };
 }
 

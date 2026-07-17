@@ -41,6 +41,7 @@ import { WalletMenuItems } from './wallet/WalletMenuItems';
 import { WalletAccountSwitcherPanel } from './wallet/WalletAccountSwitcherPanel';
 import { WalletPinNumpad } from './wallet/WalletPinNumpad';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
+import { WalletConnectChooser } from './WalletConnectChooser';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { walletCredentialInputProps, walletSecretDecoyFields, walletSecretInputProps } from '../lib/wallet-secret-input';
 import {
@@ -167,6 +168,7 @@ export interface DojakwebWalletModalProps {
 }
 
 type WalletStep =
+  | 'chooser'
   | 'entry'
   | 'import'
   | 'reveal'
@@ -2883,10 +2885,18 @@ export function DojakwebWalletModal({
                             </WalletMenuItems>
                           </Menu>
                         ) : null}
-                        {step !== 'dashboard' && step !== 'unlock' && (
+                        {step !== 'dashboard' &&
+                          step !== 'unlock' &&
+                          step !== 'chooser' && (
                           <button
                             type="button"
-                            onClick={() => setStep('dashboard')}
+                            onClick={() => {
+                              if (step === 'entry' && !connected) {
+                                setStep('chooser');
+                                return;
+                              }
+                              setStep(connected ? 'dashboard' : 'chooser');
+                            }}
                             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/75 transition hover:bg-white/10 hover:text-white"
                             aria-label={t('modal.aria.backToWallet')}
                             title={t('modal.aria.backToWallet')}
@@ -2895,7 +2905,9 @@ export function DojakwebWalletModal({
                           </button>
                         )}
                         <Dialog.Title className="truncate text-[15px] font-semibold tracking-tight text-white/95">
-                          {step === 'import'
+                          {step === 'chooser'
+                            ? t('wallet.connectionModal.title')
+                            : step === 'import'
                             ? t('modal.title.importWallet')
                             : step === 'reveal'
                               ? t('modal.title.revealPhrase')
@@ -2983,6 +2995,11 @@ export function DojakwebWalletModal({
                         <XMarkIcon className="h-5 w-5" />
                       </button>
                     </div>
+                    {step === 'chooser' && (
+                      <p className="mt-2 text-center text-sm leading-6 text-white/55">
+                        {t('wallet.connectionModal.subtitle')}
+                      </p>
+                    )}
                     {step === 'entry' && (
                       <p className="mt-2 text-center text-sm leading-6 text-white/55">
                         {t('modal.tagline.builtIn')}
@@ -3001,6 +3018,13 @@ export function DojakwebWalletModal({
                         {error}
                       </div>
                     ) : null}
+
+                    {step === 'chooser' && (
+                      <WalletConnectChooser
+                        onSelectBrowser={() => setStep('entry')}
+                        onConnected={() => setStep('dashboard')}
+                      />
+                    )}
 
                     {step === 'entry' && (
                       <div className="space-y-4">
