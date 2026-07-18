@@ -23,6 +23,25 @@ export { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 export type { UseMyDogeWalletReturn } from '../contexts/MyDogeWalletContext';
 export { useBrowserWallet, type UseBrowserWalletReturn } from '../contexts/BrowserWalletContext';
 
+/** Ðclaims — host apps sign deploy/claim via browser wallet. */
+export {
+  createDclaim,
+  createDclaimDeploy,
+  buildClaimPayload,
+  buildDeployPayload,
+  quoteDclaimMint,
+  protocolFeeAmount,
+  DCLAIMS_P,
+  DCLAIMS_V,
+  DEFAULT_PROTOCOL_FEE_BPS,
+} from '../lib/dclaims';
+export type {
+  CreateDclaimParams,
+  CreateDclaimDeployParams,
+  DclaimFeeQuote,
+  DclaimInscribeOptions,
+} from '../lib/dclaims';
+
 export {
   setWalletDataProviderConfig,
   getWalletDataProviderConfig,
