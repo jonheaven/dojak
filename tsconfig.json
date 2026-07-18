@@ -1,17 +1,16 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@dojak/core": ["packages/core/src/index.ts"],
-      "@dojak/core/*": ["packages/core/src/*"],
-      "@dojak/core/lib/*": ["packages/core/src/shared/lib/*"],
-      "@dojak/core/utils/*": ["packages/core/src/shared/utils/*"],
-      "@dojak/core/constant": ["packages/core/src/shared/constant/index.ts"],
-      "@dojak/core/types": ["packages/core/src/shared/types.ts"],
-      "@dojak/biometrics": ["packages/biometrics/src/index.ts"],
-      "@dojak/biometrics/*": ["packages/biometrics/src/*"],
-      "@dojak/ui": ["packages/ui/src/index.ts"],
-      "@dojak/ui/*": ["packages/ui/src/*"]
+      "@dojak/core": ["./packages/core/src/index.ts"],
+      "@dojak/core/*": ["./packages/core/src/*"],
+      "@dojak/core/lib/*": ["./packages/core/src/shared/lib/*"],
+      "@dojak/core/utils/*": ["./packages/core/src/shared/utils/*"],
+      "@dojak/core/constant": ["./packages/core/src/shared/constant/index.ts"],
+      "@dojak/core/types": ["./packages/core/src/shared/types.ts"],
+      "@dojak/biometrics": ["./packages/biometrics/src/index.ts"],
+      "@dojak/biometrics/*": ["./packages/biometrics/src/*"],
+      "@dojak/ui": ["./packages/ui/src/index.ts"],
+      "@dojak/ui/*": ["./packages/ui/src/*"]
     }
   }
 }

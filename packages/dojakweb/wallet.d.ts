@@ -20,6 +20,11 @@ export { useBrowserWallet, type UseBrowserWalletReturn } from './src/contexts/Br
 export {
   setWalletDataProviderConfig,
   getWalletDataProviderConfig,
+  getIndexerApiBase,
+  getWonkyOrdApiBase,
+  getDogexCdnBase,
+  dogexCdnContentUrl,
+  WALLET_DATA_PROVIDER_CHANGED_EVENT,
   walletDataApi,
   type WalletDataProviderConfig,
   type WalletDataProviderType,

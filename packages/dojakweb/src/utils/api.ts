@@ -300,6 +300,9 @@ export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
     const indexerApiBase = normalizeBaseUrl(parsed.indexerApiBase) || undefined;
     const commandDogApiBase = normalizeBaseUrl(parsed.commandDogApiBase) || undefined;
     const dogexCdnBase = normalizeBaseUrl(parsed.dogexCdnBase) || undefined;
+    const wonkyOrdApiBase = normalizeBaseUrl(parsed.wonkyOrdApiBase) || undefined;
+    const wonkyOrdFallback =
+      typeof parsed.wonkyOrdFallback === 'boolean' ? parsed.wonkyOrdFallback : undefined;
 
     return {
       walletDataProvider,
@@ -308,6 +311,8 @@ export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
       indexerApiBase,
       commandDogApiBase,
       dogexCdnBase,
+      wonkyOrdApiBase,
+      wonkyOrdFallback,
     };
   } catch {
     return {
@@ -328,6 +333,9 @@ export const setWalletDataProviderConfig = (config: WalletDataProviderConfig) =>
   const indexerApiBase = normalizeBaseUrl(config.indexerApiBase) || undefined;
   const commandDogApiBase = normalizeBaseUrl(config.commandDogApiBase) || undefined;
   const dogexCdnBase = normalizeBaseUrl(config.dogexCdnBase) || undefined;
+  const wonkyOrdApiBase = normalizeBaseUrl(config.wonkyOrdApiBase) || undefined;
+  const wonkyOrdFallback =
+    typeof config.wonkyOrdFallback === 'boolean' ? config.wonkyOrdFallback : undefined;
 
   window.localStorage.setItem(
     WALLET_PROVIDER_STORAGE_KEY,
@@ -338,6 +346,8 @@ export const setWalletDataProviderConfig = (config: WalletDataProviderConfig) =>
       indexerApiBase,
       commandDogApiBase,
       dogexCdnBase,
+      wonkyOrdApiBase,
+      wonkyOrdFallback,
     })
   );
   window.dispatchEvent(new CustomEvent(WALLET_DATA_PROVIDER_CHANGED_EVENT));
@@ -721,9 +731,10 @@ export const walletDataApi = {
     if (isCommandDogWalletDataProvider()) {
       // command.dog indexer (Kabosu): fetch inscriptions owned by this address.
       try {
-        const base = typeof window !== 'undefined' ? window.location.origin : 'https://indexer.command.dog';
-        const indexerBase = `${base}/__indexer`;
-        const res = await fetch(`${indexerBase}/v1/inscriptions?owner=${encodeURIComponent(address)}&limit=100`);
+        const indexerBase = getIndexerApiBase().replace(/\/+$/, '');
+        const res = await fetch(
+          `${indexerBase}/v1/inscriptions?owner=${encodeURIComponent(address)}&limit=100`,
+        );
         if (!res.ok) return [];
         const payload = await res.json() as any;
         const rows: any[] = Array.isArray(payload?.items) ? payload.items
