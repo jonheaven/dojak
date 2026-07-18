@@ -126,6 +126,69 @@ function buildInscriptionChunks(content: Buffer, contentType: string): ScriptChu
 }
 
 /**
+ * Ordinals-style tags for dogex: content-type=1, parent=3, metaprotocol=7, body after empty push.
+ * Used when parents / metaprotocol are set (Ðclaims and similar).
+ */
+function buildTaggedInscriptionChunks(
+  content: Buffer,
+  contentType: string,
+  opts?: { parents?: Buffer[]; metaprotocol?: string; metadata?: Buffer },
+): ScriptChunk[] {
+  const parts: Buffer[] = [];
+  let rem = content;
+  while (rem.length > 0) {
+    parts.push(rem.slice(0, MAX_CHUNK_LEN));
+    rem = rem.slice(MAX_CHUNK_LEN);
+  }
+
+  const chunks: ScriptChunk[] = [];
+  chunks.push(bufToChunk(Buffer.from('ord')));
+  // tag 1 content-type
+  chunks.push(bufToChunk(Buffer.from([1])));
+  chunks.push(bufToChunk(Buffer.from(contentType)));
+  if (opts?.parents?.length) {
+    for (const p of opts.parents) {
+      chunks.push(bufToChunk(Buffer.from([3])));
+      chunks.push(bufToChunk(p));
+    }
+  }
+  if (opts?.metadata?.length) {
+    chunks.push(bufToChunk(Buffer.from([5])));
+    chunks.push(bufToChunk(opts.metadata));
+  }
+  if (opts?.metaprotocol) {
+    chunks.push(bufToChunk(Buffer.from([7])));
+    chunks.push(bufToChunk(Buffer.from(opts.metaprotocol, 'utf8')));
+  }
+  // body separator (empty push at even field index for dogex parser)
+  chunks.push(bufToChunk(Buffer.alloc(0)));
+  for (const part of parts) {
+    chunks.push(bufToChunk(part));
+  }
+  return chunks;
+}
+
+/** 36-byte parent field: txid internal order + index BE (matches dogex InscriptionId::to_bytes). */
+export function inscriptionIdToParentBytes(inscriptionId: string): Buffer {
+  const s = inscriptionId.trim().toLowerCase();
+  const i = s.lastIndexOf('i');
+  if (i < 0) throw new Error(`Invalid inscription id: ${inscriptionId}`);
+  const tx = s.slice(0, i);
+  const idx = s.slice(i + 1);
+  if (tx.length !== 64 || !/^[0-9a-f]+$/.test(tx)) {
+    throw new Error(`Invalid inscription txid: ${inscriptionId}`);
+  }
+  const index = Number.parseInt(idx, 10);
+  if (!Number.isFinite(index) || index < 0) {
+    throw new Error(`Invalid inscription index: ${inscriptionId}`);
+  }
+  const txidInternal = Buffer.from(tx, 'hex').reverse();
+  const indexBe = Buffer.alloc(4);
+  indexBe.writeUInt32BE(index >>> 0, 0);
+  return Buffer.concat([txidInternal, indexBe]);
+}
+
+/**
  * Pull one partial payload from the front of the queue, mirroring the
  * while-loop in doginals.js inscribe().
  */
@@ -341,6 +404,15 @@ export interface SignInscriptionParams {
    * Spec-compliant path for ÐLaunch `buy`: same-tx payment to creator.
    */
   extraRevealPayments?: RevealPaymentOutput[];
+  /**
+   * Parent inscription ids (`txid`i`vout`). When set, builds ordinals-style tag 3
+   * fields so dogex records parent-child provenance (required for Ðclaims).
+   */
+  parents?: string[];
+  /** Metaprotocol string (envelope tag 7), e.g. `dclaims`. */
+  metaprotocol?: string;
+  /** Optional metadata bytes (envelope tag 5). */
+  metadata?: Buffer | Uint8Array;
 }
 
 export interface SignedInscriptionPair {
@@ -394,6 +466,9 @@ export async function signInscriptionTxs(
     inscriptionReceiveAddress: inscriptionReceiveRaw,
     contentType: contentTypeRaw,
     extraRevealPayments = [],
+    parents: parentIds = [],
+    metaprotocol,
+    metadata,
   } = params;
 
   // ── Input validation ────────────────────────────────────────────────────────
@@ -430,14 +505,33 @@ export async function signInscriptionTxs(
   }
 
   // ── Plan the inscription ─────────────────────────────────────────────────────
-  const allChunks = buildInscriptionChunks(contentBuf, contentType);
-  const queue     = [...allChunks];
-  const partial   = extractPartial(queue, true);
-
-  if (queue.length > 0) {
-    throw new Error(
-      'Internal: content did not fit in a single partial. Reduce message size.',
-    );
+  const useTagged =
+    parentIds.length > 0 || Boolean(metaprotocol?.trim()) || Boolean(metadata?.length);
+  const parentBytes = parentIds.map((id) => inscriptionIdToParentBytes(id));
+  const allChunks = useTagged
+    ? buildTaggedInscriptionChunks(contentBuf, contentType, {
+        parents: parentBytes,
+        metaprotocol: metaprotocol?.trim() || undefined,
+        metadata: metadata ? Buffer.from(metadata) : undefined,
+      })
+    : buildInscriptionChunks(contentBuf, contentType);
+  let partial: ScriptChunk[];
+  if (useTagged) {
+    // Tagged envelopes: pack entire script into one partial (JSON claims fit easily).
+    partial = allChunks;
+    if (chunksToBuffer(partial).length > MAX_PAYLOAD_LEN + 200) {
+      throw new Error(
+        'Tagged inscription envelope too large for a single P2SH partial. Reduce payload.',
+      );
+    }
+  } else {
+    const queue = [...allChunks];
+    partial = extractPartial(queue, true);
+    if (queue.length > 0) {
+      throw new Error(
+        'Internal: content did not fit in a single partial. Reduce message size.',
+      );
+    }
   }
 
   const lockScript    = buildLockScript(pubKeyBytes, partial);

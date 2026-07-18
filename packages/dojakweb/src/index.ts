@@ -75,6 +75,28 @@ export {
   rpcViaProxy,
   rpcViaProxyDetailed,
 } from './lib/rpc-proxy-client';
+
+/** Ðclaims — fractional region claims on parent inscriptions. */
+export {
+  createDclaim,
+  createDclaimDeploy,
+  buildClaimPayload,
+  buildDeployPayload,
+  quoteDclaimMint,
+  protocolFeeAmount,
+  inscriptionIdToParentBytes,
+  DCLAIMS_P,
+  DCLAIMS_V,
+  DCLAIMS_CONTENT_TYPE,
+  DEFAULT_PROTOCOL_FEE_BPS,
+} from './lib/dclaims';
+export type {
+  CreateDclaimParams,
+  CreateDclaimDeployParams,
+  DclaimFeeQuote,
+  DclaimInscribeOptions,
+  DclaimRect,
+} from './lib/dclaims';
 export type {
   RpcCredentials,
   RpcChainTipResult,
