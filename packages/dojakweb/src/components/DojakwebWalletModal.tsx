@@ -1769,7 +1769,6 @@ export function DojakwebWalletModal({
       }
     }
     setStep('dashboard');
-    setWalletSwitcherModalOpen(false);
     await browser.refreshBalance({ silent: true });
     return true;
   };
@@ -1777,7 +1776,7 @@ export function DojakwebWalletModal({
   const handleConnectSavedLocalWallet = async (targetAddress: string) => {
     const currentAddr = browser.wallet?.address ?? activeAddress;
     if (targetAddress === currentAddr && walletType === 'browser') {
-      setWalletSwitcherModalOpen(false);
+      setStep('dashboard');
       return;
     }
 
@@ -1823,7 +1822,7 @@ export function DojakwebWalletModal({
       setShowTemporaryBanner(uiFlags.showTemporaryBanner);
       await refreshSavedLocalWallets();
       await browser.refreshBalance({ silent: true });
-      setWalletSwitcherModalOpen(false);
+      setStep('dashboard');
       toast.success(t('modal.toast.accountAdded', { index: String(nextIdx) }));
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : t('modal.errors.connectWallet'));
