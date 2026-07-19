@@ -20,6 +20,10 @@ export { useBrowserWallet, type UseBrowserWalletReturn } from './src/contexts/Br
 export {
   setWalletDataProviderConfig,
   getWalletDataProviderConfig,
+  getFactoryWalletDataProviderConfig,
+  getDefaultWalletDataProviderUrl,
+  isDefaultWalletDataProviderUrl,
+  ensureDefaultWalletDataProvider,
   getIndexerApiBase,
   getWonkyOrdApiBase,
   getDogexCdnBase,
