@@ -10,6 +10,7 @@ import {
   type WalletApprovalSession,
 } from '../../stores/walletApprovalStore';
 import { walletSecretInputProps } from '../../lib/wallet-secret-input';
+import { createDojakwebSessionSecretStore } from '../../lib/dojakweb-biometric';
 
 /**
  * Extension-style approval sheet for host-requested local-browser signing.
@@ -36,11 +37,18 @@ export function WalletApprovalPanel() {
     setUnlockBusy(true);
     setUnlockError(null);
     try {
-      const loaded = await browser.loadWallet(unlockPassword, browser.address || undefined);
+      const secret = unlockPassword.trim();
+      const loaded = await browser.loadWallet(secret, browser.address || undefined);
       if (!loaded?.privateKey) {
         throw new Error('Could not unlock wallet');
       }
       await browser.connect(loaded);
+      // Keep unlocked for this browser tab until disconnect or tab close.
+      try {
+        await createDojakwebSessionSecretStore().saveSecret(secret);
+      } catch {
+        /* best-effort session unlock */
+      }
       setUnlockPassword('');
     } catch (e) {
       setUnlockError(e instanceof Error ? e.message : 'Unlock failed');

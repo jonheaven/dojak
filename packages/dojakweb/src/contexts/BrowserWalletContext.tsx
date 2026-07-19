@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { BrowserWallet, type BrowserWalletSaveOptions } from '../lib/browser-wallet';
 import type { SeedMaterial, WalletData } from '../types/wallet';
 import { walletDataApi } from '../utils/api';
+import { createDojakwebSessionSecretStore } from '../lib/dojakweb-biometric';
 
 export interface UseBrowserWalletReturn {
   connected: boolean;
@@ -78,7 +79,44 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
         }
         const storage = new BrowserWallet();
         const current = localStorage.getItem('dojakweb_wallet_current');
+
+        // Encrypted wallets: stay unlocked for this browser tab/session after first unlock.
+        // Password is held in sessionStorage (or chrome.storage.session) — not localStorage.
         if (current && (await storage.isEncrypted(current))) {
+          let sessionSecret: string | null = null;
+          try {
+            sessionSecret = await createDojakwebSessionSecretStore().getSecret();
+          } catch {
+            sessionSecret = null;
+          }
+          if (!sessionSecret) {
+            return;
+          }
+          try {
+            const loaded = await storage.loadWallet(sessionSecret, current);
+            if (!loaded?.privateKey) {
+              return;
+            }
+            setWallet(loaded);
+            setAddress(loaded.address);
+            setConnected(true);
+            setBalance(0);
+            setBalanceVerified(false);
+            setBalanceError(null);
+            localStorage.removeItem(RESTORE_BLOCK_KEY);
+            try {
+              localStorage.setItem('wallet_type', 'browser');
+            } catch {
+              /* ignore */
+            }
+          } catch {
+            // Wrong/expired session secret — clear so we don't loop on a bad secret.
+            try {
+              await createDojakwebSessionSecretStore().clearSecret();
+            } catch {
+              /* ignore */
+            }
+          }
           return;
         }
 
@@ -165,6 +203,12 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
     setBalanceError(null);
     if (typeof window !== 'undefined') {
       localStorage.setItem(RESTORE_BLOCK_KEY, 'true');
+      // Explicit disconnect ends the unlock session (must re-enter password next time).
+      try {
+        await createDojakwebSessionSecretStore().clearSecret();
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 

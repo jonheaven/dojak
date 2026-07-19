@@ -1297,8 +1297,10 @@ export function DojakwebWalletModal({
     const syncState = async () => {
       setError(null);
 
-      // Browser context unlocks before unified walletType catches up — use it to avoid re-prompting PIN.
-      const browserSessionActive = Boolean(browser.connected && browser.address);
+      // Fully unlocked = session holds private key (not just address/balance UI).
+      const browserSessionActive = Boolean(
+        browser.connected && browser.address && browser.wallet?.privateKey,
+      );
 
       if (!browserSessionActive) {
         setPassword('');
@@ -1383,6 +1385,29 @@ export function DojakwebWalletModal({
       setIsEncryptedWallet(encrypted);
 
       if (encrypted) {
+        // Tab session unlock: reuse password from sessionStorage without re-prompt.
+        try {
+          const sessionSecret = await createDojakwebSessionSecretStore().getSecret();
+          if (sessionSecret) {
+            const loaded = await browser.loadWallet(sessionSecret, current ?? undefined);
+            if (loaded?.privateKey) {
+              await browser.connect(loaded);
+              setActivePassword(sessionSecret);
+              const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, loaded.address);
+              setNeedsBackup(uiFlags.needsBackup);
+              setShowTemporaryBanner(uiFlags.showTemporaryBanner);
+              if (!holdWizardStep) setStep('dashboard');
+              try {
+                setActiveWallet('browser');
+              } catch {
+                /* ignore */
+              }
+              return;
+            }
+          }
+        } catch {
+          /* fall through to unlock UI */
+        }
         setStep('unlock');
         return;
       }
@@ -2300,10 +2325,12 @@ export function DojakwebWalletModal({
 
   useEffect(() => {
     if (isOpen) {
-      setStep(initialStep);
+      // Prefer staying on dashboard when local browser session already holds the key.
+      const unlocked = Boolean(browser.wallet?.privateKey && browser.address);
+      setStep(unlocked ? 'dashboard' : initialStep);
       setSettingsTab(initialSettingsTab);
     }
-  }, [isOpen, initialStep, initialSettingsTab, openNonce]);
+  }, [isOpen, initialStep, initialSettingsTab, openNonce, browser.wallet?.privateKey, browser.address]);
 
   const handleDogecoinConfDrop = async (file: File) => {
     const text = await file.text();
