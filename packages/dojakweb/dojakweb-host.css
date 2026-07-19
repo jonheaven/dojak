@@ -1106,6 +1106,255 @@ html[data-theme="light"] .wallet-input::placeholder,
   -webkit-overflow-scrolling: touch;
 }
 
+/*
+ * In-wallet signature / signing modal.
+ * MUST use host CSS (not Tailwind utilities) so embeds always get position:absolute
+ * even when the host does not purge-scan wallet.js for inset-0/absolute classes.
+ * Covers the wallet chassis only — never enters document flow or pushes dashboard content.
+ */
+.ds-wallet-dashboard {
+  position: relative;
+  isolation: isolate;
+}
+
+.ds-wallet-dashboard.ds-wallet-approval-open {
+  overflow: hidden !important;
+}
+
+/* Kill scroll/interaction on the real wallet UI while the signing modal is open */
+.ds-wallet-dashboard.ds-wallet-approval-open > :not(.ds-wallet-approval) {
+  pointer-events: none !important;
+  user-select: none;
+}
+
+.ds-wallet-approval {
+  position: absolute !important;
+  inset: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  z-index: 200 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  /* Do not participate in flex layout of the chassis */
+  flex: 0 0 auto !important;
+  align-self: stretch !important;
+  overflow: hidden !important;
+  pointer-events: auto !important;
+  background: rgba(10, 10, 12, 0.98);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: #f5f5f5;
+  border-radius: inherit;
+}
+
+.ds-wallet-approval__header {
+  flex: 0 0 auto;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ds-wallet-approval__eyebrow {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(251, 191, 36, 0.9);
+}
+
+.ds-wallet-approval__title {
+  margin: 0.35rem 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
+}
+
+.ds-wallet-approval__desc {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.ds-wallet-approval__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ds-wallet-approval__details {
+  margin: 0;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ds-wallet-approval__detail-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.ds-wallet-approval__detail-label {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.ds-wallet-approval__detail-value {
+  min-width: 0;
+  text-align: right;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  word-break: break-all;
+}
+
+.ds-wallet-approval__unlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.ds-wallet-approval__unlock-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fef3c7;
+}
+
+.ds-wallet-approval__input {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.65rem 0.75rem;
+  font-size: 0.875rem;
+  color: #fff;
+  outline: none;
+}
+
+.ds-wallet-approval__input:focus {
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+.ds-wallet-approval__input:disabled {
+  opacity: 0.55;
+}
+
+.ds-wallet-approval__error {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: #f87171;
+}
+
+.ds-wallet-approval__btn-unlock {
+  width: 100%;
+  border: none;
+  border-radius: 0.5rem;
+  background: #f59e0b;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #000;
+  cursor: pointer;
+}
+
+.ds-wallet-approval__btn-unlock:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ds-wallet-approval__session {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.1);
+  font-size: 0.6875rem;
+  color: rgba(167, 243, 208, 0.9);
+}
+
+.ds-wallet-approval__tx-error {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+  font-size: 0.75rem;
+  color: #fca5a5;
+}
+
+.ds-wallet-approval__hint {
+  margin: 0;
+  font-size: 0.625rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.ds-wallet-approval__footer {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ds-wallet-approval__btn-reject,
+.ds-wallet-approval__btn-approve {
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.ds-wallet-approval__btn-reject {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ds-wallet-approval__btn-approve {
+  background: linear-gradient(90deg, #fbbf24, #d97706);
+  color: #000;
+  font-weight: 700;
+}
+
+.ds-wallet-approval__btn-reject:disabled,
+.ds-wallet-approval__btn-approve:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* PIN numpad — telephone dialpad (no Tailwind grid in wallet bundle) */
 .ds-pin-numpad {
   display: flex;

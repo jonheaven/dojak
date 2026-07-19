@@ -2853,7 +2853,11 @@ export function DojakwebWalletModal({
                       : MODAL_SURFACE,
                   )}
                 >
-                  {/* Host dApp signing requests (extension-style approve sheet) */}
+                  {/*
+                    Host dApp signing: in-wallet absolute modal (host CSS .ds-wallet-approval).
+                    Must stay a direct child of .ds-wallet-dashboard so it covers the chassis
+                    without entering the scrollable body or pushing dashboard layout.
+                  */}
                   <WalletApprovalPanel />
                   <div className="shrink-0 border-b border-white/[0.08] px-4 pb-3 pt-4">
                     <div className="flex items-center justify-between gap-3">
