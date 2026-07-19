@@ -18,10 +18,8 @@
 import * as bitcoin from 'bitcoinjs-lib';
 import * as secp from '@noble/secp256k1';
 import { decodePrivateKeyFromWIF } from 'doge-sdk';
-import { MIN_FEE_RATE_KOINU_PER_BYTE } from './broadcast/dogecoinTxBroadcast';
 import { browserRpcProxyAbsoluteUrl, rpcViaProxy } from './rpc-proxy-client';
 import { broadcastUtxoTx } from './utxo-tools';
-import { getFeeEstimate } from '../utils/txBroadcaster';
 
 // ── Dogecoin network params for bitcoinjs-lib ────────────────────────────────
 export const DOGE_NETWORK: bitcoin.Network = {
@@ -281,20 +279,11 @@ const BUY_FEE_SIZE_PADDING_BYTES = 32;
 
 /**
  * Fee rate for marketplace buy / dummy-setup txs (koinu per byte).
- * Uses the same Core `estimatesmartfee` path as the inscribe flow (`getFeeEstimate`, koinu/kB),
- * converts to koinu/byte, adds inclusion headroom, clamps to relay minimum, and never goes below
- * `DEFAULT_FEE_RATE` so calm-network behavior stays at the historical 10× relay default.
+ * Uses Command.dog inclusion policy (≥10× relay) with the same estimatesmartfee path as inscribe.
  */
 export async function resolveBuyFeeRateKoinuPerByte(targetBlocks = 6): Promise<number> {
-  const koinuPerKb = await getFeeEstimate(targetBlocks);
-  const networkPerByte = Math.max(
-    MIN_FEE_RATE_KOINU_PER_BYTE,
-    Math.ceil(koinuPerKb / 1000),
-  );
-  const withHeadroom = Math.ceil((networkPerByte * 115) / 100);
-  const withFloor = Math.max(withHeadroom, DEFAULT_FEE_RATE);
-  const cap = 50_000;
-  return Math.min(withFloor, cap);
+  const { resolveInclusionFeeRateKoinuPerByte } = await import('./fees/dogecoinFeePolicy');
+  return resolveInclusionFeeRateKoinuPerByte(targetBlocks);
 }
 export const BLOCKCHAIR_URL     = 'https://api.blockchair.com/dogecoin';
 export const NOSTR_RELAY_URL    = 'wss://relay.damus.io';

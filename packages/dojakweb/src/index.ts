@@ -265,6 +265,17 @@ export {
 } from './lib/doginal-psdt';
 export type { SendInscriptionPsbtDraft } from './lib/doginal-psdt';
 
+export {
+  MIN_RELAY_KOINU_PER_KB,
+  MIN_RELAY_KOINU_PER_BYTE,
+  INCLUSION_FLOOR_KOINU_PER_KB,
+  INCLUSION_FLOOR_KOINU_PER_BYTE,
+  resolveInclusionFeeRateKoinuPerKb,
+  resolveInclusionFeeRateKoinuPerByte,
+  clampKoinuPerKb,
+  clampKoinuPerByte,
+} from './lib/fees/dogecoinFeePolicy';
+
 // Nostr order-book client
 export {
   publishListingToNostr,

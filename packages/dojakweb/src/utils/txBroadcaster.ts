@@ -3,7 +3,11 @@ import * as dogeSdk from 'doge-sdk';
 import * as bitcoin from 'bitcoinjs-lib';
 import { browserRpcProxyAbsoluteUrl, fetchRpcSmartFeeKoinuPerKb } from '../lib/rpc-proxy-client';
 import { loadBroadcastConfig } from '../lib/broadcast/dogecoinTxBroadcast';
-import { COMMAND_DOG_FEE_ESTIMATE_PATH, getCommandDogApiBaseUrl } from './api';
+import {
+  clampKoinuPerKb,
+  INCLUSION_FLOOR_KOINU_PER_KB,
+  resolveInclusionFeeRateKoinuPerKb,
+} from '../lib/fees/dogecoinFeePolicy';
 
 // Use the EXACT same network configuration as MyDoge wallet
 export const dogecoin = {
@@ -402,53 +406,25 @@ export async function broadcastBatchSend(
   }
 }
 
-const DEFAULT_FEE_KOINU_PER_KB = 100_000;
-
 /**
  * Inscription / wallet fee rate in koinu per kB (same unit as the inscribe UI).
- * Prefers **Command.dog** `GET /v1/chain/fee-estimate` (Core-backed, no browser RPC proxy).
- * Falls back to Wallet Settings RPC via the same-origin proxy when Command.dog is unreachable or returns no feerate.
+ * Always ≥ inclusion floor (10× Core min relay). Prefers Command.dog fee-estimate.
  */
 export async function getFeeEstimate(targetBlocks = 6): Promise<number> {
-  if (typeof window === 'undefined') return DEFAULT_FEE_KOINU_PER_KB;
+  if (typeof window === 'undefined') return INCLUSION_FLOOR_KOINU_PER_KB;
 
-  try {
-    const base = getCommandDogApiBaseUrl().trim().replace(/\/$/, '');
-    if (base.length > 0) {
-      const url = `${base}${COMMAND_DOG_FEE_ESTIMATE_PATH}?blocks=${encodeURIComponent(String(targetBlocks))}`;
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (res.ok) {
-        const data = (await res.json()) as { koinuPerKb?: unknown; source?: string; blocks?: unknown };
-        const raw = data.koinuPerKb;
-        const k =
-          typeof raw === 'number' && Number.isFinite(raw) && raw > 0
-            ? Math.floor(raw)
-            : typeof raw === 'string' && Number.isFinite(Number.parseFloat(raw)) && Number.parseFloat(raw) > 0
-              ? Math.floor(Number.parseFloat(raw))
-              : null;
-        if (k != null) {
-          console.log('[dojakweb:fee] Command.dog fee estimate', {
-            koinuPerKb: k,
-            source: data.source,
-            blocks: data.blocks ?? targetBlocks,
-          });
-          return k;
-        }
-      } else {
-        console.warn('[dojakweb:fee] Command.dog fee-estimate HTTP', res.status);
-      }
-    }
-  } catch (e) {
-    console.warn('[dojakweb:fee] Command.dog fee-estimate error:', e);
+  const fromApi = await resolveInclusionFeeRateKoinuPerKb(targetBlocks);
+  if (fromApi > INCLUSION_FLOOR_KOINU_PER_KB) {
+    return fromApi;
   }
 
-  if (!browserRpcProxyAbsoluteUrl()) return DEFAULT_FEE_KOINU_PER_KB;
+  if (!browserRpcProxyAbsoluteUrl()) return fromApi;
 
   const cfg = loadBroadcastConfig();
   const url = cfg.rpcUrl?.trim();
   const user = cfg.rpcUser?.trim();
   const pass = cfg.rpcPass;
-  if (!url || !user || pass === undefined || pass === '') return DEFAULT_FEE_KOINU_PER_KB;
+  if (!url || !user || pass === undefined || pass === '') return fromApi;
 
   try {
     const r = await fetchRpcSmartFeeKoinuPerKb(
@@ -461,11 +437,11 @@ export async function getFeeEstimate(targetBlocks = 6): Promise<number> {
         blocks: r.blocks,
         source: r.source,
       });
-      return r.koinuPerKb;
+      return clampKoinuPerKb(r.koinuPerKb);
     }
     console.warn('[dojakweb:fee] RPC fee estimate failed:', r.error);
   } catch (e) {
     console.warn('[dojakweb:fee] RPC fee estimate error:', e);
   }
-  return DEFAULT_FEE_KOINU_PER_KB;
+  return fromApi;
 }
