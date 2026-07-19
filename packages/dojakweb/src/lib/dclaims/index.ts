@@ -125,7 +125,16 @@ export function buildClaimPayload(p: CreateDclaimParams): Record<string, unknown
   };
   if (p.deploy) body.deploy = p.deploy.trim().toLowerCase();
   if (p.note) body.note = p.note.slice(0, 200);
-  if (p.attributes) body.attributes = p.attributes;
+  if (p.attributes) {
+    body.attributes = p.attributes;
+    // Promote common link keys for indexers that store top-level `uri`.
+    const uri =
+      (typeof p.attributes.uri === 'string' && p.attributes.uri) ||
+      (typeof p.attributes.url === 'string' && p.attributes.url) ||
+      (typeof p.attributes.website === 'string' && p.attributes.website) ||
+      '';
+    if (uri.trim()) body.uri = String(uri).trim().slice(0, 500);
+  }
   return body;
 }
 
