@@ -14,6 +14,8 @@ const REQUIRED = [
   'useUnifiedWallet',
   'setWalletDataProviderConfig',
   'getIndexerApiBase',
+  'requestWalletApproval',
+  'openWalletDrawer',
 ];
 
 if (!fs.existsSync(distWallet)) {

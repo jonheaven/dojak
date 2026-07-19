@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { WalletIcon } from '@heroicons/react/24/solid';
 import DojakwebWalletModal from './DojakwebWalletModal';
 import WalletDrawer from './WalletDrawer';
@@ -8,6 +8,10 @@ import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { useDxHostStore } from '../stores/dxHostStore';
 import { useIsMobileWallet } from '../hooks/useMediaQuery';
+import {
+  rejectWalletApproval,
+  walletApprovalStore,
+} from '../stores/walletApprovalStore';
 
 export interface ConnectWalletButtonProps {
   className?: string;
@@ -25,11 +29,28 @@ export function ConnectWalletButton({
   const { connected, address } = useUnifiedWallet();
   const { t } = useDojakwebI18n();
   const dxOpenSignal = useDxHostStore((s) => s.openWalletSignal);
+  const approvalPending = useSyncExternalStore(
+    walletApprovalStore.subscribe,
+    walletApprovalStore.getSnapshot,
+    walletApprovalStore.getServerSnapshot,
+  );
   const isMobile = useIsMobileWallet();
 
   useEffect(() => {
     if (dxOpenSignal > 0) setOpen(true);
   }, [dxOpenSignal]);
+
+  // Host signing requests always force the drawer open (extension popup pattern).
+  useEffect(() => {
+    if (approvalPending) setOpen(true);
+  }, [approvalPending?.id]);
+
+  const handleClose = useCallback(() => {
+    if (walletApprovalStore.getSnapshot()) {
+      rejectWalletApproval('User closed the wallet');
+    }
+    setOpen(false);
+  }, []);
 
   const buttonLabel =
     connected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : t('wallet.connect');
@@ -70,6 +91,12 @@ export function ConnectWalletButton({
                 aria-hidden="true"
               />
             ) : null}
+            {approvalPending ? (
+              <span
+                className="absolute left-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-[color:var(--ds-accent-solid)] animate-pulse"
+                aria-hidden="true"
+              />
+            ) : null}
           </>
         ) : (
           <>
@@ -77,20 +104,23 @@ export function ConnectWalletButton({
             {connected && address ? (
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
             ) : null}
+            {approvalPending ? (
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400 animate-pulse" aria-hidden="true" />
+            ) : null}
           </>
         )}
       </button>
       {mode === 'drawer' ? (
         <WalletDrawer
           isOpen={open}
-          onClose={() => setOpen(false)}
+          onClose={handleClose}
           initialStep={initialStep}
           isDark={isDark}
         />
       ) : (
         <DojakwebWalletModal
           isOpen={open}
-          onClose={() => setOpen(false)}
+          onClose={handleClose}
           isDark={isDark}
           initialStep={initialStep}
           mode="modal"

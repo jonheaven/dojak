@@ -23,6 +23,16 @@ export { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 export type { UseMyDogeWalletReturn } from '../contexts/MyDogeWalletContext';
 export { useBrowserWallet, type UseBrowserWalletReturn } from '../contexts/BrowserWalletContext';
 
+/** Host apps: open drawer + dynamic signing approval (MetaMask-style). */
+export {
+  requestWalletApproval,
+  openWalletDrawer,
+  WalletApprovalCancelledError,
+  type WalletApprovalRequest,
+  type WalletApprovalDetail,
+  type WalletApprovalSession,
+} from '../stores/walletApprovalStore';
+
 /** Ðclaims — host apps sign deploy/claim via browser wallet. */
 export {
   createDclaim,

@@ -41,6 +41,7 @@ import { WalletMenuItems } from './wallet/WalletMenuItems';
 import { WalletAccountSwitcherPanel } from './wallet/WalletAccountSwitcherPanel';
 import { WalletPinNumpad } from './wallet/WalletPinNumpad';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
+import { WalletApprovalPanel } from './wallet/WalletApprovalPanel';
 import { WalletConnectChooser } from './WalletConnectChooser';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { walletCredentialInputProps, walletSecretDecoyFields, walletSecretInputProps } from '../lib/wallet-secret-input';
@@ -2805,6 +2806,8 @@ export function DojakwebWalletModal({
                       : MODAL_SURFACE,
                   )}
                 >
+                  {/* Host dApp signing requests (extension-style approve sheet) */}
+                  <WalletApprovalPanel />
                   <div className="shrink-0 border-b border-white/[0.08] px-4 pb-3 pt-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-2">

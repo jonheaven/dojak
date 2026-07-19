@@ -30,6 +30,7 @@ import type {
   WalletData,
 } from '../types/wallet';
 import { UnifiedWalletContext } from './unifiedWalletInternals';
+import { requestWalletApproval } from '../stores/walletApprovalStore';
 
 interface DojakState {
   connected: boolean;
@@ -1022,28 +1023,44 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         if (!browser.connected || !browser.address) {
           throw new Error('Browser wallet not connected');
         }
-        const utxosRaw = await getAddressUtxos(browser.address);
-        if (utxosRaw.length === 0) {
-          throw new Error('No spendable UTXOs for this address. Wait for a deposit to confirm.');
-        }
-        const utxos = utxosRaw.map((u) => ({
-          txid: u.txid,
-          vout: u.vout,
-          value: u.value,
-          scriptPubKey: u.scriptPubKey,
-        }));
-        const storage = new BrowserWallet();
-        return storage.sendTransaction(recipientAddress, amount, {
-          // If the wallet is already unlocked in-session (BrowserWalletContext holds `wallet.privateKey`),
-          // avoid re-loading encrypted storage without a password.
-          wallet: browser.wallet ?? undefined,
-          address: browser.address,
-          utxos,
-          broadcastTx,
-          minConfirmations: 0,
-          includeInscribedUtxos: false,
-          opReturnMessage,
-        });
+        // Extension-style: open drawer and require explicit Approve before signing.
+        const txid = (await requestWalletApproval({
+          title: 'Send DOGE',
+          description: 'Approve to sign and broadcast this transfer from your Local Browser Wallet.',
+          details: [
+            { label: 'To', value: recipientAddress },
+            { label: 'Amount', value: `${amount} DOGE` },
+            ...(opReturnMessage ? [{ label: 'Memo', value: opReturnMessage }] : []),
+          ],
+          approveLabel: 'Approve send',
+          onApprove: async ({ privateKeyWif, address }) => {
+            const utxosRaw = await getAddressUtxos(address);
+            if (utxosRaw.length === 0) {
+              throw new Error('No spendable UTXOs for this address. Wait for a deposit to confirm.');
+            }
+            const utxos = utxosRaw.map((u) => ({
+              txid: u.txid,
+              vout: u.vout,
+              value: u.value,
+              scriptPubKey: u.scriptPubKey,
+            }));
+            const storage = new BrowserWallet();
+            return storage.sendTransaction(recipientAddress, amount, {
+              wallet: {
+                ...(browser.wallet || { address, network: 'mainnet' as const }),
+                privateKey: privateKeyWif,
+                address,
+              },
+              address,
+              utxos,
+              broadcastTx,
+              minConfirmations: 0,
+              includeInscribedUtxos: false,
+              opReturnMessage,
+            });
+          },
+        })) as string;
+        return txid;
       }
 
       if (walletType === 'ledger') {
