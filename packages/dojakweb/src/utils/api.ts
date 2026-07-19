@@ -729,25 +729,30 @@ export const walletDataApi = {
 
   fetchInscriptions: async (address: string): Promise<MyDogeInscription[]> => {
     if (isCommandDogWalletDataProvider()) {
-      // command.dog indexer (Kabosu): fetch inscriptions owned by this address.
+      // dogex chain truth: GET /api/doginals/address/:addr/inscriptions
       try {
         const indexerBase = getIndexerApiBase().replace(/\/+$/, '');
         const res = await fetch(
-          `${indexerBase}/v1/inscriptions?owner=${encodeURIComponent(address)}&limit=100`,
+          `${indexerBase}/api/doginals/address/${encodeURIComponent(address)}/inscriptions?limit=100`,
         );
         if (!res.ok) return [];
         const payload = await res.json() as any;
-        const rows: any[] = Array.isArray(payload?.items) ? payload.items
-          : Array.isArray(payload?.data) ? payload.data
-          : Array.isArray(payload) ? payload
-          : [];
+        const rows: any[] = Array.isArray(payload?.inscriptions)
+          ? payload.inscriptions
+          : Array.isArray(payload?.items)
+            ? payload.items
+            : Array.isArray(payload?.data)
+              ? payload.data
+              : Array.isArray(payload)
+                ? payload
+                : [];
         return rows.map((row: any) => ({
-          inscriptionId: row.inscriptionId ?? row.id ?? '',
-          inscriptionNumber: row.inscriptionNumber ?? row.number ?? 0,
+          inscriptionId: row.inscriptionId ?? row.id ?? row.inscription_id ?? '',
+          inscriptionNumber: row.inscriptionNumber ?? row.number ?? row.inscription_number ?? 0,
           contentType: row.contentType ?? row.content_type ?? 'image/png',
           contentLength: row.contentLength ?? row.content_length,
           content: null,
-          ownerAddress: row.ownerAddress ?? row.owner ?? address,
+          ownerAddress: row.ownerAddress ?? row.owner ?? row.address ?? address,
           collectionSymbol: row.collectionId ?? row.collectionSlug ?? '',
           collectionName: row.collectionName ?? '',
           itemName: row.itemName ?? row.name ?? '',
