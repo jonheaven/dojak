@@ -1687,19 +1687,21 @@ export function DojakwebWalletModal({
   };
 
   const handleSetPassword = async () => {
-    if (password !== confirmPassword) {
-      setError(t('modal.errors.passwordsNoMatch'));
-      return;
-    }
     if (!password.trim()) {
-      setError(t('modal.errors.enterPassword'));
+      setError(
+        newPrimarySecret === 'pin' ? t('modal.errors.pinInvalid') : t('modal.errors.enterPassword'),
+      );
       return;
     }
     if (newPrimarySecret === 'pin') {
+      // PIN is entered once on a single numpad — no confirm pad.
       if (!/^\d{6,}$/.test(password.trim())) {
         setError(t('modal.errors.pinInvalid'));
         return;
       }
+    } else if (password !== confirmPassword) {
+      setError(t('modal.errors.passwordsNoMatch'));
+      return;
     }
     setIsBusy(true);
     setError(null);
@@ -3445,7 +3447,11 @@ export function DojakwebWalletModal({
                           <div className="flex rounded-xl border border-white/10 bg-[#0A0A0A] p-1">
                             <button
                               type="button"
-                              onClick={() => setNewPrimarySecret('password')}
+                              onClick={() => {
+                                setNewPrimarySecret('password');
+                                setPassword('');
+                                setConfirmPassword('');
+                              }}
                               className={cx(
                                 'min-w-0 flex-1 rounded-lg py-2 px-1 text-center text-[11px] font-semibold leading-tight sm:text-xs transition',
                                 newPrimarySecret === 'password' ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'
@@ -3455,7 +3461,11 @@ export function DojakwebWalletModal({
                             </button>
                             <button
                               type="button"
-                              onClick={() => setNewPrimarySecret('pin')}
+                              onClick={() => {
+                                setNewPrimarySecret('pin');
+                                setPassword('');
+                                setConfirmPassword('');
+                              }}
                               className={cx(
                                 'min-w-0 flex-1 rounded-lg py-2 px-1 text-center text-[11px] font-semibold leading-tight sm:text-xs transition',
                                 newPrimarySecret === 'pin' ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'
@@ -3491,82 +3501,90 @@ export function DojakwebWalletModal({
                           <span>{t('modal.password.biometricHint')}</span>
                         </label>
 
-                        <div className="block text-sm text-[#E5E5E5]">
-                          <span className="mb-3 block text-center">{t('modal.password.enter')}</span>
-                          {newPrimarySecret === 'pin' ? (
+                        {newPrimarySecret === 'pin' ? (
+                          <div className="block text-sm text-[#E5E5E5]">
+                            <span className="mb-3 block text-center">{t('modal.password.enterPin')}</span>
+                            {/* Single pad only — never stack enter + confirm numpads. */}
                             <WalletPinNumpad
                               value={password}
                               onChange={setPassword}
                               disabled={isBusy}
                               minLength={6}
                               maxLength={12}
-                              submitLabel={t('modal.password.confirm')}
-                              ariaLabel={t('modal.password.enter')}
-                            />
-                          ) : (
-                            <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
-                              <input
-                                type={showPassword ? 'text' : 'password'}
-                                value={password}
-                                onChange={(event) => setPassword(event.target.value)}
-                                className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
-                                {...walletSecretInputProps('dojakweb-new-secret')}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword((value) => !value)}
-                                className="px-4 text-white/65 transition hover:text-white"
-                                aria-label={showPassword ? t('modal.aria.hidePassword') : t('modal.aria.showPassword')}
-                              >
-                                {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="block text-sm text-[#E5E5E5]">
-                          <span className="mb-3 block text-center">{t('modal.password.confirm')}</span>
-                          {newPrimarySecret === 'pin' ? (
-                            <WalletPinNumpad
-                              value={confirmPassword}
-                              onChange={setConfirmPassword}
-                              disabled={isBusy}
-                              minLength={6}
-                              maxLength={12}
                               onSubmit={() => {
-                                if (!isBusy) void handleSetPassword();
+                                if (!isBusy && /^\d{6,}$/.test(password.trim())) {
+                                  void handleSetPassword();
+                                }
                               }}
-                              submitLabel={isBusy ? t('modal.password.set') : t('modal.password.set')}
-                              ariaLabel={t('modal.password.confirm')}
+                              submitLabel={isBusy ? t('modal.password.setting') : t('modal.password.setPin')}
+                              ariaLabel={t('modal.password.enterPin')}
                             />
-                          ) : (
-                            <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
-                              <input
-                                type={showConfirmPassword ? 'text' : 'password'}
-                                value={confirmPassword}
-                                onChange={(event) => setConfirmPassword(event.target.value)}
-                                className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
-                                {...walletSecretInputProps('dojakweb-confirm-secret')}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword((value) => !value)}
-                                className="px-4 text-white/65 transition hover:text-white"
-                                aria-label={showConfirmPassword ? t('modal.aria.hidePassword') : t('modal.aria.showPassword')}
-                              >
-                                {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                              </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="block text-sm text-[#E5E5E5]">
+                              <span className="mb-2 block">{t('modal.password.enter')}</span>
+                              <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
+                                <input
+                                  type={showPassword ? 'text' : 'password'}
+                                  value={password}
+                                  onChange={(event) => setPassword(event.target.value)}
+                                  className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
+                                  {...walletSecretInputProps('dojakweb-new-secret')}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPassword((value) => !value)}
+                                  className="px-4 text-white/65 transition hover:text-white"
+                                  aria-label={showPassword ? t('modal.aria.hidePassword') : t('modal.aria.showPassword')}
+                                >
+                                  {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                </button>
+                              </div>
                             </div>
-                          )}
-                        </div>
+
+                            <div className="block text-sm text-[#E5E5E5]">
+                              <span className="mb-2 block">{t('modal.password.confirm')}</span>
+                              <div className="flex items-center rounded-xl border border-white/10 bg-[#0A0A0A] focus-within:border-[#FCD34D]">
+                                <input
+                                  type={showConfirmPassword ? 'text' : 'password'}
+                                  value={confirmPassword}
+                                  onChange={(event) => setConfirmPassword(event.target.value)}
+                                  className="w-full bg-transparent px-4 py-3 text-white outline-none placeholder:text-white/35"
+                                  {...walletSecretInputProps('dojakweb-confirm-secret')}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowConfirmPassword((value) => !value)}
+                                  className="px-4 text-white/65 transition hover:text-white"
+                                  aria-label={
+                                    showConfirmPassword ? t('modal.aria.hidePassword') : t('modal.aria.showPassword')
+                                  }
+                                >
+                                  {showConfirmPassword ? (
+                                    <EyeSlashIcon className="h-5 w-5" />
+                                  ) : (
+                                    <EyeIcon className="h-5 w-5" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
 
                         <div className="flex items-center justify-between gap-3">
                           <Button type="button" onClick={handleSkipPassword} className={cx('min-w-32', SECONDARY_BUTTON)}>
                             {t('modal.password.skip')}
                           </Button>
-                          <Button type="submit" disabled={isBusy || !password || !confirmPassword} className={cx('min-w-40', PRIMARY_BUTTON)}>
-                            {t('modal.password.set')}
-                          </Button>
+                          {newPrimarySecret === 'pin' ? null : (
+                            <Button
+                              type="submit"
+                              disabled={isBusy || !password || !confirmPassword}
+                              className={cx('min-w-40', PRIMARY_BUTTON)}
+                            >
+                              {t('modal.password.set')}
+                            </Button>
+                          )}
                         </div>
                       </form>
                     )}
