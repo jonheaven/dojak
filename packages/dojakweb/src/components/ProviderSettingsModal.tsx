@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useConfig, ProviderType } from '../utils/providers/ConfigProvider';
-import { getDefaultWalletDataProviderUrl, WalletDataProviderType } from '../utils/api';
+import {
+  getDefaultWalletDataProviderUrl,
+  isDefaultWalletDataProviderUrl,
+  type WalletDataProviderType,
+} from '../utils/api';
 import { getInscriptionConfig, setInscriptionConfig, type InscriptionMarker } from '../utils/inscription-settings';
 import { getFeeSettings, setFeeSettings, type FeeSettings } from '../utils/fee-settings';
 import { toast } from 'sonner';
@@ -22,7 +26,12 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
 
   const [selectedType, setSelectedType] = useState<ProviderType>(config.type);
   const [walletDataProvider, setWalletDataProvider] = useState<WalletDataProviderType>(config.walletDataProvider || 'mydoge');
-  const [walletDataProviderUrl, setWalletDataProviderUrl] = useState(config.walletDataProviderUrl || getDefaultWalletDataProviderUrl('mydoge'));
+  const [walletDataProviderUrl, setWalletDataProviderUrl] = useState(() => {
+    const provider = config.walletDataProvider || 'mydoge';
+    return isDefaultWalletDataProviderUrl(provider, config.walletDataProviderUrl)
+      ? ''
+      : (config.walletDataProviderUrl || '');
+  });
   const [customUrl, setCustomUrl] = useState(config.url || '');
   const [customUsername, setCustomUsername] = useState(config.username || '');
   const [customPassword, setCustomPassword] = useState(config.password || '');
@@ -41,8 +50,13 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
   useEffect(() => {
     if (isOpen) {
       setSelectedType(config.type);
-      setWalletDataProvider(config.walletDataProvider || 'mydoge');
-      setWalletDataProviderUrl(config.walletDataProviderUrl || getDefaultWalletDataProviderUrl(config.walletDataProvider || 'mydoge'));
+      const provider = config.walletDataProvider || 'mydoge';
+      setWalletDataProvider(provider);
+      setWalletDataProviderUrl(
+        isDefaultWalletDataProviderUrl(provider, config.walletDataProviderUrl)
+          ? ''
+          : (config.walletDataProviderUrl || ''),
+      );
       setCustomUrl(config.url || '');
       setCustomUsername(config.username || '');
       setCustomPassword(config.password || '');
@@ -62,7 +76,8 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
 
   const handleWalletProviderChange = (nextProvider: WalletDataProviderType) => {
     setWalletDataProvider(nextProvider);
-    setWalletDataProviderUrl(getDefaultWalletDataProviderUrl(nextProvider));
+    // Empty = use built-in default for this provider (no custom API URL stored).
+    setWalletDataProviderUrl('');
   };
 
   const handleTest = async () => {
@@ -162,10 +177,13 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
                   type="url"
                   value={walletDataProviderUrl}
                   onChange={(e) => setWalletDataProviderUrl(e.target.value)}
-                  placeholder="https://api.mydoge.com"
+                  placeholder={getDefaultWalletDataProviderUrl(walletDataProvider)}
                   className="w-full"
                 />
-                <p className="text-xs text-text-tertiary mt-1">{t('providerModal.gearHint')}</p>
+                <p className="text-xs text-text-tertiary mt-1">
+                  Leave blank to use the built-in default ({getDefaultWalletDataProviderUrl(walletDataProvider)}).{' '}
+                  {t('providerModal.gearHint')}
+                </p>
               </div>
             </div>
 

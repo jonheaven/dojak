@@ -92,7 +92,14 @@ import { decryptText, encryptText, pbkdf2IterationsForSecretStrength } from '../
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { toast } from 'sonner';
 import type { SeedMaterial, WalletData, WalletType } from '../types/wallet';
-import { walletDataApi, getWalletDataProviderConfig, setWalletDataProviderConfig, getIndexerApiBase } from '../utils/api';
+import {
+  walletDataApi,
+  getWalletDataProviderConfig,
+  setWalletDataProviderConfig,
+  getIndexerApiBase,
+  getDefaultWalletDataProviderUrl,
+  isDefaultWalletDataProviderUrl,
+} from '../utils/api';
 import { fetchDogexIndexerHealth } from '../lib/dogex-indexer-health';
 import { browserRpcProxyAbsoluteUrl, fetchRpcDetailedHealth } from '../lib/rpc-proxy-client';
 import {
@@ -2111,7 +2118,12 @@ export function DojakwebWalletModal({
   const openSettings = () => {
     const dp = getWalletDataProviderConfig();
     setSettingsProvider(dp.walletDataProvider);
-    setSettingsCustomUrl(dp.walletDataProviderUrl || '');
+    // Leave custom URL blank when using the built-in provider default (MyDoge etc.).
+    setSettingsCustomUrl(
+      isDefaultWalletDataProviderUrl(dp.walletDataProvider, dp.walletDataProviderUrl)
+        ? ''
+        : (dp.walletDataProviderUrl || ''),
+    );
     setSettingsIndexerApiBase(dp.indexerApiBase || '');
     setSettingsDogexCdnBase(dp.dogexCdnBase || '');
     setSettingsMergeInuBits(dp.mergeInuBitsInscriptions !== false);
@@ -2305,9 +2317,11 @@ export function DojakwebWalletModal({
   }, [toast, t]);
 
   const handleSaveSettings = () => {
+    // Empty custom URL → store no override (use MyDoge / provider built-in).
+    const customUrl = settingsCustomUrl.trim();
     setWalletDataProviderConfig({
       walletDataProvider: settingsProvider,
-      walletDataProviderUrl: settingsCustomUrl || undefined,
+      walletDataProviderUrl: customUrl || undefined,
       indexerApiBase: settingsIndexerApiBase.trim() || undefined,
       dogexCdnBase: settingsDogexCdnBase.trim() || undefined,
       mergeInuBitsInscriptions: settingsMergeInuBits,
@@ -5563,7 +5577,11 @@ export function DojakwebWalletModal({
                                   <button
                                     key={opt.id}
                                     type="button"
-                                    onClick={() => setSettingsProvider(opt.id)}
+                                    onClick={() => {
+                                      setSettingsProvider(opt.id);
+                                      // Switching provider clears custom URL → built-in default for that provider.
+                                      setSettingsCustomUrl('');
+                                    }}
                                     className={cx(
                                       'flex-1 rounded-lg border px-3 py-2 text-left transition',
                                       settingsProvider === opt.id
@@ -5582,7 +5600,7 @@ export function DojakwebWalletModal({
                               <input
                                 value={settingsCustomUrl}
                                 onChange={e => setSettingsCustomUrl(e.target.value)}
-                                placeholder="Custom API URL (optional)"
+                                placeholder={`Custom API URL (optional) — default ${getDefaultWalletDataProviderUrl(settingsProvider)}`}
                                 className={cx(INPUT_CLASS, 'mt-2 text-xs')}
                               />
                               {(settingsProvider === 'dogex' || settingsProvider === 'commanddog') && (

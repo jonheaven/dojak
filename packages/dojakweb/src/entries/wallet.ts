@@ -55,6 +55,10 @@ export type {
 export {
   setWalletDataProviderConfig,
   getWalletDataProviderConfig,
+  getFactoryWalletDataProviderConfig,
+  getDefaultWalletDataProviderUrl,
+  isDefaultWalletDataProviderUrl,
+  ensureDefaultWalletDataProvider,
   getIndexerApiBase,
   getWonkyOrdApiBase,
   getDogexCdnBase,

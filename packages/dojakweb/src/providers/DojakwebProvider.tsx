@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserWalletProvider } from '../contexts/BrowserWalletContext';
 import { MyDogeWalletProvider } from '../contexts/MyDogeWalletContext';
 import { UnifiedWalletProvider } from '../contexts/UnifiedWalletContext';
@@ -14,6 +14,7 @@ import { CharmsProvider } from '../contexts/CharmsContext';
 import { DataProvider } from './DataProvider';
 import { DojakwebDxTrustedOriginsProvider } from '../contexts/DojakwebDxContext';
 import { DxHostBridge } from '../components/DxHostBridge';
+import { ensureDefaultWalletDataProvider } from '../utils/api';
 
 export interface DojakwebProviderProps {
   children: React.ReactNode;
@@ -41,6 +42,11 @@ export function DojakwebProvider({
   theme = 'dark',
   dxTrustedOrigins,
 }: DojakwebProviderProps) {
+  // MyDoge factory defaults (no custom API URL). Migrates host-forced commanddog once.
+  useEffect(() => {
+    ensureDefaultWalletDataProvider();
+  }, []);
+
   return (
     <DojakwebThemeProvider theme={theme}>
       <DojakwebDxTrustedOriginsProvider trustedOrigins={dxTrustedOrigins}>

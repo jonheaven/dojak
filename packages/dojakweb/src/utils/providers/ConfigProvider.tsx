@@ -178,16 +178,23 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsLoading(true);
     try {
       const walletDataProvider = newConfig.walletDataProvider ?? config.walletDataProvider ?? 'mydoge';
-      const walletDataProviderUrl = newConfig.walletDataProviderUrl
-        || config.walletDataProviderUrl
-        || getDefaultWalletDataProviderUrl(walletDataProvider);
-      const mergedConfig = { ...newConfig, walletDataProvider, walletDataProviderUrl };
+      // Prefer explicit URL; empty means use provider built-in (MyDoge default).
+      const walletDataProviderUrl =
+        newConfig.walletDataProviderUrl !== undefined
+          ? newConfig.walletDataProviderUrl
+          : config.walletDataProviderUrl;
+      const mergedConfig = {
+        ...newConfig,
+        walletDataProvider,
+        walletDataProviderUrl:
+          walletDataProviderUrl || getDefaultWalletDataProviderUrl(walletDataProvider),
+      };
 
       await persistConfig(mergedConfig);
       const curWallet = getWalletDataProviderConfig();
       setWalletDataProviderConfig({
         walletDataProvider,
-        walletDataProviderUrl,
+        walletDataProviderUrl: walletDataProviderUrl || undefined,
         mergeInuBitsInscriptions: curWallet.mergeInuBitsInscriptions,
       });
       setConfigState(mergedConfig);

@@ -32,11 +32,39 @@ export interface WalletDataProviderConfig {
 }
 
 const WALLET_PROVIDER_STORAGE_KEY = 'dojakweb-wallet-data-provider';
+/** One-time migration: older hosts stamped commanddog; reset to MyDoge defaults once. */
+const WALLET_PROVIDER_DEFAULTS_MIGRATION_KEY = 'dojakweb-wallet-data-provider-defaults-v2';
 
 /** Fired on `window` after `setWalletDataProviderConfig` (same-tab; `storage` only fires in other tabs). */
 export const WALLET_DATA_PROVIDER_CHANGED_EVENT = 'dojakweb-wallet-data-provider-changed';
 const DEFAULT_MYDOGE_PROVIDER_URL = 'https://api.mydoge.com';
 const INUBITS_WALLET_INSCRIPTIONS_PATH = '/api/wallet/inscriptions';
+
+/** Canonical factory defaults — MyDoge public API, no custom URL override. */
+export function getFactoryWalletDataProviderConfig(): WalletDataProviderConfig {
+  return {
+    walletDataProvider: 'mydoge',
+    walletDataProviderUrl: DEFAULT_MYDOGE_PROVIDER_URL,
+    mergeInuBitsInscriptions: true,
+  };
+}
+
+function urlsMatch(a?: string | null, b?: string | null): boolean {
+  return normalizeBaseUrl(a) === normalizeBaseUrl(b);
+}
+
+/**
+ * True when the stored/active URL is empty or equals the provider's built-in default
+ * (i.e. user has not set a custom API base).
+ */
+export function isDefaultWalletDataProviderUrl(
+  provider: WalletDataProviderType,
+  url?: string | null,
+): boolean {
+  const normalized = normalizeBaseUrl(url);
+  if (!normalized) return true;
+  return urlsMatch(normalized, getDefaultWalletDataProviderUrl(provider));
+}
 
 type InubitsWindow = Window & {
   __DOJAKWEB_INUBITS_API_BASE__?: string;
@@ -275,27 +303,23 @@ export function dogexCdnContentUrl(inscriptionId: string): string {
 
 export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
   if (typeof window === 'undefined') {
-    return {
-      walletDataProvider: 'mydoge',
-      walletDataProviderUrl: DEFAULT_MYDOGE_PROVIDER_URL,
-      mergeInuBitsInscriptions: true,
-    };
+    return getFactoryWalletDataProviderConfig();
   }
 
   try {
     const raw = window.localStorage.getItem(WALLET_PROVIDER_STORAGE_KEY);
     if (!raw) {
-      return {
-        walletDataProvider: 'mydoge',
-        walletDataProviderUrl: DEFAULT_MYDOGE_PROVIDER_URL,
-        mergeInuBitsInscriptions: true,
-      };
+      return getFactoryWalletDataProviderConfig();
     }
 
     const parsed = JSON.parse(raw) as Partial<WalletDataProviderConfig>;
     const walletDataProvider = normalizeWalletDataProvider(parsed.walletDataProvider);
-    const walletDataProviderUrl = normalizeBaseUrl(parsed.walletDataProviderUrl)
-      || getDefaultWalletDataProviderUrl(walletDataProvider);
+    // Custom URL only when stored and different from the provider default.
+    // Empty / missing / default-equivalent → built-in MyDoge (or provider) URL at runtime.
+    const storedUrl = normalizeBaseUrl(parsed.walletDataProviderUrl);
+    const defaultUrl = getDefaultWalletDataProviderUrl(walletDataProvider);
+    const walletDataProviderUrl =
+      storedUrl && !urlsMatch(storedUrl, defaultUrl) ? storedUrl : defaultUrl;
     const mergeInuBitsInscriptions = parsed.mergeInuBitsInscriptions !== false;
     const indexerApiBase = normalizeBaseUrl(parsed.indexerApiBase) || undefined;
     const commandDogApiBase = normalizeBaseUrl(parsed.commandDogApiBase) || undefined;
@@ -315,43 +339,151 @@ export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
       wonkyOrdFallback,
     };
   } catch {
-    return {
-      walletDataProvider: 'mydoge',
-      walletDataProviderUrl: DEFAULT_MYDOGE_PROVIDER_URL,
-      mergeInuBitsInscriptions: true,
-    };
+    return getFactoryWalletDataProviderConfig();
   }
 };
 
-export const setWalletDataProviderConfig = (config: WalletDataProviderConfig) => {
+/**
+ * Persist wallet data settings.
+ * Omits `walletDataProviderUrl` from storage when it is empty or equals the provider default
+ * so Settings stays "no custom API" for the default MyDoge path.
+ * Hosts may pass partial updates; unspecified keys are preserved from current storage.
+ */
+export const setWalletDataProviderConfig = (
+  config: Partial<WalletDataProviderConfig> & Pick<WalletDataProviderConfig, 'walletDataProvider'>,
+) => {
   if (typeof window === 'undefined') return;
 
-  const walletDataProvider = normalizeWalletDataProvider(config.walletDataProvider);
-  const walletDataProviderUrl = normalizeBaseUrl(config.walletDataProviderUrl)
-    || getDefaultWalletDataProviderUrl(walletDataProvider);
-  const mergeInuBitsInscriptions = config.mergeInuBitsInscriptions !== false;
-  const indexerApiBase = normalizeBaseUrl(config.indexerApiBase) || undefined;
-  const commandDogApiBase = normalizeBaseUrl(config.commandDogApiBase) || undefined;
-  const dogexCdnBase = normalizeBaseUrl(config.dogexCdnBase) || undefined;
-  const wonkyOrdApiBase = normalizeBaseUrl(config.wonkyOrdApiBase) || undefined;
-  const wonkyOrdFallback =
-    typeof config.wonkyOrdFallback === 'boolean' ? config.wonkyOrdFallback : undefined;
-
-  window.localStorage.setItem(
-    WALLET_PROVIDER_STORAGE_KEY,
-    JSON.stringify({
-      walletDataProvider,
-      walletDataProviderUrl,
-      mergeInuBitsInscriptions,
-      indexerApiBase,
-      commandDogApiBase,
-      dogexCdnBase,
-      wonkyOrdApiBase,
-      wonkyOrdFallback,
-    })
+  const current = getWalletDataProviderConfig();
+  const walletDataProvider = normalizeWalletDataProvider(
+    config.walletDataProvider ?? current.walletDataProvider,
   );
+  const defaultUrl = getDefaultWalletDataProviderUrl(walletDataProvider);
+
+  // Prefer explicit config URL (including empty string = clear custom).
+  // If key omitted, keep current only when still non-default for this provider.
+  let nextUrl: string | undefined;
+  if (Object.prototype.hasOwnProperty.call(config, 'walletDataProviderUrl')) {
+    const raw = normalizeBaseUrl(config.walletDataProviderUrl);
+    nextUrl = raw && !urlsMatch(raw, defaultUrl) ? raw : undefined;
+  } else {
+    const cur = normalizeBaseUrl(current.walletDataProviderUrl);
+    nextUrl = cur && !urlsMatch(cur, defaultUrl) ? cur : undefined;
+  }
+
+  const mergeInuBitsInscriptions =
+    typeof config.mergeInuBitsInscriptions === 'boolean'
+      ? config.mergeInuBitsInscriptions
+      : current.mergeInuBitsInscriptions !== false;
+
+  const indexerApiBase =
+    config.indexerApiBase !== undefined
+      ? normalizeBaseUrl(config.indexerApiBase) || undefined
+      : current.indexerApiBase;
+  const commandDogApiBase =
+    config.commandDogApiBase !== undefined
+      ? normalizeBaseUrl(config.commandDogApiBase) || undefined
+      : current.commandDogApiBase;
+  const dogexCdnBase =
+    config.dogexCdnBase !== undefined
+      ? normalizeBaseUrl(config.dogexCdnBase) || undefined
+      : current.dogexCdnBase;
+  const wonkyOrdApiBase =
+    config.wonkyOrdApiBase !== undefined
+      ? normalizeBaseUrl(config.wonkyOrdApiBase) || undefined
+      : current.wonkyOrdApiBase;
+  const wonkyOrdFallback =
+    typeof config.wonkyOrdFallback === 'boolean'
+      ? config.wonkyOrdFallback
+      : current.wonkyOrdFallback;
+
+  const payload: Record<string, unknown> = {
+    walletDataProvider,
+    mergeInuBitsInscriptions,
+  };
+  // Only persist a custom URL override — never stamp the built-in default into localStorage.
+  if (nextUrl) {
+    payload.walletDataProviderUrl = nextUrl;
+  }
+  if (indexerApiBase) payload.indexerApiBase = indexerApiBase;
+  if (commandDogApiBase) payload.commandDogApiBase = commandDogApiBase;
+  if (dogexCdnBase) payload.dogexCdnBase = dogexCdnBase;
+  if (wonkyOrdApiBase) payload.wonkyOrdApiBase = wonkyOrdApiBase;
+  if (typeof wonkyOrdFallback === 'boolean') payload.wonkyOrdFallback = wonkyOrdFallback;
+
+  window.localStorage.setItem(WALLET_PROVIDER_STORAGE_KEY, JSON.stringify(payload));
   window.dispatchEvent(new CustomEvent(WALLET_DATA_PROVIDER_CHANGED_EVENT));
 };
+
+/**
+ * Ensure factory defaults (MyDoge, no custom URL) for first-time / migrated hosts.
+ * Older dogecoin.games builds forced `commanddog` into localStorage every load — flip once.
+ * Safe to call on every app boot; runs migration at most once per browser profile.
+ */
+export function ensureDefaultWalletDataProvider(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.localStorage.getItem(WALLET_PROVIDER_DEFAULTS_MIGRATION_KEY) === '1') {
+      return;
+    }
+    window.localStorage.setItem(WALLET_PROVIDER_DEFAULTS_MIGRATION_KEY, '1');
+
+    const raw = window.localStorage.getItem(WALLET_PROVIDER_STORAGE_KEY);
+    if (!raw) {
+      setWalletDataProviderConfig({
+        walletDataProvider: 'mydoge',
+        walletDataProviderUrl: undefined,
+        mergeInuBitsInscriptions: true,
+      });
+      return;
+    }
+
+    let parsed: Partial<WalletDataProviderConfig> = {};
+    try {
+      parsed = JSON.parse(raw) as Partial<WalletDataProviderConfig>;
+    } catch {
+      setWalletDataProviderConfig({
+        walletDataProvider: 'mydoge',
+        walletDataProviderUrl: undefined,
+        mergeInuBitsInscriptions: true,
+      });
+      return;
+    }
+
+    const provider = normalizeWalletDataProvider(parsed.walletDataProvider);
+    // Hosts commonly forced commanddog; reset those profiles to MyDoge defaults once.
+    // Leave dogex alone if the user explicitly chose it.
+    if (provider === 'commanddog' || !parsed.walletDataProvider) {
+      setWalletDataProviderConfig({
+        walletDataProvider: 'mydoge',
+        walletDataProviderUrl: undefined,
+        mergeInuBitsInscriptions: parsed.mergeInuBitsInscriptions !== false,
+        indexerApiBase: parsed.indexerApiBase,
+        commandDogApiBase: parsed.commandDogApiBase,
+        dogexCdnBase: parsed.dogexCdnBase,
+        wonkyOrdApiBase: parsed.wonkyOrdApiBase,
+        wonkyOrdFallback: parsed.wonkyOrdFallback,
+      });
+      return;
+    }
+
+    // Strip a stored URL that is just the provider default (cleanup UI "custom URL" noise).
+    if (isDefaultWalletDataProviderUrl(provider, parsed.walletDataProviderUrl)) {
+      setWalletDataProviderConfig({
+        walletDataProvider: provider,
+        walletDataProviderUrl: undefined,
+        mergeInuBitsInscriptions: parsed.mergeInuBitsInscriptions !== false,
+        indexerApiBase: parsed.indexerApiBase,
+        commandDogApiBase: parsed.commandDogApiBase,
+        dogexCdnBase: parsed.dogexCdnBase,
+        wonkyOrdApiBase: parsed.wonkyOrdApiBase,
+        wonkyOrdFallback: parsed.wonkyOrdFallback,
+      });
+    }
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 const getWalletProviderBaseUrl = () => {
   const config = getWalletDataProviderConfig();
