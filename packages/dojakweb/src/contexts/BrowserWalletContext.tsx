@@ -312,13 +312,38 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
   const selectWallet = useCallback(
     async (targetAddress: string) => {
       const storage = new BrowserWallet();
-      const selected = await storage.selectWallet(targetAddress);
-      if (selected) {
-        await connect(selected);
+      await storage.selectWallet(targetAddress);
+
+      // Prefer full wallet with private key. Metadata-only list entries would
+      // wipe an unlocked session if we connected them as-is.
+      if (await storage.isEncrypted(targetAddress)) {
+        try {
+          const sessionSecret = await createDojakwebSessionSecretStore().getSecret();
+          if (sessionSecret) {
+            const loaded = await storage.loadWallet(sessionSecret, targetAddress);
+            if (loaded?.privateKey) {
+              await connect(loaded);
+              return loaded;
+            }
+          }
+        } catch {
+          /* need unlock UI */
+        }
+        // Stay on current session if already unlocked for this address.
+        if (wallet?.address === targetAddress && wallet.privateKey) {
+          return wallet;
+        }
+        return null;
       }
-      return selected;
+
+      const loaded = await storage.loadWallet(undefined, targetAddress);
+      if (loaded) {
+        await connect(loaded);
+        return loaded;
+      }
+      return null;
     },
-    [connect]
+    [connect, wallet]
   );
 
   const switchAccount = useCallback(

@@ -31,6 +31,7 @@ import type {
 } from '../types/wallet';
 import { UnifiedWalletContext } from './unifiedWalletInternals';
 import { requestWalletApproval } from '../stores/walletApprovalStore';
+import { createDojakwebSessionSecretStore } from '../lib/dojakweb-biometric';
 
 interface DojakState {
   connected: boolean;
@@ -730,6 +731,29 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         }
 
         try {
+          // Prefer an already-unlocked in-memory session (private key held after unlock).
+          if (browser.wallet?.privateKey && browser.connected) {
+            setWalletType(type);
+            localStorage.setItem('wallet_type', type);
+            return;
+          }
+
+          // Encrypted wallets: restore from tab session secret (stay unlocked until tab end).
+          try {
+            const sessionSecret = await createDojakwebSessionSecretStore().getSecret();
+            if (sessionSecret) {
+              const fromSession = await browser.loadWallet(sessionSecret);
+              if (fromSession?.privateKey) {
+                await browser.connect(fromSession);
+                setWalletType(type);
+                localStorage.setItem('wallet_type', type);
+                return;
+              }
+            }
+          } catch {
+            /* fall through to unencrypted load */
+          }
+
           const loaded = await browser.loadWallet();
           if (loaded) {
             await browser.connect(loaded);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
 import {
   rejectWalletApproval,
@@ -15,6 +15,7 @@ import { createDojakwebSessionSecretStore } from '../../lib/dojakweb-biometric';
 /**
  * Extension-style approval sheet for host-requested local-browser signing.
  * Mounted inside the wallet drawer/modal whenever a request is pending.
+ * Unlock once per tab session — password is not re-prompted until disconnect or tab close.
  */
 export function WalletApprovalPanel() {
   const pending = useSyncExternalStore(
@@ -28,6 +29,26 @@ export function WalletApprovalPanel() {
   const [unlockBusy, setUnlockBusy] = useState(false);
 
   const sessionReady = Boolean(browser.wallet?.privateKey?.trim() && browser.address);
+
+  // If the tab session still has the unlock secret but memory was cleared, rehydrate silently.
+  useEffect(() => {
+    if (!pending || sessionReady || unlockBusy) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const secret = await createDojakwebSessionSecretStore().getSecret();
+        if (!secret || cancelled) return;
+        const loaded = await browser.loadWallet(secret, browser.address || undefined);
+        if (!loaded?.privateKey || cancelled) return;
+        await browser.connect(loaded);
+      } catch {
+        /* show unlock form */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pending, sessionReady, unlockBusy, browser]);
 
   const unlock = useCallback(async () => {
     if (!unlockPassword.trim()) {

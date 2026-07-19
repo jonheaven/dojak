@@ -23,15 +23,25 @@ function getChromeSessionStorage():
   return maybeChrome?.storage?.session ?? null;
 }
 
-/** Session secret store isolated from the extension (`dojak.biometric.*`) keys. */
+/**
+ * Session secret store isolated from the extension (`dojak.biometric.*`) keys.
+ * Unlock password is held only for this browser tab/session (sessionStorage),
+ * so users unlock once and stay unlocked until the tab closes — MetaMask-style.
+ * chrome.storage.session is preferred when available, with sessionStorage fallback
+ * (some pages expose a partial `chrome` object that cannot actually store).
+ */
 export function createDojakwebSessionSecretStore(): SessionSecretStore {
   const chromeSession = getChromeSessionStorage();
 
   return {
     async saveSecret(secret: string) {
       if (chromeSession) {
-        await chromeSession.set({ [SESSION_SECRET_KEY]: secret });
-        return;
+        try {
+          await chromeSession.set({ [SESSION_SECRET_KEY]: secret });
+          return;
+        } catch {
+          /* fall through to sessionStorage */
+        }
       }
       if (typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem(SESSION_SECRET_KEY, secret);
@@ -39,16 +49,24 @@ export function createDojakwebSessionSecretStore(): SessionSecretStore {
     },
     async getSecret() {
       if (chromeSession) {
-        const result = await chromeSession.get([SESSION_SECRET_KEY]);
-        return result?.[SESSION_SECRET_KEY] ?? null;
+        try {
+          const result = await chromeSession.get([SESSION_SECRET_KEY]);
+          const fromChrome = result?.[SESSION_SECRET_KEY] ?? null;
+          if (fromChrome) return fromChrome;
+        } catch {
+          /* fall through to sessionStorage */
+        }
       }
       if (typeof sessionStorage === 'undefined') return null;
       return sessionStorage.getItem(SESSION_SECRET_KEY);
     },
     async clearSecret() {
       if (chromeSession) {
-        await chromeSession.remove([SESSION_SECRET_KEY]);
-        return;
+        try {
+          await chromeSession.remove([SESSION_SECRET_KEY]);
+        } catch {
+          /* ignore */
+        }
       }
       if (typeof sessionStorage !== 'undefined') {
         sessionStorage.removeItem(SESSION_SECRET_KEY);

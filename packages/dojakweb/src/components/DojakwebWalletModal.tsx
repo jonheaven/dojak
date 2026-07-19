@@ -1441,8 +1441,11 @@ export function DojakwebWalletModal({
     address,
     browser.address,
     browser.connected,
+    // Re-run when private key lands (unlock / session restore) so we leave unlock UI.
+    browser.wallet?.privateKey,
     browser.hasWallet,
     browser.loadWallet,
+    browser.connect,
     connected,
     isOpen,
     refreshSavedLocalWallets,
@@ -1530,6 +1533,14 @@ export function DojakwebWalletModal({
       pbkdf2Iterations: saveOpts?.pbkdf2Iterations,
     });
     await browser.connect(walletToPersist);
+    // Keep unlocked for this browser tab after setting a password (until disconnect/tab end).
+    if (persistPassword) {
+      try {
+        await createDojakwebSessionSecretStore().saveSecret(persistPassword);
+      } catch {
+        /* best-effort session unlock */
+      }
+    }
     const passwordKey = getStoredPasswordFlag(walletToPersist.address);
     const bannerKey = getTemporaryBannerFlag(walletToPersist.address);
     const backupKey = getBackupFlag(walletToPersist.address);
@@ -1905,8 +1916,9 @@ export function DojakwebWalletModal({
   /**
    * Local browser-wallet "lock" UX:
    * - If the wallet has no password yet, send the user to the password setup step.
-   * - If it is already password-protected, close the modal and disconnect the unlocked
-   *   in-browser wallet so the next action forces the unlock flow again.
+   * - If already password-protected: end the tab unlock session (clear session secret)
+   *   and disconnect so the next action requires unlock again.
+   * Normal use: unlock once per browser tab; lock is explicit.
    */
   const handleLockWallet = async () => {
     if (!activeAddress || !isBrowserWallet) return;
@@ -1926,6 +1938,12 @@ export function DojakwebWalletModal({
     try {
       setHideBalance(false);
       setUnlockPassword('');
+      setActivePassword(undefined);
+      try {
+        await createDojakwebSessionSecretStore().clearSecret();
+      } catch {
+        /* ignore */
+      }
       await browser.disconnect();
       onClose();
     } catch (nextError) {
