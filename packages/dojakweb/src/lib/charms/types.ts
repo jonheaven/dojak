@@ -301,6 +301,65 @@ export interface PrepareMintResponse {
   };
 }
 
+/** Pack ids for command.dog `/v1/charms/launch/prepare` app templates. */
+export type CharmsLaunchPack = 'fair' | 'tax' | 'shill' | 'hodl';
+
+/**
+ * Result of scaffolding a Charms fungible via command.dog `/v1/charms/launch/prepare`.
+ * A signable Dogecoin tx is present when prove succeeds (`unsignedTxHex` / `txs` non-empty).
+ */
+export interface PrepareLaunchResponse {
+  unsignedTxHex: string;
+  /** Commit (+ optional link) + reveal when P2SH carrier; last entry is what to sign last. */
+  txs?: string[];
+  feeEstimate: number;
+  changeOutput: {
+    address: string;
+    amount: string;
+  };
+  network: string;
+  launchId?: string;
+  spellYaml?: string;
+  spellJson?: unknown;
+  summary?: {
+    ticker: string;
+    supply: string;
+    decimals: number;
+    chainId: CharmsChainId;
+    pack: CharmsLaunchPack;
+    address: string;
+    allocations?: Array<{
+      category: string;
+      percent: number;
+      amount: string;
+      address?: string;
+    }>;
+    reserveAmount?: string;
+  };
+  spell?: {
+    identity?: string;
+    verificationKey?: string;
+    template?: string;
+    metadataHash?: string;
+  };
+  contract?: {
+    source?: string;
+    verificationKey?: string;
+    identity?: string;
+    compiled?: boolean;
+    artifactPath?: string;
+  };
+  /** Dogecoin launch metadata from command.dog prepare. */
+  dogecoin?: {
+    prepareMode: string;
+    spellMarker: 'spell';
+    indexer: 'dogex';
+    wallet: 'dojakweb';
+    carrierHint: string;
+    needsRevealLink?: boolean;
+  };
+}
+
 export interface BroadcastResponse {
   txid: string;
   status?: string;

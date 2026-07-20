@@ -134,8 +134,9 @@ export function CharmsToolsPanel({
           <p className={charmsEyebrowClass}>Charms</p>
           <h2 className={charmsTitleClass}>Create and transfer Charms</h2>
           <p className={charmsBodyClass}>
-            Programmable ZK assets on Dogecoin — client-side validation with Groth16 proofs.
-            Launch a token or transfer balances to another address via PSBT.
+            Programmable UTXO assets on Dogecoin — Rust app contracts + recursive Groth16 proofs in the
+            transaction carrier (not inscription tickers). Create scaffolds a fungible template; transfer
+            moves charm state between UTXOs once indexed.
           </p>
         </div>
       )}
@@ -143,7 +144,7 @@ export function CharmsToolsPanel({
       <div className="flex flex-wrap gap-2">
         {ops.includes('create') && (
           <button type="button" onClick={() => setCreateOpen(true)} className={charmsPrimaryBtnClass}>
-            Create token
+            Launch fungible
           </button>
         )}
         {ops.includes('transfer') && (

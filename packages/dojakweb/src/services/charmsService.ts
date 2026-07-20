@@ -10,6 +10,8 @@ import type {
   TokenBalanceResponse,
   MintParams,
   PrepareMintResponse,
+  PrepareLaunchResponse,
+  CharmsLaunchPack,
   BroadcastResponse,
   PrepareTransferResponse,
   TransferTokenParams,
@@ -182,7 +184,48 @@ export class CharmsService {
   }
 
   /**
-   * Prepare a mint transaction
+   * Scaffold a fungible Charms app (Rust template → VK → NormalizedSpell).
+   * This is the proper launcher entry — not Runes-style ticker metadata alone.
+   */
+  async prepareLaunch(params: {
+    ticker: string;
+    supply: bigint;
+    decimals: number;
+    chainId: CharmsChainId;
+    address: string;
+    pack?: CharmsLaunchPack;
+    metadata?: Record<string, unknown>;
+    tweaks?: Record<string, unknown>;
+    mining?: { enabled: boolean; difficulty: number };
+    fundingUtxo?: string;
+    fundingValue?: bigint;
+    prevTxs?: string[];
+    feeRate?: number;
+  }): Promise<PrepareLaunchResponse> {
+    const payload = {
+      ticker: params.ticker,
+      supply: params.supply.toString(),
+      decimals: params.decimals,
+      chainId: params.chainId,
+      address: params.address,
+      pack: params.pack ?? 'fair',
+      tweaks: params.tweaks ?? {},
+      ...(params.mining ? { mining: params.mining } : {}),
+      ...(params.metadata ? { metadata: params.metadata } : {}),
+      ...(params.fundingUtxo ? { fundingUtxo: params.fundingUtxo } : {}),
+      ...(params.fundingValue !== undefined ? { fundingValue: params.fundingValue.toString() } : {}),
+      ...(params.prevTxs?.length ? { prevTxs: params.prevTxs } : {}),
+      ...(params.feeRate !== undefined ? { feeRate: params.feeRate } : {}),
+    };
+
+    return request<PrepareLaunchResponse>('/launch/prepare', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  /**
+   * Prepare a mint transaction (legacy thin mint path — prefer {@link prepareLaunch}).
    */
   async prepareMint(params: {
     ticker: string;
@@ -208,7 +251,8 @@ export class CharmsService {
   }
 
   /**
-   * Prepare, sign, and broadcast a new Charms token launch/mint.
+   * Launch a Charms fungible: scaffold via `/launch/prepare`, then sign+broadcast
+   * only if the backend returned a real unsigned Dogecoin tx with spell+proof.
    */
   async mintToken(params: {
     ticker: string;
@@ -217,10 +261,35 @@ export class CharmsService {
     chainId: CharmsChainId;
     address: string;
     metadata?: Record<string, unknown>;
+    pack?: CharmsLaunchPack;
     signer: CharmsWalletSigner;
   }): Promise<string> {
-    const response = await this.prepareMint(params);
-    const signedPayload = await params.signer.signPsdt(response.unsignedTxHex);
+    const launch = await this.prepareLaunch({
+      ticker: params.ticker,
+      supply: params.supply,
+      decimals: params.decimals,
+      chainId: params.chainId,
+      address: params.address,
+      pack: params.pack ?? 'fair',
+      metadata: params.metadata,
+    });
+
+    const unsigned = (launch.unsignedTxHex || '').trim();
+    if (!unsigned) {
+      const vk = launch.contract?.verificationKey || launch.spell?.verificationKey || '—';
+      const identity = launch.contract?.identity || launch.spell?.identity || '—';
+      throw new Error(
+        [
+          'Charms launch scaffolded, but no signable Dogecoin transaction was returned.',
+          'Real Charms requires: Rust app template → VK → NormalizedSpell → Groth16 proof → carrier tx.',
+          `App identity: ${identity}`,
+          `Verification key: ${vk}`,
+          'Ensure command.dog/api Charms prove is configured (CHARMS_CLI_PATH / CHARMS_USE_WSL / CHARMS_PROVER_MODE=real) and funding UTXOs were sent to launch/prepare.',
+        ].join(' '),
+      );
+    }
+
+    const signedPayload = await params.signer.signPsdt(unsigned);
     const signedTxHex = coerceSignedPsdtToRawTxHex(signedPayload);
     const broadcast = await this.broadcastSignedTx({
       signedTxHex,
@@ -253,33 +322,40 @@ export class CharmsService {
   }
 
   /**
-   * Indexer lookup per UTXO. command.dog may return 404/501 until the route is fully wired — treat as “no charms here”
-   * so wallet refresh does not fail the whole Charms tab.
+   * Indexer lookup per UTXO.
+   * Prefer dogex `/api/charms/utxos/{txid}/{vout}` (`{ charms: [...] }`), then fall back to
+   * command.dog `/v1/charms/utxos/...` (often 404/501 until wired).
    */
   async getCharmsByUtxo(txid: string, vout: number): Promise<IndexedCharmUtxo[]> {
-    const baseUrl = CHARMS_API_BASE.replace(/\/$/, '');
-    const url = `${baseUrl}/utxos/${encodeURIComponent(txid)}/${Number(vout)}`;
+    const paths: string[] = [];
     try {
-      const response = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (response.status === 404 || response.status === 501 || response.status === 502) {
-        return [];
+      const { getIndexerApiBase } = await import('../utils/api');
+      const indexer = getIndexerApiBase().replace(/\/$/, '');
+      if (indexer) {
+        paths.push(`${indexer}/api/charms/utxos/${encodeURIComponent(txid)}/${Number(vout)}`);
       }
-      const data = await response.json().catch(() => null);
-      if (!response.ok) {
-        const message =
-          data && typeof data === 'object' && 'error' in data && typeof (data as { error: string }).error === 'string'
-            ? (data as { error: string }).error
-            : `Request to ${url} failed with status ${response.status}`;
-        throw new Error(message);
-      }
-      if (!Array.isArray(data)) return [];
-      return data as IndexedCharmUtxo[];
-    } catch (e) {
-      if (e instanceof TypeError) {
-        return [];
-      }
-      throw e;
+    } catch {
+      // indexer helper unavailable in this bundle
     }
+    paths.push(`${CHARMS_API_BASE.replace(/\/$/, '')}/utxos/${encodeURIComponent(txid)}/${Number(vout)}`);
+
+    for (const url of paths) {
+      try {
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (response.status === 404 || response.status === 501 || response.status === 502) {
+          continue;
+        }
+        const data = await response.json().catch(() => null);
+        if (!response.ok) continue;
+        if (Array.isArray(data)) return data as IndexedCharmUtxo[];
+        if (data && typeof data === 'object' && Array.isArray((data as { charms?: unknown }).charms)) {
+          return (data as { charms: IndexedCharmUtxo[] }).charms;
+        }
+      } catch {
+        // try next path
+      }
+    }
+    return [];
   }
 
   async getCharmsByApp(appId: string): Promise<IndexedCharmUtxo[]> {
