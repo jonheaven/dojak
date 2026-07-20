@@ -51,7 +51,7 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
   'walletPage.dunes.heroBannerTitle': 'Ðunes — UTXO ネイティブの主力トークン',
   'walletPage.dunes.heroBannerBody':
     'edict によるワンステップ送付。誤った出力は残高をバーン（cenotaph）します。必ず Ðune を照会し、受取先と数量を再確認してください。',
-  'walletPage.dunes.flagshipCta': 'THE•BLACK•DOGE をエッチ / ミント',
+  'walletPage.dunes.flagshipCta': 'THE•WHITE•DOGE をエッチ / ミント',
   'walletPage.dunes.burnWarning':
     '安全: 未割当 Ðunes は pointer（または最初の非 OP_RETURN）に従います。不正な Dunestone は cenotaph で入力を燃やします。Ðune UTXO を通常の DOGE おつりに使わないでください。',
   'walletPage.utxos.needWallet': 'UTXO の確認・分割にはウォレット接続が必要です。',

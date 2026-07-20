@@ -52,7 +52,7 @@ export const WALLET_UI_EN_FLAT: Record<string, string> = {
   'walletPage.dunes.heroBannerTitle': 'Ðunes — UTXO-native hero fungibles',
   'walletPage.dunes.heroBannerBody':
     'One-step sends via edicts. Wrong outputs can burn balances (cenotaph). Always look up the Ðune and double-check recipient + amount.',
-  'walletPage.dunes.flagshipCta': 'Etch / mint THE•BLACK•DOGE',
+  'walletPage.dunes.flagshipCta': 'Etch / mint THE•WHITE•DOGE',
   'walletPage.dunes.burnWarning':
     'Safety: unallocated Ðunes follow the pointer (or first non-OP_RETURN). A malformed Dunestone is a cenotaph and burns inputs. Never reuse Ðune UTXOs as plain DOGE change.',
   'walletPage.utxos.needWallet': 'Connect a wallet to inspect and split coins.',

@@ -25,8 +25,8 @@ function singleCodePointSymbol(raw: string): string {
   return cp === undefined ? '' : String.fromCodePoint(cp);
 }
 
-/** Black Doge meme tokenomics (div 0 units = whole tokens). */
-const BLACK_PRESET = {
+/** THE•WHITE•DOGE liquidity dune tokenomics (div 0 units = whole tokens). */
+const WHITE_PRESET = {
   premine: '42069000',
   mintAmount: '420',
   mintCap: '901479',
@@ -57,28 +57,29 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const resolveSigner = useDuneTxSigner();
 
   const plainInitial = (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase();
-  const isBlack = plainInitial === 'THEBLACKDOGE';
+  const isWhiteDune =
+    plainInitial === 'THEWHITEDOGE' || plainInitial === 'THEBLACKDOGE'; // legacy alias
   const isManifesto = plainInitial === 'DOGENALSOVERDOGINALS';
 
   const [name, setName] = useState(initialName ?? '');
   const [divisibility, setDivisibility] = useState(
-    isBlack ? BLACK_PRESET.divisibility : isManifesto ? MANIFESTO_PRESET.divisibility : '0',
+    isWhiteDune ? WHITE_PRESET.divisibility : isManifesto ? MANIFESTO_PRESET.divisibility : '0',
   );
   const [symbol, setSymbol] = useState(
-    isBlack ? BLACK_PRESET.symbol : isManifesto ? MANIFESTO_PRESET.symbol : '',
+    isWhiteDune ? WHITE_PRESET.symbol : isManifesto ? MANIFESTO_PRESET.symbol : '',
   );
   const [feeRate, setFeeRate] = useState('1000');
   // Premine + open mint are independent — both can be on (hero dune pattern)
   const [enablePremine, setEnablePremine] = useState(true);
   const [premine, setPremine] = useState(
-    isBlack ? BLACK_PRESET.premine : isManifesto ? MANIFESTO_PRESET.premine : '1000000',
+    isWhiteDune ? WHITE_PRESET.premine : isManifesto ? MANIFESTO_PRESET.premine : '1000000',
   );
-  const [enableMint, setEnableMint] = useState(isBlack || isManifesto);
+  const [enableMint, setEnableMint] = useState(isWhiteDune || isManifesto);
   const [mintAmount, setMintAmount] = useState(
-    isBlack ? BLACK_PRESET.mintAmount : isManifesto ? MANIFESTO_PRESET.mintAmount : '',
+    isWhiteDune ? WHITE_PRESET.mintAmount : isManifesto ? MANIFESTO_PRESET.mintAmount : '',
   );
   const [mintCap, setMintCap] = useState(
-    isBlack ? BLACK_PRESET.mintCap : isManifesto ? MANIFESTO_PRESET.mintCap : '',
+    isWhiteDune ? WHITE_PRESET.mintCap : isManifesto ? MANIFESTO_PRESET.mintCap : '',
   );
   const [turbo, setTurbo] = useState(true);
 
@@ -88,13 +89,13 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const [isLoading, setIsLoading] = useState(false);
   const [signingAddress, setSigningAddress] = useState<string | null>(null);
 
-  const applyPreset = (kind: 'black' | 'manifesto' | 'clear') => {
-    if (kind === 'black') {
-      setPremine(BLACK_PRESET.premine);
-      setMintAmount(BLACK_PRESET.mintAmount);
-      setMintCap(BLACK_PRESET.mintCap);
-      setDivisibility(BLACK_PRESET.divisibility);
-      setSymbol(BLACK_PRESET.symbol);
+  const applyPreset = (kind: 'white' | 'black' | 'manifesto' | 'clear') => {
+    if (kind === 'white' || kind === 'black') {
+      setPremine(WHITE_PRESET.premine);
+      setMintAmount(WHITE_PRESET.mintAmount);
+      setMintCap(WHITE_PRESET.mintCap);
+      setDivisibility(WHITE_PRESET.divisibility);
+      setSymbol(WHITE_PRESET.symbol);
       setEnablePremine(true);
       setEnableMint(true);
       setTurbo(true);
@@ -117,7 +118,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     setStep('form');
     setError(null);
     setTxid(null);
-    if (plain === 'THEBLACKDOGE') applyPreset('black');
+    if (plain === 'THEWHITEDOGE' || plain === 'THEBLACKDOGE') applyPreset('white');
     else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
     else {
       setPremine('1000000');
@@ -141,7 +142,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
       const n = initialName.trim().toUpperCase();
       setName(n);
       const plain = n.replace(/[•.\s]/g, '');
-      if (plain === 'THEBLACKDOGE') applyPreset('black');
+      if (plain === 'THEWHITEDOGE' || plain === 'THEBLACKDOGE') applyPreset('white');
       else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
     }
   }, [isOpen, initialName]);
@@ -276,7 +277,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value.toUpperCase())}
-                  placeholder="e.g. THE•BLACK•DOGE"
+                  placeholder="e.g. THE•WHITE•DOGE"
                   className="font-mono"
                 />
                 {nameError && <p className="mt-1 text-xs text-red-500">{nameError}</p>}
