@@ -377,5 +377,5 @@ export function buildProofUrl(record: CltvLockRecord, baseUrl = ''): string {
     address: record.lockAddress,
     ...(record.inscriptionId ? { ins: record.inscriptionId } : {}),
   });
-  return `${baseUrl}/lock-proof?${params.toString()}`;
+  return `${baseUrl}/lock/proof?${params.toString()}`;
 }

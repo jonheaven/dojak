@@ -319,6 +319,28 @@ export type {
   UtxoListSource,
 } from './lib/utxo-tools';
 
+// BIP65 CLTV time locks (ÐLocker / conviction custody)
+export {
+  buildCltvRedeemScript,
+  buildCltvP2shAddress,
+  createTimeLockedTransaction,
+  createTimeLockedInscriptionTransaction,
+  createUnlockTransaction,
+  loadCltvLocks,
+  saveCltvLock,
+  removeCltvLock,
+  LOCK_PRESETS,
+  locktimeFromDays,
+  formatTimeRemaining,
+  buildProofUrl,
+} from './lib/cltv-tools';
+export type {
+  CltvLockRecord,
+  UtxoInput,
+  UnlockTxResult,
+  TimeLockedTxResult,
+} from './lib/cltv-tools';
+
 // PSDT URI codec
 export {
   encodePsdtBytesToDogePsdtUri,
