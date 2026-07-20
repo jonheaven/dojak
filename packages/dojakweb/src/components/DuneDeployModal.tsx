@@ -58,7 +58,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
 
   const plainInitial = (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase();
   const isWhiteDune =
-    plainInitial === 'THEWHITEDOGE' || plainInitial === 'THEBLACKDOGE'; // legacy alias
+    plainInitial === 'THEWHITEDOGE'
   const isManifesto = plainInitial === 'DOGENALSOVERDOGINALS';
 
   const [name, setName] = useState(initialName ?? '');
@@ -89,8 +89,8 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const [isLoading, setIsLoading] = useState(false);
   const [signingAddress, setSigningAddress] = useState<string | null>(null);
 
-  const applyPreset = (kind: 'white' | 'black' | 'manifesto' | 'clear') => {
-    if (kind === 'white' || kind === 'black') {
+  const applyPreset = (kind: 'white' | 'manifesto' | 'clear') => {
+    if (kind === 'white') {
       setPremine(WHITE_PRESET.premine);
       setMintAmount(WHITE_PRESET.mintAmount);
       setMintCap(WHITE_PRESET.mintCap);
@@ -118,7 +118,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     setStep('form');
     setError(null);
     setTxid(null);
-    if (plain === 'THEWHITEDOGE' || plain === 'THEBLACKDOGE') applyPreset('white');
+    if (plain === 'THEWHITEDOGE') applyPreset('white');
     else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
     else {
       setPremine('1000000');
@@ -142,7 +142,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
       const n = initialName.trim().toUpperCase();
       setName(n);
       const plain = n.replace(/[•.\s]/g, '');
-      if (plain === 'THEWHITEDOGE' || plain === 'THEBLACKDOGE') applyPreset('white');
+      if (plain === 'THEWHITEDOGE') applyPreset('white');
       else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
     }
   }, [isOpen, initialName]);
