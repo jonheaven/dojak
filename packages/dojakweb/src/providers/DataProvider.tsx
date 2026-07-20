@@ -596,6 +596,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   );
 };
 
+export const useDataProviderOptional = () => useContext(DataProviderContext);
+
 export const useDataProvider = () => {
   const context = useContext(DataProviderContext);
   if (!context) {

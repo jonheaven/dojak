@@ -1,7 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useDataProvider } from '../../providers/DataProvider';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useDataProviderOptional } from '../../providers/DataProvider';
+import { useUnifiedWallet } from '../../contexts/useUnifiedWallet';
+import { walletDataApi } from '../../utils/api';
+import { charmsService } from '../../services/charmsService';
 import { CharmsCreateModal } from '../CharmsCreateModal';
 import { CharmsTransferModal } from '../CharmsTransferModal';
 import type { CharmsToken } from '../../lib/charms/types';
@@ -27,18 +30,91 @@ export interface CharmsToolsPanelProps {
 
 const DEFAULT_OPS: CharmsUiOp[] = ['create', 'transfer'];
 
+function normalizeUtxos(response: unknown): Array<{ txid?: string; vout?: number }> {
+  if (!response || typeof response !== 'object') return [];
+  const r = response as Record<string, unknown>;
+  if (Array.isArray(r.utxos)) return r.utxos as Array<{ txid?: string; vout?: number }>;
+  if (Array.isArray(r.data)) return r.data as Array<{ txid?: string; vout?: number }>;
+  if (Array.isArray(r.result)) return r.result as Array<{ txid?: string; vout?: number }>;
+  if (Array.isArray(r.list)) return r.list as Array<{ txid?: string; vout?: number }>;
+  if (Array.isArray(response)) return response as Array<{ txid?: string; vout?: number }>;
+  return [];
+}
+
+async function fetchCharmsForAddress(address: string): Promise<Map<string, CharmsToken>> {
+  const utxoResponse = await walletDataApi.fetchUtxos(address);
+  const walletUtxos = normalizeUtxos(utxoResponse);
+  const charmResults = await Promise.allSettled(
+    walletUtxos
+      .filter((utxo) => typeof utxo.txid === 'string' && Number.isFinite(Number(utxo.vout)))
+      .map((utxo) => charmsService.getCharmsByUtxo(String(utxo.txid), Number(utxo.vout))),
+  );
+  const indexed = charmResults.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+  const nextTokens = new Map<string, CharmsToken>();
+  for (const charm of indexed) {
+    if (charm.spent_by_txid) continue;
+    const key = `${charm.txid}:${charm.vout}:${charm.app_id}`;
+    const rawBalance = charm.charm_data?.balance ?? charm.charm_data?.amount ?? charm.charm_data?.value ?? '1';
+    const balance = BigInt(String(rawBalance));
+    nextTokens.set(key, {
+      id: key,
+      chainId: 'doge',
+      txid: charm.txid,
+      vout: charm.vout,
+      confirmed: true,
+      ticker: charm.app_id,
+      name: charm.app_id,
+      balance,
+      decimals: 0,
+      address,
+      scriptPubKey: '',
+      transferHistory: [],
+      chainSupply: { btc: 0n, ltc: 0n, doge: balance, ada: 0n },
+      beamHistory: [],
+    });
+  }
+  return nextTokens;
+}
+
 export function CharmsToolsPanel({
   initialOp = 'create',
   ops = DEFAULT_OPS,
   compact = false,
   className = '',
 }: CharmsToolsPanelProps) {
-  const { charmsTokens, refreshCharms, isLoadingCharms } = useDataProvider();
+  const data = useDataProviderOptional();
+  const { address, connected } = useUnifiedWallet();
   const firstOp = ops.includes(initialOp) ? initialOp : ops[0] ?? 'create';
 
   const [createOpen, setCreateOpen] = useState(firstOp === 'create');
   const [transferOpen, setTransferOpen] = useState(firstOp === 'transfer');
   const [selectedToken, setSelectedToken] = useState<CharmsToken | undefined>();
+  const [localTokens, setLocalTokens] = useState<Map<string, CharmsToken> | null>(null);
+  const [localLoading, setLocalLoading] = useState(false);
+
+  const refreshLocal = useCallback(async () => {
+    if (!connected || !address) {
+      setLocalTokens(null);
+      return;
+    }
+    setLocalLoading(true);
+    try {
+      setLocalTokens(await fetchCharmsForAddress(address));
+    } catch {
+      setLocalTokens(new Map());
+    } finally {
+      setLocalLoading(false);
+    }
+  }, [address, connected]);
+
+  useEffect(() => {
+    if (data) return;
+    void refreshLocal();
+  }, [data, refreshLocal]);
+
+  const charmsTokens = data?.charmsTokens ?? localTokens;
+  const isLoadingCharms = data?.isLoadingCharms ?? localLoading;
+  const refreshCharms = data?.refreshCharms ?? refreshLocal;
 
   const tokens = Array.from(charmsTokens?.values() ?? []);
 

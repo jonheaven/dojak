@@ -63,7 +63,7 @@ export {
 export type { DojakwebFiatCurrency } from './contexts/DojakwebFiatContext';
 
 export { DogePriceProvider, useDogePriceContext } from './contexts/DogePriceContext';
-export { useDataProvider } from './providers/DataProvider';
+export { useDataProvider, useDataProviderOptional } from './providers/DataProvider';
 export type { DRC20Token, DuneHolding, MyDogeInscription, WalletInfo, InscriptionLookupResult } from './utils/api';
 export { BrowserWalletSigner } from './adapters/BrowserWalletSigner';
 
