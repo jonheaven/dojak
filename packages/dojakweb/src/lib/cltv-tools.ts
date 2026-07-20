@@ -108,6 +108,22 @@ export function buildCltvRedeemScript(locktimeUnix: number, pubkeyHash: Buffer):
 }
 
 /**
+ * Same-tx OP_RETURN announce so dogex (and any indexer) can discover the lock
+ * without client registration. Payload: ASCII `CLTV` || u32 LE locktime || 20-byte pkh.
+ */
+export function buildCltvAnnouncePayload(locktimeUnix: number, pubkeyHash: Buffer): Buffer {
+  const buf = Buffer.alloc(28);
+  buf.write('CLTV', 0, 4, 'ascii');
+  buf.writeUInt32LE(locktimeUnix >>> 0, 4);
+  pubkeyHash.copy(buf, 8, 0, 20);
+  return buf;
+}
+
+export function buildCltvAnnounceScript(locktimeUnix: number, pubkeyHash: Buffer): Buffer {
+  return bitcoin.script.compile([bitcoin.opcodes.OP_RETURN, buildCltvAnnouncePayload(locktimeUnix, pubkeyHash)]);
+}
+
+/**
  * Derive the P2SH address and redeem script for a CLTV lock.
  * The lock can only be spent after `locktimeUnix` (Unix seconds) by `ownerAddress`.
  */
@@ -178,15 +194,19 @@ export async function createTimeLockedTransaction(params: {
   }
 
   const { address: lockAddress, redeemScript } = buildCltvP2shAddress(locktimeUnix, ownerAddress);
+  const decoded = bitcoin.address.fromBase58Check(ownerAddress);
+  const pubkeyHash = Buffer.from(decoded.hash);
+  const announceScript = buildCltvAnnounceScript(locktimeUnix, pubkeyHash);
 
   // Greedy UTXO selection (largest first, skip dust)
+  // Outputs: lock + OP_RETURN announce (+ optional change) → fee uses 3 outs max.
   const spendable = [...utxos].filter((u) => u.value > DUST_LIMIT).sort((a, b) => b.value - a.value);
   const selected: UtxoInput[] = [];
   let total = 0;
   for (const u of spendable) {
     selected.push(u);
     total += u.value;
-    const fee = estimateLockFee(selected.length, 2);
+    const fee = estimateLockFee(selected.length, 3);
     if (total >= amountKoinu + fee) break;
   }
 
@@ -194,7 +214,7 @@ export async function createTimeLockedTransaction(params: {
     throw new Error('No spendable UTXOs available');
   }
 
-  const actualFee = estimateLockFee(selected.length, 2);
+  const actualFee = estimateLockFee(selected.length, 3);
   if (total < amountKoinu + actualFee) {
     throw new Error(
       `Insufficient balance. Need ${((amountKoinu + actualFee) / 1e8).toFixed(4)} DOGE, have ${(total / 1e8).toFixed(4)} DOGE`,
@@ -217,6 +237,7 @@ export async function createTimeLockedTransaction(params: {
   }
 
   psbt.addOutput({ address: lockAddress, value: BigInt(amountKoinu) });
+  psbt.addOutput({ script: announceScript, value: BigInt(0) });
   if (hasChange) {
     psbt.addOutput({ address: ownerAddress, value: BigInt(change) });
   }
@@ -251,6 +272,9 @@ export async function createTimeLockedInscriptionTransaction(params: {
   }
 
   const { address: lockAddress, redeemScript } = buildCltvP2shAddress(locktimeUnix, ownerAddress);
+  const decoded = bitcoin.address.fromBase58Check(ownerAddress);
+  const pubkeyHash = Buffer.from(decoded.hash);
+  const announceScript = buildCltvAnnounceScript(locktimeUnix, pubkeyHash);
 
   // Select fee UTXOs (skip dust and the inscription UTXO itself)
   const spendableFee = [...feeUtxos]
@@ -262,11 +286,11 @@ export async function createTimeLockedInscriptionTransaction(params: {
   for (const u of spendableFee) {
     selectedFee.push(u);
     feeTotal += u.value;
-    const fee = estimateLockFee(1 + selectedFee.length, 2);
+    const fee = estimateLockFee(1 + selectedFee.length, 3);
     if (feeTotal >= fee) break;
   }
 
-  const actualFee = estimateLockFee(1 + selectedFee.length, 2);
+  const actualFee = estimateLockFee(1 + selectedFee.length, 3);
   if (feeTotal < actualFee) {
     throw new Error(
       `Insufficient DOGE for fees. Need ~${(actualFee / 1e8).toFixed(4)} DOGE in plain UTXOs.`,
@@ -300,8 +324,10 @@ export async function createTimeLockedInscriptionTransaction(params: {
 
   // Output 0: locked inscription at same value (preserves ordinal offset)
   psbt.addOutput({ address: lockAddress, value: BigInt(inscriptionUtxo.value) });
+  // Output 1: dogex-discoverable CLTV announce
+  psbt.addOutput({ script: announceScript, value: BigInt(0) });
 
-  // Output 1: change
+  // Output 2: change
   if (hasChange) {
     psbt.addOutput({ address: ownerAddress, value: BigInt(change) });
   }

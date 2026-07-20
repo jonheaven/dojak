@@ -322,6 +322,8 @@ export type {
 // BIP65 CLTV time locks (ÐLocker / conviction custody)
 export {
   buildCltvRedeemScript,
+  buildCltvAnnouncePayload,
+  buildCltvAnnounceScript,
   buildCltvP2shAddress,
   createTimeLockedTransaction,
   createTimeLockedInscriptionTransaction,
