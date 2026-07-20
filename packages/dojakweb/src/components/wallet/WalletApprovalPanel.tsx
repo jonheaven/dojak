@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
 import {
   rejectWalletApproval,
@@ -29,6 +29,8 @@ export function WalletApprovalPanel() {
   const [unlockPassword, setUnlockPassword] = useState('');
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [unlockBusy, setUnlockBusy] = useState(false);
+  /** Sync guard — React state alone can miss a double-tap before re-render. */
+  const approveLockRef = useRef(false);
 
   const sessionReady = Boolean(browser.wallet?.privateKey?.trim() && browser.address);
 
@@ -46,6 +48,11 @@ export function WalletApprovalPanel() {
       chassis.classList.remove('ds-wallet-approval-open');
     };
   }, [pending]);
+
+  // Reset lock when a new approval request appears.
+  useEffect(() => {
+    approveLockRef.current = false;
+  }, [pending?.id]);
 
   // If the tab session still has the unlock secret but memory was cleared, rehydrate silently.
   useEffect(() => {
@@ -96,17 +103,20 @@ export function WalletApprovalPanel() {
   }, [browser, unlockPassword]);
 
   const onReject = useCallback(() => {
+    if (approveLockRef.current || pending?.status === 'working') return;
     rejectWalletApproval('User rejected the request');
-  }, []);
+  }, [pending?.status]);
 
   const onApprove = useCallback(async () => {
     if (!pending) return;
+    if (approveLockRef.current || pending.status === 'working') return;
     const wif = browser.wallet?.privateKey?.trim();
     const address = browser.wallet?.address || browser.address;
     if (!wif || !address) {
       setUnlockError('Unlock your Local Browser Wallet first');
       return;
     }
+    approveLockRef.current = true;
     setWalletApprovalWorking(true);
     try {
       const session: WalletApprovalSession = { privateKeyWif: wif, address };
@@ -114,13 +124,14 @@ export function WalletApprovalPanel() {
       resolveWalletApproval(result);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Transaction failed';
+      approveLockRef.current = false;
       setWalletApprovalWorking(false, msg);
     }
   }, [pending, browser.wallet, browser.address]);
 
   if (!pending) return null;
 
-  const busy = pending.status === 'working' || unlockBusy;
+  const busy = pending.status === 'working' || unlockBusy || approveLockRef.current;
 
   return (
     <div
@@ -207,9 +218,10 @@ export function WalletApprovalPanel() {
           type="button"
           className="ds-wallet-approval__btn-approve"
           disabled={busy || !sessionReady}
+          aria-busy={pending.status === 'working'}
           onClick={() => void onApprove()}
         >
-          {pending.status === 'working' ? 'Signing…' : pending.approveLabel || 'Approve'}
+          {pending.status === 'working' ? 'Working…' : pending.approveLabel || 'Approve'}
         </button>
       </div>
     </div>
