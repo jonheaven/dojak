@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CodeBracketIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import {
   isJsonInscription,
@@ -25,19 +26,58 @@ type CardProps = {
   className?: string;
 };
 
-/** Same-origin indexer CDN path — avoid importing `api.ts` (circular risk with InuBits merge). */
-function fallbackCdnUrl(inscriptionId?: string): string | undefined {
-  const id = (inscriptionId || '').trim();
-  if (!id || typeof window === 'undefined') return undefined;
+/** Rewrite inubits.com → same-origin `/__inubits` (CORS). */
+function proxiedContentUrl(url?: string | null): string | undefined {
+  const raw = (url || '').trim();
+  if (!raw || typeof window === 'undefined') return raw || undefined;
   try {
-    // dogecoin.games: /api/indexer → dogex; dojakweb Vite: /__indexer
-    const path = window.location.hostname.includes('dogecoin.games')
-      ? `/api/indexer/cdn/content/${encodeURIComponent(id)}`
-      : `/__indexer/cdn/content/${encodeURIComponent(id)}`;
-    return `${window.location.origin}${path}`;
+    const u = new URL(raw, window.location.origin);
+    if (u.hostname === 'inubits.com' || u.hostname.endsWith('.inubits.com')) {
+      return `${window.location.origin}/__inubits${u.pathname}${u.search}`;
+    }
   } catch {
-    return undefined;
+    /* keep */
   }
+  return raw;
+}
+
+/** Same-origin indexer CDN candidates — avoid importing `api.ts` (circular risk). */
+function contentFallbackUrls(inscriptionId?: string, primary?: string | null): string[] {
+  const id = (inscriptionId || '').trim();
+  const out: string[] = [];
+  const push = (u?: string) => {
+    const s = (u || '').trim();
+    if (s && !out.includes(s)) out.push(s);
+  };
+
+  push(proxiedContentUrl(primary));
+  if (typeof window !== 'undefined' && id) {
+    const origin = window.location.origin;
+    const host = window.location.hostname;
+    // dogecoin.games Vercel rewrite
+    push(`${origin}/api/indexer/cdn/content/${encodeURIComponent(id)}`);
+    // dojakweb / Next hosts
+    push(`${origin}/__indexer/cdn/content/${encodeURIComponent(id)}`);
+    if (!host.includes('dogecoin.games')) {
+      push(`https://dogex.command.dog/cdn/content/${encodeURIComponent(id)}`);
+    }
+  }
+  return out;
+}
+
+async function loadBodyForItem(
+  item: InscriptionLike,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const urls = contentFallbackUrls(item.inscriptionId, item.content || item.preview);
+  return loadInscriptionTextBody({
+    contentBody: item.contentBody,
+    contentUrl: urls[0],
+    inscriptionId: item.inscriptionId,
+    fallbackContentUrl: urls[1],
+    extraFallbackUrls: urls.slice(2),
+    signal,
+  });
 }
 
 /** Compact media tile for text/JSON Doginals in the wallet NFT grid. */
@@ -50,13 +90,7 @@ export function TextInscriptionCardMedia({ item, onInspect, className = '' }: Ca
     setLoading(true);
     setParsed(null);
     void (async () => {
-      const body = await loadInscriptionTextBody({
-        contentBody: item.contentBody,
-        contentUrl: item.content || item.preview,
-        inscriptionId: item.inscriptionId,
-        fallbackContentUrl: fallbackCdnUrl(item.inscriptionId),
-        signal: ac.signal,
-      });
+      const body = await loadBodyForItem(item, ac.signal);
       if (ac.signal.aborted) return;
       if (body) setParsed(parseInscriptionText(body));
       setLoading(false);
@@ -140,11 +174,16 @@ type InspectProps = {
   onClose: () => void;
 };
 
-/** Full inspect sheet for text/JSON inscription bodies. */
+/** Full inspect sheet for text/JSON inscription bodies (portaled above wallet z-index). */
 export function InscriptionTextInspectModal({ item, open, onClose }: InspectProps) {
   const [raw, setRaw] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open || !item) {
@@ -156,13 +195,7 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
     setLoading(true);
     setError(false);
     void (async () => {
-      const body = await loadInscriptionTextBody({
-        contentBody: item.contentBody,
-        contentUrl: item.content || item.preview,
-        inscriptionId: item.inscriptionId,
-        fallbackContentUrl: fallbackCdnUrl(item.inscriptionId),
-        signal: ac.signal,
-      });
+      const body = await loadBodyForItem(item, ac.signal);
       if (ac.signal.aborted) return;
       if (body) setRaw(body);
       else setError(true);
@@ -170,6 +203,20 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
     })();
     return () => ac.abort();
   }, [open, item]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onClose]);
 
   const parsed = useMemo(() => (raw ? parseInscriptionText(raw) : null), [raw]);
   const pretty = useMemo(() => {
@@ -181,21 +228,23 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
     }
   }, [parsed, raw]);
 
-  if (!open || !item) return null;
+  const openUrl = item ? proxiedContentUrl(item.content || item.preview) || item.content : undefined;
 
-  return (
+  if (!open || !item || !mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-3 sm:items-center"
+      className="fixed inset-0 z-[10120] flex items-center justify-center overflow-y-auto bg-black/75 p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Inspect inscription"
       onClick={onClose}
     >
       <div
-        className="max-h-[85vh] w-full max-w-lg overflow-hidden rounded-2xl border border-white/15 bg-zinc-950 shadow-2xl"
+        className="my-auto flex max-h-[min(90dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/15 bg-zinc-950 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div className="min-w-0">
             <div className="text-sm font-semibold text-white">
               {parsed?.title || 'Inscription'}
@@ -219,7 +268,7 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
         </div>
 
         {parsed?.chips?.length ? (
-          <div className="flex flex-wrap gap-1.5 border-b border-white/10 px-4 py-3">
+          <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-white/10 px-4 py-3">
             {parsed.chips.map((c) => (
               <span
                 key={c}
@@ -231,15 +280,15 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
           </div>
         ) : null}
 
-        <div className="max-h-[55vh] overflow-auto px-4 py-3">
+        <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
           {loading ? (
             <div className="py-8 text-center text-sm text-white/45">Loading content…</div>
           ) : error || !pretty ? (
             <div className="space-y-2 py-6 text-center text-sm text-white/55">
               <p>Could not load inscription body (CORS or empty).</p>
-              {item.content ? (
+              {openUrl ? (
                 <a
-                  href={item.content}
+                  href={openUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[#FCD34D] underline"
@@ -255,11 +304,12 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
           )}
         </div>
 
-        <div className="border-t border-white/10 px-4 py-2 text-[10px] text-white/35">
+        <div className="shrink-0 border-t border-white/10 px-4 py-2 text-[10px] text-white/35">
           {item.contentType || 'text'} · tap outside to close
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

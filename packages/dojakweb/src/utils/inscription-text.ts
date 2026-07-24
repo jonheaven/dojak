@@ -171,6 +171,8 @@ export async function loadInscriptionTextBody(opts: {
   inscriptionId?: string | null;
   /** Fallback content URL when content/preview fail (e.g. dogex CDN). */
   fallbackContentUrl?: string | null;
+  /** Additional same-origin / CDN candidates after primary + fallback. */
+  extraFallbackUrls?: string[] | null;
   signal?: AbortSignal;
 }): Promise<string | null> {
   const inline = (opts.contentBody || '').trim();
@@ -194,15 +196,28 @@ export async function loadInscriptionTextBody(opts: {
     return null;
   }
 
+  const tried = new Set<string>();
+  const tryUrl = async (u: string) => {
+    const s = u.trim();
+    if (!s || tried.has(s)) return null;
+    tried.add(s);
+    return fetchTextUrl(s, opts.signal);
+  };
+
   if (url) {
-    const fromUrl = await fetchTextUrl(url, opts.signal);
+    const fromUrl = await tryUrl(url);
     if (fromUrl != null) return fromUrl;
   }
 
   const fallback = (opts.fallbackContentUrl || '').trim();
-  if (fallback && fallback !== url) {
-    const fromFallback = await fetchTextUrl(fallback, opts.signal);
+  if (fallback) {
+    const fromFallback = await tryUrl(fallback);
     if (fromFallback != null) return fromFallback;
+  }
+
+  for (const extra of opts.extraFallbackUrls || []) {
+    const fromExtra = await tryUrl(extra);
+    if (fromExtra != null) return fromExtra;
   }
 
   return null;

@@ -774,10 +774,22 @@ function mapInubitsRowToMyDoge(row: InubitsWalletInscriptionRow, walletAddress: 
   if (!txid || !Number.isInteger(vout) || vout < 0 || !inscriptionId) return null;
   const out = `${txid.toLowerCase()}:${vout}`;
   const path = row.contentUrl ? String(row.contentUrl) : '';
+  // Prefer same-origin `/__inubits` proxy — raw inubits.com has no CORS for browser body fetch.
+  const inubitsBase = getInubitsWalletInscriptionsBase();
   const preview = path
     ? path.startsWith('http')
-      ? path
-      : `https://inubits.com${path.startsWith('/') ? path : `/${path}`}`
+      ? (() => {
+          try {
+            const u = new URL(path);
+            if (u.hostname === 'inubits.com' || u.hostname.endsWith('.inubits.com')) {
+              return `${inubitsBase}${u.pathname}${u.search}`;
+            }
+          } catch {
+            /* keep absolute */
+          }
+          return path;
+        })()
+      : `${inubitsBase}${path.startsWith('/') ? path : `/${path}`}`
     : '';
   // Prefer InuBits content URL; fall back to dogex CDN for body fetch in the UI.
   // Never throw here — a bad CDN base must not drop the whole InuBits merge (text tickets).
