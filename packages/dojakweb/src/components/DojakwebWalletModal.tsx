@@ -1049,11 +1049,12 @@ export function DojakwebWalletModal({
   const visibleInscriptions = useMemo(() => {
     const byId = new Map<string, MyDogeInscription>();
     for (const item of inscriptions) {
-      const id = (item.inscriptionId || '').trim();
+      const id = (item.inscriptionId || '').trim().toLowerCase();
       if (!id) continue;
       if (!byId.has(id)) byId.set(id, item);
     }
     const unique = Array.from(byId.values());
+    // Only hide when explicitly enabled — never drop unknown/empty content types.
     if (!hideTextJsonInscriptions) return unique;
     return unique.filter((item) => !isTextishInscription(item.contentType));
   }, [inscriptions, hideTextJsonInscriptions]);

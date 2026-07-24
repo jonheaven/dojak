@@ -779,7 +779,16 @@ function mapInubitsRowToMyDoge(row: InubitsWalletInscriptionRow, walletAddress: 
       ? path
       : `https://inubits.com${path.startsWith('/') ? path : `/${path}`}`
     : '';
-  const content = preview || dogexCdnContentUrl(inscriptionId);
+  // Prefer InuBits content URL; fall back to dogex CDN for body fetch in the UI.
+  // Never throw here — a bad CDN base must not drop the whole InuBits merge (text tickets).
+  let content = preview;
+  if (!content) {
+    try {
+      content = dogexCdnContentUrl(inscriptionId);
+    } catch {
+      content = '';
+    }
+  }
   return {
     address: String(row.address ?? walletAddress),
     content,
@@ -791,7 +800,7 @@ function mapInubitsRowToMyDoge(row: InubitsWalletInscriptionRow, walletAddress: 
     inscriptionNumber: Number(row.inscriptionNumber ?? 0),
     output: out,
     outputValue: String(row.value ?? 100_000),
-    preview: content,
+    preview: content || preview,
     timestamp: Number(row.timestamp ?? 0),
     height: Number(row.genesisHeight ?? 0),
     location: out,
@@ -837,8 +846,12 @@ async function fetchInubitsWalletInscriptions(address: string): Promise<MyDogeIn
   if (!data || data.success !== true || !Array.isArray(data.inscriptions)) return [];
   const out: MyDogeInscription[] = [];
   for (const row of data.inscriptions as InubitsWalletInscriptionRow[]) {
-    const m = mapInubitsRowToMyDoge(row, address);
-    if (m) out.push(m);
+    try {
+      const m = mapInubitsRowToMyDoge(row, address);
+      if (m) out.push(m);
+    } catch (err) {
+      console.warn('[walletDataApi] skip InuBits inscription row', err);
+    }
   }
   return out;
 }

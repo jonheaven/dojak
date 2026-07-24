@@ -1,7 +1,5 @@
 /** Helpers for rendering text / JSON Doginals in the wallet UI. */
 
-import { dogexCdnContentUrl } from './api';
-
 export function normalizeContentType(contentType?: string | null): string {
   return String(contentType || '')
     .split(';')[0]
@@ -133,10 +131,17 @@ async function fetchTextUrl(url: string, signal?: AbortSignal): Promise<string |
   }
 }
 
+/**
+ * Load inscription body for text/JSON preview.
+ * Do not import `./api` here — that creates a circular dependency and can break
+ * InuBits merge (tickets disappear from the wallet grid).
+ */
 export async function loadInscriptionTextBody(opts: {
   contentBody?: string | null;
   contentUrl?: string | null;
   inscriptionId?: string | null;
+  /** Fallback content URL when content/preview fail (e.g. dogex CDN). */
+  fallbackContentUrl?: string | null;
   signal?: AbortSignal;
 }): Promise<string | null> {
   const inline = (opts.contentBody || '').trim();
@@ -164,17 +169,10 @@ export async function loadInscriptionTextBody(opts: {
     if (fromUrl != null) return fromUrl;
   }
 
-  const id = (opts.inscriptionId || '').trim();
-  if (id) {
-    try {
-      const cdn = dogexCdnContentUrl(id);
-      if (cdn && cdn !== url) {
-        const fromCdn = await fetchTextUrl(cdn, opts.signal);
-        if (fromCdn != null) return fromCdn;
-      }
-    } catch {
-      /* ignore CDN base errors */
-    }
+  const fallback = (opts.fallbackContentUrl || '').trim();
+  if (fallback && fallback !== url) {
+    const fromFallback = await fetchTextUrl(fallback, opts.signal);
+    if (fromFallback != null) return fromFallback;
   }
 
   return null;

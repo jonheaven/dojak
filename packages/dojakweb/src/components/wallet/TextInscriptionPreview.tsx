@@ -9,6 +9,7 @@ import {
   parseInscriptionText,
   type ParsedInscriptionText,
 } from '../../utils/inscription-text';
+import { dogexCdnContentUrl } from '../../utils/api';
 
 type InscriptionLike = {
   inscriptionId: string;
@@ -25,6 +26,16 @@ type CardProps = {
   className?: string;
 };
 
+function fallbackCdnUrl(inscriptionId?: string): string | undefined {
+  const id = (inscriptionId || '').trim();
+  if (!id) return undefined;
+  try {
+    return dogexCdnContentUrl(id);
+  } catch {
+    return undefined;
+  }
+}
+
 /** Compact media tile for text/JSON Doginals in the wallet NFT grid. */
 export function TextInscriptionCardMedia({ item, onInspect, className = '' }: CardProps) {
   const [parsed, setParsed] = useState<ParsedInscriptionText | null>(null);
@@ -39,6 +50,7 @@ export function TextInscriptionCardMedia({ item, onInspect, className = '' }: Ca
         contentBody: item.contentBody,
         contentUrl: item.content || item.preview,
         inscriptionId: item.inscriptionId,
+        fallbackContentUrl: fallbackCdnUrl(item.inscriptionId),
         signal: ac.signal,
       });
       if (ac.signal.aborted) return;
@@ -144,6 +156,7 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
         contentBody: item.contentBody,
         contentUrl: item.content || item.preview,
         inscriptionId: item.inscriptionId,
+        fallbackContentUrl: fallbackCdnUrl(item.inscriptionId),
         signal: ac.signal,
       });
       if (ac.signal.aborted) return;
