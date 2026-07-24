@@ -1633,8 +1633,13 @@ body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   right: var(--wallet-drawer-right) !important;
   bottom: var(--wallet-drawer-bottom) !important;
   top: auto !important;
-  height: min(86vh, 820px) !important;
-  max-height: calc(100dvh - 36px) !important;
+  /* Height tracks bottom inset so lifting never clips the chassis off-screen */
+  height: min(
+    86vh,
+    820px,
+    calc(100dvh - var(--wallet-drawer-bottom, 18px) - 16px)
+  ) !important;
+  max-height: calc(100dvh - var(--wallet-drawer-bottom, 18px) - 16px) !important;
   /* Above .wallet-paw-grip (9995) so the paw sits under the panel */
   z-index: 10050 !important;
   border-radius: var(--wallet-phone-radius) !important;

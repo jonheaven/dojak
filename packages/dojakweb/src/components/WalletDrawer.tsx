@@ -21,6 +21,13 @@ const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos';
 const DEFAULT_RIGHT = 14;
 const DEFAULT_BOTTOM = 18;
 const EDGE_PAD = 8;
+/**
+ * Paw sits under the chassis with a soft transparent fade at the image bottom.
+ * Lifting the panel past the default bottom reveals that fade and can clip the
+ * drawer top — keep vertical travel tiny (horizontal reposition is the main freedom).
+ */
+const MAX_BOTTOM = DEFAULT_BOTTOM;
+const MIN_BOTTOM = EDGE_PAD;
 
 type DrawerPos = { right: number; bottom: number };
 
@@ -85,7 +92,7 @@ function readStoredPos(): DrawerPos | null {
     ) {
       return null;
     }
-    return { right: parsed.right, bottom: parsed.bottom };
+    return clampPos(parsed.right, parsed.bottom);
   } catch {
     return null;
   }
@@ -102,17 +109,32 @@ function applyPosVars(pos: DrawerPos | null) {
   body.style.setProperty('--wallet-drawer-bottom', `${Math.round(pos.bottom)}px`);
 }
 
-function clampPos(right: number, bottom: number): DrawerPos {
+function measureDrawerSize(): { w: number; h: number } {
   const drawer =
     document.querySelector<HTMLElement>('.ds-wallet-modal--drawer') ||
     document.querySelector<HTMLElement>('[data-headlessui-portal] .ds-wallet-dashboard');
-  const drawerW = drawer?.offsetWidth || Math.min(390, window.innerWidth * 0.94);
-  const drawerH = drawer?.offsetHeight || Math.min(window.innerHeight * 0.86, 820);
-  const maxRight = Math.max(EDGE_PAD, window.innerWidth - drawerW - EDGE_PAD);
-  const maxBottom = Math.max(EDGE_PAD, window.innerHeight - drawerH - EDGE_PAD);
+  const fallbackW = Math.min(390, window.innerWidth * 0.94);
+  const vh = window.innerHeight;
+  // Prefer live rect; fall back to CSS intent (86vh / 820, minus by remaining viewport).
+  const w = drawer?.offsetWidth || fallbackW;
+  const cssH = Math.min(vh * 0.86, 820, Math.max(120, vh - MAX_BOTTOM - EDGE_PAD));
+  const h = drawer?.offsetHeight && drawer.offsetHeight > 40 ? drawer.offsetHeight : cssH;
+  return { w, h };
+}
+
+function clampPos(right: number, bottom: number): DrawerPos {
+  const { w: drawerW, h: drawerH } = measureDrawerSize();
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const maxRight = Math.max(EDGE_PAD, vw - drawerW - EDGE_PAD);
+  // Never lift above MAX_BOTTOM (paw fade + unclipped top). Also never exceed
+  // the room left under the drawer height so the chassis stays in-viewport.
+  const roomForBottom = Math.max(MIN_BOTTOM, vh - drawerH - EDGE_PAD);
+  const maxBottom = Math.min(MAX_BOTTOM, roomForBottom);
+  const minBottom = Math.min(MIN_BOTTOM, maxBottom);
   return {
     right: Math.min(maxRight, Math.max(EDGE_PAD, right)),
-    bottom: Math.min(maxBottom, Math.max(EDGE_PAD, bottom)),
+    bottom: Math.min(maxBottom, Math.max(minBottom, bottom)),
   };
 }
 
@@ -181,6 +203,22 @@ export default function WalletDrawer({
   }, []);
 
   useEffect(() => {
+    if (!isOpen || isMobile) return;
+    // Re-clamp on open so old localStorage positions that lifted the paw get fixed.
+    setPos((prev) => {
+      const base = prev ?? { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
+      const next = clampPos(base.right, base.bottom);
+      applyPosVars(next);
+      try {
+        window.localStorage.setItem(POS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, [isOpen, isMobile]);
+
+  useEffect(() => {
     if (!isOpen || isMobile || !pos) return;
     const onResize = () => {
       setPos((prev) => {
@@ -191,6 +229,7 @@ export default function WalletDrawer({
         } catch {
           /* ignore quota */
         }
+        applyPosVars(next);
         return next;
       });
     };
