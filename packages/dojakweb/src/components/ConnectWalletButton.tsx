@@ -29,6 +29,7 @@ export function ConnectWalletButton({
   const { connected, address } = useUnifiedWallet();
   const { t } = useDojakwebI18n();
   const dxOpenSignal = useDxHostStore((s) => s.openWalletSignal);
+  const dxCloseSignal = useDxHostStore((s) => s.closeWalletSignal);
   const approvalPending = useSyncExternalStore(
     walletApprovalStore.subscribe,
     walletApprovalStore.getSnapshot,
@@ -39,6 +40,10 @@ export function ConnectWalletButton({
   useEffect(() => {
     if (dxOpenSignal > 0) setOpen(true);
   }, [dxOpenSignal]);
+
+  useEffect(() => {
+    if (dxCloseSignal > 0) setOpen(false);
+  }, [dxCloseSignal]);
 
   // Host signing requests always force the drawer open (extension popup pattern).
   useEffect(() => {

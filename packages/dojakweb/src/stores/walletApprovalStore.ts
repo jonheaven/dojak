@@ -68,6 +68,14 @@ function openDrawer() {
   }
 }
 
+function closeDrawer() {
+  try {
+    useDxHostStore.getState().signalCloseWallet();
+  } catch {
+    /* store always available */
+  }
+}
+
 /**
  * Open the wallet drawer and wait for user approval of a dynamic signing action.
  * Rejects with `WalletApprovalCancelledError` if the user rejects or closes the drawer.
@@ -121,6 +129,8 @@ export function rejectWalletApproval(message = 'User rejected the request') {
   pending = null;
   emit();
   p.reject(new WalletApprovalCancelledError(message));
+  // Same UX as pressing X — dismiss the paw / drawer after reject.
+  closeDrawer();
 }
 
 export class WalletApprovalCancelledError extends Error {
@@ -129,6 +139,12 @@ export class WalletApprovalCancelledError extends Error {
     super(message);
     this.name = 'WalletApprovalCancelledError';
   }
+}
+
+export function isWalletApprovalCancelled(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { name?: string; code?: string };
+  return e.name === 'WalletApprovalCancelledError' || e.code === 'WALLET_APPROVAL_CANCELLED';
 }
 
 /** React hook-friendly snapshot via useSyncExternalStore. */

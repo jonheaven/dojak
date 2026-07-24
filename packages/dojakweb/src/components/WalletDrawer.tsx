@@ -163,6 +163,19 @@ export default function WalletDrawer({
   } | null>(null);
 
   useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Same as pressing X — dismiss drawer / cancel pending approval.
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     const body = document.body;
     body.classList.remove('wallet-drawer-paw-open', 'wallet-drawer-mobile-open');
     if (!isOpen) return;
