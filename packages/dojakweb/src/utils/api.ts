@@ -27,6 +27,11 @@ export interface WalletDataProviderConfig {
    * with the primary provider. InuBits indexes text/plain and other types MyDoge may omit.
    */
   mergeInuBitsInscriptions: boolean;
+  /**
+   * When true, hide text/* and application/json inscriptions from the NFT grid
+   * (lotto tickets, protocols, plain text). Default false.
+   */
+  hideTextJsonInscriptions?: boolean;
   /** Public dogex CDN origin for inscription thumbnails (e.g. https://cdn.example.com). */
   dogexCdnBase?: string;
 }
@@ -321,6 +326,7 @@ export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
     const walletDataProviderUrl =
       storedUrl && !urlsMatch(storedUrl, defaultUrl) ? storedUrl : defaultUrl;
     const mergeInuBitsInscriptions = parsed.mergeInuBitsInscriptions !== false;
+    const hideTextJsonInscriptions = parsed.hideTextJsonInscriptions === true;
     const indexerApiBase = normalizeBaseUrl(parsed.indexerApiBase) || undefined;
     const commandDogApiBase = normalizeBaseUrl(parsed.commandDogApiBase) || undefined;
     const dogexCdnBase = normalizeBaseUrl(parsed.dogexCdnBase) || undefined;
@@ -332,6 +338,7 @@ export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
       walletDataProvider,
       walletDataProviderUrl,
       mergeInuBitsInscriptions,
+      hideTextJsonInscriptions,
       indexerApiBase,
       commandDogApiBase,
       dogexCdnBase,
@@ -376,6 +383,11 @@ export const setWalletDataProviderConfig = (
       ? config.mergeInuBitsInscriptions
       : current.mergeInuBitsInscriptions !== false;
 
+  const hideTextJsonInscriptions =
+    typeof config.hideTextJsonInscriptions === 'boolean'
+      ? config.hideTextJsonInscriptions
+      : current.hideTextJsonInscriptions === true;
+
   const indexerApiBase =
     config.indexerApiBase !== undefined
       ? normalizeBaseUrl(config.indexerApiBase) || undefined
@@ -400,6 +412,7 @@ export const setWalletDataProviderConfig = (
   const payload: Record<string, unknown> = {
     walletDataProvider,
     mergeInuBitsInscriptions,
+    hideTextJsonInscriptions,
   };
   // Only persist a custom URL override — never stamp the built-in default into localStorage.
   if (nextUrl) {
@@ -766,9 +779,10 @@ function mapInubitsRowToMyDoge(row: InubitsWalletInscriptionRow, walletAddress: 
       ? path
       : `https://inubits.com${path.startsWith('/') ? path : `/${path}`}`
     : '';
+  const content = preview || dogexCdnContentUrl(inscriptionId);
   return {
     address: String(row.address ?? walletAddress),
-    content: '',
+    content,
     contentBody: '',
     contentLength: Number(row.contentLength ?? 0),
     contentType: String(row.contentType ?? ''),
@@ -777,7 +791,7 @@ function mapInubitsRowToMyDoge(row: InubitsWalletInscriptionRow, walletAddress: 
     inscriptionNumber: Number(row.inscriptionNumber ?? 0),
     output: out,
     outputValue: String(row.value ?? 100_000),
-    preview,
+    preview: content,
     timestamp: Number(row.timestamp ?? 0),
     height: Number(row.genesisHeight ?? 0),
     location: out,

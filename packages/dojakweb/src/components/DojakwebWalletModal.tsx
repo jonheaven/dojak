@@ -35,6 +35,7 @@ import {
   MoonIcon,
   PhotoIcon,
   MusicalNoteIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
 import { WalletMenuItems } from './wallet/WalletMenuItems';
@@ -42,6 +43,11 @@ import { WalletAccountSwitcherPanel } from './wallet/WalletAccountSwitcherPanel'
 import { WalletPinNumpad } from './wallet/WalletPinNumpad';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import { WalletApprovalPanel } from './wallet/WalletApprovalPanel';
+import {
+  TextInscriptionCardMedia,
+  InscriptionTextInspectModal,
+  isTextishInscription,
+} from './wallet/TextInscriptionPreview';
 import { WalletConnectChooser } from './WalletConnectChooser';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { walletCredentialInputProps, walletSecretDecoyFields, walletSecretInputProps } from '../lib/wallet-secret-input';
@@ -1035,6 +1041,26 @@ export function DojakwebWalletModal({
   const [settingsProvider, setSettingsProvider] = useState<WalletDataProviderType>('mydoge');
   const [settingsCustomUrl, setSettingsCustomUrl] = useState('');
   const [settingsMergeInuBits, setSettingsMergeInuBits] = useState(true);
+  const [settingsHideTextJson, setSettingsHideTextJson] = useState(false);
+  const [hideTextJsonInscriptions, setHideTextJsonInscriptions] = useState(
+    () => getWalletDataProviderConfig().hideTextJsonInscriptions === true,
+  );
+  const [textInspectItem, setTextInspectItem] = useState<MyDogeInscription | null>(null);
+  const visibleInscriptions = useMemo(() => {
+    const byId = new Map<string, MyDogeInscription>();
+    for (const item of inscriptions) {
+      const id = (item.inscriptionId || '').trim();
+      if (!id) continue;
+      if (!byId.has(id)) byId.set(id, item);
+    }
+    const unique = Array.from(byId.values());
+    if (!hideTextJsonInscriptions) return unique;
+    return unique.filter((item) => !isTextishInscription(item.contentType));
+  }, [inscriptions, hideTextJsonInscriptions]);
+  const textJsonInscriptionCount = useMemo(
+    () => inscriptions.filter((item) => isTextishInscription(item.contentType)).length,
+    [inscriptions],
+  );
   const [settingsIndexerApiBase, setSettingsIndexerApiBase] = useState('');
   const [settingsDogexCdnBase, setSettingsDogexCdnBase] = useState('');
   type IndexerHealthRow = {
@@ -2127,6 +2153,7 @@ export function DojakwebWalletModal({
     setSettingsIndexerApiBase(dp.indexerApiBase || '');
     setSettingsDogexCdnBase(dp.dogexCdnBase || '');
     setSettingsMergeInuBits(dp.mergeInuBitsInscriptions !== false);
+    setSettingsHideTextJson(dp.hideTextJsonInscriptions === true);
     setSettingsBroadcast(migrateBroadcastToAuto(loadBroadcastConfig()));
     setSettingsChainExplorer(loadDogeTxExplorerPreference());
     setSettingsPriceSources(getDogePriceSourceConfig().sources);
@@ -2325,7 +2352,9 @@ export function DojakwebWalletModal({
       indexerApiBase: settingsIndexerApiBase.trim() || undefined,
       dogexCdnBase: settingsDogexCdnBase.trim() || undefined,
       mergeInuBitsInscriptions: settingsMergeInuBits,
+      hideTextJsonInscriptions: settingsHideTextJson,
     });
+    setHideTextJsonInscriptions(settingsHideTextJson);
     saveBroadcastConfig(
       migrateBroadcastToAuto({
         ...settingsBroadcast,
@@ -4006,15 +4035,69 @@ export function DojakwebWalletModal({
                                     </div>
                                   )
                                 ) : assetType === 'nft' ? (
-                                  inscriptions.length === 0 ? (
+                                  visibleInscriptions.length === 0 ? (
                                     <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
                                       <WalletIcon className="h-8 w-8 text-white/30" />
                                       <div className="text-sm font-semibold text-white">{t('modal.assets.noDoginalsTitle')}</div>
-                                      <div className="text-xs text-white/45">{t('modal.assets.noDoginalsHint')}</div>
+                                      <div className="text-xs text-white/45">
+                                        {hideTextJsonInscriptions && textJsonInscriptionCount > 0
+                                          ? t('modal.assets.noDoginalsHiddenTextHint', {
+                                              count: String(textJsonInscriptionCount),
+                                            })
+                                          : t('modal.assets.noDoginalsHint')}
+                                      </div>
+                                      {hideTextJsonInscriptions && textJsonInscriptionCount > 0 ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setHideTextJsonInscriptions(false);
+                                            setSettingsHideTextJson(false);
+                                            const dp = getWalletDataProviderConfig();
+                                            setWalletDataProviderConfig({
+                                              walletDataProvider: dp.walletDataProvider,
+                                              hideTextJsonInscriptions: false,
+                                            });
+                                          }}
+                                          className="mt-1 text-xs font-semibold text-[#FCD34D] underline"
+                                        >
+                                          {t('modal.assets.showTextJson')}
+                                        </button>
+                                      ) : null}
                                     </div>
                                   ) : (
-                                    <div className="grid grid-cols-2 gap-3.5 p-4 sm:grid-cols-3">
-                                      {inscriptions.map((item) => (
+                                    <div className="space-y-2 p-4 pt-3">
+                                      {textJsonInscriptionCount > 0 ? (
+                                        <div className="flex items-center justify-end px-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const next = !hideTextJsonInscriptions;
+                                              setHideTextJsonInscriptions(next);
+                                              setSettingsHideTextJson(next);
+                                              const dp = getWalletDataProviderConfig();
+                                              setWalletDataProviderConfig({
+                                                walletDataProvider: dp.walletDataProvider,
+                                                hideTextJsonInscriptions: next,
+                                              });
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/20 hover:text-white"
+                                          >
+                                            {hideTextJsonInscriptions ? (
+                                              <EyeIcon className="h-3.5 w-3.5" aria-hidden />
+                                            ) : (
+                                              <EyeSlashIcon className="h-3.5 w-3.5" aria-hidden />
+                                            )}
+                                            {hideTextJsonInscriptions
+                                              ? t('modal.assets.showTextJson')
+                                              : t('modal.assets.hideTextJson')}
+                                            <span className="tabular-nums text-white/40">
+                                              ({textJsonInscriptionCount})
+                                            </span>
+                                          </button>
+                                        </div>
+                                      ) : null}
+                                    <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
+                                      {visibleInscriptions.map((item) => (
                                         <div
                                           key={item.inscriptionId}
                                           className="group relative overflow-visible rounded-xl border border-white/10 bg-zinc-900 shadow-sm transition hover:border-[#D4A017]/55 hover:shadow-md hover:shadow-[#D4A017]/10"
@@ -4027,6 +4110,11 @@ export function DojakwebWalletModal({
                                                 alt={`#${item.inscriptionNumber}`}
                                                 className="aspect-square w-full object-cover"
                                                 loading="lazy"
+                                              />
+                                            ) : isTextishInscription(item.contentType) ? (
+                                              <TextInscriptionCardMedia
+                                                item={item}
+                                                onInspect={() => setTextInspectItem(item)}
                                               />
                                             ) : (
                                               <div className="flex aspect-square w-full items-center justify-center bg-gray-800 text-xs text-white/40">
@@ -4048,6 +4136,23 @@ export function DojakwebWalletModal({
                                                 <EllipsisHorizontalIcon className="h-4 w-4" />
                                               </Menu.Button>
                                               <WalletMenuItems theme={isDark ? 'dark' : 'light'} anchor="bottom end" className="min-w-[12rem]">
+                                                  {isTextishInscription(item.contentType) ? (
+                                                    <Menu.Item>
+                                                      {({ focus, active }) => (
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => setTextInspectItem(item)}
+                                                          className={cx(
+                                                            'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                            (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                                          )}
+                                                        >
+                                                          <DocumentTextIcon className="h-4 w-4 shrink-0 text-sky-200/90" aria-hidden />
+                                                          <span className="leading-tight">{t('modal.assets.inspectText')}</span>
+                                                        </button>
+                                                      )}
+                                                    </Menu.Item>
+                                                  ) : null}
                                                   {item.contentType?.startsWith('image/') ? (
                                                     <Menu.Item>
                                                       {({ focus, active }) => (
@@ -4129,6 +4234,7 @@ export function DojakwebWalletModal({
                                           </div>
                                         </div>
                                       ))}
+                                    </div>
                                     </div>
                                   )
                                 ) : (
@@ -4528,6 +4634,15 @@ export function DojakwebWalletModal({
                         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-3">
                           {selectedInscription.contentType?.startsWith('image/') ? (
                             <img src={selectedInscription.content} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                          ) : isTextishInscription(selectedInscription.contentType) ? (
+                            <button
+                              type="button"
+                              onClick={() => setTextInspectItem(selectedInscription)}
+                              className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-950 text-[9px] font-bold uppercase tracking-wide text-sky-200/90 transition hover:brightness-110"
+                            >
+                              <DocumentTextIcon className="h-5 w-5" aria-hidden />
+                              {t('modal.assets.inspectShort')}
+                            </button>
                           ) : (
                             <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gray-800 text-xs text-white/40">
                               {selectedInscription.contentType?.split('/')[1] ?? '?'}
@@ -4745,6 +4860,15 @@ export function DojakwebWalletModal({
                         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-3">
                           {selectedInscription.contentType?.startsWith('image/') ? (
                             <img src={selectedInscription.content} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                          ) : isTextishInscription(selectedInscription.contentType) ? (
+                            <button
+                              type="button"
+                              onClick={() => setTextInspectItem(selectedInscription)}
+                              className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-950 text-[9px] font-bold uppercase tracking-wide text-sky-200/90 transition hover:brightness-110"
+                            >
+                              <DocumentTextIcon className="h-5 w-5" aria-hidden />
+                              {t('modal.assets.inspectShort')}
+                            </button>
                           ) : (
                             <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gray-800 text-xs text-white/40">
                               {selectedInscription.contentType?.split('/')[1] ?? '?'}
@@ -5763,6 +5887,19 @@ export function DojakwebWalletModal({
                               </div>
                               <span className="text-sm text-white">{t('modal.settings.mergeInuBitsTitle')}</span>
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => setSettingsHideTextJson((v) => !v)}
+                              className="flex w-full items-center gap-2.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left transition hover:border-white/20"
+                            >
+                              <div className={cx('flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition', settingsHideTextJson ? 'border-[#D4A017] bg-[#D4A017]/20' : 'border-white/25')}>
+                                {settingsHideTextJson && <span className="text-[9px] font-bold text-[#D4A017]">✓</span>}
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-sm text-white">{t('modal.settings.hideTextJsonTitle')}</span>
+                                <p className="mt-0.5 text-[11px] leading-snug text-white/45">{t('modal.settings.hideTextJsonDesc')}</p>
+                              </div>
+                            </button>
                           </div>
                         )}
 
@@ -6128,6 +6265,11 @@ export function DojakwebWalletModal({
         </Dialog>
       </Transition>
 
+      <InscriptionTextInspectModal
+        item={textInspectItem}
+        open={Boolean(textInspectItem)}
+        onClose={() => setTextInspectItem(null)}
+      />
     </>
   );
 }

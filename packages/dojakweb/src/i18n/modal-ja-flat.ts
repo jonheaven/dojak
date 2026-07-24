@@ -148,6 +148,12 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.assets.noDoginalsHint': '資産のあるウォレットをインポートするか、マーケットで購入してください',
   'modal.assets.unknownType': '不明',
   'modal.assets.send': '送信',
+  'modal.assets.inspectText': 'JSON / テキストを見る',
+  'modal.assets.inspectShort': '表示',
+  'modal.assets.hideTextJson': 'テキスト / JSON を隠す',
+  'modal.assets.showTextJson': 'テキスト / JSON を表示',
+  'modal.assets.noDoginalsHiddenTextHint':
+    '画像 Doginals がありません — テキスト/JSON が {count} 件隠れています。',
   'modal.assets.setAsDpfp': 'ÐPFP に設定',
   'modal.assets.setAsDpfa': 'ÐPFA に設定',
   'modal.profileDpfp.avatarMenuAria': 'プロフィール画像・音声',
@@ -394,6 +400,9 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.settings.mergeInuBitsTitle': 'InuBits の inscription をマージ',
   'modal.settings.mergeInuBitsDesc':
     'inubits.com からウォレット inscription も取得し、メイン API の結果と統合します。text/plain など MyDoge に無いものを拾えます。単一インデクサのみにしたい場合や CORS で届かない場合はオフにしてください。',
+  'modal.settings.hideTextJsonTitle': 'テキスト / JSON inscription を隠す',
+  'modal.settings.hideTextJsonDesc':
+    'text/plain・application/json などの Doginals（ロットチケット等）を NFT グリッドから隠します。資産タブからも切り替えできます。',
   'modal.settings.priceIntro':
     '複数の DOGE 価格ソースを選びます。上から順に有効な値が返るまで試行します。',
   'modal.settings.priceDrag': 'ドラッグ',

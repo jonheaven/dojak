@@ -142,6 +142,12 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.assets.noDoginalsHint': 'Import a wallet with assets or purchase from the marketplace',
   'modal.assets.unknownType': 'Unknown',
   'modal.assets.send': 'Send',
+  'modal.assets.inspectText': 'Inspect JSON / text',
+  'modal.assets.inspectShort': 'View',
+  'modal.assets.hideTextJson': 'Hide text / JSON',
+  'modal.assets.showTextJson': 'Show text / JSON',
+  'modal.assets.noDoginalsHiddenTextHint':
+    'No image Doginals left — {count} text/JSON inscriptions are hidden.',
   'modal.assets.setAsDpfp': 'Set as ÐPFP',
   'modal.assets.setAsDpfa': 'Set as ÐPFA',
   'modal.profileDpfp.avatarMenuAria': 'Profile picture and audio',
@@ -378,6 +384,9 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.settings.mergeInuBitsTitle': 'Merge InuBits inscriptions',
   'modal.settings.mergeInuBitsDesc':
     'Also fetch wallet inscriptions from inubits.com and merge with the primary API. InuBits lists text/plain and other content MyDoge may omit. Turn off if you only want a single indexer or InuBits is unreachable (CORS).',
+  'modal.settings.hideTextJsonTitle': 'Hide text / JSON inscriptions',
+  'modal.settings.hideTextJsonDesc':
+    'Hide text/plain, application/json, and similar Doginals from the NFT grid (lotto tickets, protocols, etc.). You can also toggle this from Assets.',
   'modal.settings.priceIntro': 'Pick multiple DOGE price sources. Dojakweb will try them from top to bottom until one returns a valid quote.',
   'modal.settings.priceDrag': 'Drag',
   'modal.settings.priceOrderHint': 'Order matters. Higher items are tried first.',
