@@ -9,7 +9,6 @@ import {
   parseInscriptionText,
   type ParsedInscriptionText,
 } from '../../utils/inscription-text';
-import { dogexCdnContentUrl } from '../../utils/api';
 
 type InscriptionLike = {
   inscriptionId: string;
@@ -26,11 +25,16 @@ type CardProps = {
   className?: string;
 };
 
+/** Same-origin indexer CDN path — avoid importing `api.ts` (circular risk with InuBits merge). */
 function fallbackCdnUrl(inscriptionId?: string): string | undefined {
   const id = (inscriptionId || '').trim();
-  if (!id) return undefined;
+  if (!id || typeof window === 'undefined') return undefined;
   try {
-    return dogexCdnContentUrl(id);
+    // dogecoin.games: /api/indexer → dogex; dojakweb Vite: /__indexer
+    const path = window.location.hostname.includes('dogecoin.games')
+      ? `/api/indexer/cdn/content/${encodeURIComponent(id)}`
+      : `/__indexer/cdn/content/${encodeURIComponent(id)}`;
+    return `${window.location.origin}${path}`;
   } catch {
     return undefined;
   }

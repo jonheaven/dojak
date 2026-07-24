@@ -7,6 +7,34 @@ export function normalizeContentType(contentType?: string | null): string {
     .toLowerCase();
 }
 
+/**
+ * InuBits (and some proxies) sometimes return UTF-8 bodies decoded as Latin-1, so
+ * on-chain `Ð:LOTTO` (U+00D0 / bytes C3 90) shows up as `Ã:LOTTO`. Chain data is fine —
+ * only repair for wallet display / protocol detection.
+ */
+export function repairInubitsUtf8Mojibake(text: string): string {
+  if (!text) return text;
+  const markerOnly = text
+    .replace(/\u00c3\u00d0:LOTTO/g, '\u00d0:LOTTO')
+    .replace(/\u00c3\u0090:LOTTO/g, '\u00d0:LOTTO')
+    .replace(/\u00c3\u00d0:MP/g, '\u00d0:MP')
+    .replace(/\u00c3\u0090:MP/g, '\u00d0:MP');
+
+  // Broader Latin-1→UTF-8 round-trip when the whole body looks mojibaked.
+  if (!/\u00c3[\u0080-\u00ff]/.test(text)) return markerOnly;
+  if (![...text].every((c) => c.charCodeAt(0) <= 0xff)) return markerOnly;
+  try {
+    const bytes = Uint8Array.from([...text], (c) => c.charCodeAt(0));
+    const fixed = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    if (fixed.includes('\u00d0:') || (fixed.includes(':LOTTO') && !fixed.includes('\u00c3'))) {
+      return fixed;
+    }
+  } catch {
+    /* keep marker-only repair */
+  }
+  return markerOnly;
+}
+
 /** text/* (except html) or application/json — suitable for in-wallet text preview. */
 export function isTextishInscription(contentType?: string | null): boolean {
   const ct = normalizeContentType(contentType);
@@ -20,7 +48,7 @@ export function isJsonInscription(contentType?: string | null, body?: string | n
   const ct = normalizeContentType(contentType);
   if (ct === 'application/json' || ct.endsWith('+json')) return true;
   if (!body) return false;
-  const t = body.trim();
+  const t = repairInubitsUtf8Mojibake(body).trim();
   return (t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'));
 }
 
@@ -36,7 +64,7 @@ export type ParsedInscriptionText = {
 };
 
 export function parseInscriptionText(raw: string): ParsedInscriptionText {
-  const text = raw.trim();
+  const text = repairInubitsUtf8Mojibake(raw).trim();
   let json: unknown | null = null;
   try {
     if (
@@ -125,7 +153,8 @@ async function fetchTextUrl(url: string, signal?: AbortSignal): Promise<string |
   try {
     const r = await fetch(url, { signal, mode: 'cors' });
     if (!r.ok) return null;
-    return await r.text();
+    const text = await r.text();
+    return repairInubitsUtf8Mojibake(text);
   } catch {
     return null;
   }
@@ -145,7 +174,7 @@ export async function loadInscriptionTextBody(opts: {
   signal?: AbortSignal;
 }): Promise<string | null> {
   const inline = (opts.contentBody || '').trim();
-  if (inline) return inline;
+  if (inline) return repairInubitsUtf8Mojibake(inline);
 
   const url = (opts.contentUrl || '').trim();
   if (url.startsWith('data:')) {
@@ -155,7 +184,8 @@ export async function loadInscriptionTextBody(opts: {
         const meta = url.slice(0, comma);
         const data = url.slice(comma + 1);
         try {
-          return meta.includes(';base64') ? atob(data) : decodeURIComponent(data);
+          const decoded = meta.includes(';base64') ? atob(data) : decodeURIComponent(data);
+          return repairInubitsUtf8Mojibake(decoded);
         } catch {
           return null;
         }
