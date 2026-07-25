@@ -575,7 +575,7 @@ export function DojakwebWalletModal({
   isOpen,
   onClose,
   isDark: isDarkProp,
-  initialStep = 'entry',
+  initialStep = 'chooser',
   initialSettingsTab = 'data',
   openNonce = 0,
   mode = 'drawer',
@@ -623,7 +623,7 @@ export function DojakwebWalletModal({
   const { pfpInscriptionId, setDogePFP, clearDogePFP } = useDogePFP();
   const { pfaInscriptionId, setDogePFA, clearDogePFA } = useDogePFA();
 
-  const [step, setStep] = useState<WalletStep>('entry');
+  const [step, setStep] = useState<WalletStep>('chooser');
   const [tab, setTab] = useState<DashboardTab>('assets');
   const [importValue, setImportValue] = useState('');
   const [password, setPassword] = useState('');
@@ -1460,8 +1460,13 @@ export function DojakwebWalletModal({
       }
       await refreshSavedLocalWallets();
 
+      // Local create/import flow — don't yank back to the all-wallets chooser.
+      const keepLocalBrowserWizard = (
+        ['chooser', 'entry', 'import', 'reveal', 'password'] as WalletStep[]
+      ).includes(stepRef.current);
+
       if (!connected && !browserSessionActive && localStorage.getItem(BROWSER_WALLET_RESTORE_BLOCK_KEY) === 'true') {
-        if (!holdWizardStep) setStep('entry');
+        if (!holdWizardStep && !keepLocalBrowserWizard) setStep('chooser');
         return;
       }
 
@@ -1494,14 +1499,14 @@ export function DojakwebWalletModal({
 
       const hasWallet = await browser.hasWallet();
       if (!hasWallet) {
-        setStep('entry');
+        if (!keepLocalBrowserWizard) setStep('chooser');
         return;
       }
 
       // Guard: hasWallet() true but listWallets() empty (stale localStorage).
       const walletList = await new BrowserWallet().listWallets();
       if (!walletList.length) {
-        setStep('entry');
+        if (!keepLocalBrowserWizard) setStep('chooser');
         return;
       }
 
@@ -1559,7 +1564,7 @@ export function DojakwebWalletModal({
         setError(nextError instanceof Error ? nextError.message : t('modal.errors.loadWallet'));
       }
 
-      setStep('entry');
+      if (!keepLocalBrowserWizard) setStep('chooser');
     };
 
     void syncState();
@@ -2030,7 +2035,7 @@ export function DojakwebWalletModal({
       setShowTemporaryBanner(false);
       setNeedsBackup(false);
       setIsEncryptedWallet(false);
-      setStep('entry');
+      setStep('chooser');
       await refreshSavedLocalWallets();
       toast.success(t('modal.toast.walletDisconnected'));
       onClose();
@@ -2181,7 +2186,7 @@ export function DojakwebWalletModal({
       setStep('dashboard');
       return;
     }
-    setStep('entry');
+    setStep('chooser');
   };
 
   const handleRemoveWallet = async () => {
@@ -2192,7 +2197,7 @@ export function DojakwebWalletModal({
       localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
       setPendingWallet(null);
       setPendingSeed(null);
-      setStep('entry');
+      setStep('chooser');
       await refreshSavedLocalWallets();
       toast.success(t('modal.toast.walletRemoved'));
       onClose();
