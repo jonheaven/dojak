@@ -479,6 +479,9 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.settings.rpcIbdWarn':
     '初期ブロック同期中です。同期が終わるまでメンプールや確認表示が遅れることがあります。',
   'modal.settings.explorerTitle': 'Dogecoin トランザクションエクスプローラー',
+  'modal.settings.explorer.dogenals': 'Ðexplorer',
+  'modal.settings.explorer.dogenalsDesc':
+    'デフォルト — explorer.dogenals.com（Ðogenals エコシステム）',
   'modal.settings.explorer.sochain': 'SoChain',
   'modal.settings.explorer.sochainDesc': 'SoChain の公開トランザクションページを開く（API は使わない）',
   'modal.settings.explorer.dogechain': 'DogeChain',

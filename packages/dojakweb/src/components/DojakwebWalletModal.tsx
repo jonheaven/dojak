@@ -1078,7 +1078,7 @@ export function DojakwebWalletModal({
   const [disabledBroadcastProviders, setDisabledBroadcastProviders] = useState<BroadcastRelayProvider[]>([]);
   const [showBroadcastInfo, setShowBroadcastInfo] = useState<BroadcastRelayProvider | null>(null);
   const [showPriceInfo, setShowPriceInfo] = useState<string | null>(null);
-  const [settingsChainExplorer, setSettingsChainExplorer] = useState<DogeTxExplorerId>('sochain');
+  const [settingsChainExplorer, setSettingsChainExplorer] = useState<DogeTxExplorerId>('dogenals');
   const [settingsPriceSources, setSettingsPriceSources] = useState<DogePriceSourceId[]>(
     () => getDogePriceSourceConfig().sources
   );
@@ -6044,6 +6044,7 @@ export function DojakwebWalletModal({
                               <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/35">TX Explorer</div>
                               <div className="flex gap-2">
                                 {([
+                                  { id: 'dogenals' as const, label: 'Ðexplorer' },
                                   { id: 'sochain' as const, label: 'SoChain' },
                                   { id: 'dogechain' as const, label: 'DogeChain' },
                                   { id: 'blockchair' as const, label: 'Blockchair' },

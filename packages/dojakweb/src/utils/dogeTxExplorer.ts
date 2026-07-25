@@ -2,17 +2,27 @@
 
 import { useSyncExternalStore } from 'react';
 
-export type DogeTxExplorerId = 'sochain' | 'dogechain' | 'blockchair';
+export type DogeTxExplorerId = 'dogenals' | 'sochain' | 'dogechain' | 'blockchair';
 
 export const CHAIN_EXPLORER_CONFIG_KEY = 'dojakweb-chain-explorer-config';
 
 const CHANGED_EVENT = 'dojakweb-chain-explorer-changed';
 
+/** Canonical Ðexplorer (dogenals eco). */
+export const DOGENALS_EXPLORER_ORIGIN = 'https://explorer.dogenals.com';
+
 export function loadDogeTxExplorerPreference(): DogeTxExplorerId {
-  if (typeof window === 'undefined') return 'sochain';
+  if (typeof window === 'undefined') return 'dogenals';
   const raw = window.localStorage.getItem(CHAIN_EXPLORER_CONFIG_KEY);
-  if (raw === 'sochain' || raw === 'dogechain' || raw === 'blockchair') return raw;
-  return 'sochain';
+  if (
+    raw === 'dogenals' ||
+    raw === 'sochain' ||
+    raw === 'dogechain' ||
+    raw === 'blockchair'
+  ) {
+    return raw;
+  }
+  return 'dogenals';
 }
 
 export function saveDogeTxExplorerPreference(value: DogeTxExplorerId): void {
@@ -25,24 +35,30 @@ export function dogeTxExplorerUrl(txid: string, pref?: DogeTxExplorerId): string
   const id = txid.trim();
   const p = pref ?? loadDogeTxExplorerPreference();
   switch (p) {
+    case 'sochain':
+      return `https://sochain.com/tx/DOGE/${id}`;
     case 'dogechain':
       return `https://dogechain.info/tx/${id}`;
     case 'blockchair':
       return `https://blockchair.com/dogecoin/transaction/${id}`;
+    case 'dogenals':
     default:
-      return `https://sochain.com/tx/DOGE/${id}`;
+      return `${DOGENALS_EXPLORER_ORIGIN}/tx/${id}`;
   }
 }
 
 export function dogeTxExplorerDisplayName(pref?: DogeTxExplorerId): string {
   const p = pref ?? loadDogeTxExplorerPreference();
   switch (p) {
+    case 'sochain':
+      return 'SoChain';
     case 'dogechain':
       return 'DogeChain';
     case 'blockchair':
       return 'Blockchair';
+    case 'dogenals':
     default:
-      return 'SoChain';
+      return 'Ðexplorer';
   }
 }
 
