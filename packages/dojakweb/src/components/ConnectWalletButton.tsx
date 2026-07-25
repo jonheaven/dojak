@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { WalletIcon } from '@heroicons/react/24/solid';
 import DojakwebWalletModal from './DojakwebWalletModal';
 import WalletDrawer from './WalletDrawer';
+import {
+  WalletQuickPicker,
+  type WalletDrawerOpenStep,
+} from './wallet/WalletQuickPicker';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { useDxHostStore, type WalletOpenFocus } from '../stores/dxHostStore';
@@ -25,9 +29,12 @@ export function ConnectWalletButton({
   isDark = true,
   mode = 'drawer',
 }: ConnectWalletButtonProps) {
-  const [open, setOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [openNonce, setOpenNonce] = useState(0);
   const [openFocus, setOpenFocus] = useState<WalletOpenFocus | null>(null);
+  const [drawerStep, setDrawerStep] = useState<WalletDrawerOpenStep>('dashboard');
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const { connected, address } = useUnifiedWallet();
   const { t } = useDojakwebI18n();
   const dxOpenSignal = useDxHostStore((s) => s.openWalletSignal);
@@ -39,40 +46,49 @@ export function ConnectWalletButton({
   );
   const isMobile = useIsMobileWallet();
 
+  const openDrawer = useCallback((step: WalletDrawerOpenStep, focus?: WalletOpenFocus | null) => {
+    setPickerOpen(false);
+    if (focus !== undefined) setOpenFocus(focus);
+    setDrawerStep(step);
+    setOpenNonce((n) => n + 1);
+    setDrawerOpen(true);
+  }, []);
+
   useEffect(() => {
     if (dxOpenSignal > 0) {
       const focus = useDxHostStore.getState().consumeOpenFocus();
-      setOpenFocus(focus);
-      setOpenNonce((n) => n + 1);
-      setOpen(true);
+      openDrawer(connected ? 'dashboard' : 'chooser', focus);
     }
-  }, [dxOpenSignal]);
+  }, [connected, dxOpenSignal, openDrawer]);
 
   useEffect(() => {
-    if (dxCloseSignal > 0) setOpen(false);
+    if (dxCloseSignal > 0) {
+      setDrawerOpen(false);
+      setPickerOpen(false);
+    }
   }, [dxCloseSignal]);
 
   // Host signing requests always force the drawer open (extension popup pattern).
   useEffect(() => {
-    if (approvalPending) setOpen(true);
+    if (approvalPending) {
+      setPickerOpen(false);
+      setDrawerOpen(true);
+      setDrawerStep('dashboard');
+      setOpenNonce((n) => n + 1);
+    }
   }, [approvalPending?.id]);
 
-  const handleClose = useCallback(() => {
+  const handleCloseDrawer = useCallback(() => {
     if (walletApprovalStore.getSnapshot()) {
       rejectWalletApproval('User closed the wallet');
     }
-    setOpen(false);
+    setDrawerOpen(false);
   }, []);
-
-  const buttonLabel =
-    connected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : t('wallet.connect');
 
   const buttonAriaLabel =
     connected && address
       ? `${t('wallet.openConnectedAria')} ${address}`
-      : t('wallet.connect');
-
-  const initialStep = connected ? 'dashboard' : 'chooser';
+      : t('wallet.quickPicker.openAria');
 
   const focusProps = {
     openNonce,
@@ -84,69 +100,65 @@ export function ConnectWalletButton({
   return (
     <>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => {
-          setOpenFocus(null);
-          setOpenNonce((n) => n + 1);
-          setOpen(true);
+          if (drawerOpen) {
+            setDrawerOpen(false);
+          }
+          setPickerOpen((open) => !open);
         }}
         aria-label={buttonAriaLabel}
         title={buttonAriaLabel}
+        aria-expanded={pickerOpen}
+        aria-haspopup="dialog"
         className={[
-          'ds-connect-button inline-flex appearance-none items-center justify-center font-semibold transition hover:brightness-105',
+          'ds-connect-button ds-connect-button--icon relative inline-flex h-10 w-10 min-h-10 shrink-0 appearance-none items-center justify-center rounded-full p-0 font-semibold transition hover:brightness-105',
           'border border-[color:var(--ds-accent-border)]',
           'bg-[linear-gradient(180deg,var(--ds-accent-solid)_0%,var(--ds-accent-solid-hover)_100%)]',
           'text-[color:var(--ds-accent-foreground)]',
-          isMobile
-            ? 'ds-connect-button--icon relative h-10 w-10 min-h-10 shrink-0 rounded-full p-0'
-            : 'min-h-10 gap-3 rounded-lg px-4 py-2 text-sm',
           className,
         ]
           .filter(Boolean)
           .join(' ')}
       >
-        {isMobile ? (
-          <>
-            <WalletIcon className="h-5 w-5" aria-hidden="true" />
-            {connected && address ? (
-              <span
-                className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-[color:var(--ds-accent-solid)]"
-                aria-hidden="true"
-              />
-            ) : null}
-            {approvalPending ? (
-              <span
-                className="absolute left-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-[color:var(--ds-accent-solid)] animate-pulse"
-                aria-hidden="true"
-              />
-            ) : null}
-          </>
-        ) : (
-          <>
-            <span>{buttonLabel}</span>
-            {connected && address ? (
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
-            ) : null}
-            {approvalPending ? (
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-400 animate-pulse" aria-hidden="true" />
-            ) : null}
-          </>
-        )}
+        <WalletIcon className="h-5 w-5" aria-hidden="true" />
+        {connected && address ? (
+          <span
+            className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-[color:var(--ds-accent-solid)]"
+            aria-hidden="true"
+          />
+        ) : null}
+        {approvalPending ? (
+          <span
+            className="absolute left-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-[color:var(--ds-accent-solid)] animate-pulse"
+            aria-hidden="true"
+          />
+        ) : null}
       </button>
+
+      <WalletQuickPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        variant={isMobile ? 'sheet' : 'flyout'}
+        anchorRef={buttonRef}
+        onRequestOpenDrawer={(step) => openDrawer(step)}
+      />
+
       {mode === 'drawer' ? (
         <WalletDrawer
-          isOpen={open}
-          onClose={handleClose}
-          initialStep={initialStep}
+          isOpen={drawerOpen}
+          onClose={handleCloseDrawer}
+          initialStep={drawerStep}
           isDark={isDark}
           {...focusProps}
         />
       ) : (
         <DojakwebWalletModal
-          isOpen={open}
-          onClose={handleClose}
+          isOpen={drawerOpen}
+          onClose={handleCloseDrawer}
           isDark={isDark}
-          initialStep={initialStep}
+          initialStep={drawerStep}
           mode="modal"
           {...focusProps}
         />

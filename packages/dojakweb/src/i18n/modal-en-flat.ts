@@ -500,6 +500,9 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.walletSwitcher.ledgerPrevAccount': 'Previous Ledger account',
   'modal.walletSwitcher.ledgerNextAccount': 'Next Ledger account',
   'modal.walletSwitcher.empty': 'No connected wallets yet.',
+  'modal.walletSwitcher.connectAnother': 'Connect another',
+  'modal.walletSwitcher.connectAnotherHint':
+    'Add an extension or hardware wallet without disconnecting your current session.',
   'modal.walletSource.local': 'Local',
   'modal.walletSource.mydoge': 'MyDoge',
   'modal.walletSource.dojak': 'Dojak',

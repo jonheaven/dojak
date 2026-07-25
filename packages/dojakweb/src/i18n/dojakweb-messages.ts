@@ -35,6 +35,20 @@ const en: MsgTree = {
     connect: 'Connect wallet',
     openConnectedAria: 'Open connected wallet',
     connecting: 'Connecting',
+    quickPicker: {
+      title: 'Wallets',
+      openAria: 'Choose a wallet',
+      openWallet: 'Open wallet',
+      hint: 'One active wallet at a time. Other sessions stay ready to switch.',
+      short: {
+        browser: 'Local',
+        mydoge: 'MyDoge',
+        dojak: 'Dojak',
+        spookydoge: 'Spooky',
+        ledger: 'Ledger',
+        dogewatch: 'Watch',
+      },
+    },
     connectionModal: {
       eyebrow: 'Wallet connection',
       title: 'Choose a wallet',
@@ -109,6 +123,20 @@ const ja: MsgTree = {
     connect: 'ウォレット接続',
     openConnectedAria: '接続済みウォレットを開く',
     connecting: '接続中',
+    quickPicker: {
+      title: 'ウォレット',
+      openAria: 'ウォレットを選択',
+      openWallet: 'ウォレットを開く',
+      hint: 'アクティブは常に1つ。他のセッションはそのまま切り替え可能です。',
+      short: {
+        browser: 'ローカル',
+        mydoge: 'MyDoge',
+        dojak: 'Dojak',
+        spookydoge: 'Spooky',
+        ledger: 'Ledger',
+        dogewatch: 'Watch',
+      },
+    },
     connectionModal: {
       eyebrow: 'ウォレット接続',
       title: 'ウォレットを選択',

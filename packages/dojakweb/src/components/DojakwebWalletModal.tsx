@@ -2193,10 +2193,16 @@ export function DojakwebWalletModal({
     setIsBusy(true);
     try {
       await browser.removeWallet();
-      await disconnect();
       localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
       setPendingWallet(null);
       setPendingSeed(null);
+      // Only tear down the unified active session when it was the local wallet;
+      // leave extension/hardware sessions intact.
+      if (walletType === 'browser') {
+        await disconnect();
+      } else if (browser.connected) {
+        await browser.disconnect();
+      }
       setStep('chooser');
       await refreshSavedLocalWallets();
       toast.success(t('modal.toast.walletRemoved'));
@@ -2925,6 +2931,9 @@ export function DojakwebWalletModal({
         setStep('dashboard');
       }}
       onLedgerAccountDelta={handleLedgerAccountDelta}
+      enableConnectAnother
+      onSelectBrowserFlow={() => setStep('entry')}
+      onConnectedAnother={() => setStep('dashboard')}
       t={t}
     />
   );

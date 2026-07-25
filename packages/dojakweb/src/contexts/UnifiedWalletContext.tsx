@@ -985,17 +985,118 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   );
 
   const disconnect = useCallback(async () => {
+    const leaving = walletType;
+    const nextActive: WalletType | null = (() => {
+      const prefer: WalletType[] = [
+        'browser',
+        'mydoge',
+        'dojak',
+        'spookydoge',
+        'ledger',
+        'dogewatch',
+      ];
+      for (const type of prefer) {
+        if (type === leaving) continue;
+        if (type === 'browser' && browserConnected) return type;
+        if (type === 'mydoge' && myDogeConnected) return type;
+        if (type === 'dojak' && dojakConnected) return type;
+        if (type === 'spookydoge' && spookyConnected) return type;
+        if (type === 'ledger' && ledgerConnected) return type;
+        if (type === 'dogewatch' && dogewatchConnected) return type;
+      }
+      return null;
+    })();
+
     try {
       await disconnectCurrentWallet();
     } finally {
-      setWalletType(null);
+      if (nextActive) {
+        setWalletType(nextActive);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('wallet_type', nextActive);
+        }
+      } else {
+        setWalletType(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('wallet_type');
+        }
+      }
+    }
+  }, [
+    browserConnected,
+    disconnectCurrentWallet,
+    dojakConnected,
+    dogewatchConnected,
+    ledgerConnected,
+    myDogeConnected,
+    spookyConnected,
+    walletType,
+  ]);
+
+  const disconnectAll = useCallback(async () => {
+    try {
+      if (myDoge.connected) {
+        try {
+          await myDoge.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+      if (browser.connected) {
+        try {
+          await browser.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+      if (spookyState.connected) {
+        try {
+          await getSpookyProvider()?.disconnect?.();
+        } catch {
+          /* ignore */
+        }
+      }
+      if (dojakState.connected) {
+        try {
+          await (window.dojak as any)?.disconnect?.();
+        } catch {
+          /* ignore */
+        }
+      }
+      if (ledgerState.connected) {
+        try {
+          await ledgerWalletRef.current.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+      if (dogewatchState.connected) {
+        try {
+          await dogewatchWalletRef.current.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+    } finally {
       setSpookyState(SPOOKY_INITIAL_STATE);
       setDojakState(DOJAK_INITIAL_STATE);
       setLedgerState(LEDGER_INITIAL_STATE);
       setDogewatchState(DOGEWATCH_INITIAL_STATE);
-      localStorage.removeItem('wallet_type');
+      setWalletType(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('wallet_type');
+      }
     }
-  }, [disconnectCurrentWallet]);
+  }, [
+    browser.connected,
+    browser.disconnect,
+    dojakState.connected,
+    dogewatchState.connected,
+    ledgerState.connected,
+    myDoge.connected,
+    myDoge.disconnect,
+    spookyState.connected,
+  ]);
 
   const sendTransaction = useCallback(
     async (
@@ -1614,6 +1715,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     balanceError,
     switchAccount,
     disconnect,
+    disconnectAll,
     sendTransaction,
     signMessage,
     signPSBT,

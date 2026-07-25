@@ -324,6 +324,8 @@ export interface UnifiedWalletContextValue {
   balanceError: string | null;
   switchAccount: (accountIndex: number, password?: string) => Promise<void>;
   disconnect: () => Promise<void>;
+  /** Tear down every connected session (wipe / hard logout). */
+  disconnectAll: () => Promise<void>;
   sendTransaction: (
     recipientAddress: string,
     amount: number,

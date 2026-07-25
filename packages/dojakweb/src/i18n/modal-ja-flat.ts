@@ -521,6 +521,9 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.walletSwitcher.ledgerPrevAccount': '前の Ledger アカウント',
   'modal.walletSwitcher.ledgerNextAccount': '次の Ledger アカウント',
   'modal.walletSwitcher.empty': '接続中のウォレットがありません。',
+  'modal.walletSwitcher.connectAnother': '別のウォレットを接続',
+  'modal.walletSwitcher.connectAnotherHint':
+    '現在のセッションを切らずに拡張機能やハードウェアウォレットを追加できます。',
   'modal.walletSource.local': 'ローカル',
   'modal.walletSource.mydoge': 'MyDoge',
   'modal.walletSource.dojak': 'Dojak',

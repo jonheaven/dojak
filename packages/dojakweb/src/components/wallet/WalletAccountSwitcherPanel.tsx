@@ -9,11 +9,12 @@ import {
   PlusIcon,
   WalletIcon,
 } from '@heroicons/react/24/outline';
-import { Usb } from 'lucide-react';
+import { LoaderCircle, Usb } from 'lucide-react';
 import { WalletProviderIcon } from './WalletProviderIcon';
 import type { DojakwebTranslate } from '../../contexts/DojakwebLocaleContext';
 import type { BrowserWalletSeedGroup } from '../../lib/wallet-seed-groups';
 import type { WalletType } from '../../types/wallet';
+import { useWalletConnectOptions } from '../../hooks/useWalletConnectOptions';
 
 export type WalletSwitcherSummary = {
   type: WalletType;
@@ -66,6 +67,10 @@ export type WalletAccountSwitcherPanelProps = {
   onAddHdAccount: () => void | Promise<void>;
   onSelectWalletType: (type: WalletType) => void;
   onLedgerAccountDelta: (delta: -1 | 1) => void | Promise<void>;
+  /** When true, show icon row to connect another provider (keeps current sessions). */
+  enableConnectAnother?: boolean;
+  onSelectBrowserFlow?: () => void;
+  onConnectedAnother?: () => void;
   t: DojakwebTranslate;
 };
 
@@ -84,6 +89,66 @@ function SectionHeader({ icon, label }: { icon: ReactNode; label: string }) {
   );
 }
 
+function ConnectAnotherSection({
+  t,
+  isBusy,
+  onSelectBrowserFlow,
+  onConnectedAnother,
+}: {
+  t: DojakwebTranslate;
+  isBusy: boolean;
+  onSelectBrowserFlow?: () => void;
+  onConnectedAnother?: () => void;
+}) {
+  const { tiles, connectingType, anyConnecting, handleSelect } = useWalletConnectOptions({
+    onSelectBrowser: () => onSelectBrowserFlow?.(),
+    onConnected: () => onConnectedAnother?.(),
+  });
+  const connectables = tiles.filter((tile) => !tile.connected);
+  if (connectables.length === 0) return null;
+
+  return (
+    <section className="space-y-2.5">
+      <SectionHeader
+        icon={<PlusIcon className="h-4 w-4" aria-hidden />}
+        label={t('modal.walletSwitcher.connectAnother')}
+      />
+      <p className="px-0.5 text-[11px] leading-relaxed text-white/40">
+        {t('modal.walletSwitcher.connectAnotherHint')}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {connectables.map((tile) => {
+          const busy = connectingType === tile.type;
+          return (
+            <button
+              key={tile.type}
+              type="button"
+              disabled={isBusy || anyConnecting || (!tile.available && tile.type !== 'browser')}
+              title={tile.title}
+              aria-label={tile.ariaLabel}
+              onClick={() => void handleSelect(tile.type)}
+              className={cx(
+                'relative flex h-12 w-12 items-center justify-center rounded-xl border transition',
+                tile.available || tile.type === 'browser'
+                  ? 'border-white/15 bg-white/[0.05] hover:border-white/30 hover:bg-white/[0.1]'
+                  : 'cursor-not-allowed border-white/[0.08] bg-white/[0.02] opacity-40',
+                (isBusy || anyConnecting) && 'cursor-wait opacity-70',
+              )}
+            >
+              <WalletProviderIcon walletType={tile.type} size="md" />
+              {busy ? (
+                <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50">
+                  <LoaderCircle className="h-4 w-4 animate-spin text-white" aria-hidden />
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function WalletAccountSwitcherPanel({
   localSeedGroups,
   extensionWallets,
@@ -97,9 +162,24 @@ export function WalletAccountSwitcherPanel({
   onAddHdAccount,
   onSelectWalletType,
   onLedgerAccountDelta,
+  enableConnectAnother = false,
+  onSelectBrowserFlow,
+  onConnectedAnother,
   t,
 }: WalletAccountSwitcherPanelProps) {
   const sections: ReactNode[] = [];
+
+  if (enableConnectAnother) {
+    sections.push(
+      <ConnectAnotherSection
+        key="connect-another"
+        t={t}
+        isBusy={isBusy}
+        onSelectBrowserFlow={onSelectBrowserFlow}
+        onConnectedAnother={onConnectedAnother}
+      />,
+    );
+  }
 
   if (localSeedGroups.length > 0) {
     sections.push(
