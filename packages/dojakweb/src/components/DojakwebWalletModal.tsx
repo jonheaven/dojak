@@ -48,6 +48,10 @@ import {
   InscriptionTextInspectModal,
   isTextishInscription,
 } from './wallet/TextInscriptionPreview';
+import {
+  isDlottoInscriptionText,
+  loadInscriptionTextBody,
+} from '../utils/inscription-text';
 import { WalletConnectChooser } from './WalletConnectChooser';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { walletCredentialInputProps, walletSecretDecoyFields, walletSecretInputProps } from '../lib/wallet-secret-input';
@@ -179,6 +183,10 @@ export interface DojakwebWalletModalProps {
   mode?: 'modal' | 'drawer';
   drawerSide?: 'left' | 'right';
   onThemeChange?: (theme: 'dark' | 'light') => void;
+  /** Host open focus: Assets → NFT → ÐLotto filter */
+  initialNftFilter?: 'all' | 'media' | 'dlotto';
+  initialDashboardTab?: 'assets' | 'transactions' | 'listings';
+  initialAssetType?: 'nft' | 'drc20' | 'treats';
 }
 
 type WalletStep =
@@ -573,6 +581,9 @@ export function DojakwebWalletModal({
   mode = 'drawer',
   drawerSide = 'right',
   onThemeChange,
+  initialNftFilter = 'all',
+  initialDashboardTab,
+  initialAssetType,
 }: DojakwebWalletModalProps) {
   const { theme: walletTheme } = useDojakwebTheme();
   const isDark = isDarkProp ?? walletTheme === 'dark';
@@ -642,6 +653,10 @@ export function DojakwebWalletModal({
   const [walletNameDraft, setWalletNameDraft] = useState('');
   const [isSavingWalletName, setIsSavingWalletName] = useState(false);
   const [assetType, setAssetType] = useState<'nft' | 'drc20' | 'treats'>('nft');
+  const [nftFilter, setNftFilter] = useState<'all' | 'media' | 'dlotto'>('all');
+  /** inscriptionId → is ÐLotto (async classification cache) */
+  const [dlottoFlags, setDlottoFlags] = useState<Record<string, boolean>>({});
+  const [dlottoClassifying, setDlottoClassifying] = useState(false);
   const [revealPassword, setRevealPassword] = useState('');
   const [inscriptions, setInscriptions] = useState<MyDogeInscription[]>([]);
   const [drc20Tokens, setDrc20Tokens] = useState<DRC20Token[]>([]);
@@ -1046,22 +1061,99 @@ export function DojakwebWalletModal({
     () => getWalletDataProviderConfig().hideTextJsonInscriptions === true,
   );
   const [textInspectItem, setTextInspectItem] = useState<MyDogeInscription | null>(null);
-  const visibleInscriptions = useMemo(() => {
+
+  const uniqueInscriptions = useMemo(() => {
     const byId = new Map<string, MyDogeInscription>();
     for (const item of inscriptions) {
       const id = (item.inscriptionId || '').trim().toLowerCase();
       if (!id) continue;
       if (!byId.has(id)) byId.set(id, item);
     }
-    const unique = Array.from(byId.values());
-    // Only hide when explicitly enabled — never drop unknown/empty content types.
-    if (!hideTextJsonInscriptions) return unique;
-    return unique.filter((item) => !isTextishInscription(item.contentType));
-  }, [inscriptions, hideTextJsonInscriptions]);
+    return Array.from(byId.values());
+  }, [inscriptions]);
+
+  const visibleInscriptions = useMemo(() => {
+    let list = uniqueInscriptions;
+    if (nftFilter === 'media') {
+      return list.filter((item) => !isTextishInscription(item.contentType));
+    }
+    if (nftFilter === 'dlotto') {
+      return list.filter((item) => isTextishInscription(item.contentType));
+    }
+    if (hideTextJsonInscriptions) {
+      list = list.filter((item) => !isTextishInscription(item.contentType));
+    }
+    return list;
+  }, [uniqueInscriptions, hideTextJsonInscriptions, nftFilter, dlottoFlags]);
+
   const textJsonInscriptionCount = useMemo(
-    () => inscriptions.filter((item) => isTextishInscription(item.contentType)).length,
-    [inscriptions],
+    () => uniqueInscriptions.filter((item) => isTextishInscription(item.contentType)).length,
+    [uniqueInscriptions],
   );
+
+  // Classify text/JSON inscriptions for ÐLotto filter (best-effort content fetch).
+  useEffect(() => {
+    if (nftFilter !== 'dlotto' || !isOpen) return;
+    const candidates = uniqueInscriptions.filter((item) => isTextishInscription(item.contentType));
+    let cancelled = false;
+    const ac = new AbortController();
+
+    void (async () => {
+      const seed: Record<string, boolean> = {};
+      const toFetch: MyDogeInscription[] = [];
+      for (const item of candidates) {
+        const id = (item.inscriptionId || '').trim().toLowerCase();
+        if (!id) continue;
+        if (item.contentBody) {
+          seed[id] = isDlottoInscriptionText(item.contentBody);
+        } else {
+          toFetch.push(item);
+        }
+      }
+      if (Object.keys(seed).length) {
+        setDlottoFlags((prev) => ({ ...prev, ...seed }));
+      }
+
+      setDlottoClassifying(true);
+      const next: Record<string, boolean> = {};
+      for (const item of toFetch.slice(0, 40)) {
+        if (cancelled) break;
+        const id = (item.inscriptionId || '').trim().toLowerCase();
+        try {
+          const body = await loadInscriptionTextBody({
+            contentBody: item.contentBody,
+            contentUrl: item.content || item.preview,
+            inscriptionId: item.inscriptionId,
+            signal: ac.signal,
+          });
+          next[id] = isDlottoInscriptionText(body);
+        } catch {
+          next[id] = false;
+        }
+      }
+      if (!cancelled) {
+        if (Object.keys(next).length) setDlottoFlags((prev) => ({ ...prev, ...next }));
+        setDlottoClassifying(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      ac.abort();
+      setDlottoClassifying(false);
+    };
+  }, [nftFilter, isOpen, uniqueInscriptions]);
+
+  const gridInscriptions = useMemo(() => {
+    if (nftFilter !== 'dlotto') return visibleInscriptions;
+    return visibleInscriptions.filter((item) => {
+      const id = (item.inscriptionId || '').trim().toLowerCase();
+      if (item.contentBody && isDlottoInscriptionText(item.contentBody)) return true;
+      if (id && dlottoFlags[id] === true) return true;
+      if (id && dlottoFlags[id] === false) return false;
+      return dlottoClassifying;
+    });
+  }, [nftFilter, visibleInscriptions, dlottoFlags, dlottoClassifying]);
   const [settingsIndexerApiBase, setSettingsIndexerApiBase] = useState('');
   const [settingsDogexCdnBase, setSettingsDogexCdnBase] = useState('');
   type IndexerHealthRow = {
@@ -2393,8 +2485,26 @@ export function DojakwebWalletModal({
       const unlocked = Boolean(browser.wallet?.privateKey && browser.address);
       setStep(unlocked ? 'dashboard' : initialStep);
       setSettingsTab(initialSettingsTab);
+      if (initialDashboardTab) setTab(initialDashboardTab);
+      if (initialAssetType) setAssetType(initialAssetType);
+      if (initialNftFilter) setNftFilter(initialNftFilter);
+      if (initialNftFilter === 'dlotto') {
+        setHideTextJsonInscriptions(false);
+        setAssetType('nft');
+        setTab('assets');
+      }
     }
-  }, [isOpen, initialStep, initialSettingsTab, openNonce, browser.wallet?.privateKey, browser.address]);
+  }, [
+    isOpen,
+    initialStep,
+    initialSettingsTab,
+    openNonce,
+    browser.wallet?.privateKey,
+    browser.address,
+    initialDashboardTab,
+    initialAssetType,
+    initialNftFilter,
+  ]);
 
   const handleDogecoinConfDrop = async (file: File) => {
     const text = await file.text();
@@ -4036,18 +4146,26 @@ export function DojakwebWalletModal({
                                     </div>
                                   )
                                 ) : assetType === 'nft' ? (
-                                  visibleInscriptions.length === 0 ? (
+                                  gridInscriptions.length === 0 ? (
                                     <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
                                       <WalletIcon className="h-8 w-8 text-white/30" />
-                                      <div className="text-sm font-semibold text-white">{t('modal.assets.noDoginalsTitle')}</div>
-                                      <div className="text-xs text-white/45">
-                                        {hideTextJsonInscriptions && textJsonInscriptionCount > 0
-                                          ? t('modal.assets.noDoginalsHiddenTextHint', {
-                                              count: String(textJsonInscriptionCount),
-                                            })
-                                          : t('modal.assets.noDoginalsHint')}
+                                      <div className="text-sm font-semibold text-white">
+                                        {nftFilter === 'dlotto'
+                                          ? t('modal.assets.noDlottoTitle')
+                                          : t('modal.assets.noDoginalsTitle')}
                                       </div>
-                                      {hideTextJsonInscriptions && textJsonInscriptionCount > 0 ? (
+                                      <div className="text-xs text-white/45">
+                                        {nftFilter === 'dlotto'
+                                          ? t('modal.assets.noDlottoHint')
+                                          : hideTextJsonInscriptions && textJsonInscriptionCount > 0
+                                            ? t('modal.assets.noDoginalsHiddenTextHint', {
+                                                count: String(textJsonInscriptionCount),
+                                              })
+                                            : t('modal.assets.noDoginalsHint')}
+                                      </div>
+                                      {nftFilter !== 'dlotto' &&
+                                      hideTextJsonInscriptions &&
+                                      textJsonInscriptionCount > 0 ? (
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -4067,8 +4185,42 @@ export function DojakwebWalletModal({
                                     </div>
                                   ) : (
                                     <div className="space-y-2 p-4 pt-3">
-                                      {textJsonInscriptionCount > 0 ? (
-                                        <div className="flex items-center justify-end px-0.5">
+                                      <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+                                        <div className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] p-0.5">
+                                          {(
+                                            [
+                                              { id: 'all' as const, label: t('modal.assets.filterAll') },
+                                              { id: 'media' as const, label: t('modal.assets.filterMedia') },
+                                              { id: 'dlotto' as const, label: t('modal.assets.filterDlotto') },
+                                            ] as const
+                                          ).map((opt) => (
+                                            <button
+                                              key={opt.id}
+                                              type="button"
+                                              onClick={() => {
+                                                setNftFilter(opt.id);
+                                                if (opt.id === 'dlotto') {
+                                                  setHideTextJsonInscriptions(false);
+                                                  setSettingsHideTextJson(false);
+                                                  const dp = getWalletDataProviderConfig();
+                                                  setWalletDataProviderConfig({
+                                                    walletDataProvider: dp.walletDataProvider,
+                                                    hideTextJsonInscriptions: false,
+                                                  });
+                                                }
+                                              }}
+                                              className={[
+                                                'rounded-md px-2.5 py-1 text-[11px] font-semibold transition',
+                                                nftFilter === opt.id
+                                                  ? 'bg-[#D4A017]/25 text-[#FCD34D]'
+                                                  : 'text-white/55 hover:text-white',
+                                              ].join(' ')}
+                                            >
+                                              {opt.label}
+                                            </button>
+                                          ))}
+                                        </div>
+                                        {nftFilter === 'all' && textJsonInscriptionCount > 0 ? (
                                           <button
                                             type="button"
                                             onClick={() => {
@@ -4095,10 +4247,14 @@ export function DojakwebWalletModal({
                                               ({textJsonInscriptionCount})
                                             </span>
                                           </button>
-                                        </div>
-                                      ) : null}
+                                        ) : nftFilter === 'dlotto' && dlottoClassifying ? (
+                                          <span className="text-[11px] text-white/45">
+                                            {t('modal.assets.filterDlottoLoading')}
+                                          </span>
+                                        ) : null}
+                                      </div>
                                     <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
-                                      {visibleInscriptions.map((item) => (
+                                      {gridInscriptions.map((item) => (
                                         <div
                                           key={item.inscriptionId}
                                           className="group relative overflow-visible rounded-xl border border-white/10 bg-zinc-900 shadow-sm transition hover:border-[#D4A017]/55 hover:shadow-md hover:shadow-[#D4A017]/10"

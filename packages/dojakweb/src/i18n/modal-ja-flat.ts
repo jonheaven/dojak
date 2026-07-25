@@ -152,8 +152,15 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.assets.inspectShort': '表示',
   'modal.assets.hideTextJson': 'テキスト / JSON を隠す',
   'modal.assets.showTextJson': 'テキスト / JSON を表示',
+  'modal.assets.filterAll': 'すべて',
+  'modal.assets.filterMedia': '画像',
+  'modal.assets.filterDlotto': 'ÐLotto',
+  'modal.assets.filterDlottoLoading': 'チケット検索中…',
   'modal.assets.noDoginalsHiddenTextHint':
     '画像 Doginals がありません — テキスト/JSON が {count} 件隠れています。',
+  'modal.assets.noDlottoTitle': 'ÐLotto がありません',
+  'modal.assets.noDlottoHint':
+    'チケット等の Ð:LOTTO JSON がここに表示されます。期限切れチケットのバーンは dogecoin.games から — 送信しないでください。',
   'modal.assets.setAsDpfp': 'ÐPFP に設定',
   'modal.assets.setAsDpfa': 'ÐPFA に設定',
   'modal.profileDpfp.avatarMenuAria': 'プロフィール画像・音声',

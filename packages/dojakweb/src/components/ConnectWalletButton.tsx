@@ -6,7 +6,7 @@ import DojakwebWalletModal from './DojakwebWalletModal';
 import WalletDrawer from './WalletDrawer';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
-import { useDxHostStore } from '../stores/dxHostStore';
+import { useDxHostStore, type WalletOpenFocus } from '../stores/dxHostStore';
 import { useIsMobileWallet } from '../hooks/useMediaQuery';
 import {
   rejectWalletApproval,
@@ -26,6 +26,8 @@ export function ConnectWalletButton({
   mode = 'drawer',
 }: ConnectWalletButtonProps) {
   const [open, setOpen] = useState(false);
+  const [openNonce, setOpenNonce] = useState(0);
+  const [openFocus, setOpenFocus] = useState<WalletOpenFocus | null>(null);
   const { connected, address } = useUnifiedWallet();
   const { t } = useDojakwebI18n();
   const dxOpenSignal = useDxHostStore((s) => s.openWalletSignal);
@@ -38,7 +40,12 @@ export function ConnectWalletButton({
   const isMobile = useIsMobileWallet();
 
   useEffect(() => {
-    if (dxOpenSignal > 0) setOpen(true);
+    if (dxOpenSignal > 0) {
+      const focus = useDxHostStore.getState().consumeOpenFocus();
+      setOpenFocus(focus);
+      setOpenNonce((n) => n + 1);
+      setOpen(true);
+    }
   }, [dxOpenSignal]);
 
   useEffect(() => {
@@ -67,11 +74,22 @@ export function ConnectWalletButton({
 
   const initialStep = connected ? 'dashboard' : 'chooser';
 
+  const focusProps = {
+    openNonce,
+    initialNftFilter: openFocus?.nftFilter ?? 'all',
+    initialDashboardTab: openFocus?.tab,
+    initialAssetType: openFocus?.assetType,
+  } as const;
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpenFocus(null);
+          setOpenNonce((n) => n + 1);
+          setOpen(true);
+        }}
         aria-label={buttonAriaLabel}
         title={buttonAriaLabel}
         className={[
@@ -121,6 +139,7 @@ export function ConnectWalletButton({
           onClose={handleClose}
           initialStep={initialStep}
           isDark={isDark}
+          {...focusProps}
         />
       ) : (
         <DojakwebWalletModal
@@ -129,8 +148,11 @@ export function ConnectWalletButton({
           isDark={isDark}
           initialStep={initialStep}
           mode="modal"
+          {...focusProps}
         />
       )}
     </>
   );
 }
+
+export default ConnectWalletButton;

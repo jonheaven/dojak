@@ -149,6 +149,13 @@ export function parseInscriptionText(raw: string): ParsedInscriptionText {
   };
 }
 
+/** True when body is ÐLotto protocol JSON (`p` contains LOTTO). */
+export function isDlottoInscriptionText(body?: string | null): boolean {
+  if (!body) return false;
+  const parsed = parseInscriptionText(body);
+  return Boolean(parsed.protocol && /lotto/i.test(parsed.protocol));
+}
+
 async function fetchTextUrl(url: string, signal?: AbortSignal): Promise<string | null> {
   try {
     const r = await fetch(url, { signal, mode: 'cors' });

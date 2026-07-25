@@ -15,6 +15,10 @@ export interface WalletDrawerProps {
   initialStep?: 'chooser' | 'entry' | 'dashboard' | 'settings';
   /** Host override (e.g. ConnectWalletButton isDark). Falls back to DojakwebThemeProvider. */
   isDark?: boolean;
+  openNonce?: number;
+  initialNftFilter?: 'all' | 'media' | 'dlotto';
+  initialDashboardTab?: 'assets' | 'transactions' | 'listings';
+  initialAssetType?: 'nft' | 'drc20' | 'treats';
 }
 
 const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos';
@@ -148,6 +152,10 @@ export default function WalletDrawer({
   onClose,
   initialStep,
   isDark: isDarkProp,
+  openNonce,
+  initialNftFilter,
+  initialDashboardTab,
+  initialAssetType,
 }: WalletDrawerProps) {
   const { theme } = useDojakwebTheme();
   const isDark = isDarkProp ?? theme === 'dark';
@@ -363,6 +371,10 @@ export default function WalletDrawer({
         isDark={isDark}
         initialStep={initialStep}
         mode="drawer"
+        openNonce={openNonce}
+        initialNftFilter={initialNftFilter}
+        initialDashboardTab={initialDashboardTab}
+        initialAssetType={initialAssetType}
       />
     </>
   );

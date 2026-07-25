@@ -32,6 +32,7 @@ export {
   type WalletApprovalRequest,
   type WalletApprovalDetail,
   type WalletApprovalSession,
+  type WalletOpenFocus,
 } from '../stores/walletApprovalStore';
 
 /** Ðclaims — host apps sign deploy/claim via browser wallet. */

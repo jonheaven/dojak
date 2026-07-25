@@ -5,7 +5,7 @@
  * and WalletApprovalPanel prompts the user. Approve runs `onApprove` with the
  * unlocked session key; Reject / dismiss rejects the promise.
  */
-import { useDxHostStore } from './dxHostStore';
+import { useDxHostStore, type WalletOpenFocus } from './dxHostStore';
 
 export type WalletApprovalDetail = {
   label: string;
@@ -60,9 +60,9 @@ export function subscribeWalletApproval(listener: Listener): () => void {
   return () => listeners.delete(listener);
 }
 
-function openDrawer() {
+function openDrawer(focus?: WalletOpenFocus | null) {
   try {
-    useDxHostStore.getState().signalOpenWallet();
+    useDxHostStore.getState().signalOpenWallet(focus ?? null);
   } catch {
     /* store always available */
   }
@@ -101,9 +101,25 @@ export function requestWalletApproval(request: WalletApprovalRequest): Promise<u
 }
 
 /** Imperatively open the host wallet drawer (no approval request). */
-export function openWalletDrawer(): void {
-  openDrawer();
+export function openWalletDrawer(
+  opts?: WalletOpenFocus | { focus: 'dlotto' } | 'dlotto' | null,
+): void {
+  if (!opts) {
+    openDrawer(null);
+    return;
+  }
+  if (opts === 'dlotto') {
+    openDrawer({ tab: 'assets', assetType: 'nft', nftFilter: 'dlotto' });
+    return;
+  }
+  if (typeof opts === 'object' && 'focus' in opts && (opts as { focus?: string }).focus === 'dlotto') {
+    openDrawer({ tab: 'assets', assetType: 'nft', nftFilter: 'dlotto' });
+    return;
+  }
+  openDrawer(opts as WalletOpenFocus);
 }
+
+export type { WalletOpenFocus };
 
 export function setWalletApprovalWorking(working: boolean, error?: string) {
   if (!pending) return;

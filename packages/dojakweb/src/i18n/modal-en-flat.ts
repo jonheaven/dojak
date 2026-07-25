@@ -146,8 +146,15 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.assets.inspectShort': 'View',
   'modal.assets.hideTextJson': 'Hide text / JSON',
   'modal.assets.showTextJson': 'Show text / JSON',
+  'modal.assets.filterAll': 'All',
+  'modal.assets.filterMedia': 'Images',
+  'modal.assets.filterDlotto': 'ÐLotto',
+  'modal.assets.filterDlottoLoading': 'Finding tickets…',
   'modal.assets.noDoginalsHiddenTextHint':
     'No image Doginals left — {count} text/JSON inscriptions are hidden.',
+  'modal.assets.noDlottoTitle': 'No ÐLotto inscriptions',
+  'modal.assets.noDlottoHint':
+    'Tickets and other Ð:LOTTO JSON show here. Burn expired tickets from dogecoin.games — do not send them.',
   'modal.assets.setAsDpfp': 'Set as ÐPFP',
   'modal.assets.setAsDpfa': 'Set as ÐPFA',
   'modal.profileDpfp.avatarMenuAria': 'Profile picture and audio',
