@@ -329,7 +329,14 @@ export interface UnifiedWalletContextValue {
   sendTransaction: (
     recipientAddress: string,
     amount: number,
-    sendOptions?: { opReturnMessage?: string },
+    sendOptions?: {
+      opReturnMessage?: string;
+      /**
+       * Local Browser Wallet only: skip the second Approve sheet when the send UI
+       * already collected explicit confirmation (unlocked session required).
+       */
+      skipApprovalUi?: boolean;
+    },
   ) => Promise<string>;
   signMessage: (message: string) => Promise<string>;
   signPSBT: (psbtHex: string) => Promise<string>;

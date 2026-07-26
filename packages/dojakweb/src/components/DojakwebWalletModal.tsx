@@ -5551,8 +5551,8 @@ export function DojakwebWalletModal({
                         connected={connected}
                         activeAddress={activeAddress}
                         balance={balance}
-                        sendTransaction={async (to, amountDoge) => {
-                          const txid = await sendTransaction(to, amountDoge);
+                        sendTransaction={async (to, amountDoge, opts) => {
+                          const txid = await sendTransaction(to, amountDoge, opts);
                           pushLocalTransaction({
                             txid,
                             type: 'sent',

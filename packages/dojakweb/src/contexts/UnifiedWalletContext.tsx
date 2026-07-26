@@ -1109,7 +1109,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     async (
       recipientAddress: string,
       amount: number,
-      sendOptions?: { opReturnMessage?: string },
+      sendOptions?: { opReturnMessage?: string; skipApprovalUi?: boolean },
     ): Promise<string> => {
       if (!isInitialized) {
         throw new Error('Wallet system not initialized');
@@ -1156,7 +1156,85 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           throw new Error('Browser wallet not connected');
         }
         const toAddress = assertValidDogecoinAddress(recipientAddress);
-        // Extension-style: open drawer and require explicit Approve before signing.
+
+        const runBrowserSend = async ({
+          privateKeyWif,
+          address,
+        }: {
+          privateKeyWif: string;
+          address: string;
+        }) => {
+          const storage = new BrowserWallet();
+          const walletPayload = {
+            ...(browser.wallet || { address, network: 'mainnet' as const }),
+            privateKey: privateKeyWif,
+            address,
+          };
+
+          const tryOnce = async () => {
+            const utxosRaw = await getPaymentUtxosForSend(address);
+            if (utxosRaw.length === 0) {
+              throw new Error(
+                'No spendable UTXOs for this address. Wait for a deposit to confirm, or refresh after recent bets.',
+              );
+            }
+            const utxos = utxosRaw.map((u) => ({
+              txid: u.txid,
+              vout: u.vout,
+              value: u.value,
+              scriptPubKey: u.scriptPubKey,
+            }));
+            const built = await storage.buildTransaction(toAddress, amount, {
+              wallet: walletPayload,
+              address,
+              utxos,
+              minConfirmations: 0,
+              includeInscribedUtxos: false,
+              opReturnMessage,
+            });
+            try {
+              const broadcasted = await broadcastTx(built.txHex);
+              recordPaymentBroadcast({
+                address,
+                txid: broadcasted,
+                spent: built.inputs,
+                change:
+                  built.changeVout != null && built.change > 0
+                    ? { vout: built.changeVout, value: built.change }
+                    : null,
+              });
+              return broadcasted;
+            } catch (err) {
+              if (isInputsSpentBroadcastError(err)) {
+                markOutpointsSpent(address, built.inputs);
+              }
+              throw err;
+            }
+          };
+
+          try {
+            return await tryOnce();
+          } catch (err) {
+            if (isInputsSpentBroadcastError(err)) {
+              try {
+                return await tryOnce();
+              } catch (err2) {
+                throw new Error(friendlyPaymentSendError(err2));
+              }
+            }
+            throw new Error(friendlyPaymentSendError(err));
+          }
+        };
+
+        // Send review UI already confirmed — skip second Approve when session is unlocked.
+        const sessionWif = browser.wallet?.privateKey;
+        if (sendOptions?.skipApprovalUi && sessionWif && browser.address) {
+          return (await runBrowserSend({
+            privateKeyWif: sessionWif,
+            address: browser.address,
+          })) as string;
+        }
+
         const txid = (await requestWalletApproval({
           title: 'Send DOGE',
           description: 'Approve to sign and broadcast this transfer from your Local Browser Wallet.',
@@ -1166,70 +1244,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             ...(opReturnMessage ? [{ label: 'Memo', value: opReturnMessage }] : []),
           ],
           approveLabel: 'Approve send',
-          onApprove: async ({ privateKeyWif, address }) => {
-            const storage = new BrowserWallet();
-            const walletPayload = {
-              ...(browser.wallet || { address, network: 'mainnet' as const }),
-              privateKey: privateKeyWif,
-              address,
-            };
-
-            const tryOnce = async () => {
-              // MyDoge ∩ Blockchair/BlockCypher + local spent/change overlay
-              const utxosRaw = await getPaymentUtxosForSend(address);
-              if (utxosRaw.length === 0) {
-                throw new Error(
-                  'No spendable UTXOs for this address. Wait for a deposit to confirm, or refresh after recent bets.',
-                );
-              }
-              const utxos = utxosRaw.map((u) => ({
-                txid: u.txid,
-                vout: u.vout,
-                value: u.value,
-                scriptPubKey: u.scriptPubKey,
-              }));
-              const built = await storage.buildTransaction(toAddress, amount, {
-                wallet: walletPayload,
-                address,
-                utxos,
-                minConfirmations: 0,
-                includeInscribedUtxos: false,
-                opReturnMessage,
-              });
-              try {
-                const broadcasted = await broadcastTx(built.txHex);
-                recordPaymentBroadcast({
-                  address,
-                  txid: broadcasted,
-                  spent: built.inputs,
-                  change:
-                    built.changeVout != null && built.change > 0
-                      ? { vout: built.changeVout, value: built.change }
-                      : null,
-                });
-                return broadcasted;
-              } catch (err) {
-                if (isInputsSpentBroadcastError(err)) {
-                  markOutpointsSpent(address, built.inputs);
-                }
-                throw err;
-              }
-            };
-
-            try {
-              return await tryOnce();
-            } catch (err) {
-              if (isInputsSpentBroadcastError(err)) {
-                // Indexer was stale — overlay now excludes those coins; rebuild once.
-                try {
-                  return await tryOnce();
-                } catch (err2) {
-                  throw new Error(friendlyPaymentSendError(err2));
-                }
-              }
-              throw new Error(friendlyPaymentSendError(err));
-            }
-          },
+          onApprove: async (session) => runBrowserSend(session),
         })) as string;
         return txid;
       }
@@ -1242,7 +1257,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
       throw new Error('Transaction sending is not supported for the current wallet');
     },
-    [browser.address, browser.connected, isInitialized, myDoge, walletType]
+    [browser.address, browser.connected, browser.wallet, isInitialized, myDoge, walletType]
   );
 
   const signMessage = useCallback(

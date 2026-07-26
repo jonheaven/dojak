@@ -95,7 +95,11 @@ export type WalletSendFlowProps = {
   connected: boolean;
   activeAddress: string | null;
   balance: number;
-  sendTransaction: (to: string, amountDoge: number) => Promise<string>;
+  sendTransaction: (
+    to: string,
+    amountDoge: number,
+    opts?: { skipApprovalUi?: boolean },
+  ) => Promise<string>;
   refreshBalance: () => Promise<void> | void;
   /** Prefill from address book / deep link */
   initialRecipient?: string;
@@ -265,10 +269,14 @@ export function WalletSendFlow({
   const confirmSend = useCallback(async () => {
     if (!quote || !activeAddress) return;
     setBusy(true);
-    setStatus('Awaiting approval…');
+    setStatus('Signing & broadcasting…');
     setError(null);
     try {
-      const idRaw = await sendTransaction(quote.recipient, quote.amountDoge);
+      const unlocked = Boolean(browser.wallet?.privateKey);
+      const idRaw = await sendTransaction(quote.recipient, quote.amountDoge, {
+        // Review screen is the confirmation — don't open a second Approve sheet.
+        skipApprovalUi: unlocked,
+      });
       const id = String(idRaw || '').trim();
       if (!isLikelyTxid(id)) {
         throw new Error(
@@ -284,25 +292,26 @@ export function WalletSendFlow({
       );
       if (existing) markUsed(existing.id);
 
-      // Indexers lag — debit UI immediately, then re-poll.
+      // Pending spend survives stale indexer polls until chain/index catches up.
       if (
         browser.connected &&
         browser.address &&
         browser.address.toLowerCase() === activeAddress.toLowerCase()
       ) {
-        browser.debitLocalBalance(quote.totalDebitDoge);
+        browser.debitLocalBalance(quote.totalDebitDoge, id);
       }
       setSpendableDoge((prev) =>
         prev == null ? prev : Math.max(0, Math.round((prev - quote.totalDebitDoge) * 1e8) / 1e8),
       );
 
       toast.success(`Sent ${formatDoge(quote.amountDoge)} Ð`, {
-        description: `Tx ${id.slice(0, 10)}… · expected wallet ≈ ${formatDoge(Math.max(0, balance - quote.totalDebitDoge), 4)} Ð (indexer may lag a minute)`,
+        description: `Tx ${id.slice(0, 10)}… · balance updated now (indexer may lag)`,
         duration: 10_000,
       });
 
+      // Delayed polls OK — pending-spend math prevents bouncing back up to the old total.
       void (async () => {
-        for (const wait of [800, 2500, 6000]) {
+        for (const wait of [2_000, 8_000, 20_000]) {
           await new Promise((r) => setTimeout(r, wait));
           try {
             await refreshBalance();
@@ -322,7 +331,6 @@ export function WalletSendFlow({
     }
   }, [
     activeAddress,
-    balance,
     bookMatch?.label,
     browser,
     entries,
@@ -461,7 +469,9 @@ export function WalletSendFlow({
   if (phase === 'review' && quote) {
     return (
       <div className="space-y-4">
-        <div className="text-sm text-white/70">Review carefully — then approve in the wallet sheet.</div>
+        <div className="text-sm text-white/70">
+          One confirm — we sign & broadcast from your unlocked Local Browser Wallet.
+        </div>
 
         <div className="rounded-xl border border-white/10 bg-[#0A0A0A] px-4 py-4 space-y-3">
           <div>
@@ -541,7 +551,7 @@ export function WalletSendFlow({
             aria-busy={busy}
             onClick={() => void confirmSend()}
           >
-            {busy ? status ?? 'Sending…' : 'Confirm & approve'}
+            {busy ? status ?? 'Sending…' : 'Confirm & send'}
           </Button>
         </div>
       </div>

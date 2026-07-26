@@ -28,8 +28,8 @@ export interface UseBrowserWalletReturn {
   hasWallet: () => Promise<boolean>;
   removeWallet: () => Promise<void>;
   refreshBalance: (options?: { silent?: boolean }) => Promise<void>;
-  /** Immediate UI debit after a confirmed local broadcast (indexer lags). */
-  debitLocalBalance: (doge: number) => void;
+  /** Immediate UI debit after a confirmed local broadcast (indexer lags). Optional txid for tracking. */
+  debitLocalBalance: (doge: number, txid?: string) => void;
   balanceError: string | null;
   balanceRefreshing: boolean;
   balanceVerified: boolean;
@@ -68,6 +68,49 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
   const [balanceVerified, setBalanceVerified] = useState(false);
   const balanceIntervalRef = useRef<number | null>(null);
   const balanceTimeoutRef = useRef<number | null>(null);
+  /** Indexer-reported balance (before pending-send deductions). */
+  const indexerBalanceRef = useRef(0);
+  /** Broadcasts not yet reflected by the indexer — keep UI snappy. */
+  const pendingSpendsRef = useRef<Array<{ id: string; doge: number; at: number }>>([]);
+
+  const PENDING_TTL_MS = 15 * 60 * 1000;
+
+  const computeDisplayBalance = useCallback((indexer: number) => {
+    const now = Date.now();
+    pendingSpendsRef.current = pendingSpendsRef.current.filter((p) => now - p.at < PENDING_TTL_MS);
+    const pending = pendingSpendsRef.current.reduce((s, p) => s + p.doge, 0);
+    return Math.max(0, Math.round((indexer - pending) * 1e8) / 1e8);
+  }, []);
+
+  const applyIndexerBalance = useCallback(
+    (fetched: number) => {
+      const prev = indexerBalanceRef.current;
+      const drop = prev - fetched;
+      // Indexer finally dropped — burn pending spends by that amount.
+      if (drop > 1e-8 && pendingSpendsRef.current.length) {
+        let remain = drop;
+        const next: Array<{ id: string; doge: number; at: number }> = [];
+        for (const p of pendingSpendsRef.current) {
+          if (remain <= 1e-8) {
+            next.push(p);
+            continue;
+          }
+          if (p.doge <= remain + 1e-8) {
+            remain -= p.doge;
+            continue;
+          }
+          next.push({ ...p, doge: Math.round((p.doge - remain) * 1e8) / 1e8 });
+          remain = 0;
+        }
+        pendingSpendsRef.current = next;
+      }
+      indexerBalanceRef.current = fetched;
+      setBalance(computeDisplayBalance(fetched));
+      setBalanceVerified(true);
+      setBalanceError(null);
+    },
+    [computeDisplayBalance],
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -103,6 +146,8 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
             setAddress(loaded.address);
             setConnected(true);
             setBalance(0);
+            indexerBalanceRef.current = 0;
+            pendingSpendsRef.current = [];
             setBalanceVerified(false);
             setBalanceError(null);
             localStorage.removeItem(RESTORE_BLOCK_KEY);
@@ -131,6 +176,8 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
         setAddress(loaded.address);
         setConnected(true);
         setBalance(0);
+        indexerBalanceRef.current = 0;
+        pendingSpendsRef.current = [];
         setBalanceVerified(false);
         setBalanceError(null);
         localStorage.removeItem(RESTORE_BLOCK_KEY);
@@ -157,22 +204,41 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
     setBalanceRefreshing(true);
     try {
       const nextBalance = await fetchBalanceForAddress(address, options);
-      setBalance(nextBalance);
-      setBalanceVerified(true);
-      setBalanceError(null);
+      applyIndexerBalance(nextBalance);
     } catch (error: any) {
       setBalanceVerified(false);
       setBalanceError(error?.message || 'Unable to refresh balance right now.');
     } finally {
       setBalanceRefreshing(false);
     }
-  }, [address]);
+  }, [address, applyIndexerBalance]);
 
-  const debitLocalBalance = useCallback((doge: number) => {
-    const n = Number(doge);
-    if (!Number.isFinite(n) || n <= 0) return;
-    setBalance((prev) => Math.max(0, Math.round((prev - n) * 1e8) / 1e8));
-  }, []);
+  const debitLocalBalance = useCallback(
+    (doge: number, txid?: string) => {
+      const n = Number(doge);
+      if (!Number.isFinite(n) || n <= 0) return;
+      const id =
+        (txid && /^[0-9a-fA-F]{64}$/.test(txid.trim()) && txid.trim().toLowerCase()) ||
+        `local_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+
+      setBalance((prev) => {
+        const alreadyPending = pendingSpendsRef.current.reduce((s, p) => s + p.doge, 0);
+        // If we never recorded an indexer snapshot, bootstrap from the UI total.
+        if (indexerBalanceRef.current <= 1e-12 && prev > 0) {
+          indexerBalanceRef.current = Math.round((prev + alreadyPending) * 1e8) / 1e8;
+        }
+        if (!pendingSpendsRef.current.some((p) => p.id === id)) {
+          pendingSpendsRef.current = [
+            ...pendingSpendsRef.current,
+            { id, doge: n, at: Date.now() },
+          ];
+        }
+        return computeDisplayBalance(indexerBalanceRef.current);
+      });
+      setBalanceVerified(true);
+    },
+    [computeDisplayBalance],
+  );
 
   const connect = useCallback(async (walletData: WalletData) => {
     setConnecting(true);
@@ -194,7 +260,12 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       // Re-connecting the same address (e.g. the UnifiedWalletContext auto-
       // reconnect that fires 100ms after mount) must not discard a balance
       // that was already successfully fetched by restoreWallet.
-      setBalance((prev) => (walletData.address === address ? prev : 0));
+      setBalance((prev) => {
+        if (walletData.address === address) return prev;
+        indexerBalanceRef.current = 0;
+        pendingSpendsRef.current = [];
+        return 0;
+      });
       setBalanceVerified((prev) => (walletData.address === address ? prev : false));
       setBalanceError(null);
     } finally {
@@ -206,6 +277,8 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
     setConnected(false);
     setAddress(null);
     setBalance(0);
+    indexerBalanceRef.current = 0;
+    pendingSpendsRef.current = [];
     setWallet(null);
     setBalanceVerified(false);
     setBalanceError(null);
