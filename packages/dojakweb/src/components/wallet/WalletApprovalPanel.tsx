@@ -103,9 +103,17 @@ export function WalletApprovalPanel() {
   }, [browser, unlockPassword]);
 
   const onReject = useCallback(() => {
-    if (approveLockRef.current || pending?.status === 'working') return;
+    // Allow Cancel even while Working… — UTXO/indexer waits can stick for a long time
+    // after a rapid re-bet; users must be able to bail without refreshing the tab.
+    if (!pending) return;
+    if (pending.status === 'working') {
+      approveLockRef.current = false;
+      rejectWalletApproval('Cancelled while signing');
+      return;
+    }
+    if (approveLockRef.current) return;
     rejectWalletApproval('User rejected the request');
-  }, [pending?.status]);
+  }, [pending]);
 
   const onApprove = useCallback(async () => {
     if (!pending) return;
@@ -131,7 +139,8 @@ export function WalletApprovalPanel() {
 
   if (!pending) return null;
 
-  const busy = pending.status === 'working' || unlockBusy || approveLockRef.current;
+  const working = pending.status === 'working' || approveLockRef.current;
+  const busy = working || unlockBusy;
 
   return (
     <div
@@ -209,10 +218,10 @@ export function WalletApprovalPanel() {
         <button
           type="button"
           className="ds-wallet-approval__btn-reject"
-          disabled={busy}
+          disabled={unlockBusy}
           onClick={onReject}
         >
-          {pending.rejectLabel || 'Reject'}
+          {working ? 'Cancel' : pending.rejectLabel || 'Reject'}
         </button>
         <button
           type="button"
