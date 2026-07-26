@@ -28,6 +28,8 @@ export interface UseBrowserWalletReturn {
   hasWallet: () => Promise<boolean>;
   removeWallet: () => Promise<void>;
   refreshBalance: (options?: { silent?: boolean }) => Promise<void>;
+  /** Immediate UI debit after a confirmed local broadcast (indexer lags). */
+  debitLocalBalance: (doge: number) => void;
   balanceError: string | null;
   balanceRefreshing: boolean;
   balanceVerified: boolean;
@@ -165,6 +167,12 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       setBalanceRefreshing(false);
     }
   }, [address]);
+
+  const debitLocalBalance = useCallback((doge: number) => {
+    const n = Number(doge);
+    if (!Number.isFinite(n) || n <= 0) return;
+    setBalance((prev) => Math.max(0, Math.round((prev - n) * 1e8) / 1e8));
+  }, []);
 
   const connect = useCallback(async (walletData: WalletData) => {
     setConnecting(true);
@@ -386,6 +394,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       hasWallet,
       removeWallet,
       refreshBalance,
+      debitLocalBalance,
       balanceError,
       balanceRefreshing,
       balanceVerified,
@@ -412,6 +421,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       hasWallet,
       removeWallet,
       refreshBalance,
+      debitLocalBalance,
       balanceError,
       balanceRefreshing,
       balanceVerified,
@@ -452,6 +462,7 @@ const NULL_BROWSER_WALLET: UseBrowserWalletReturn = {
   hasWallet: noop as any,
   removeWallet: noop,
   refreshBalance: noop,
+  debitLocalBalance: () => {},
   listWallets: async () => [],
   selectWallet: async () => null,
   switchAccount: noop as any,

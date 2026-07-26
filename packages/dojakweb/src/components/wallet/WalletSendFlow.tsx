@@ -24,7 +24,13 @@ import {
   estimatePaymentSend,
   type PaymentSendQuote,
 } from '../../lib/estimatePaymentSend';
+import { getPaymentUtxosForSend } from '../../lib/paymentUtxos';
 import { dogeTxExplorerUrl } from '../../utils/dogeTxExplorer';
+import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
+
+function isLikelyTxid(id: string): boolean {
+  return /^[0-9a-fA-F]{64}$/.test(id.trim());
+}
 
 function Button({
   className,
@@ -106,6 +112,7 @@ export function WalletSendFlow({
   initialRecipient,
   formatFiat,
 }: WalletSendFlowProps) {
+  const browser = useBrowserWallet();
   const { entries, addEntry, markUsed, updateEntry } = useAddressBook();
   const [phase, setPhase] = useState<SendPhase>('form');
   const [recipient, setRecipient] = useState(() =>
@@ -122,6 +129,33 @@ export function WalletSendFlow({
   const [showContacts, setShowContacts] = useState(false);
   const [saveLabel, setSaveLabel] = useState('');
   const [copied, setCopied] = useState(false);
+  const [spendableDoge, setSpendableDoge] = useState<number | null>(null);
+  const [spendableBusy, setSpendableBusy] = useState(false);
+
+  // Keep spendable UTXO total visible (often lower than wallet indexer balance).
+  useEffect(() => {
+    if (!connected || !activeAddress) {
+      setSpendableDoge(null);
+      return;
+    }
+    let cancelled = false;
+    setSpendableBusy(true);
+    void getPaymentUtxosForSend(activeAddress)
+      .then((utxos) => {
+        if (cancelled) return;
+        const koinu = utxos.reduce((s, u) => s + u.value, 0);
+        setSpendableDoge(Math.round(koinu) / 1e8);
+      })
+      .catch(() => {
+        if (!cancelled) setSpendableDoge(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSpendableBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [connected, activeAddress, phase, txid]);
 
   const validation = useMemo(() => validateDogecoinAddress(recipient), [recipient]);
 
@@ -234,7 +268,13 @@ export function WalletSendFlow({
     setStatus('Awaiting approval…');
     setError(null);
     try {
-      const id = await sendTransaction(quote.recipient, quote.amountDoge);
+      const idRaw = await sendTransaction(quote.recipient, quote.amountDoge);
+      const id = String(idRaw || '').trim();
+      if (!isLikelyTxid(id)) {
+        throw new Error(
+          `Send did not return a valid txid (${id || 'empty'}). Treat this as failed — check explorer / try again. Coins may or may not have moved.`,
+        );
+      }
       setTxid(id);
       setPhase('success');
       pushRecent(quote.recipient, bookMatch?.label);
@@ -243,16 +283,54 @@ export function WalletSendFlow({
         (e) => e.address.toLowerCase() === quote.recipient.toLowerCase(),
       );
       if (existing) markUsed(existing.id);
-      void refreshBalance();
-      toast.success(`Sent — ${id.slice(0, 12)}…`);
+
+      // Indexers lag — debit UI immediately, then re-poll.
+      if (
+        browser.connected &&
+        browser.address &&
+        browser.address.toLowerCase() === activeAddress.toLowerCase()
+      ) {
+        browser.debitLocalBalance(quote.totalDebitDoge);
+      }
+      setSpendableDoge((prev) =>
+        prev == null ? prev : Math.max(0, Math.round((prev - quote.totalDebitDoge) * 1e8) / 1e8),
+      );
+
+      toast.success(`Sent ${formatDoge(quote.amountDoge)} Ð`, {
+        description: `Tx ${id.slice(0, 10)}… · expected wallet ≈ ${formatDoge(Math.max(0, balance - quote.totalDebitDoge), 4)} Ð (indexer may lag a minute)`,
+        duration: 10_000,
+      });
+
+      void (async () => {
+        for (const wait of [800, 2500, 6000]) {
+          await new Promise((r) => setTimeout(r, wait));
+          try {
+            await refreshBalance();
+          } catch {
+            /* keep polling */
+          }
+        }
+      })();
     } catch (e) {
-      setError(friendlyPaymentSendError(e));
+      const msg = friendlyPaymentSendError(e);
+      setError(msg);
       setPhase('form');
+      toast.error('Send failed', { description: msg, duration: 12_000 });
     } finally {
       setBusy(false);
       setStatus(null);
     }
-  }, [activeAddress, bookMatch?.label, entries, markUsed, quote, refreshBalance, sendTransaction]);
+  }, [
+    activeAddress,
+    balance,
+    bookMatch?.label,
+    browser,
+    entries,
+    markUsed,
+    quote,
+    refreshBalance,
+    sendTransaction,
+  ]);
 
   const resetAll = useCallback(() => {
     setPhase('form');
@@ -318,6 +396,11 @@ export function WalletSendFlow({
             <CheckCircleIcon className="h-5 w-5 shrink-0" />
             <div className="font-semibold">Payment broadcast</div>
           </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-emerald-100/80">
+            On-chain send succeeded. Wallet total from the indexer can lag 30–120s — we already
+            subtracted {formatDoge(quote.totalDebitDoge)} Ð locally (
+            {formatDoge(quote.amountDoge)} + {formatDoge(quote.feeDoge)} fee).
+          </p>
           <div className="mt-3 space-y-2 text-sm text-white/75">
             <div className="flex justify-between gap-3">
               <span className="text-white/45">Amount</span>
@@ -583,9 +666,22 @@ export function WalletSendFlow({
           inputMode="decimal"
           placeholder="0.0"
         />
-        <p className="mt-1.5 text-[11px] text-white/45">
-          Available ≈ {formatDoge(balance, 4)} Ð
-          {formatFiat?.(balance) ? ` · ${formatFiat(balance)}` : ''}
+        <p className="mt-1.5 space-y-0.5 text-[11px] text-white/45">
+          <span className="block">
+            Wallet total ≈ {formatDoge(balance, 4)} Ð
+            {formatFiat?.(balance) ? ` · ${formatFiat(balance)}` : ''}
+          </span>
+          <span className="block text-white/70">
+            {spendableBusy
+              ? 'Checking spendable UTXOs…'
+              : spendableDoge != null
+                ? `Spendable now ≈ ${formatDoge(spendableDoge, 4)} Ð${
+                    spendableDoge + 0.05 < balance
+                      ? ' (rest may be inscriptions / unsettled bets)'
+                      : ''
+                  }`
+                : 'Spendable UTXOs unavailable — try Max after a moment'}
+          </span>
         </p>
       </div>
 

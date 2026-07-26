@@ -49,16 +49,35 @@ export async function estimatePaymentSend(params: {
 
   const utxos = await getPaymentUtxosForSend(params.fromAddress);
   if (!utxos.length) {
-    throw new Error('No spendable DOGE found. Wait for recent txs to confirm, then retry.');
+    throw new Error(
+      'No spendable DOGE found. Wait for recent txs to confirm (casino bets / prior sends lock coins until indexers catch up), then retry.',
+    );
   }
 
   const spendableKoinu = utxos.reduce((s, u) => s + u.value, 0);
-  const selected = coinSelectP2PKH(
-    params.fromAddress,
-    FEE_RATE,
-    utxos.map((u) => ({ txid: u.txid, vout: u.vout, value: u.value })),
-    [{ address: recipient, value: amountKoinu }],
-  );
+  if (spendableKoinu < amountKoinu) {
+    throw new Error(
+      `Not enough spendable DOGE: you asked to send ${toDoge(amountKoinu)} Ð, but only ${toDoge(spendableKoinu)} Ð is spendable right now (wallet total can look higher when coins are in inscriptions or still settling).`,
+    );
+  }
+
+  let selected: ReturnType<typeof coinSelectP2PKH>;
+  try {
+    selected = coinSelectP2PKH(
+      params.fromAddress,
+      FEE_RATE,
+      utxos.map((u) => ({ txid: u.txid, vout: u.vout, value: u.value })),
+      [{ address: recipient, value: amountKoinu }],
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/insufficient/i.test(msg)) {
+      throw new Error(
+        `Not enough spendable DOGE for ${toDoge(amountKoinu)} Ð plus network fee. Spendable right now: ${toDoge(spendableKoinu)} Ð. Try a smaller amount or tap Max.`,
+      );
+    }
+    throw e;
+  }
 
   const feeKoinu = selected.fee;
   const changeKoinu = Math.max(

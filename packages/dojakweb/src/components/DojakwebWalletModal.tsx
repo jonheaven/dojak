@@ -2397,6 +2397,10 @@ export function DojakwebWalletModal({
         setAssetType('nft');
         setTab('assets');
       }
+      // Don't leave the UI on a scary unverified 0 — fetch when the drawer opens.
+      if (connected) {
+        void refreshBalance();
+      }
     }
   }, [
     isOpen,
@@ -2408,6 +2412,8 @@ export function DojakwebWalletModal({
     initialDashboardTab,
     initialAssetType,
     initialNftFilter,
+    connected,
+    refreshBalance,
   ]);
 
   const handleDogecoinConfDrop = async (file: File) => {
@@ -3739,10 +3745,17 @@ export function DojakwebWalletModal({
                           ) : null}
 
                           <div className="px-1 pb-1 pt-3 text-center">
-                            {balanceRefreshing ? (
-                              <div className="text-2xl font-semibold text-white/50">{t('modal.dashboard.refreshingBalance')}</div>
-                            ) : !balanceVerified && balance === 0 ? (
-                              <div className="text-3xl font-semibold tracking-tight text-white/40">–</div>
+                            {balanceRefreshing && !balanceVerified && balance <= 0 ? (
+                              <div className="text-2xl font-semibold text-white/50 animate-pulse">
+                                {t('modal.dashboard.refreshingBalance')}
+                              </div>
+                            ) : !balanceVerified && balance <= 0 ? (
+                              <div className="space-y-1">
+                                <div className="text-3xl font-semibold tracking-tight text-white/40">—</div>
+                                <p className="text-[11px] text-white/40">
+                                  Balance not loaded yet — tap refresh
+                                </p>
+                              </div>
                             ) : (
                               <>
                                 <div className="text-4xl font-semibold leading-none tracking-tight text-white">
@@ -3764,6 +3777,10 @@ export function DojakwebWalletModal({
                                 {fiatPrefs && !hideBalance && balanceVerified ? (
                                   <div className="mt-2 text-sm font-medium text-white/45">
                                     {fiatPrefs.formatFiat(fiatPrefs.convert(balance))}
+                                  </div>
+                                ) : !balanceVerified && balance > 0 ? (
+                                  <div className="mt-2 text-[11px] text-amber-200/70">
+                                    Provisional — confirming with indexer…
                                   </div>
                                 ) : null}
                               </>

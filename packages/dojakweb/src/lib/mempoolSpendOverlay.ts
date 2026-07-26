@@ -232,11 +232,18 @@ export function friendlyPaymentSendError(err: unknown): string {
   if (isInputsSpentBroadcastError(err)) {
     return (
       'Those coins were already spent (often from a recent casino bet or send). ' +
-      'We refreshed your spendable balance — try again in a moment.'
+      'We refreshed your spendable UTXOs — try again in a moment with a smaller amount or Max.'
     );
   }
+  // Prefer our detailed estimate messages as-is
+  if (/not enough spendable|no spendable doge|spendable right now/i.test(m)) {
+    return m;
+  }
   if (/insufficient/i.test(m)) {
-    return 'Not enough spendable DOGE for this amount plus network fee.';
+    return (
+      'Not enough spendable DOGE for this amount plus network fee. ' +
+      'Wallet total can look higher when coins are locked in Doginals/inscriptions or still settling after a bet.'
+    );
   }
   if (/no spendable/i.test(m)) {
     return 'No spendable DOGE found yet. Wait for recent transactions to appear, then retry.';
@@ -246,6 +253,9 @@ export function friendlyPaymentSendError(err: unknown): string {
   }
   if (/wallet.*locked|private key/i.test(m)) {
     return 'Unlock your Local Browser Wallet and try again.';
+  }
+  if (/all broadcast providers failed|broadcast/i.test(m)) {
+    return `Broadcast failed: ${m.replace(/^Invalid transaction\.\s*/i, '').trim()}. The coins were NOT sent — try again.`;
   }
   return m.replace(/^Invalid transaction\.\s*/i, '').trim() || m;
 }
