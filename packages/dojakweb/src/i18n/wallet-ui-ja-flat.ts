@@ -130,6 +130,8 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
   'utxo.fetchSource.pending': 'UTXO リストの取得元を読み込み中…',
   'utxo.fetchSource.rpc':
     'UTXO 一覧: Dogecoin Core RPC（listunspent）。インスクリプション表示は設定のウォレットデータ API を使用します。',
+  'utxo.fetchSource.mydoge':
+    'UTXO 一覧: MyDoge API（https://api.mydoge.com/utxos）。MyDoge ウォレットと同じインデクサの確定コイン。インスクリプション表示は設定のウォレットデータ API を使用します。',
   'utxo.fetchSource.blockchair':
     'UTXO 一覧: Blockchair（未使用出力）。未確定の送金は反映されない場合があります。インスクリプション表示は設定のウォレットデータ API を使用します。',
   'utxo.fetchSource.blockcypher':

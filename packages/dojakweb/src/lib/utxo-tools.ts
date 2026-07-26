@@ -231,6 +231,7 @@ export function autoLockInscriptionUtxos(address: string, utxos: ManagedUtxo[]):
 /**
  * Where the UTXO *list* (txid/vout/value) came from — inscription tags still use the wallet data API.
  * 'dogecoin-core-rpc'        → RPC returned UTXOs for this address (includes mempool/0-conf)
+ * 'mydoge'                   → https://api.mydoge.com/utxos/<address>
  * 'blockchair'               → RPC not configured; Blockchair was used
  * 'blockchair-rpc-no-index'  → RPC configured but address not in wallet and addressindex not enabled
  * 'blockcypher'              → BlockCypher API (includes unconfirmed UTXOs)
@@ -238,6 +239,7 @@ export function autoLockInscriptionUtxos(address: string, utxos: ManagedUtxo[]):
  */
 export type UtxoListSource =
   | 'dogecoin-core-rpc'
+  | 'mydoge'
   | 'blockchair'
   | 'blockchair-rpc-no-index'
   | 'blockcypher'
@@ -297,11 +299,26 @@ export async function fetchAllAddressUtxosWithMeta(
   const rpcWasConfigured = !!(cfg.rpcUser && cfg.rpcPass && cfg.rpcUrl);
   console.log(
     rpcWasConfigured
-      ? '[utxo-tools] RPC available but address not in wallet and addressindex not enabled — trying alternative sources'
-      : '[utxo-tools] RPC not configured — trying alternative sources',
+      ? '[utxo-tools] RPC available but address not in wallet and addressindex not enabled — trying MyDoge API'
+      : '[utxo-tools] RPC not configured — trying MyDoge API',
   );
 
-  // ── Fallback 1: BlockCypher (includes unconfirmed) ───────────────────────
+  // ── Fallback 1: MyDoge API (wallet-grade indexer) ────────────────────────
+  const myDogeUtxos = await fetchUtxosViaMyDogeApi(address);
+  if (myDogeUtxos !== null && myDogeUtxos.length > 0) {
+    const utxos = myDogeUtxos.map((u) => {
+      const key = `${u.txid}:${u.vout}`;
+      return {
+        ...u,
+        inscriptions: inscriptionOutputs.has(key) ? [inscriptionByOutput.get(key) ?? key] : [],
+        locked: locked.has(key),
+      };
+    });
+    console.log(`[utxo-tools] MyDoge API: ${utxos.length} UTXOs`);
+    return { utxos, source: 'mydoge' };
+  }
+
+  // ── Fallback 2: BlockCypher (includes unconfirmed) ───────────────────────
   const bcUtxos = await fetchUtxosViaBlockCypher(address);
   if (bcUtxos !== null) {
     const utxos = bcUtxos.map((u) => {
@@ -315,7 +332,7 @@ export async function fetchAllAddressUtxosWithMeta(
     return { utxos, source: 'blockcypher' };
   }
 
-  // ── Fallback 2: Tatum API (requires API key in wallet settings) ──────────
+  // ── Fallback 3: Tatum API (requires API key in wallet settings) ──────────
   if (cfg.tatumApiKey?.trim()) {
     const tatumUtxos = await fetchUtxosViaTatum(address, cfg.tatumApiKey);
     if (tatumUtxos !== null) {
@@ -331,7 +348,7 @@ export async function fetchAllAddressUtxosWithMeta(
     }
   }
 
-  // ── Fallback 3: Blockchair outputs endpoint ──────────────────────────────
+  // ── Fallback 4: Blockchair outputs endpoint ──────────────────────────────
   console.log('[utxo-tools] All other sources failed — using Blockchair');
   const utxoRes = await fetch(
     `${BLOCKCHAIR_URL}/outputs?q=recipient(${address}),is_spent(false)` +
@@ -626,6 +643,70 @@ async function fetchUtxosViaRpc(address: string, cfg: BroadcastConfig): Promise<
 
     return [...confirmed, ...mempool];
   } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch UTXOs via MyDoge public API — https://api.mydoge.com/utxos/<address>
+ * Paginated (`next_cursor`). Confirmed only. Returns null on hard failure.
+ */
+async function fetchUtxosViaMyDogeApi(address: string): Promise<ManagedUtxo[] | null> {
+  try {
+    const collected: ManagedUtxo[] = [];
+    let cursor: string | null | undefined = undefined;
+    const maxPages = 25;
+    for (let page = 0; page < maxPages; page++) {
+      const base = `https://api.mydoge.com/utxos/${encodeURIComponent(address)}`;
+      const url =
+        cursor == null || cursor === ''
+          ? base
+          : `${base}?cursor=${encodeURIComponent(String(cursor))}`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+      if (!res.ok) {
+        console.warn(`[utxo-tools] MyDoge UTXO fetch failed: ${res.status}`);
+        return collected.length > 0 ? collected : null;
+      }
+      const data = (await res.json()) as {
+        utxos?: Array<{
+          txid?: string;
+          vout?: number;
+          satoshis?: string | number;
+          confirmations?: number;
+          script?: string;
+          scriptPubKey?: string;
+        }>;
+        next_cursor?: string | null;
+      };
+      const rows = Array.isArray(data?.utxos) ? data.utxos : [];
+      for (const row of rows) {
+        const conf = row.confirmations ?? 0;
+        if (conf < 1) continue;
+        const sat =
+          typeof row.satoshis === 'string' ? parseInt(row.satoshis, 10) : Number(row.satoshis);
+        if (!Number.isFinite(sat) || sat <= 0) continue;
+        const txid = String(row.txid ?? '').trim();
+        const vout = Number(row.vout);
+        if (!txid || !Number.isInteger(vout) || vout < 0) continue;
+        collected.push({
+          txid,
+          vout,
+          value: sat,
+          scriptPubKey: String(row.scriptPubKey ?? row.script ?? ''),
+          inscriptions: [],
+          locked: false,
+          confirmations: conf,
+          rpcSpendable: undefined,
+        });
+      }
+      const next = data?.next_cursor;
+      if (next == null || next === '') break;
+      cursor = next;
+    }
+    console.log(`[utxo-tools] MyDoge: ${collected.length} confirmed UTXOs for ${address}`);
+    return collected;
+  } catch (e) {
+    console.warn('[utxo-tools] MyDoge UTXO fetch error:', e);
     return null;
   }
 }

@@ -442,6 +442,8 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
               ? t('utxo.fetchSource.pending')
               : listSource === 'dogecoin-core-rpc'
                 ? t('utxo.fetchSource.rpc')
+                : listSource === 'mydoge'
+                  ? t('utxo.fetchSource.mydoge')
                 : listSource === 'blockchair-rpc-no-index'
                   ? t('utxo.fetchSource.blockchairRpcNoIndex')
                   : listSource === 'blockcypher'

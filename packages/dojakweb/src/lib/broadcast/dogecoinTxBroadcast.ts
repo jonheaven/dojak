@@ -271,7 +271,9 @@ export async function fetchSpendableUtxosConservativeForAddress(address: string)
   const cypherK = new Set(cypher.map(utxoOutpointKey));
 
   if (myDoge.length > 0) {
-    let picked: NormalisedUtxo[];
+    // Prefer MyDoge alone first — it is the wallet-grade indexer. Explorer
+    // intersection is a soft filter only when it still leaves spendable coins.
+    let picked: NormalisedUtxo[] = [];
 
     if (chair.length > 0 && cypher.length > 0) {
       picked = myDoge.filter(
@@ -308,10 +310,11 @@ export async function fetchSpendableUtxosConservativeForAddress(address: string)
       }
     }
 
-    console.warn(
-      '[dojakweb:doge-tx] MyDoge UTXOs had no Blockchair/BlockCypher overlap; using MyDoge list only',
-      { mydoge: myDoge.length },
-    );
+    console.log('[dojakweb:doge-tx] Using MyDoge UTXO list (primary)', {
+      mydoge: myDoge.length,
+      blockchair: chair.length,
+      blockcypher: cypher.length,
+    });
     return myDoge;
   }
 

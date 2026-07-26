@@ -131,6 +131,8 @@ export const WALLET_UI_EN_FLAT: Record<string, string> = {
   'utxo.fetchSource.pending': 'Loading coin list source…',
   'utxo.fetchSource.rpc':
     'Coin list: Dogecoin Core RPC (listunspent / getaddressutxos). Includes 0-conf mempool coins. Inscription labels use your wallet data API from Settings.',
+  'utxo.fetchSource.mydoge':
+    'Coin list: MyDoge API (https://api.mydoge.com/utxos). Confirmed coins from the same indexer as MyDoge wallet. Inscription labels use your wallet data API from Settings.',
   'utxo.fetchSource.blockchair':
     'Coin list: Blockchair (unspent outputs). Mempool spends may be missing until confirmed. Inscription labels use your wallet data API from Settings.',
   'utxo.fetchSource.blockchairRpcNoIndex':
