@@ -1328,8 +1328,7 @@ export function DojakwebWalletModal({
         setUnlockPassword('');
       }
       setImportValue('');
-      setRecipientAddress('');
-      setSendAmount('');
+      // Send form state lives in WalletSendFlow — do not reset setters removed from this modal.
       // Don't clobber an in-progress seed backup / password / import flow when
       // connect() flips browser.connected (turnkey create lands on reveal).
       const holdWizardStep = (
@@ -2461,11 +2460,6 @@ export function DojakwebWalletModal({
       void fetchTransactions(activeAddress, 1);
     }
   }, [step, tab, activeAddress, fetchTransactions]);
-
-  useEffect(() => {
-    if (step !== 'send') return;
-    setSendError(null);
-  }, [step]);
 
   const openSendInscription = (inscription: MyDogeInscription) => {
     setSelectedInscription(inscription);
