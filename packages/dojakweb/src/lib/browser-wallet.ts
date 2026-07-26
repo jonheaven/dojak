@@ -21,6 +21,7 @@ import * as secp from '@noble/secp256k1';
 import { decryptJSON, encryptJSON } from './secureStorage';
 import { warnIfUnexpectedSigningHostname } from '../services/dmp';
 import { buildOpReturnLockingScript, estimateOpReturnOutputsTxWeight } from './tx/opReturn';
+import { assertValidDogecoinAddress } from './dogecoinAddressValidate';
 import {
   signPartialPsdtWithWifToHex,
   signPsdtWithWifToTxHex,
@@ -68,6 +69,10 @@ export interface BrowserWalletBuiltTransaction {
   inputTotal: number;
   outputTotal: number;
   change: number;
+  /** Selected inputs (for mempool overlay / spent-input retry). */
+  inputs: Array<{ txid: string; vout: number; value: number }>;
+  /** Change output index among payment outputs (excludes OP_RETURN), or null. */
+  changeVout: number | null;
 }
 
 export interface BrowserWalletSendTransactionOptions {
@@ -1039,6 +1044,9 @@ export class BrowserWallet {
       throw new Error('Recipient address is required');
     }
 
+    // Checksum + network version — catch off-by-one typos before coin select.
+    const normalizedRecipient = assertValidDogecoinAddress(recipientAddress);
+
     if (!Array.isArray(options.utxos) || options.utxos.length === 0) {
       throw new Error('Spendable UTXOs are required');
     }
@@ -1085,7 +1093,7 @@ export class BrowserWallet {
         vout: utxo.vout,
         value: utxo.value,
       })),
-      [{ address: recipientAddress.trim(), value: sendValue }]
+      [{ address: normalizedRecipient, value: sendValue }]
     );
 
     const signer = DogeMemoryWallet.fromWIF(wallet.privateKey, getNetworkId(wallet.network));
@@ -1106,15 +1114,27 @@ export class BrowserWallet {
     const inputTotal = selected.inputs.reduce((sum, utxo) => sum + utxo.value, 0);
     const outputTotal = selected.outputs.reduce((sum, output) => sum + output.value, 0);
     const change = Math.max(0, outputTotal - sendValue);
+    // Payment outputs: [OP_RETURN?] payment [change?]
+    const paymentOutputs = selected.outputs;
+    const changeVout =
+      change > 0 && paymentOutputs.length >= 2
+        ? (opReturnPayload ? 1 : 0) + (paymentOutputs.length - 1)
+        : null;
 
     return {
       txHex: finalizedTx.toHex(),
       fee: selected.fee,
       inputCount: selected.inputs.length,
-      outputCount: selected.outputs.length,
+      outputCount: selected.outputs.length + (opReturnPayload ? 1 : 0),
       inputTotal,
       outputTotal,
       change,
+      inputs: selected.inputs.map((u) => ({
+        txid: u.txid,
+        vout: u.vout,
+        value: u.value,
+      })),
+      changeVout,
     };
   }
 

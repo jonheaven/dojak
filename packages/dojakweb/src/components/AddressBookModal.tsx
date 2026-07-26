@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useAddressBook, type AddressBookEntry } from '../hooks/useAddressBook';
+import { validateDogecoinAddress } from '../lib/dogecoinAddressValidate';
 import { toast } from 'sonner';
 
 export type AddressBookViewProps = {
@@ -36,15 +37,17 @@ function useAddressBookLogic(onSelectAddress?: (address: string) => void, onAfte
       toast.error('Label and address are required');
       return;
     }
-    if (!formData.address.startsWith('D') || formData.address.length < 30) {
-      toast.error('Invalid Dogecoin address format');
+    const v = validateDogecoinAddress(formData.address);
+    if (!v.ok) {
+      toast.error(v.error);
       return;
     }
+    const payload = { ...formData, address: v.address };
     if (editingId) {
-      updateEntry(editingId, formData);
+      updateEntry(editingId, payload);
       toast.success('Address updated');
     } else {
-      addEntry(formData);
+      addEntry(payload);
       toast.success('Address added');
     }
     resetForm();

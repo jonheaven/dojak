@@ -43,6 +43,7 @@ import { WalletAccountSwitcherPanel } from './wallet/WalletAccountSwitcherPanel'
 import { WalletPinNumpad } from './wallet/WalletPinNumpad';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import { WalletApprovalPanel } from './wallet/WalletApprovalPanel';
+import { WalletSendFlow } from './wallet/WalletSendFlow';
 import {
   TextInscriptionCardMedia,
   InscriptionTextInspectModal,
@@ -531,15 +532,6 @@ async function copyTextWithFallback(value: string) {
 }
 
 /** Conservative headroom for fees and dust; typical Dogecoin spends are cheaper but UTXO sets vary. */
-const SEND_MAX_FEE_RESERVE_DOGE = 0.5;
-
-function formatDogeAmountForInput(doge: number): string {
-  if (!Number.isFinite(doge) || doge <= 0) return '';
-  const satFloored = Math.floor(doge * 1e8) / 1e8;
-  const s = satFloored.toFixed(8);
-  const trimmed = s.replace(/\.?0+$/, '');
-  return trimmed === '' ? '0' : trimmed;
-}
 
 const PRIMARY_BUTTON =
   'bg-[#FCD34D] hover:bg-[#FDE68A] text-[#161109] font-bold py-2.5 px-4 rounded-2xl shadow-[0_8px_24px_rgba(252,211,77,0.22)] transition';
@@ -663,12 +655,7 @@ export function DojakwebWalletModal({
   const [treatsTokens, setTreatsTokens] = useState<Array<{ tick: string; balance: string }>>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsError, setAssetsError] = useState<string | null>(null);
-  const [recipientAddress, setRecipientAddress] = useState('');
-  const [sendAmount, setSendAmount] = useState('');
-  const [sendBusy, setSendBusy] = useState(false);
-  const [sendStatus, setSendStatus] = useState<string | null>(null);
-  const [sendError, setSendError] = useState<string | null>(null);
-  const [sendTxid, setSendTxid] = useState<string | null>(null);
+  const [sendPrefillAddress, setSendPrefillAddress] = useState<string | null>(null);
   const [platformFeeTip, setPlatformFeeTip] = useState<number>(0);
   const [localRecentTransactions, setLocalRecentTransactions] = useState<DisplayDogeTransaction[]>([]);
 
@@ -924,98 +911,12 @@ export function DojakwebWalletModal({
     }
   }, [activeAddress, browser.wallet?.privateKey, dxFeeRate, dxPayload, inscriptions, t, toast, walletType]);
 
-  const handleSendMax = useCallback(() => {
-    if (!connected) {
-      toast.info(t('modal.send.maxNeedWallet'));
-      return;
-    }
-    const maxSpendable = balance - SEND_MAX_FEE_RESERVE_DOGE;
-    if (!Number.isFinite(maxSpendable) || maxSpendable <= 0) {
-      toast.info(t('modal.send.maxInsufficient', { reserve: SEND_MAX_FEE_RESERVE_DOGE }));
-      setSendAmount('');
-      return;
-    }
-    setSendAmount(formatDogeAmountForInput(maxSpendable));
-  }, [balance, connected, t, toast]);
-
-
-
-  const describeSendError = useCallback((rawError: unknown): string => {
-    const message = rawError instanceof Error ? rawError.message : String(rawError ?? 'Unknown error');
-    if (/insufficient funds/i.test(message)) {
-      return 'Insufficient funds for this send.';
-    }
-    if (/wallet.*locked/i.test(message) || /private key/i.test(message)) {
-      return 'Unlock your wallet and try again.';
-    }
-    if (/address/i.test(message)) {
-      return 'Enter a valid Dogecoin recipient address.';
-    }
-    return message;
-  }, []);
-
   const pushLocalTransaction = useCallback((tx: DisplayDogeTransaction) => {
     setLocalRecentTransactions((prev) => {
       const next = [tx, ...prev.filter((item) => item.txid !== tx.txid)];
       return next.slice(0, 12);
     });
   }, []);
-
-  const handleSendDoge = useCallback(async () => {
-    if (!connected || !activeAddress) {
-      setSendError('Connect a wallet before sending DOGE.');
-      return;
-    }
-
-    const trimmedRecipient = recipientAddress.trim();
-    const amount = Number(sendAmount);
-    if (!trimmedRecipient) {
-      setSendError('Enter a recipient address.');
-      return;
-    }
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setSendError('Enter a valid DOGE amount.');
-      return;
-    }
-
-    setSendBusy(true);
-    setSendStatus('Broadcasting transaction…');
-    setSendError(null);
-    setSendTxid(null);
-
-    try {
-      const txid = await sendTransaction(trimmedRecipient, amount);
-
-      setSendTxid(txid);
-      pushLocalTransaction({
-        txid,
-        type: 'sent',
-        amount,
-        address: trimmedRecipient,
-        confirmations: 0,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        pending: true,
-        localOnly: true,
-      });
-      void refreshBalance().catch(() => {});
-      toast.success(`Transaction broadcast: ${txid.slice(0, 12)}…`);
-    } catch (err) {
-      setSendError(describeSendError(err));
-    } finally {
-      setSendBusy(false);
-      setSendStatus(null);
-    }
-  }, [
-    activeAddress,
-    connected,
-    describeSendError,
-    pushLocalTransaction,
-    recipientAddress,
-    refreshBalance,
-    sendAmount,
-    sendTransaction,
-    toast,
-  ]);
 
   // ── Inscription action state ──
   const [selectedInscription, setSelectedInscription] = useState<MyDogeInscription | null>(null);
@@ -1206,13 +1107,6 @@ export function DojakwebWalletModal({
     ...localRecentTransactions,
     ...transactions.filter((tx) => !localRecentTransactions.some((localTx) => localTx.txid === tx.txid)),
   ];
-
-  const resetSendState = useCallback(() => {
-    setSendBusy(false);
-    setSendStatus(null);
-    setSendError(null);
-    setSendTxid(null);
-  }, []);
 
   const refreshSavedLocalWallets = useCallback(async () => {
     const storage = new BrowserWallet();
@@ -3885,7 +3779,10 @@ export function DojakwebWalletModal({
                           <div className="mt-4 grid grid-cols-4 gap-2">
                             <button
                               type="button"
-                              onClick={() => setStep('send')}
+                              onClick={() => {
+                                setSendPrefillAddress(null);
+                                setStep('send');
+                              }}
                               className="flex flex-col items-center gap-1.5"
                               aria-label={t('modal.aria.sendDoge')}
                             >
@@ -3933,7 +3830,7 @@ export function DojakwebWalletModal({
                                 className="w-52 max-w-[min(18rem,calc(100vw-2rem))]"
                               >
                                 {[
-                                  { key: 'send', label: t('modal.dashboard.menu.send'), Icon: PaperAirplaneIcon, action: () => setStep('send') },
+                                  { key: 'send', label: t('modal.dashboard.menu.send'), Icon: PaperAirplaneIcon, action: () => { setSendPrefillAddress(null); setStep('send'); } },
                                   { key: 'receive', label: t('modal.dashboard.menu.receive'), Icon: QrCodeIcon, action: () => setStep('receive') },
                                   { key: 'setName', label: t('modal.dashboard.menu.setName'), Icon: TagIcon, action: () => setStep('set_name') },
                                   ...(isBrowserWallet
@@ -5638,126 +5535,39 @@ export function DojakwebWalletModal({
                     )}
 
                     {step === 'send' && (
-                      <div className="space-y-4">
-                        {!sendTxid ? (
-                          <>
-                            <div className="text-sm text-[#D4D4D4]">{t('modal.send.introShort')}</div>
-                            <label className="block text-sm text-white">
-                              <span className="mb-2 block">{t('modal.send.recipientLabel')}</span>
-                              <input
-                                value={recipientAddress}
-                                onChange={(event) => setRecipientAddress(event.target.value)}
-                                placeholder={t('modal.send.recipientPlaceholder')}
-                                className={INPUT_CLASS}
-                                disabled={sendBusy}
-                              />
-                            </label>
-                            <label className="block text-sm text-white">
-                              <div className="mb-2 flex items-center justify-between gap-3">
-                                <span>{t('modal.send.amount')}</span>
-                                <button
-                                  type="button"
-                                  onClick={handleSendMax}
-                                  className="text-sm font-medium text-[#FCD34D] hover:opacity-85"
-                                  disabled={sendBusy}
-                                >
-                                  {t('modal.send.max')}
-                                </button>
-                              </div>
-                              <input
-                                value={sendAmount}
-                                onChange={(event) => setSendAmount(event.target.value)}
-                                className={INPUT_CLASS}
-                                disabled={sendBusy}
-                              />
-                            </label>
-
-                            {/* Fee Transparency */}
-                            <div className="rounded-xl border border-white/10 bg-[#0A0A0A] px-4 py-3">
-                              <div className="mb-2 text-sm font-semibold text-white/80">{t('modal.send.feeHeading')}</div>
-                              <div className="space-y-2 text-xs">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-white/60">{t('modal.send.feeNetwork')}</span>
-                                  <span className="font-mono text-white">~0.002 DOGE</span>
-                                </div>
-                                {platformFeeTip > 0 && (
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-white/60">{t('modal.send.feePlatform')}</span>
-                                    <span className="font-mono text-white">{platformFeeTip.toFixed(2)} DOGE</span>
-                                  </div>
-                                )}
-                                <div className="mt-2 border-t border-white/10 pt-2">
-                                  <div className="flex items-center justify-between font-semibold">
-                                    <span className="text-white">{t('modal.send.feeTotal')}</span>
-                                    <span className="font-mono text-white">~{(0.002 + platformFeeTip).toFixed(3)} DOGE</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <TechDetails
-                                summary={t('modal.wallet.geekDetails')}
-                                className="mt-2 text-[10px] text-white/40"
-                                summaryClassName="text-white/50"
-                                contentClassName="border-white/15 text-white/45"
-                              >
-                                <p>{t('modal.send.feeExplain')}</p>
-                              </TechDetails>
-                            </div>
-
-                            {sendError && (
-                              <div className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                                {sendError}
-                              </div>
-                            )}
-
-                            <Button
-                              onClick={() => void handleSendDoge()}
-                              disabled={sendBusy}
-                              className={cx('w-full', PRIMARY_BUTTON, sendBusy && 'cursor-wait')}
-                              aria-busy={sendBusy}
-                            >
-                              {sendBusy ? (sendStatus ?? 'Sending…') : t('modal.send.continue')}
-                            </Button>
-                          </>
-                        ) : (
-                          <div className="space-y-4">
-                            <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-4">
-                              <div className="flex items-center gap-2 text-emerald-300">
-                                <CheckCircleIcon className="h-5 w-5" />
-                                <div className="font-semibold">
-                                  {t('modal.send.successPlain')}
-                                </div>
-                              </div>
-                              <div className="mt-3 space-y-2 text-sm text-white/75">
-                                <div>
-                                  <span className="text-white/45">{t('modal.send.successTxid')}</span>{' '}
-                                  <span className="font-mono break-all">{sendTxid}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <a
-                              href={dogeTxExplorerUrl(sendTxid)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex w-full items-center justify-center gap-2 rounded-full bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700"
-                            >
-                              {t('modal.send.viewExplorer')}
-                              <ArrowDownTrayIcon className="h-4 w-4 rotate-[-90deg]" />
-                            </a>
-
-                            <Button
-                              onClick={() => {
-                                resetSendState();
-                                setRecipientAddress('');
-                                setSendAmount('');
-                              }}
-                              className={cx('w-full', SECONDARY_BUTTON)}
-                            >
-                              {t('modal.send.sendAnother')}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
+                      <WalletSendFlow
+                        key={sendPrefillAddress ?? 'send-default'}
+                        connected={connected}
+                        activeAddress={activeAddress}
+                        balance={balance}
+                        sendTransaction={async (to, amountDoge) => {
+                          const txid = await sendTransaction(to, amountDoge);
+                          pushLocalTransaction({
+                            txid,
+                            type: 'sent',
+                            amount: amountDoge,
+                            address: to,
+                            confirmations: 0,
+                            timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+                            pending: true,
+                            localOnly: true,
+                          });
+                          return txid;
+                        }}
+                        refreshBalance={refreshBalance}
+                        initialRecipient={sendPrefillAddress ?? undefined}
+                        formatFiat={
+                          fiatPrefs
+                            ? (doge) => {
+                                try {
+                                  return fiatPrefs.formatFiat(fiatPrefs.convert(doge));
+                                } catch {
+                                  return null;
+                                }
+                              }
+                            : undefined
+                        }
+                      />
                     )}
 
                     {step === 'receive' && (
@@ -6427,7 +6237,12 @@ export function DojakwebWalletModal({
                     )}
 
                     {step === 'address_book' && (
-                      <AddressBookView onAfterSelect={() => setStep('dashboard')} />
+                      <AddressBookView
+                        onSelectAddress={(addr) => {
+                          setSendPrefillAddress(addr);
+                          setStep('send');
+                        }}
+                      />
                     )}
                   </div>
                 </Dialog.Panel>

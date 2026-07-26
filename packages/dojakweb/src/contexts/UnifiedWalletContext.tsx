@@ -8,13 +8,20 @@ import { LedgerWallet } from '../lib/ledger-wallet';
 import { DogewatchWallet } from '../lib/dogewatch-wallet';
 import {
   broadcastTx,
-  getAddressUtxos,
   normalizeSignedPsdtToBase64,
   preparePsdtForExtensionSign,
   preparePsdtForMyDogeSign,
   signPartialPsdtWithWifToHex,
   signPsdtWithWifToTxHex,
 } from '../lib/doginal-psdt';
+import { getPaymentUtxosForSend } from '../lib/paymentUtxos';
+import { assertValidDogecoinAddress } from '../lib/dogecoinAddressValidate';
+import {
+  friendlyPaymentSendError,
+  isInputsSpentBroadcastError,
+  markOutpointsSpent,
+  recordPaymentBroadcast,
+} from '../lib/mempoolSpendOverlay';
 import {
   signDMPIntent as signDMPIntentService,
   warnIfUnexpectedSigningHostname,
@@ -1148,41 +1155,80 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         if (!browser.connected || !browser.address) {
           throw new Error('Browser wallet not connected');
         }
+        const toAddress = assertValidDogecoinAddress(recipientAddress);
         // Extension-style: open drawer and require explicit Approve before signing.
         const txid = (await requestWalletApproval({
           title: 'Send DOGE',
           description: 'Approve to sign and broadcast this transfer from your Local Browser Wallet.',
           details: [
-            { label: 'To', value: recipientAddress },
+            { label: 'To', value: toAddress },
             { label: 'Amount', value: `${amount} DOGE` },
             ...(opReturnMessage ? [{ label: 'Memo', value: opReturnMessage }] : []),
           ],
           approveLabel: 'Approve send',
           onApprove: async ({ privateKeyWif, address }) => {
-            const utxosRaw = await getAddressUtxos(address);
-            if (utxosRaw.length === 0) {
-              throw new Error('No spendable UTXOs for this address. Wait for a deposit to confirm.');
-            }
-            const utxos = utxosRaw.map((u) => ({
-              txid: u.txid,
-              vout: u.vout,
-              value: u.value,
-              scriptPubKey: u.scriptPubKey,
-            }));
             const storage = new BrowserWallet();
-            return storage.sendTransaction(recipientAddress, amount, {
-              wallet: {
-                ...(browser.wallet || { address, network: 'mainnet' as const }),
-                privateKey: privateKeyWif,
-                address,
-              },
+            const walletPayload = {
+              ...(browser.wallet || { address, network: 'mainnet' as const }),
+              privateKey: privateKeyWif,
               address,
-              utxos,
-              broadcastTx,
-              minConfirmations: 0,
-              includeInscribedUtxos: false,
-              opReturnMessage,
-            });
+            };
+
+            const tryOnce = async () => {
+              // MyDoge ∩ Blockchair/BlockCypher + local spent/change overlay
+              const utxosRaw = await getPaymentUtxosForSend(address);
+              if (utxosRaw.length === 0) {
+                throw new Error(
+                  'No spendable UTXOs for this address. Wait for a deposit to confirm, or refresh after recent bets.',
+                );
+              }
+              const utxos = utxosRaw.map((u) => ({
+                txid: u.txid,
+                vout: u.vout,
+                value: u.value,
+                scriptPubKey: u.scriptPubKey,
+              }));
+              const built = await storage.buildTransaction(toAddress, amount, {
+                wallet: walletPayload,
+                address,
+                utxos,
+                minConfirmations: 0,
+                includeInscribedUtxos: false,
+                opReturnMessage,
+              });
+              try {
+                const broadcasted = await broadcastTx(built.txHex);
+                recordPaymentBroadcast({
+                  address,
+                  txid: broadcasted,
+                  spent: built.inputs,
+                  change:
+                    built.changeVout != null && built.change > 0
+                      ? { vout: built.changeVout, value: built.change }
+                      : null,
+                });
+                return broadcasted;
+              } catch (err) {
+                if (isInputsSpentBroadcastError(err)) {
+                  markOutpointsSpent(address, built.inputs);
+                }
+                throw err;
+              }
+            };
+
+            try {
+              return await tryOnce();
+            } catch (err) {
+              if (isInputsSpentBroadcastError(err)) {
+                // Indexer was stale — overlay now excludes those coins; rebuild once.
+                try {
+                  return await tryOnce();
+                } catch (err2) {
+                  throw new Error(friendlyPaymentSendError(err2));
+                }
+              }
+              throw new Error(friendlyPaymentSendError(err));
+            }
           },
         })) as string;
         return txid;
