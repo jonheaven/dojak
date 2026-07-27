@@ -21,17 +21,15 @@ export interface WalletDrawerProps {
   initialAssetType?: 'nft' | 'drc20' | 'treats';
 }
 
-const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos';
+const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v2';
 const DEFAULT_RIGHT = 14;
-const DEFAULT_BOTTOM = 18;
+/** Sit a bit off the floor so the Shiba paw reads clearly under the chassis. */
+const DEFAULT_BOTTOM = 28;
 const EDGE_PAD = 8;
-/**
- * Paw sits under the chassis with a soft transparent fade at the image bottom.
- * Lifting the panel past the default bottom reveals that fade and can clip the
- * drawer top — keep vertical travel tiny (horizontal reposition is the main freedom).
- */
-const MAX_BOTTOM = DEFAULT_BOTTOM;
-const MIN_BOTTOM = EDGE_PAD;
+/** Never let the chassis top closer than this to the viewport top (header / clip). */
+const TOP_SAFE = 56;
+/** Allow sinking toward the floor; upward travel is capped by TOP_SAFE in clampPos. */
+const MIN_BOTTOM = 0;
 
 type DrawerPos = { right: number; bottom: number };
 
@@ -119,9 +117,9 @@ function measureDrawerSize(): { w: number; h: number } {
     document.querySelector<HTMLElement>('[data-headlessui-portal] .ds-wallet-dashboard');
   const fallbackW = Math.min(390, window.innerWidth * 0.94);
   const vh = window.innerHeight;
-  // Prefer live rect; fall back to CSS intent (86vh / 820, minus by remaining viewport).
+  // Prefer live rect; fall back to CSS intent (78vh / 760, top-safe inset).
   const w = drawer?.offsetWidth || fallbackW;
-  const cssH = Math.min(vh * 0.86, 820, Math.max(120, vh - MAX_BOTTOM - EDGE_PAD));
+  const cssH = Math.min(vh * 0.78, 760, Math.max(120, vh - TOP_SAFE - EDGE_PAD));
   const h = drawer?.offsetHeight && drawer.offsetHeight > 40 ? drawer.offsetHeight : cssH;
   return { w, h };
 }
@@ -131,14 +129,12 @@ function clampPos(right: number, bottom: number): DrawerPos {
   const vh = window.innerHeight;
   const vw = window.innerWidth;
   const maxRight = Math.max(EDGE_PAD, vw - drawerW - EDGE_PAD);
-  // Never lift above MAX_BOTTOM (paw fade + unclipped top). Also never exceed
-  // the room left under the drawer height so the chassis stays in-viewport.
-  const roomForBottom = Math.max(MIN_BOTTOM, vh - drawerH - EDGE_PAD);
-  const maxBottom = Math.min(MAX_BOTTOM, roomForBottom);
-  const minBottom = Math.min(MIN_BOTTOM, maxBottom);
+  // Cap lift so chassis top stays >= TOP_SAFE from the viewport top.
+  // top = vh - bottom - drawerH >= TOP_SAFE  =>  bottom <= vh - drawerH - TOP_SAFE
+  const maxBottom = Math.max(MIN_BOTTOM, vh - drawerH - TOP_SAFE);
   return {
     right: Math.min(maxRight, Math.max(EDGE_PAD, right)),
-    bottom: Math.min(maxBottom, Math.max(minBottom, bottom)),
+    bottom: Math.min(maxBottom, Math.max(MIN_BOTTOM, bottom)),
   };
 }
 

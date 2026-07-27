@@ -1702,8 +1702,9 @@ html[data-theme="light"] .wallet-input::placeholder,
 
 body.wallet-drawer-paw-open {
   --wallet-drawer-width: min(390px, 94vw);
-  --wallet-drawer-bottom: 18px;
+  --wallet-drawer-bottom: 28px;
   --wallet-drawer-right: 14px;
+  --wallet-drawer-top-safe: 56px;
   --wallet-paw-grip-offset: 168px;
   --wallet-phone-radius: 1.85rem;
 }
@@ -1726,7 +1727,7 @@ body.wallet-drawer-paw-open {
     var(--wallet-drawer-right, 14px) + var(--wallet-drawer-width, min(390px, 94vw)) -
       var(--wallet-paw-grip-offset, 168px)
   );
-  bottom: max(0px, calc(var(--wallet-drawer-bottom, 18px) - 8px));
+  bottom: max(0px, calc(var(--wallet-drawer-bottom, 28px) - 8px));
   z-index: 9995;
   width: clamp(150px, 26vmin, 280px);
   line-height: 0;
@@ -1862,13 +1863,15 @@ body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   right: var(--wallet-drawer-right) !important;
   bottom: var(--wallet-drawer-bottom) !important;
   top: auto !important;
-  /* Height tracks bottom inset so lifting never clips the chassis off-screen */
+  /* Height tracks bottom inset; top-safe keeps the chassis under browser/app chrome */
   height: min(
-    86vh,
-    820px,
-    calc(100dvh - var(--wallet-drawer-bottom, 18px) - 16px)
+    78vh,
+    760px,
+    calc(100dvh - var(--wallet-drawer-bottom, 28px) - var(--wallet-drawer-top-safe, 56px))
   ) !important;
-  max-height: calc(100dvh - var(--wallet-drawer-bottom, 18px) - 16px) !important;
+  max-height: calc(
+    100dvh - var(--wallet-drawer-bottom, 28px) - var(--wallet-drawer-top-safe, 56px)
+  ) !important;
   /* Above .wallet-paw-grip (9995) so the paw sits under the panel */
   z-index: 10050 !important;
   border-radius: var(--wallet-phone-radius) !important;
