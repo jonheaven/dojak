@@ -533,7 +533,7 @@ export function WalletSendFlow({
             <p>
               {quote.inputCount} input{quote.inputCount === 1 ? '' : 's'} · {quote.outputCount}{' '}
               output{quote.outputCount === 1 ? '' : 's'} · fee rate 1000 koinu/byte · UTXOs from
-              MyDoge ∩ explorers + local mempool overlay
+              wallet data provider (MyDoge) + local mempool overlay
             </p>
           </TechDetails>
         </div>
@@ -575,7 +575,7 @@ export function WalletSendFlow({
     <div className="space-y-4">
       <p className="text-sm leading-relaxed text-white/65">
         Send DOGE on Dogecoin mainnet. Addresses are checksum-verified. Spendable coins come from
-        MyDoge plus explorer consensus so recently used inputs are not reused.
+        wallet data provider (MyDoge) so recently used inputs are not reused.
       </p>
 
       <div>

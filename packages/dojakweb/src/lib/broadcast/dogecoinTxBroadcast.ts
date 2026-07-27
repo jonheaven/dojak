@@ -4,7 +4,12 @@
 // messages as standard OP_RETURN txs (separate from P2SH file-inscription chains).
 
 import { createP2PKHTransaction, DogeMemoryWallet } from 'doge-sdk';
-import { broadcastHexViaCommandDog, fetchCommandDogTxStatus, getCommandDogApiBaseUrl } from '../../utils/api';
+import {
+  broadcastHexViaCommandDog,
+  fetchCommandDogTxStatus,
+  getCommandDogApiBaseUrl,
+  walletDataApi,
+} from '../../utils/api';
 import { browserRpcProxyAbsoluteUrl, rpcViaProxy, rpcViaProxyDetailed } from '../rpc-proxy-client';
 import {
   buildOpReturnLockingScript,
@@ -108,237 +113,27 @@ export function filterSafeSpendableUtxos(
   return { safe, skippedCount };
 }
 
-// --------------------------------------------------------------------------
-// Blockchair UTXO fetch (primary — actually propagates to DOGE nodes)
-// --------------------------------------------------------------------------
-
 /**
- * Fetch spendable confirmed UTXOs from Blockchair.
- * Blockchair's output endpoint returns values in satoshis.
- */
-async function fetchUtxosFromBlockchair(address: string): Promise<NormalisedUtxo[]> {
-  const url =
-    `https://api.blockchair.com/dogecoin/outputs` +
-    `?q=recipient(${address}),is_spent(false)` +
-    `&fields=transaction_hash,index,value,block_id` +
-    `&limit=50&offset=0`;
-
-  const res = await fetch(url);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Blockchair UTXO fetch failed (${res.status}): ${text}`);
-  }
-
-  const data = await res.json();
-  const rows: Array<{ transaction_hash: string; index: number; value: number; block_id: number | null }> =
-    data?.data ?? [];
-
-  console.log('[dojakweb:doge-tx] Blockchair UTXO response', {
-    address,
-    total: rows.length,
-    confirmed: rows.filter(r => r.block_id !== null).length,
-  });
-
-  // block_id === null means unconfirmed — exclude those
-  return rows
-    .filter(r => r.block_id !== null)
-    .map(r => ({ tx_hash: r.transaction_hash, tx_output_n: r.index, value: r.value }));
-}
-
-// --------------------------------------------------------------------------
-// BlockCypher UTXO fetch (fallback)
-// --------------------------------------------------------------------------
-
-interface BlockCypherUtxo {
-  tx_hash: string;
-  tx_output_n: number;
-  value: number; // always satoshis
-  confirmations: number;
-  script: string;
-}
-
-/**
- * Fetch spendable UTXOs from BlockCypher (fallback only).
- */
-async function fetchUtxosFromBlockCypher(address: string): Promise<NormalisedUtxo[]> {
-  const url =
-    `https://api.blockcypher.com/v1/doge/main/addrs/${address}` +
-    `?unspentOnly=true&includeScript=true&limit=100`;
-
-  const res = await fetch(url);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`BlockCypher UTXO fetch failed (${res.status}): ${text}`);
-  }
-
-  const data = await res.json();
-  console.log('[dojakweb:doge-tx] BlockCypher UTXO response', {
-    address: data?.address,
-    balance: data?.balance,
-    txrefsCount: data?.txrefs?.length ?? 0,
-  });
-  const confirmed: BlockCypherUtxo[] = data?.txrefs ?? [];
-  return confirmed
-    .filter(u => u.confirmations >= 1)
-    .map(u => ({ tx_hash: u.tx_hash, tx_output_n: u.tx_output_n, value: u.value }));
-}
-
-// --------------------------------------------------------------------------
-// MyDoge API UTXOs — https://api.mydoge.com/utxos/<address>
-// --------------------------------------------------------------------------
-
-const MYDOGE_UTXO_API = 'https://api.mydoge.com/utxos';
-
-interface MyDogeUtxoRow {
-  txid: string;
-  vout: number;
-  satoshis: string | number;
-  confirmations?: number;
-}
-
-/**
- * Spendable confirmed UTXOs from MyDoge’s indexer (inscription-aware, same source as MyDoge wallet).
- * @see https://api.mydoge.com/utxos/<address>
- */
-async function fetchUtxosFromMyDogeApi(address: string): Promise<NormalisedUtxo[]> {
-  const collected: NormalisedUtxo[] = [];
-  let cursor: string | null | undefined = undefined;
-  const maxPages = 25;
-
-  for (let page = 0; page < maxPages; page++) {
-    const base = `${MYDOGE_UTXO_API}/${encodeURIComponent(address)}`;
-    const url =
-      cursor == null || cursor === ''
-        ? base
-        : `${base}?cursor=${encodeURIComponent(String(cursor))}`;
-
-    const res = await fetch(url);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`MyDoge UTXO fetch failed (${res.status}): ${text.slice(0, 200)}`);
-    }
-
-    const data = (await res.json()) as {
-      utxos?: MyDogeUtxoRow[];
-      next_cursor?: string | null;
-    };
-    const rows: MyDogeUtxoRow[] = data?.utxos ?? [];
-
-    console.log('[dojakweb:doge-tx] MyDoge UTXO response', {
-      address: address.slice(0, 10) + '…',
-      page,
-      batch: rows.length,
-    });
-
-    for (const row of rows) {
-      const conf = row.confirmations ?? 0;
-      if (conf < 1) continue;
-      const sat =
-        typeof row.satoshis === 'string' ? parseInt(row.satoshis, 10) : Number(row.satoshis);
-      if (!Number.isFinite(sat) || sat <= 0) continue;
-      if (!row.txid || !Number.isInteger(row.vout) || row.vout < 0) continue;
-      collected.push({
-        tx_hash: row.txid,
-        tx_output_n: row.vout,
-        value: sat,
-      });
-    }
-
-    const next = data?.next_cursor;
-    if (next == null || next === '') break;
-    cursor = next;
-  }
-
-  return collected;
-}
-
-function utxoOutpointKey(u: NormalisedUtxo): string {
-  return `${u.tx_hash.toLowerCase()}:${u.tx_output_n}`;
-}
-
-/**
- * Coin selection for inscriptions: prefer [MyDoge API](https://api.mydoge.com/utxos/&lt;address&gt;)
- * intersected with Blockchair and/or BlockCypher so no single stale indexer can pick a spent output.
+ * Confirmed spendable UTXOs for coin selection via dojakweb wallet data provider
+ * (default MyDoge-compatible `/utxos/`). Never intersects Blockchair/BlockCypher —
+ * those explorers silently drop outs and crush spendable balance.
  */
 export async function fetchSpendableUtxosConservativeForAddress(address: string): Promise<NormalisedUtxo[]> {
-  const [myDoge, chair, cypher] = await Promise.all([
-    fetchUtxosFromMyDogeApi(address).catch(() => [] as NormalisedUtxo[]),
-    fetchUtxosFromBlockchair(address).catch(() => [] as NormalisedUtxo[]),
-    fetchUtxosFromBlockCypher(address).catch(() => [] as NormalisedUtxo[]),
-  ]);
-
-  const chairK = new Set(chair.map(utxoOutpointKey));
-  const cypherK = new Set(cypher.map(utxoOutpointKey));
-
-  if (myDoge.length > 0) {
-    // Prefer MyDoge alone first — it is the wallet-grade indexer. Explorer
-    // intersection is a soft filter only when it still leaves spendable coins.
-    let picked: NormalisedUtxo[] = [];
-
-    if (chair.length > 0 && cypher.length > 0) {
-      picked = myDoge.filter(
-        (u) => chairK.has(utxoOutpointKey(u)) && cypherK.has(utxoOutpointKey(u)),
-      );
-      if (picked.length > 0) {
-        console.log('[dojakweb:doge-tx] UTXO MyDoge ∩ Blockchair ∩ BlockCypher', {
-          mydoge: myDoge.length,
-          picked: picked.length,
-        });
-        return picked;
-      }
-    }
-
-    if (chair.length > 0) {
-      picked = myDoge.filter((u) => chairK.has(utxoOutpointKey(u)));
-      if (picked.length > 0) {
-        console.log('[dojakweb:doge-tx] UTXO MyDoge ∩ Blockchair', {
-          mydoge: myDoge.length,
-          picked: picked.length,
-        });
-        return picked;
-      }
-    }
-
-    if (cypher.length > 0) {
-      picked = myDoge.filter((u) => cypherK.has(utxoOutpointKey(u)));
-      if (picked.length > 0) {
-        console.log('[dojakweb:doge-tx] UTXO MyDoge ∩ BlockCypher', {
-          mydoge: myDoge.length,
-          picked: picked.length,
-        });
-        return picked;
-      }
-    }
-
-    console.log('[dojakweb:doge-tx] Using MyDoge UTXO list (primary)', {
-      mydoge: myDoge.length,
-      blockchair: chair.length,
-      blockcypher: cypher.length,
-    });
-    return myDoge;
-  }
-
-  if (chair.length > 0 && cypher.length > 0) {
-    const bKeys = new Set(cypher.map(utxoOutpointKey));
-    const inter = chair.filter((u) => bKeys.has(utxoOutpointKey(u)));
-    if (inter.length > 0) {
-      console.log('[dojakweb:doge-tx] UTXO Blockchair ∩ BlockCypher (no MyDoge)', {
-        blockchair: chair.length,
-        blockcypher: cypher.length,
-        intersect: inter.length,
-      });
-      return inter;
-    }
-    console.warn('[dojakweb:doge-tx] UTXO intersect empty; using BlockCypher list only');
-    return cypher;
-  }
-  if (cypher.length > 0) return cypher;
-  return chair;
+  const rows = await walletDataApi.fetchUtxosPaginated(address);
+  const out = rows.map((u) => ({
+    tx_hash: u.txid,
+    tx_output_n: u.vout,
+    value: u.value,
+  }));
+  console.log('[dojakweb:doge-tx] wallet-provider UTXOs', {
+    address: address.slice(0, 10) + '…',
+    count: out.length,
+  });
+  return out;
 }
 
 /**
- * Confirmed spendable UTXOs for coin selection — MyDoge ∩ Blockchair ∩ BlockCypher when possible
- * (never Blockchair alone; avoids stale `is_spent(false)` ghosts → “already been spent” / Missing inputs).
+ * Confirmed spendable UTXOs for coin selection (wallet data provider only).
  */
 export async function fetchSpendableUtxosForAddress(address: string): Promise<NormalisedUtxo[]> {
   return fetchSpendableUtxosConservativeForAddress(address);
@@ -1095,7 +890,7 @@ export async function signOpReturnTransaction(
     }
   }
 
-  // --- Fetch UTXOs (MyDoge ∩ indexers — never Blockchair-only; stale lists break broadcast) ---
+  // --- Fetch UTXOs (wallet data provider — MyDoge by default) ---
   console.log('[dojakweb:doge-tx] fetching UTXOs (conservative)', { fromAddress });
   const utxos = await fetchSpendableUtxosConservativeForAddress(fromAddress);
   console.log('[dojakweb:doge-tx] UTXOs received', utxos.map(u => ({

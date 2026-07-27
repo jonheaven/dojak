@@ -1192,11 +1192,92 @@ export const walletDataApi = {
     return info.balance;
   },
 
-  fetchUtxos: async (address: string): Promise<any> => {
-    if (isCommandDogWalletDataProvider()) {
-      return { utxos: [] };
+  /**
+   * Confirmed UTXOs from the configured wallet data provider (MyDoge-compatible `/utxos/:address`).
+   * Paginates via `next_cursor`. Never hits Blockchair/BlockCypher.
+   * When the active provider is command.dog (no wallet UTXO list), uses the MyDoge public API.
+   */
+  fetchUtxosPaginated: async (
+    address: string,
+  ): Promise<
+    Array<{
+      txid: string;
+      vout: number;
+      value: number;
+      confirmations?: number;
+      scriptPubKey?: string;
+    }>
+  > => {
+    const cfg = getWalletDataProviderConfig();
+    // command.dog product API does not expose MyDoge-style /utxos — use MyDoge for coin selection.
+    const base =
+      cfg.walletDataProvider === 'commanddog'
+        ? DEFAULT_MYDOGE_PROVIDER_URL
+        : getWalletProviderBaseUrl();
+    const collected: Array<{
+      txid: string;
+      vout: number;
+      value: number;
+      confirmations?: number;
+      scriptPubKey?: string;
+    }> = [];
+    let cursor: string | null | undefined = undefined;
+    const maxPages = 25;
+
+    for (let page = 0; page < maxPages; page++) {
+      const path = `${base.replace(/\/+$/, '')}/utxos/${encodeURIComponent(address)}`;
+      const url =
+        cursor == null || cursor === ''
+          ? path
+          : `${path}?cursor=${encodeURIComponent(String(cursor))}`;
+      const data = await fetchJson(url, {
+        networkErrorMessage: 'Wallet UTXO provider is unavailable. Please retry in a moment.',
+      });
+      const rows: any[] = Array.isArray(data?.utxos)
+        ? data.utxos
+        : Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+            ? data
+            : [];
+
+      for (const row of rows) {
+        const conf = Number(row.confirmations ?? row.conf ?? 1);
+        // Treat missing confirmations as confirmed (some providers omit the field).
+        if (Number.isFinite(conf) && conf < 1) continue;
+        const satRaw = row.satoshis ?? row.value ?? row.amount ?? row.sats;
+        const sat =
+          typeof satRaw === 'string' ? parseInt(satRaw, 10) : Number(satRaw);
+        if (!Number.isFinite(sat) || sat <= 0) continue;
+        const txid = String(row.txid ?? row.tx_hash ?? row.transaction_hash ?? '').trim();
+        const vout = Number(row.vout ?? row.tx_output_n ?? row.index ?? row.n);
+        if (!txid || !Number.isInteger(vout) || vout < 0) continue;
+        collected.push({
+          txid,
+          vout,
+          value: sat,
+          confirmations: Number.isFinite(conf) ? conf : undefined,
+          scriptPubKey: String(row.scriptPubKey ?? row.script ?? row.script_hex ?? '') || undefined,
+        });
+      }
+
+      const next = data?.next_cursor ?? data?.nextCursor ?? null;
+      if (next == null || next === '') break;
+      cursor = String(next);
     }
-    return fetchJson(getWalletEndpoint('/utxos/', address));
+
+    console.log('[walletDataApi] provider UTXOs', {
+      provider: cfg.walletDataProvider,
+      base,
+      address: address.slice(0, 10) + '…',
+      count: collected.length,
+    });
+    return collected;
+  },
+
+  fetchUtxos: async (address: string): Promise<any> => {
+    const utxos = await walletDataApi.fetchUtxosPaginated(address);
+    return { utxos };
   },
 
   getAddress: async (wallet?: any): Promise<string> => resolveAddress(wallet),

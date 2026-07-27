@@ -424,7 +424,7 @@ export async function signDoginalInscriptionChain(params: SignDoginalChainParams
       pool = filterExcluded(await fetchUtxosWithRetry(fromAddress), excludedOutpoints);
       if (!pool.length) {
         throw new Error(
-          'No UTXOs passed the Blockchair ∩ BlockCypher check. Wait a minute and try again, or confirm your address in both explorers.',
+          'No spendable UTXOs from the wallet data provider. Wait a minute and try again, or check Coins & UTXOs / Release local holds.',
         );
       }
       const sorted = [...pool].sort((a, b) => b.value - a.value);

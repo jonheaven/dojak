@@ -512,29 +512,12 @@ async function fetchUtxosViaRpc(address: string): Promise<OrdUtxo[] | null> {
   }
 }
 
-async function fetchAddressUtxosBlockchair(address: string): Promise<OrdUtxo[]> {
-  const res = await fetch(
-    `${BLOCKCHAIR_URL}/outputs?q=recipient(${address}),is_spent(false)` +
-      `&fields=transaction_hash,index,value,script_hex&limit=100`,
-  );
-  if (!res.ok) throw new Error(`Blockchair UTXO fetch failed (${res.status})`);
-  const data = await res.json();
-  const rows: any[] = data?.data ?? [];
-  return rows.map(u => ({
-    txid: u.transaction_hash,
-    vout: u.index,
-    value: u.value,
-    scriptPubKey: u.script_hex ?? '',
-  }));
-}
-
 /**
  * Fetches spendable UTXOs for address.
  *
  * Order (browser wallets):
  * 1. Dogecoin Core RPC when it actually returns coins for this address
- * 2. MyDoge API ∩ explorers (+ local mempool spent/change overlay) — primary for extension / LB wallets
- * 3. Blockchair alone as last resort
+ * 2. dojakweb wallet data provider (MyDoge by default) + local mempool overlay
  *
  * Locked UTXOs (inscription-bearing) are excluded via the dojakweb lock registry.
  */
@@ -566,13 +549,13 @@ export async function getAddressUtxos(address: string): Promise<OrdUtxo[]> {
 
   if (rpcUtxos !== null && rpcUtxos.length === 0) {
     console.warn(
-      '[doginal-psdt] RPC returned 0 UTXOs — Core may not watch this address; trying MyDoge API',
+      '[doginal-psdt] RPC returned 0 UTXOs — Core may not watch this address; trying wallet data provider',
     );
   } else {
-    console.log('[doginal-psdt] RPC unavailable — trying MyDoge API (+ explorer consensus)');
+    console.log('[doginal-psdt] RPC unavailable — wallet data provider');
   }
 
-  // ── Primary browser path: MyDoge ∩ explorers + local spent overlay ───────
+  // ── Primary browser path: wallet provider + local spent overlay ──────────
   try {
     const conservative = await fetchSpendableUtxosConservativeForAddress(address);
     const { safe } = filterSafeSpendableUtxos(address, conservative);
@@ -591,34 +574,17 @@ export async function getAddressUtxos(address: string): Promise<OrdUtxo[]> {
       scriptPubKey: u.scriptPubKey ?? '',
     }));
     const afterLocks = applyLocks(asOrd);
-    if (afterLocks.length > 0) {
-      console.log(
-        `[doginal-psdt] MyDoge/consensus: ${conservative.length} indexed → ${afterLocks.length} spendable after overlay+locks`,
-      );
-      return afterLocks;
-    }
-    console.warn('[doginal-psdt] MyDoge/consensus returned no spendable UTXOs after filters');
+    console.log(
+      `[doginal-psdt] wallet provider: ${conservative.length} indexed → ${afterLocks.length} spendable after overlay+locks`,
+    );
+    return afterLocks;
   } catch (e) {
     console.warn(
-      '[doginal-psdt] MyDoge/consensus UTXO path failed:',
+      '[doginal-psdt] wallet provider UTXO path failed:',
       e instanceof Error ? e.message : e,
     );
+    throw e instanceof Error ? e : new Error(String(e));
   }
-
-  // ── Last resort: Blockchair only ─────────────────────────────────────────
-  console.log('[doginal-psdt] Falling back to Blockchair-only UTXO list');
-  const blockchairUtxos = await fetchAddressUtxosBlockchair(address);
-  const rawBc = blockchairUtxos.length;
-  const afterLocks = applyLocks(blockchairUtxos);
-  console.log(
-    `[doginal-psdt] Blockchair: ${rawBc} output(s) on-chain, ${afterLocks.length} spendable after lock filter`,
-  );
-  if (rawBc >= 2 && afterLocks.length < 2) {
-    console.warn(
-      '[doginal-psdt] Most UTXOs are locked in UTXO Tools — unlock at least two plain outputs for buys.',
-    );
-  }
-  return afterLocks;
 }
 
 // ── UTXO selection ────────────────────────────────────────────────────────────

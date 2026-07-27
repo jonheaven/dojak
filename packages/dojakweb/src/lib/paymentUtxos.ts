@@ -1,6 +1,6 @@
 /**
  * Spendable UTXOs for plain DOGE payments (send / tips / fees).
- * Multi-indexer intersection + local mempool overlay to avoid stale spends.
+ * Wallet data provider (MyDoge by default) + local mempool overlay.
  */
 import {
   fetchSpendableUtxosConservativeForAddress,
@@ -16,7 +16,7 @@ export type { PaymentUtxo };
 
 /**
  * Best-effort payment UTXO set for Local Browser Wallet sends.
- * Prefer multi-indexer consensus; fall back to RPC/Blockchair list; always apply overlay.
+ * Prefer wallet data provider; fall back to RPC/provider list via getAddressUtxos; always apply overlay.
  */
 export async function getPaymentUtxosForSend(address: string): Promise<PaymentUtxo[]> {
   let indexed: PaymentUtxo[] = [];
