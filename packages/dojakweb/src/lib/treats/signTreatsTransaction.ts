@@ -146,7 +146,7 @@ async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> 
   const perInputSize = 148;
   const MIN_FEE = 100_000;
 
-  let feeSatoshis = Math.max(MIN_FEE, Math.ceil(((baseSize + perInputSize) * feeRate) / 1000));
+  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate));
   const sorted = [...spendableUtxos].sort((a, b) => b.value - a.value);
   const selected: NormalisedUtxo[] = [];
   let totalSats = 0;
@@ -157,7 +157,7 @@ async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> 
     totalSats += utxo.value;
     feeSatoshis = Math.max(
       MIN_FEE,
-      Math.ceil(((baseSize + perInputSize * selected.length) * feeRate) / 1000),
+      Math.ceil((baseSize + perInputSize * selected.length) * feeRate),
     );
     if (totalSats >= needed()) break;
   }

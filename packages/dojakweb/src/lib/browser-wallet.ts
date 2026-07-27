@@ -1083,12 +1083,10 @@ export class BrowserWallet {
     }
 
     const opReturnWeight = opReturnPayload ? estimateOpReturnOutputsTxWeight([opReturnPayload]) : 0;
-    const effectiveFeeRate =
-      opReturnWeight > 0 ? feeRate + Math.ceil((opReturnWeight * feeRate) / 1000) : feeRate;
 
     const selected = coinSelectP2PKH(
       wallet.address,
-      effectiveFeeRate,
+      feeRate,
       spendableUtxos.map((utxo) => ({
         txid: utxo.txid,
         vout: utxo.vout,
@@ -1098,12 +1096,40 @@ export class BrowserWallet {
     );
 
     // doge-sdk coinSelectP2PKH underpays (change ≈ marginal output cost only).
-    const fixed = fixCoinSelectP2PKHFee({
+    let fixed = fixCoinSelectP2PKHFee({
       changeAddress: wallet.address,
-      feeRateKoinuPerByte: effectiveFeeRate,
+      feeRateKoinuPerByte: feeRate,
       inputs: selected.inputs,
       payments: [{ address: normalizedRecipient, value: sendValue }],
     });
+
+    // P2PKH size helper ignores OP_RETURN — withhold those bytes from change.
+    if (opReturnWeight > 0) {
+      const extraFee = opReturnWeight * feeRate;
+      const changeOut = fixed.change > 0 ? fixed.outputs[fixed.outputs.length - 1] : null;
+      if (changeOut && changeOut.address === wallet.address && changeOut.value - extraFee >= 100_000) {
+        const newChange = changeOut.value - extraFee;
+        fixed = {
+          ...fixed,
+          outputs: [
+            ...fixed.outputs.slice(0, -1),
+            { address: wallet.address, value: newChange },
+          ],
+          fee: fixed.fee + extraFee,
+          change: newChange,
+        };
+      } else if (changeOut && changeOut.address === wallet.address) {
+        // Drop under-dust change; residual covers OP_RETURN byte fee.
+        fixed = {
+          ...fixed,
+          outputs: fixed.outputs.slice(0, -1),
+          fee: fixed.fee + changeOut.value,
+          change: 0,
+        };
+      } else {
+        throw new Error('Insufficient funds for amount plus network fee (OP_RETURN)');
+      }
+    }
 
     const signer = DogeMemoryWallet.fromWIF(wallet.privateKey, getNetworkId(wallet.network));
 

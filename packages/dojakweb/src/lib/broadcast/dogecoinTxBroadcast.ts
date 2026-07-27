@@ -1021,7 +1021,8 @@ export async function estimateOpReturnFee(
   // tx size estimate: 10 overhead + 148/input + 34 change + OP_RETURN output(s) + optional tip output
   const opReturnOutputsWeight = estimateOpReturnOutputsTxWeight(payloads);
   const singleInputSize = 10 + 148 + 34 + opReturnOutputsWeight + tipOutputSize;
-  const feeSatoshis = Math.max(100_000, Math.ceil((singleInputSize * feeRate) / 1000));
+  // feeRate is koinu/byte (default 1000) — do not divide by 1000 (that is for koinu/kB APIs).
+  const feeSatoshis = Math.max(100_000, Math.ceil(singleInputSize * feeRate));
   const totalNeeded = feeSatoshis + tipSats;
 
   const sorted = [...spendable].sort((a, b) => b.value - a.value);
@@ -1119,12 +1120,10 @@ export async function signOpReturnTransaction(
   const tipOutputSize = tip ? 34 : 0;
   const baseSize = 10 + 34 + opReturnOutputsWeight + tipOutputSize; // overhead + change + OP_RETURN(s) + optional tip
   const perInputSize = 148;
-  // Minimum relay fee floor: 1 DOGE = well above mempool minimums on all miners
-  // Dogecoin minimum relay fee is 1000 sat/kB; a ~220-byte tx needs ~220 sat.
-  // We use 100 000 sat (0.001 DOGE) as a safe floor — accepted by all nodes.
+  // Floor 0.001 DOGE; real fee is size × koinu/byte (default 1000 ≈ 0.01 Ð/kB).
   const MIN_FEE = 100_000;
 
-  let feeSatoshis = Math.max(MIN_FEE, Math.ceil(((baseSize + perInputSize) * feeRate) / 1000));
+  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate));
 
   const sorted = [...spendableUtxos].sort((a, b) => b.value - a.value);
   const selected: NormalisedUtxo[] = [];
@@ -1143,7 +1142,7 @@ export async function signOpReturnTransaction(
 
     feeSatoshis = Math.max(
       MIN_FEE,
-      Math.ceil(((baseSize + perInputSize * selected.length) * feeRate) / 1000),
+      Math.ceil((baseSize + perInputSize * selected.length) * feeRate),
     );
 
     if (totalSats >= needed()) break;
@@ -1295,7 +1294,7 @@ export async function buildOpReturnPSDT(
   const perInputSize = 148;
   const MIN_FEE = 100_000;
 
-  let feeSatoshis = Math.max(MIN_FEE, Math.ceil(((baseSize + perInputSize) * feeRate) / 1000));
+  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate));
   const sorted = [...spendableUtxos].sort((a, b) => b.value - a.value);
   const selected: NormalisedUtxo[] = [];
   let totalSats = 0;
@@ -1306,7 +1305,7 @@ export async function buildOpReturnPSDT(
     if (!Number.isFinite(sats) || sats <= 0) continue;
     selected.push(utxo);
     totalSats += sats;
-    feeSatoshis = Math.max(MIN_FEE, Math.ceil(((baseSize + perInputSize * selected.length) * feeRate) / 1000));
+    feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize * selected.length) * feeRate));
     if (totalSats >= needed()) break;
   }
 
