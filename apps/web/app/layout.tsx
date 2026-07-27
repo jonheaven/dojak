@@ -1,32 +1,61 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { Newsreader, Space_Grotesk } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 
+const sans = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-dojak-sans',
+  display: 'swap'
+});
+
+const display = Newsreader({
+  subsets: ['latin'],
+  variable: '--font-dojak-serif',
+  style: ['normal', 'italic'],
+  display: 'swap'
+});
+
+export const viewport: Viewport = {
+  themeColor: '#09090b',
+  width: 'device-width',
+  initialScale: 1
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://dojak.app'),
-  title: 'Dojak — The Wallet Doge Deserves',
+  title: 'Dojak — Add it. Own it. Browse free.',
   description:
-    'Dojak is a premium self-custodial Dogecoin wallet across extension, iOS, Android, and web wallet. Built on open Dogenals standards at dogenals.org with first-party proprietary product UX.',
+    'Self-custodial Dogecoin + Dogenals wallet. Install the extension, keep keys on-device, approve every send. Protocol-aware UTXO protection for Doginals. Built on open standards at dogenals.org.',
   keywords: [
     'Dojak wallet',
     'Dogecoin wallet',
     'Dogenals',
+    'Doginals wallet',
     'self-custodial wallet',
-    'Dogecoin inscriptions',
-    'web3 wallet',
+    'DRC-20',
+    'window.dojak',
     'DOGE wallet'
   ],
+  icons: {
+    icon: [
+      { url: '/icons/favicon.ico' },
+      { url: '/icons/icon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-48.png', sizes: '48x48', type: 'image/png' }
+    ],
+    apple: [{ url: '/icons/icon-256.png', sizes: '256x256' }]
+  },
   openGraph: {
-    title: 'Dojak — Dogenals. Powered by Dojak.',
+    title: 'Dojak — The Wallet Doge Deserves',
     description:
-      'The Dogecoin + Dogenals wallet for shibes: self-custodial, multi-platform, and built on open standards from dogenals.org.',
+      'Add it. Own it. Browse free. Protocol-aware Dogecoin wallet for Doginals — keys stay with you.',
     url: 'https://dojak.app',
     siteName: 'Dojak',
     images: [
       {
-        url: '/og-image.svg',
+        url: '/brand/dojak.png',
         width: 1200,
-        height: 630,
+        height: 1200,
         alt: 'Dojak Dogecoin Wallet'
       }
     ],
@@ -35,9 +64,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'The Wallet Doge Deserves',
-    description: 'Dogenals-native wallet UX for extension, mobile, and web wallet.',
-    images: ['/og-image.svg']
+    title: 'Add it. Own it. Browse free. — Dojak',
+    description: 'Self-custodial Dogecoin + Dogenals wallet. Protocol-aware UTXO safety.',
+    images: ['/brand/dojak.png']
   },
   alternates: {
     canonical: 'https://dojak.app'
@@ -50,8 +79,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     '@type': 'Organization',
     name: 'Dojak',
     url: 'https://dojak.app',
-    logo: 'https://dojak.app/og-image.svg',
-    sameAs: ['https://github.com/jonheaven/dogenals', 'https://x.com/jontype']
+    logo: 'https://dojak.app/icons/icon-256.png',
+    sameAs: ['https://github.com/jonheaven/dogenals', 'https://github.com/jonheaven/dojak', 'https://x.com/jontype']
   };
 
   const softwareSchema = {
@@ -67,12 +96,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     },
     url: 'https://dojak.app',
     description:
-      'Self-custodial Dogecoin wallet product built on open Dogenals standards with extension, mobile, and web wallet experiences.'
+      'Self-custodial Dogecoin wallet with protocol-aware UTXO protection for Doginals / Dogenals. Extension, mobile, and local web wallet.'
   };
 
   return (
-    <html lang="en" className="scroll-smooth">
-      <body>
+    <html lang="en" className={`scroll-smooth ${sans.variable} ${display.variable}`}>
+      <body className="font-sans antialiased">
         <Script
           id="dojak-org-schema"
           type="application/ld+json"

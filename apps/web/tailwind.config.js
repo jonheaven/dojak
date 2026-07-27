@@ -21,6 +21,8 @@ module.exports = {
         }
       },
       fontFamily: {
+        sans: ['var(--font-dojak-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-dojak-serif)', 'ui-serif', 'Georgia', 'serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
       },
       boxShadow: {

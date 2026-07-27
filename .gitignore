@@ -117,6 +117,9 @@ dist
 # Gatsby files
 .cache/
 public
+# Marketing site static assets (Next.js `apps/web/public`) — must be versioned for Vercel.
+!apps/web/public/
+!apps/web/public/**
 
 # Vuepress build output
 .vuepress/dist
