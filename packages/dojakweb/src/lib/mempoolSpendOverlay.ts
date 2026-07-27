@@ -214,6 +214,53 @@ export function mergePaymentUtxos(address: string, indexed: PaymentUtxo[]): Paym
   return out;
 }
 
+/** Outpoints this session still treats as spent (plus their values if still in `indexed`). */
+export function getLocalHoldStats(
+  address: string,
+  indexed?: PaymentUtxo[],
+): { heldCount: number; heldKoinu: number } {
+  const bag = getBag(address);
+  const spentKeys = Object.keys(bag.spent);
+  if (!spentKeys.length) return { heldCount: 0, heldKoinu: 0 };
+  if (!indexed?.length) {
+    return { heldCount: spentKeys.length, heldKoinu: 0 };
+  }
+  const byKey = new Map(indexed.map((u) => [outpointKey(u.txid, u.vout), u.value] as const));
+  let heldKoinu = 0;
+  let heldCount = 0;
+  for (const k of spentKeys) {
+    const v = byKey.get(k);
+    if (v == null) continue;
+    heldCount += 1;
+    heldKoinu += v;
+  }
+  return { heldCount, heldKoinu };
+}
+
+/** Drop local spent/change markers so coins can be retried after a failed / stuck broadcast. */
+export function clearMempoolOverlayForAddress(address: string): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    const store = loadStore();
+    delete store[addrKey(address)];
+    saveStore(store);
+    for (const key of LEGACY_STORAGE_KEYS) {
+      try {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw) as Store;
+        if (!parsed || typeof parsed !== 'object') continue;
+        delete parsed[addrKey(address)];
+        sessionStorage.setItem(key, JSON.stringify(parsed));
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export function isInputsSpentBroadcastError(err: unknown): boolean {
   const m = err instanceof Error ? err.message : String(err ?? '');
   const lower = m.toLowerCase();

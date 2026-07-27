@@ -58,7 +58,7 @@ export async function estimatePaymentSend(params: {
   const spendableKoinu = utxos.reduce((s, u) => s + u.value, 0);
   if (spendableKoinu < amountKoinu) {
     throw new Error(
-      `Not enough spendable DOGE: you asked to send ${toDoge(amountKoinu)} Ð, but only ${toDoge(spendableKoinu)} Ð is spendable right now (wallet total can look higher when coins are in inscriptions or still settling).`,
+      `Not enough spendable DOGE: you asked to send ${toDoge(amountKoinu)} Ð, but only ${toDoge(spendableKoinu)} Ð is spendable right now. The rest is usually inscription carriers (0.001 Ð), locked coins, or inputs still held by a recent / stuck mempool send — open ··· → Coins & UTXOs.`,
     );
   }
 

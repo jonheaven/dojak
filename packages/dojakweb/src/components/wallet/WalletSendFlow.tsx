@@ -18,13 +18,14 @@ import {
   normalizeDogeAddressInput,
   validateDogecoinAddress,
 } from '../../lib/dogecoinAddressValidate';
-import { friendlyPaymentSendError } from '../../lib/mempoolSpendOverlay';
+import { friendlyPaymentSendError, clearMempoolOverlayForAddress } from '../../lib/mempoolSpendOverlay';
 import {
   estimateMaxSendableDoge,
   estimatePaymentSend,
   type PaymentSendQuote,
 } from '../../lib/estimatePaymentSend';
 import { getPaymentUtxosForSend } from '../../lib/paymentUtxos';
+import { getSpendableBalanceBreakdown, type SpendableBalanceBreakdown } from '../../lib/spendableBalance';
 import { dogeTxExplorerUrl } from '../../utils/dogeTxExplorer';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
 
@@ -135,23 +136,34 @@ export function WalletSendFlow({
   const [copied, setCopied] = useState(false);
   const [spendableDoge, setSpendableDoge] = useState<number | null>(null);
   const [spendableBusy, setSpendableBusy] = useState(false);
+  const [spendBreak, setSpendBreak] = useState<SpendableBalanceBreakdown | null>(null);
 
   // Keep spendable UTXO total visible (often lower than wallet indexer balance).
   useEffect(() => {
     if (!connected || !activeAddress) {
       setSpendableDoge(null);
+      setSpendBreak(null);
       return;
     }
     let cancelled = false;
     setSpendableBusy(true);
-    void getPaymentUtxosForSend(activeAddress)
-      .then((utxos) => {
+    void getSpendableBalanceBreakdown(activeAddress, balance)
+      .then((b) => {
         if (cancelled) return;
-        const koinu = utxos.reduce((s, u) => s + u.value, 0);
-        setSpendableDoge(Math.round(koinu) / 1e8);
+        setSpendBreak(b);
+        setSpendableDoge(b.spendableDoge);
       })
-      .catch(() => {
-        if (!cancelled) setSpendableDoge(null);
+      .catch(async () => {
+        if (cancelled) return;
+        setSpendBreak(null);
+        try {
+          const utxos = await getPaymentUtxosForSend(activeAddress);
+          if (cancelled) return;
+          const koinu = utxos.reduce((s, u) => s + u.value, 0);
+          setSpendableDoge(Math.round(koinu) / 1e8);
+        } catch {
+          if (!cancelled) setSpendableDoge(null);
+        }
       })
       .finally(() => {
         if (!cancelled) setSpendableBusy(false);
@@ -159,7 +171,7 @@ export function WalletSendFlow({
     return () => {
       cancelled = true;
     };
-  }, [connected, activeAddress, phase, txid]);
+  }, [connected, activeAddress, balance, phase, txid]);
 
   const validation = useMemo(() => validateDogecoinAddress(recipient), [recipient]);
 
@@ -685,13 +697,42 @@ export function WalletSendFlow({
             {spendableBusy
               ? 'Checking spendable UTXOs…'
               : spendableDoge != null
-                ? `Spendable now ≈ ${formatDoge(spendableDoge, 4)} Ð${
-                    spendableDoge + 0.05 < balance
-                      ? ' (rest may be inscriptions / unsettled bets)'
-                      : ''
-                  }`
+                ? `Spendable now ≈ ${formatDoge(spendableDoge, 4)} Ð`
                 : 'Spendable UTXOs unavailable — try Max after a moment'}
           </span>
+          {spendBreak && spendBreak.unavailableDoge > 0.05 ? (
+            <span className="block text-white/40">
+              {formatDoge(spendBreak.unavailableDoge, 2)} Ð locked
+              {spendBreak.localHoldDoge > 0.001
+                ? ` · ${formatDoge(spendBreak.localHoldDoge, 2)} Ð held from a recent broadcast (may still be in mempool)`
+                : ''}
+              {spendBreak.dustCarrierCount > 0
+                ? ` · ${spendBreak.dustCarrierCount}× 0.001 Ð inscription carrier${spendBreak.dustCarrierCount === 1 ? '' : 's'}`
+                : ''}
+              {spendBreak.lockedCount > 0 ? ` · ${spendBreak.lockedCount} manually locked` : ''}
+              . Open ··· → Coins & UTXOs to inspect
+              {spendBreak.localHoldCount > 0 ? ' or release local holds' : ''}.
+            </span>
+          ) : null}
+          {spendBreak && spendBreak.localHoldCount > 0 && activeAddress ? (
+            <button
+              type="button"
+              className="mt-1 text-[11px] font-medium text-[#FCD34D] hover:opacity-85"
+              onClick={() => {
+                clearMempoolOverlayForAddress(activeAddress);
+                toast.success('Released local spend holds — rechecking…');
+                setSpendableBusy(true);
+                void getSpendableBalanceBreakdown(activeAddress, balance)
+                  .then((b) => {
+                    setSpendBreak(b);
+                    setSpendableDoge(b.spendableDoge);
+                  })
+                  .finally(() => setSpendableBusy(false));
+              }}
+            >
+              Release local holds ({spendBreak.localHoldCount})
+            </button>
+          ) : null}
         </p>
       </div>
 

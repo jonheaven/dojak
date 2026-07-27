@@ -36,6 +36,7 @@ import {
   PhotoIcon,
   MusicalNoteIcon,
   DocumentTextIcon,
+  CircleStackIcon,
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
 import { WalletMenuItems } from './wallet/WalletMenuItems';
@@ -44,6 +45,9 @@ import { WalletPinNumpad } from './wallet/WalletPinNumpad';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import { WalletApprovalPanel } from './wallet/WalletApprovalPanel';
 import { WalletSendFlow } from './wallet/WalletSendFlow';
+import { UtxoManagement } from './wallet/UtxoManagement';
+import { getSpendableBalanceBreakdown, type SpendableBalanceBreakdown } from '../lib/spendableBalance';
+import { clearMempoolOverlayForAddress } from '../lib/mempoolSpendOverlay';
 import {
   TextInscriptionCardMedia,
   InscriptionTextInspectModal,
@@ -207,7 +211,8 @@ type WalletStep =
   | 'address_book'
   | 'set_name'
   | 'send_inscription'
-  | 'list_inscription';
+  | 'list_inscription'
+  | 'utxos';
 
 type SettingsTab = 'data' | 'network' | 'display';
 type BroadcastRelayProvider = 'blockchair' | 'blockcypher' | 'tatum' | 'rpc' | 'commanddog';
@@ -651,6 +656,8 @@ export function DojakwebWalletModal({
   const [dlottoClassifying, setDlottoClassifying] = useState(false);
   const [revealPassword, setRevealPassword] = useState('');
   const [inscriptions, setInscriptions] = useState<MyDogeInscription[]>([]);
+  const [spendableBreak, setSpendableBreak] = useState<SpendableBalanceBreakdown | null>(null);
+  const [spendableBreakBusy, setSpendableBreakBusy] = useState(false);
   const [drc20Tokens, setDrc20Tokens] = useState<DRC20Token[]>([]);
   const [treatsTokens, setTreatsTokens] = useState<Array<{ tick: string; balance: string }>>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
@@ -1340,6 +1347,7 @@ export function DojakwebWalletModal({
           'receive',
           'send_inscription',
           'list_inscription',
+          'utxos',
           'settings',
           'switch_wallet',
           'address_book',
@@ -2467,7 +2475,30 @@ export function DojakwebWalletModal({
     }
   }, [step, tab, activeAddress, fetchTransactions]);
 
+
+  useEffect(() => {
+    if (step !== 'dashboard' || !activeAddress || !connected) {
+      return;
+    }
+    let cancelled = false;
+    setSpendableBreakBusy(true);
+    void getSpendableBalanceBreakdown(activeAddress, balance)
+      .then((b) => {
+        if (!cancelled) setSpendableBreak(b);
+      })
+      .catch(() => {
+        if (!cancelled) setSpendableBreak(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSpendableBreakBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step, activeAddress, connected, balance, balanceVerified]);
+
   const openSendInscription = (inscription: MyDogeInscription) => {
+
     setSelectedInscription(inscription);
     setInscriptionSendRecipient('');
     setInscriptionSendTxid(null);
@@ -3042,6 +3073,8 @@ export function DojakwebWalletModal({
                                             ? t('modal.walletSwitcher.title')
                                             : step === 'address_book'
                                               ? t('modal.title.addressBook')
+                                              : step === 'utxos'
+                                                ? 'Coins & UTXOs'
                                               : step === 'send_inscription'
                                                 ? t('modal.title.sendInscription', {
                                                     num: String(selectedInscription?.inscriptionNumber ?? ''),
@@ -3783,6 +3816,40 @@ export function DojakwebWalletModal({
                                     Provisional — confirming with indexer…
                                   </div>
                                 ) : null}
+                                {!hideBalance && balanceVerified ? (
+                                  <div className="mt-3 space-y-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => setStep('utxos')}
+                                      className="mx-auto block text-center text-[12px] font-medium text-white/70 transition hover:text-[#FCD34D]"
+                                    >
+                                      {spendableBreakBusy && !spendableBreak
+                                        ? 'Checking spendable…'
+                                        : spendableBreak
+                                          ? `Spendable ${spendableBreak.spendableDoge.toLocaleString(undefined, { maximumFractionDigits: 4 })} Ð`
+                                          : 'Check spendable coins'}
+                                    </button>
+                                    {spendableBreak && spendableBreak.unavailableDoge > 0.05 ? (
+                                      <p className="text-[11px] leading-snug text-white/40">
+                                        {spendableBreak.unavailableDoge.toLocaleString(undefined, { maximumFractionDigits: 2 })} Ð not sendable
+                                        {spendableBreak.localHoldDoge > 0.001
+                                          ? ` · ${spendableBreak.localHoldDoge.toLocaleString(undefined, { maximumFractionDigits: 2 })} Ð held after recent broadcast`
+                                          : ''}
+                                        {spendableBreak.dustCarrierCount > 0
+                                          ? ` · ${spendableBreak.dustCarrierCount} inscription carrier${spendableBreak.dustCarrierCount === 1 ? '' : 's'}`
+                                          : ''}
+                                        {' · '}
+                                        <button
+                                          type="button"
+                                          className="text-[#FCD34D]/80 underline-offset-2 hover:underline"
+                                          onClick={() => setStep('utxos')}
+                                        >
+                                          Manage
+                                        </button>
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                               </>
                             )}
                           </div>
@@ -3873,6 +3940,7 @@ export function DojakwebWalletModal({
                                       ] as const)
                                     : []),
                                   { key: 'xVerify', label: t('modal.dashboard.menu.xVerify'), Icon: CheckBadgeIcon, action: () => setStep('verification') },
+                                  { key: 'utxos', label: 'Coins & UTXOs', Icon: CircleStackIcon, action: () => setStep('utxos') },
                                   { key: 'settings', label: t('modal.dashboard.menu.settings'), Icon: Cog6ToothIcon, action: openSettings },
                                   { key: 'disconnect', label: t('modal.dashboard.menu.disconnect'), Icon: PowerIcon, action: handleDisconnectWallet },
                                 ].map(({ key, label, Icon, action }) => (
@@ -5542,6 +5610,42 @@ export function DojakwebWalletModal({
                             </Button>
                           </>
                         )}
+                      </div>
+                    )}
+
+                    {step === 'utxos' && activeAddress && (
+                      <div className="space-y-3">
+                        <p className="text-[11px] leading-relaxed text-white/45">
+                          Wallet total can look higher than Spendable. Inscription carriers (0.001 Ð), locked coins,
+                          and inputs from a recent underfee / stuck mempool send stay unavailable until that tx
+                          confirms or drops from the network (often 1–3 days). Local holds from this browser can be cleared below.
+                        </p>
+                        {spendableBreak && spendableBreak.localHoldCount > 0 ? (
+                          <button
+                            type="button"
+                            className={cx(SECONDARY_BUTTON, 'w-full text-xs')}
+                            onClick={() => {
+                              clearMempoolOverlayForAddress(activeAddress);
+                              setSpendableBreak(null);
+                              toast.success('Cleared local spend holds — refresh if coins reappear as spendable');
+                              void getSpendableBalanceBreakdown(activeAddress, balance).then(setSpendableBreak);
+                            }}
+                          >
+                            Release local holds ({spendableBreak.localHoldCount} UTXO
+                            {spendableBreak.localHoldCount === 1 ? '' : 's'}
+                            {spendableBreak.localHoldDoge > 0
+                              ? ` · ${spendableBreak.localHoldDoge.toLocaleString(undefined, { maximumFractionDigits: 4 })} Ð`
+                              : ''}
+                            )
+                          </button>
+                        ) : null}
+                        <UtxoManagement
+                          walletAddress={activeAddress}
+                          showAddressBanner={false}
+                        />
+                        <Button type="button" className={cx('w-full', SECONDARY_BUTTON)} onClick={() => setStep('dashboard')}>
+                          Back to wallet
+                        </Button>
                       </div>
                     )}
 
