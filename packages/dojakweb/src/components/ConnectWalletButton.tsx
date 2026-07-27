@@ -113,7 +113,7 @@ export function ConnectWalletButton({
         aria-expanded={pickerOpen}
         aria-haspopup="dialog"
         className={[
-          'ds-connect-button ds-connect-button--icon relative inline-flex h-10 w-10 min-h-10 shrink-0 appearance-none items-center justify-center rounded-full p-0 font-semibold transition hover:brightness-105',
+          'ds-connect-button ds-connect-button--icon relative inline-flex h-10 w-10 min-h-10 min-w-10 shrink-0 appearance-none items-center justify-center rounded-full p-0 font-semibold transition hover:brightness-105',
           'border border-[color:var(--ds-accent-border)]',
           'bg-[linear-gradient(180deg,var(--ds-accent-solid)_0%,var(--ds-accent-solid-hover)_100%)]',
           'text-[color:var(--ds-accent-foreground)]',
@@ -122,19 +122,21 @@ export function ConnectWalletButton({
           .filter(Boolean)
           .join(' ')}
       >
-        <WalletIcon className="h-5 w-5" aria-hidden="true" />
-        {connected && address ? (
-          <span
-            className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-[color:var(--ds-accent-solid)]"
-            aria-hidden="true"
-          />
-        ) : null}
-        {approvalPending ? (
-          <span
-            className="absolute left-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-[color:var(--ds-accent-solid)] animate-pulse"
-            aria-hidden="true"
-          />
-        ) : null}
+        <span className="relative inline-flex h-[1.7rem] w-[1.7rem] shrink-0 items-center justify-center">
+          <WalletIcon className="h-full w-full" aria-hidden="true" />
+          {connected && address ? (
+            <span
+              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[color:var(--ds-accent-solid)]"
+              aria-hidden="true"
+            />
+          ) : null}
+          {approvalPending ? (
+            <span
+              className="absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-[color:var(--ds-accent-solid)] animate-pulse"
+              aria-hidden="true"
+            />
+          ) : null}
+        </span>
       </button>
 
       <WalletQuickPicker
