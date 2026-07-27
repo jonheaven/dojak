@@ -22,6 +22,7 @@ import { decryptJSON, encryptJSON } from './secureStorage';
 import { warnIfUnexpectedSigningHostname } from '../services/dmp';
 import { buildOpReturnLockingScript, estimateOpReturnOutputsTxWeight } from './tx/opReturn';
 import { assertValidDogecoinAddress } from './dogecoinAddressValidate';
+import { fixCoinSelectP2PKHFee } from './fixCoinSelectP2PKHFee';
 import {
   signPartialPsdtWithWifToHex,
   signPsdtWithWifToTxHex,
@@ -1096,26 +1097,34 @@ export class BrowserWallet {
       [{ address: normalizedRecipient, value: sendValue }]
     );
 
+    // doge-sdk coinSelectP2PKH underpays (change ≈ marginal output cost only).
+    const fixed = fixCoinSelectP2PKHFee({
+      changeAddress: wallet.address,
+      feeRateKoinuPerByte: effectiveFeeRate,
+      inputs: selected.inputs,
+      payments: [{ address: normalizedRecipient, value: sendValue }],
+    });
+
     const signer = DogeMemoryWallet.fromWIF(wallet.privateKey, getNetworkId(wallet.network));
 
     const outputs = opReturnPayload
       ? [
           { value: 0, script: new Uint8Array(buildOpReturnLockingScript(opReturnPayload, 80)) },
-          ...selected.outputs,
+          ...fixed.outputs,
         ]
-      : selected.outputs;
+      : fixed.outputs;
 
     const finalizedTx = await createP2PKHTransaction(signer, {
       address: wallet.address,
-      inputs: selected.inputs,
+      inputs: fixed.inputs,
       outputs,
     }).finalizeAndSign();
 
-    const inputTotal = selected.inputs.reduce((sum, utxo) => sum + utxo.value, 0);
-    const outputTotal = selected.outputs.reduce((sum, output) => sum + output.value, 0);
-    const change = Math.max(0, outputTotal - sendValue);
+    const inputTotal = fixed.inputs.reduce((sum, utxo) => sum + utxo.value, 0);
+    const outputTotal = fixed.outputs.reduce((sum, output) => sum + output.value, 0);
+    const change = fixed.change;
     // Payment outputs: [OP_RETURN?] payment [change?]
-    const paymentOutputs = selected.outputs;
+    const paymentOutputs = fixed.outputs;
     const changeVout =
       change > 0 && paymentOutputs.length >= 2
         ? (opReturnPayload ? 1 : 0) + (paymentOutputs.length - 1)
@@ -1123,13 +1132,13 @@ export class BrowserWallet {
 
     return {
       txHex: finalizedTx.toHex(),
-      fee: selected.fee,
-      inputCount: selected.inputs.length,
-      outputCount: selected.outputs.length + (opReturnPayload ? 1 : 0),
+      fee: fixed.fee,
+      inputCount: fixed.inputs.length,
+      outputCount: fixed.outputs.length + (opReturnPayload ? 1 : 0),
       inputTotal,
       outputTotal,
       change,
-      inputs: selected.inputs.map((u) => ({
+      inputs: fixed.inputs.map((u) => ({
         txid: u.txid,
         vout: u.vout,
         value: u.value,

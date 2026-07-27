@@ -3,6 +3,7 @@
  */
 import { coinSelectP2PKH } from 'doge-sdk';
 import { assertValidDogecoinAddress } from './dogecoinAddressValidate';
+import { fixCoinSelectP2PKHFee } from './fixCoinSelectP2PKHFee';
 import { getPaymentUtxosForSend } from './paymentUtxos';
 
 const FEE_RATE = 1_000; // koinu/byte — Dogecoin-reliable default
@@ -79,11 +80,27 @@ export async function estimatePaymentSend(params: {
     throw e;
   }
 
-  const feeKoinu = selected.fee;
-  const changeKoinu = Math.max(
-    0,
-    selected.inputs.reduce((s, u) => s + u.value, 0) - amountKoinu - feeKoinu,
-  );
+  // doge-sdk underpays on-chain; recompute change from full size×rate fee.
+  let fixed: ReturnType<typeof fixCoinSelectP2PKHFee>;
+  try {
+    fixed = fixCoinSelectP2PKHFee({
+      changeAddress: params.fromAddress,
+      feeRateKoinuPerByte: FEE_RATE,
+      inputs: selected.inputs,
+      payments: [{ address: recipient, value: amountKoinu }],
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/insufficient/i.test(msg)) {
+      throw new Error(
+        `Not enough spendable DOGE for ${toDoge(amountKoinu)} Ð plus network fee. Spendable right now: ${toDoge(spendableKoinu)} Ð. Try a smaller amount or tap Max.`,
+      );
+    }
+    throw e;
+  }
+
+  const feeKoinu = fixed.fee;
+  const changeKoinu = fixed.change;
 
   return {
     recipient,
@@ -94,8 +111,8 @@ export async function estimatePaymentSend(params: {
     totalDebitDoge: toDoge(amountKoinu + feeKoinu),
     changeKoinu,
     changeDoge: toDoge(changeKoinu),
-    inputCount: selected.inputs.length,
-    outputCount: selected.outputs.length,
+    inputCount: fixed.inputs.length,
+    outputCount: fixed.outputs.length,
     spendableKoinu,
     spendableDoge: toDoge(spendableKoinu),
   };
