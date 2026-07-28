@@ -25,6 +25,7 @@ import {
   filterSafeSpendableUtxos,
 } from './broadcast/dogecoinTxBroadcast';
 import { mergePaymentUtxos } from './mempoolSpendOverlay';
+import { dogeTxExplorerUrl } from '../utils/dogeTxExplorer';
 
 // ── Dogecoin network params for bitcoinjs-lib ────────────────────────────────
 export const DOGE_NETWORK: bitcoin.Network = {
@@ -1322,9 +1323,10 @@ function sleepMs(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** SoChain DOGE tx URL (used in errors; avoids coupling this module to wallet Settings). */
+/** Tx explorer URL from Wallet → Settings preference (defaults to explorer.dogenals.com). */
 export function sochainDogeTxUrl(txid: string): string {
-  return `https://sochain.com/tx/DOGE/${txid.trim()}`;
+  // Kept name for callers; prefers Ðexplorer / user preference over hardcoded SoChain.
+  return dogeTxExplorerUrl(txid);
 }
 
 /**

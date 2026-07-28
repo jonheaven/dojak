@@ -33,6 +33,22 @@ export {
   type WalletDataProviderConfig,
   type WalletDataProviderType,
 } from './src/utils/api';
+export { ensureDojakwebEcosystemDefaults } from './src/lib/ecosystemDefaults';
+export {
+  broadcastSignedTransaction,
+  ensureDefaultBroadcastConfig,
+  loadBroadcastConfig,
+} from './src/lib/broadcast/dogecoinTxBroadcast';
+export {
+  dogeTxExplorerUrl,
+  dogeAddressExplorerUrl,
+  ensureDefaultChainExplorer,
+  loadDogeTxExplorerPreference,
+  saveDogeTxExplorerPreference,
+  useDogeTxExplorerPreference,
+  DOGENALS_EXPLORER_ORIGIN,
+  type DogeTxExplorerId,
+} from './src/utils/dogeTxExplorer';
 export {
   useDojakwebTheme,
   DojakwebThemeProvider,

@@ -71,6 +71,27 @@ export {
   type WalletDataProviderType,
 } from '../utils/api';
 
+/** Featured defaults: MyDoge bag + command.dog ops + explorer.dogenals.com (overrides still allowed). */
+export { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
+
+/** Host apps: push signed hex via wallet broadcast relay order (not host /api/tx-broadcast). */
+export {
+  broadcastSignedTransaction,
+  ensureDefaultBroadcastConfig,
+  loadBroadcastConfig,
+} from '../lib/broadcast/dogecoinTxBroadcast';
+
+export {
+  dogeTxExplorerUrl,
+  dogeAddressExplorerUrl,
+  ensureDefaultChainExplorer,
+  loadDogeTxExplorerPreference,
+  saveDogeTxExplorerPreference,
+  useDogeTxExplorerPreference,
+  DOGENALS_EXPLORER_ORIGIN,
+  type DogeTxExplorerId,
+} from '../utils/dogeTxExplorer';
+
 export {
   useDojakwebTheme,
   DojakwebThemeProvider,

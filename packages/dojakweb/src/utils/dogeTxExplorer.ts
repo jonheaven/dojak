@@ -25,6 +25,26 @@ export function loadDogeTxExplorerPreference(): DogeTxExplorerId {
   return 'dogenals';
 }
 
+const EXPLORER_DEFAULTS_MIGRATION_KEY = 'dojakweb-explorer-defaults-v1';
+
+/**
+ * One-time: unset / legacy SoChain|DogeChain prefs → Ðexplorer.
+ * Users who later pick SoChain keep that choice (migration flag stays set).
+ */
+export function ensureDefaultChainExplorer(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.localStorage.getItem(EXPLORER_DEFAULTS_MIGRATION_KEY) === '1') return;
+    window.localStorage.setItem(EXPLORER_DEFAULTS_MIGRATION_KEY, '1');
+    const raw = window.localStorage.getItem(CHAIN_EXPLORER_CONFIG_KEY);
+    if (!raw || raw === 'sochain' || raw === 'dogechain') {
+      saveDogeTxExplorerPreference('dogenals');
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export function saveDogeTxExplorerPreference(value: DogeTxExplorerId): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(CHAIN_EXPLORER_CONFIG_KEY, value);
@@ -59,6 +79,23 @@ export function dogeTxExplorerDisplayName(pref?: DogeTxExplorerId): string {
     case 'dogenals':
     default:
       return 'Ðexplorer';
+  }
+}
+
+/** Address page for the selected explorer (house float, player, etc.). */
+export function dogeAddressExplorerUrl(address: string, pref?: DogeTxExplorerId): string {
+  const a = address.trim();
+  const p = pref ?? loadDogeTxExplorerPreference();
+  switch (p) {
+    case 'sochain':
+      return `https://sochain.com/address/DOGE/${encodeURIComponent(a)}`;
+    case 'dogechain':
+      return `https://dogechain.info/address/${encodeURIComponent(a)}`;
+    case 'blockchair':
+      return `https://blockchair.com/dogecoin/address/${encodeURIComponent(a)}`;
+    case 'dogenals':
+    default:
+      return `${DOGENALS_EXPLORER_ORIGIN}/address/${encodeURIComponent(a)}`;
   }
 }
 

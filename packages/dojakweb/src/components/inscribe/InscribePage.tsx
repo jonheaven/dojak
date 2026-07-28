@@ -7,6 +7,12 @@ import { useDataProvider } from '../../providers/DataProvider';
 import { toast } from 'sonner';
 import { getFeeEstimate } from '../../utils/txBroadcaster';
 import {
+  dogeTxExplorerUrl,
+  dogeTxExplorerDisplayName,
+  loadDogeTxExplorerPreference,
+  DOGENALS_EXPLORER_ORIGIN,
+} from '../../utils/dogeTxExplorer';
+import {
   signDoginalInscriptionChain,
   countDoginalTransactionsForContent,
   DOGINAL_MAX_CONTENT_TYPE_LEN,
@@ -175,9 +181,9 @@ function guessContentType(file: File): string {
   return 'application/octet-stream';
 }
 
-/** Public SoChain website only — manual “open in new tab”; never used for API calls. */
-function sochainPublicTxPageUrl(txid: string): string {
-  return `https://sochain.com/tx/DOGE/${txid}`;
+/** Public explorer links — prefer Wallet Settings (Ðexplorer default); keep others open. */
+function preferredPublicTxPageUrl(txid: string): string {
+  return dogeTxExplorerUrl(txid);
 }
 
 function dogechainPublicTxUrl(txid: string): string {
@@ -186,6 +192,14 @@ function dogechainPublicTxUrl(txid: string): string {
 
 function blockchairPublicTxUrl(txid: string): string {
   return `https://blockchair.com/dogecoin/transaction/${txid}`;
+}
+
+function sochainPublicTxPageUrl(txid: string): string {
+  return `https://sochain.com/tx/DOGE/${txid}`;
+}
+
+function dogenalsPublicTxUrl(txid: string): string {
+  return `${DOGENALS_EXPLORER_ORIGIN}/tx/${txid.trim()}`;
 }
 
 export const InscribePage: React.FC = () => {
@@ -1814,30 +1828,61 @@ export const InscribePage: React.FC = () => {
                         ) : null}
                       </span>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <a
-                          href={sochainPublicTxPageUrl(st.txid)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-[#FCD34D] underline hover:text-[#fde68a]"
-                        >
-                          SoChain
-                        </a>
-                        <a
-                          href={dogechainPublicTxUrl(st.txid)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-[#FCD34D] underline hover:text-[#fde68a]"
-                        >
-                          DogeChain
-                        </a>
-                        <a
-                          href={blockchairPublicTxUrl(st.txid)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-[#FCD34D] underline hover:text-[#fde68a]"
-                        >
-                          Blockchair
-                        </a>
+                        {(() => {
+                          const prefName = dogeTxExplorerDisplayName(loadDogeTxExplorerPreference());
+                          return (
+                            <>
+                              <a
+                                href={preferredPublicTxPageUrl(st.txid)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-[#FCD34D] underline hover:text-[#fde68a]"
+                              >
+                                {prefName}
+                              </a>
+                              {prefName !== 'Ðexplorer' ? (
+                                <a
+                                  href={dogenalsPublicTxUrl(st.txid)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-white/50 underline hover:text-white/80"
+                                >
+                                  Ðexplorer
+                                </a>
+                              ) : null}
+                              {prefName !== 'SoChain' ? (
+                                <a
+                                  href={sochainPublicTxPageUrl(st.txid)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-white/50 underline hover:text-white/80"
+                                >
+                                  SoChain
+                                </a>
+                              ) : null}
+                              {prefName !== 'DogeChain' ? (
+                                <a
+                                  href={dogechainPublicTxUrl(st.txid)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-white/50 underline hover:text-white/80"
+                                >
+                                  DogeChain
+                                </a>
+                              ) : null}
+                              {prefName !== 'Blockchair' ? (
+                                <a
+                                  href={blockchairPublicTxUrl(st.txid)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-white/50 underline hover:text-white/80"
+                                >
+                                  Blockchair
+                                </a>
+                              ) : null}
+                            </>
+                          );
+                        })()}
                 {broadcasted && (liveConfirms[i] ?? 0) < 1 && stallByStage[i]?.stalled ? (
                           <button
                             type="button"

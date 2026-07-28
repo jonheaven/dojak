@@ -31,6 +31,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { toast } from 'sonner';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
+import { dogeTxExplorerUrl } from '../../utils/dogeTxExplorer';
 import {
   ManagedUtxo,
   fetchAllAddressUtxosWithMeta,
@@ -899,7 +900,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                   <p className="break-all font-mono text-[11px] text-white/80">{mergeTxid}</p>
                 </div>
                 <a
-                  href={`https://sochain.com/tx/DOGE/${mergeTxid}`}
+                  href={dogeTxExplorerUrl(mergeTxid)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mb-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 py-2 text-xs text-sky-400 hover:bg-white/5"
@@ -982,7 +983,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                   <p className="break-all font-mono text-[11px] text-white/80">{splitTxid}</p>
                 </div>
                 <a
-                  href={`https://sochain.com/tx/DOGE/${splitTxid}`}
+                  href={dogeTxExplorerUrl(splitTxid)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mb-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 py-2 text-xs text-sky-400 hover:bg-white/5"

@@ -14,7 +14,7 @@ import { CharmsProvider } from '../contexts/CharmsContext';
 import { DataProvider } from './DataProvider';
 import { DojakwebDxTrustedOriginsProvider } from '../contexts/DojakwebDxContext';
 import { DxHostBridge } from '../components/DxHostBridge';
-import { ensureDefaultWalletDataProvider } from '../utils/api';
+import { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
 
 export interface DojakwebProviderProps {
   children: React.ReactNode;
@@ -42,9 +42,9 @@ export function DojakwebProvider({
   theme = 'dark',
   dxTrustedOrigins,
 }: DojakwebProviderProps) {
-  // MyDoge factory defaults (no custom API URL). Migrates host-forced commanddog once.
+  // Featured defaults: MyDoge bag, command.dog broadcast, Ðexplorer — user can override in Settings.
   useEffect(() => {
-    ensureDefaultWalletDataProvider();
+    ensureDojakwebEcosystemDefaults();
   }, []);
 
   return (

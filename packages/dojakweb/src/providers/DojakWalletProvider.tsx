@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserWalletProvider } from '../contexts/BrowserWalletContext';
 import { MyDogeWalletProvider } from '../contexts/MyDogeWalletContext';
 import { UnifiedWalletProvider } from '../contexts/UnifiedWalletContext';
@@ -11,6 +11,7 @@ import { DojakwebThemeProvider, type DojakwebTheme } from '../contexts/DojakwebT
 import { DataProvider } from './DataProvider';
 import { DojakwebDxTrustedOriginsProvider } from '../contexts/DojakwebDxContext';
 import { DxHostBridge } from '../components/DxHostBridge';
+import { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
 
 export interface DojakWalletProviderProps {
   children: React.ReactNode;
@@ -29,6 +30,10 @@ export function DojakWalletProvider({
   theme = 'dark',
   dxTrustedOrigins,
 }: DojakWalletProviderProps) {
+  useEffect(() => {
+    ensureDojakwebEcosystemDefaults();
+  }, []);
+
   return (
     <DojakwebThemeProvider theme={theme}>
       <DojakwebDxTrustedOriginsProvider trustedOrigins={dxTrustedOrigins}>

@@ -152,9 +152,8 @@ const INDEXER_READ_TIMEOUT_MS = 8_000;
 type BroadcastRelayProvider = 'blockchair' | 'blockcypher' | 'tatum' | 'rpc' | 'commanddog';
 type BroadcastProvider = 'auto' | BroadcastRelayProvider;
 /**
- * Default relay order for browser wallets: Command.dog (Core-backed relay) and public APIs first;
- * local JSON-RPC last (often misconfigured for MyDoge addresses — `sendrawtransaction` is not “wallet-only”
- * but the proxy/Core must accept the tx).
+ * Default relay order: **command.dog** (proprietary Core relay) first, then public
+ * relays and optional local RPC — users can reorder in Wallet → Settings.
  */
 const DEFAULT_BROADCAST_PRIORITY: BroadcastRelayProvider[] = [
   'commanddog',
@@ -287,6 +286,55 @@ export function loadBroadcastConfig(): BroadcastConfig {
       rpcPass: '',
       tatumApiKey: '',
     };
+  }
+}
+
+const BROADCAST_DEFAULTS_MIGRATION_KEY = 'dojakweb-broadcast-defaults-v1';
+
+/**
+ * One-time: ensure command.dog leads the broadcast relay order (featured default).
+ * Later user edits in Settings are left alone.
+ */
+export function ensureDefaultBroadcastConfig(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.localStorage.getItem(BROADCAST_DEFAULTS_MIGRATION_KEY) === '1') return;
+    window.localStorage.setItem(BROADCAST_DEFAULTS_MIGRATION_KEY, '1');
+
+    const raw = window.localStorage.getItem(BROADCAST_CONFIG_KEY);
+    let next: BroadcastConfig = {
+      broadcastProvider: 'auto',
+      broadcastPriority: [...DEFAULT_BROADCAST_PRIORITY],
+      rpcUrl: 'http://127.0.0.1:22555',
+      rpcUser: '',
+      rpcPass: '',
+      tatumApiKey: '',
+    };
+
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<BroadcastConfig>;
+        next = {
+          ...next,
+          ...parsed,
+          broadcastProvider: 'auto',
+          broadcastPriority: normalizeBroadcastPriority(
+            parsed.broadcastPriority ?? DEFAULT_BROADCAST_PRIORITY,
+          ),
+        };
+      } catch {
+        /* use factory next */
+      }
+    }
+
+    if (next.broadcastPriority[0] !== 'commanddog') {
+      const rest = next.broadcastPriority.filter((p) => p !== 'commanddog');
+      next.broadcastPriority = ['commanddog', ...rest];
+    }
+
+    window.localStorage.setItem(BROADCAST_CONFIG_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
   }
 }
 
