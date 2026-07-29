@@ -52,6 +52,41 @@ interface Props {
 
 type Step = 'form' | 'confirm' | 'broadcasting' | 'done';
 
+function duneTxExplorerLinks(txid: string) {
+  const id = txid.trim();
+  return [
+    {
+      label: 'Dogenals Explorer',
+      href: `https://explorer.dogenals.com/tx/${encodeURIComponent(id)}`,
+    },
+    {
+      label: 'SoChain',
+      href: `https://sochain.com/tx/DOGE/${encodeURIComponent(id)}`,
+    },
+  ];
+}
+
+function rememberDuneEtchReceipt(receipt: { name: string; txid: string; address?: string | null }) {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = 'dojakweb:dunes:etchReceipts:v1';
+    const current = JSON.parse(window.localStorage.getItem(key) || '[]') as unknown;
+    const rows = Array.isArray(current) ? current : [];
+    const next = [
+      {
+        ...receipt,
+        createdAt: new Date().toISOString(),
+      },
+      ...rows.filter((row) => {
+        return !row || typeof row !== 'object' || (row as { txid?: string }).txid !== receipt.txid;
+      }),
+    ].slice(0, 20);
+    window.localStorage.setItem(key, JSON.stringify(next));
+  } catch {
+    /* best-effort receipt cache */
+  }
+}
+
 export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, initialName }) => {
   const { address, connected } = useDuneWalletConnection();
   const resolveSigner = useDuneTxSigner();
@@ -177,6 +212,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
 
   const maxSupplyApprox =
     premineBig + (openMintSupply ?? 0n);
+  const explorerLinks = txid ? duneTxExplorerLinks(txid) : [];
 
   const handleConfirm = async () => {
     setError(null);
@@ -241,10 +277,18 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
         signer: resolved.signer,
       });
 
-      setTxid(result.txid ?? null);
+      const nextTxid = result.txid?.trim() || null;
+      setTxid(nextTxid);
+      if (nextTxid) {
+        rememberDuneEtchReceipt({
+          name: name.trim(),
+          txid: nextTxid,
+          address: resolved.signer.fromAddress,
+        });
+      }
       setStep('done');
-      toast.success('Ðune deployed (v2 / 0xÐ)!');
-      onSuccess?.(result.txid ?? '');
+      toast.success(nextTxid ? 'Dune deployed. Transaction receipt ready.' : 'Dune deployed, but no txid was returned.');
+      onSuccess?.(nextTxid ?? '');
     } catch (e: any) {
       setError(e.message ?? 'Transaction failed');
       setStep('confirm');
@@ -553,11 +597,30 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                   blocks.
                 </p>
               </div>
-              {txid && (
+              {txid ? (
                 <div className="rounded border border-border-primary bg-bg-secondary p-3">
                   <p className="mb-1 text-xs text-text-secondary">Transaction ID</p>
                   <p className="break-all font-mono text-xs text-text-primary">{txid}</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {explorerLinks.map((link) => (
+                      <a
+                        key={link.href}
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded border border-border-primary px-3 py-2 text-center text-xs font-medium text-text-primary transition-colors hover:border-primary-500 hover:text-primary-500"
+                      >
+                        {link.label}
+                      </a>
+                    ))}
+                  </div>
                 </div>
+              ) : (
+                <Alert variant="destructive">
+                  <AlertDescription className="text-xs">
+                    Broadcast completed without a transaction receipt. Check your wallet activity before trying again.
+                  </AlertDescription>
+                </Alert>
               )}
               <button
                 type="button"

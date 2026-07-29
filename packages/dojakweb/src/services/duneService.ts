@@ -12,6 +12,7 @@ import { createP2PKHTransaction, DogeMemoryWallet } from 'doge-sdk';
 import {
   fetchSpendableUtxosConservativeForAddress,
   filterSafeSpendableUtxos,
+  txidFromRawHex,
   type NormalisedUtxo,
 } from '../lib/broadcast/dogecoinTxBroadcast';
 import { broadcastTx, coerceSignedPsdtToRawTxHex, getTxHex } from '../lib/doginal-psdt';
@@ -37,6 +38,36 @@ const POSTAGE_KOINU = 100_000;
 const TX_OVERHEAD      = 10;
 const PER_INPUT_BYTES  = 148;
 const PER_OUTPUT_BYTES = 34;
+
+function canonicalizeBroadcastTxid(relayTxid: string | undefined, computedTxid: string): string {
+  const computed = computedTxid.trim().toLowerCase();
+  const relay = relayTxid?.trim().toLowerCase() ?? '';
+
+  if (/^[a-f0-9]{64}$/.test(relay)) {
+    if (relay !== computed) {
+      console.warn('[dojakweb:dunes] relay txid did not match signed raw tx; using computed txid', {
+        relayTxid: relay,
+        computedTxid: computed,
+      });
+      return computed;
+    }
+    return relay;
+  }
+
+  if (relay) {
+    console.warn('[dojakweb:dunes] relay returned a non-txid success payload; using computed txid', {
+      relayTxid: relay,
+      computedTxid: computed,
+    });
+  }
+  return computed;
+}
+
+async function broadcastDuneTransaction(rawHex: string): Promise<string> {
+  const computedTxid = await txidFromRawHex(rawHex);
+  const relayTxid = await broadcastTx(rawHex);
+  return canonicalizeBroadcastTxid(relayTxid, computedTxid);
+}
 
 // ── Fee calculation ───────────────────────────────────────────────────────────
 
@@ -335,7 +366,7 @@ export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
 
   let txid: string | undefined;
   if (broadcast) {
-    txid = await broadcastTx(built.rawHex);
+    txid = await broadcastDuneTransaction(built.rawHex);
   }
 
   return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis, changeSatoshis: built.changeSatoshis };
@@ -393,7 +424,7 @@ export async function mintDune(params: MintDuneParams): Promise<MintResult> {
 
   let txid: string | undefined;
   if (broadcast) {
-    txid = await broadcastTx(built.rawHex);
+    txid = await broadcastDuneTransaction(built.rawHex);
   }
 
   return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis };
@@ -451,7 +482,7 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
 
   let txid: string | undefined;
   if (broadcast) {
-    txid = await broadcastTx(built.rawHex);
+    txid = await broadcastDuneTransaction(built.rawHex);
   }
 
   return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis };
