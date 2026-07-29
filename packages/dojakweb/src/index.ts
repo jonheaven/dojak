@@ -177,6 +177,19 @@ export {
 } from './utils/api';
 
 export {
+  DOJAKWEB_WALLET_TX_JOURNAL_CHANGED_EVENT,
+  DOJAKWEB_WALLET_TX_JOURNAL_KEY,
+  clearWalletTxJournal,
+  loadWalletTxJournal,
+  removeWalletTxJournalEntry,
+  saveWalletTxJournal,
+  subscribeWalletTxJournal,
+  upsertWalletTxJournalEntry,
+  type DojakwebWalletTxEntry,
+  type DojakwebWalletTxStatus,
+} from './lib/wallet-tx-journal';
+
+export {
   TREATS_PROTOCOL_ID,
   TREATS_DUST_KOINU,
   TREATS_MAX_OPRETURN_SCRIPT_BYTES,

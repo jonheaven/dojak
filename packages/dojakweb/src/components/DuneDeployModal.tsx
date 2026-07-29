@@ -6,6 +6,7 @@ import { parseSpacedDune } from '../lib/dunestone';
 import type { DuneTerms } from '../lib/dunestone';
 import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
 import { useDuneWalletConnection } from '../hooks/useDuneWalletConnection';
+import { upsertWalletTxJournalEntry } from '../lib/wallet-tx-journal';
 import {
   Dialog,
   DialogContent,
@@ -69,6 +70,19 @@ function duneTxExplorerLinks(txid: string) {
 function rememberDuneEtchReceipt(receipt: { name: string; txid: string; address?: string | null }) {
   if (typeof window === 'undefined') return;
   try {
+    upsertWalletTxJournalEntry({
+      txid: receipt.txid,
+      address: receipt.address || null,
+      protocol: 'dunes',
+      action: 'dune-etch',
+      title: `Dune etch: ${receipt.name}`,
+      summary: 'Dune etch broadcast from Dojakweb',
+      status: 'broadcasted',
+      metadata: {
+        duneName: receipt.name,
+      },
+    });
+
     const key = 'dojakweb:dunes:etchReceipts:v1';
     const current = JSON.parse(window.localStorage.getItem(key) || '[]') as unknown;
     const rows = Array.isArray(current) ? current : [];

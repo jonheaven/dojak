@@ -26,6 +26,7 @@ import {
 } from './broadcast/dogecoinTxBroadcast';
 import { mergePaymentUtxos } from './mempoolSpendOverlay';
 import { dogeTxExplorerUrl } from '../utils/dogeTxExplorer';
+import { upsertWalletTxJournalEntry } from './wallet-tx-journal';
 
 // ── Dogecoin network params for bitcoinjs-lib ────────────────────────────────
 export const DOGE_NETWORK: bitcoin.Network = {
@@ -1363,5 +1364,14 @@ export async function broadcastTx(txHex: string): Promise<string> {
   // Avoids double RPC attempts and respects the same order as merge/split and Tatum API key priority.
   const txid = await broadcastUtxoTx(txHex);
   console.log('[doginal-psdt] Broadcast succeeded via wallet relay order:', txid);
-  return txid.toLowerCase();
+  const normalizedTxid = txid.toLowerCase();
+  upsertWalletTxJournalEntry({
+    txid: normalizedTxid,
+    protocol: 'dogecoin',
+    action: 'broadcast',
+    title: 'Dogecoin transaction broadcast',
+    summary: 'Raw transaction accepted by the configured Dojakweb relay path',
+    status: 'broadcasted',
+  });
+  return normalizedTxid;
 }
