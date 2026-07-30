@@ -425,6 +425,7 @@ export function buildDuneCurveBuyCosignPlan(
     tokensOut,
     minTokensOut: tokensOut,
     buyerOutput: 1,
+    treasuryOutput: 3,
   });
 
   const creatorFeeBps = Math.min(500, Math.max(1, Math.floor(params.creatorFeeBps ?? 100)));

@@ -570,6 +570,8 @@ export interface LaunchCurveBuyScriptParams {
   dogeIn: bigint;
   tokensOut: bigint;
   buyerOutput?: number;
+  /** Output that receives unallocated curve inventory after the buyer edict. */
+  treasuryOutput?: number;
   minTokensOut?: bigint;
 }
 
@@ -578,15 +580,18 @@ export function buildLaunchCurveBuyScript(params: LaunchCurveBuyScriptParams): U
   if (params.tokensOut <= 0n) throw new Error('tokensOut must be positive');
   const target = parseDuneId(params.duneId);
   const buyerOutput = params.buyerOutput ?? 1;
+  const treasuryOutput = params.treasuryOutput ?? 3;
 
   return encodeDunestone({
     magic: 'v2',
+    pointer: treasuryOutput,
     launchCurve: {
       op: 'buy',
       target,
       output: buyerOutput,
       dogeIn: params.dogeIn,
       minTokensOut: params.minTokensOut ?? params.tokensOut,
+      treasuryOutput,
     },
     edicts: [{ id: target, amount: params.tokensOut, output: buyerOutput }],
   });
