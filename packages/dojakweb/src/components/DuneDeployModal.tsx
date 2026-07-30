@@ -340,7 +340,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 />
                 {nameError && <p className="mt-1 text-xs text-red-500">{nameError}</p>}
                 <p className="mt-1 text-xs text-text-secondary">
-                  A–Z only. Use • or . as spacers. Wire: Ðunes v2 magic <span className="font-mono">0xD0</span>.
+                  A–Z only. Use • or . as spacers. Wire: Ðunes magic <span className="font-mono">0xD0</span>.
                 </p>
               </div>
 
@@ -529,7 +529,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
               <div className="space-y-2 rounded-lg border border-border-primary bg-bg-secondary p-4 text-sm">
                 <h3 className="mb-3 font-medium text-text-primary">Confirm etch (v2 · 0xÐ)</h3>
                 <Row label="Ðune name" value={name.trim()} mono />
-                <Row label="Magic" value="0xD0 (Ðunes v2)" />
+                <Row label="Magic" value="0xD0 (Ðunes)" />
                 <Row label="Divisibility" value={divisibility} />
                 {symbol && <Row label="Symbol" value={symbol} />}
                 {enablePremine && (
@@ -558,8 +558,8 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 <AlertDescription className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
                   <InformationCircleIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
                   <span>
-                    Name is claimed on first valid etch. Parameters cannot change after. Prefer etching before any
-                    public DLaunch marketing so no one snipes the name.
+                    Direct etch names are claimed on first valid etch and parameters cannot change after. ÐLaunch
+                    coins use ÐA identity instead, so duplicate display tickers are allowed there.
                   </span>
                 </AlertDescription>
               </Alert>

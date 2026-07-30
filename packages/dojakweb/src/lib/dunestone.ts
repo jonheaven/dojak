@@ -24,7 +24,7 @@ const TAG_POINTER      = 22n;
 const TAG_DIVISIBILITY = 1n;
 const TAG_SPACERS      = 3n;
 const TAG_SYMBOL       = 5n;
-/** Ðunes v2 tags (even = must-understand when present). */
+/** Dunes v2 / Ðunes tags (even = must-understand when present). */
 const TAG_VERSION      = 24n;
 const TAG_AGENT        = 26n;
 const TAG_POOL         = 28n;
@@ -34,6 +34,22 @@ const TAG_PARENT       = 34n;
 const TAG_SOUL         = 36n;
 const TAG_FAST_MINT    = 38n;
 const TAG_CONTRACT     = 40n;
+const TAG_LAUNCH_CURVE_OP                = 46n;
+const TAG_LAUNCH_CURVE_TARGET            = 48n;
+const TAG_LAUNCH_CURVE_MAX_SUPPLY        = 50n;
+const TAG_LAUNCH_CURVE_TYPE              = 52n;
+const TAG_LAUNCH_CURVE_BASE_PRICE        = 54n;
+const TAG_LAUNCH_CURVE_SLOPE             = 56n;
+const TAG_LAUNCH_CURVE_GRADUATION_SUPPLY = 58n;
+const TAG_LAUNCH_CURVE_CREATOR_FEE_BPS   = 60n;
+const TAG_LAUNCH_CURVE_OUTPUT            = 62n;
+const TAG_LAUNCH_CURVE_MIN_TOKENS_OUT    = 64n;
+const TAG_LAUNCH_CURVE_MIN_DOGE_OUT      = 66n;
+const TAG_LAUNCH_CURVE_METADATA          = 68n;
+const TAG_LAUNCH_CURVE_CREATOR_OUTPUT    = 70n;
+const TAG_LAUNCH_CURVE_TREASURY_OUTPUT   = 72n;
+const TAG_LAUNCH_CURVE_DOGE_IN           = 74n;
+const TAG_LAUNCH_CURVE_TOKEN_AMOUNT      = 76n;
 
 // ── Flag bitmask constants ────────────────────────────────────────────────────
 const FLAG_ETCHING = 1n;  // bit 0
@@ -43,7 +59,7 @@ const FLAG_TURBO   = 4n;  // bit 2
 // ── Script opcodes ────────────────────────────────────────────────────────────
 const OP_RETURN      = 0x6a;
 const OP_PUSHNUM_13  = 0x5d; // v1 magic (Runes parity)
-/** Ðunes v2 magic — 0xD0 is fucking cool. */
+/** Dunes v2 / Ðunes magic — 0xD0 is fucking cool. */
 export const DUNE_V2_MAGIC = 0xd0;
 export const DUNE_V2_VERSION = 0x02;
 const OP_PUSHDATA1   = 0x4c;
@@ -72,6 +88,11 @@ function appendTagValue(tag: bigint, value: bigint, payload: number[]): void {
 
 function appendTagValueOpt(tag: bigint, value: bigint | undefined, payload: number[]): void {
   if (value !== undefined) appendTagValue(tag, value, payload);
+}
+
+function appendDuneIdTag(tag: bigint, id: { block: bigint; tx: bigint }, payload: number[]): void {
+  appendTagValue(tag, id.block, payload);
+  appendTagValue(tag, id.tx, payload);
 }
 
 // ── Dune name codec ───────────────────────────────────────────────────────────
@@ -198,6 +219,42 @@ export interface DuneEdict {
   output: number;
 }
 
+export type LaunchCurveOp = 'launch' | 'buy' | 'sell' | 'graduate';
+
+export interface DuneLaunchCurve {
+  op: LaunchCurveOp;
+  /** Target DuneId for buy/sell/graduate. Launch omits this because the etch tx defines it. */
+  target?: { block: bigint; tx: bigint };
+  /** Total launch supply reserved to real curve inventory on launch. */
+  maxSupply?: bigint;
+  /** 1=linear, 2=exponential, 3=sigmoid. */
+  curveType?: bigint;
+  /** Base price in koinu. */
+  basePrice?: bigint;
+  /** Curve slope/coefficient. */
+  slope?: bigint;
+  /** Bought supply threshold that closes the bonding venue. */
+  graduationSupply?: bigint;
+  /** Creator share of each buy, in basis points. */
+  creatorFeeBps?: bigint;
+  /** Buyer output for buy; seller DOGE payout hint for sell; pool hint for graduate. */
+  output?: number;
+  /** Buy slippage guard. */
+  minTokensOut?: bigint;
+  /** Sell slippage guard. */
+  minDogeOut?: bigint;
+  /** Optional compact metadata pointer/hash. */
+  metadata?: bigint;
+  /** Launch creator DOGE fee output. */
+  creatorOutput?: number;
+  /** Launch treasury/inventory output; sell return output. */
+  treasuryOutput?: number;
+  /** DOGE paid into a buy, in koinu. */
+  dogeIn?: bigint;
+  /** Tokens sold back to the curve. */
+  tokenAmount?: bigint;
+}
+
 export interface DunestoneParams {
   etching?: DunestoneEtching;
   /** DuneId to mint (encode block and tx separately under Tag::Mint). */
@@ -226,6 +283,8 @@ export interface DunestoneParams {
   fastMint?: bigint;
   /** v2: lightweight contract class */
   contract?: bigint;
+  /** v2: native Dunes launch-curve operation. */
+  launchCurve?: DuneLaunchCurve;
 }
 
 // ── Script push helpers ───────────────────────────────────────────────────────
@@ -236,6 +295,19 @@ function scriptPushSlice(data: number[]): number[] {
   if (len <= 75) return [len, ...data];
   if (len <= 255) return [OP_PUSHDATA1, len, ...data];
   return [OP_PUSHDATA2, len & 0xff, (len >> 8) & 0xff, ...data];
+}
+
+function launchCurveOpToWire(op: LaunchCurveOp): bigint {
+  switch (op) {
+    case 'launch':
+      return 1n;
+    case 'buy':
+      return 2n;
+    case 'sell':
+      return 3n;
+    case 'graduate':
+      return 4n;
+  }
 }
 
 // ── Main encoder ──────────────────────────────────────────────────────────────
@@ -309,6 +381,26 @@ export function encodeDunestone(params: DunestoneParams): Uint8Array {
     if (params.soul) appendTagValue(TAG_SOUL, 1n, payload);
     appendTagValueOpt(TAG_FAST_MINT, params.fastMint, payload);
     appendTagValueOpt(TAG_CONTRACT, params.contract, payload);
+
+    if (params.launchCurve) {
+      const lc = params.launchCurve;
+      appendTagValue(TAG_LAUNCH_CURVE_OP, launchCurveOpToWire(lc.op), payload);
+      if (lc.target) appendDuneIdTag(TAG_LAUNCH_CURVE_TARGET, lc.target, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_MAX_SUPPLY, lc.maxSupply, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_TYPE, lc.curveType, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_BASE_PRICE, lc.basePrice, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_SLOPE, lc.slope, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_GRADUATION_SUPPLY, lc.graduationSupply, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_CREATOR_FEE_BPS, lc.creatorFeeBps, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_OUTPUT, lc.output !== undefined ? BigInt(lc.output) : undefined, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_MIN_TOKENS_OUT, lc.minTokensOut, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_MIN_DOGE_OUT, lc.minDogeOut, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_METADATA, lc.metadata, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_CREATOR_OUTPUT, lc.creatorOutput !== undefined ? BigInt(lc.creatorOutput) : undefined, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_TREASURY_OUTPUT, lc.treasuryOutput !== undefined ? BigInt(lc.treasuryOutput) : undefined, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_DOGE_IN, lc.dogeIn, payload);
+      appendTagValueOpt(TAG_LAUNCH_CURVE_TOKEN_AMOUNT, lc.tokenAmount, payload);
+    }
   }
 
   // ── Edicts ────────────────────────────────────────────────────────────────
@@ -422,5 +514,129 @@ export function buildSendScript(duneId: string, amount: bigint, output = 1): Uin
   const { block, tx } = parseDuneId(duneId);
   return encodeDunestone({
     edicts: [{ id: { block, tx }, amount, output }],
+  });
+}
+
+export interface LaunchCurveEtchScriptParams {
+  name: string;
+  maxSupply: bigint;
+  basePrice: bigint;
+  creatorOutput: number;
+  treasuryOutput: number;
+  divisibility?: number;
+  symbol?: string;
+  curveType?: bigint;
+  slope?: bigint;
+  graduationSupply?: bigint;
+  creatorFeeBps?: bigint;
+  metadata?: bigint;
+  inventoryOutput?: number;
+}
+
+export function buildLaunchCurveEtchScript(params: LaunchCurveEtchScriptParams): Uint8Array {
+  if (params.maxSupply <= 0n) throw new Error('maxSupply must be positive');
+  const { dune, spacers } = parseSpacedDune(params.name);
+  const inventoryOutput = params.inventoryOutput ?? params.treasuryOutput;
+
+  return encodeDunestone({
+    magic: 'v2',
+    pointer: inventoryOutput,
+    etching: {
+      dune,
+      spacers: spacers > 0n ? spacers : undefined,
+      divisibility: params.divisibility ?? 0,
+      symbol: params.symbol ?? '\u00d0',
+      premine: params.maxSupply,
+      turbo: true,
+    },
+    launchCurve: {
+      op: 'launch',
+      maxSupply: params.maxSupply,
+      curveType: params.curveType ?? 1n,
+      basePrice: params.basePrice,
+      slope: params.slope ?? 0n,
+      graduationSupply: params.graduationSupply ?? params.maxSupply,
+      creatorFeeBps: params.creatorFeeBps ?? 100n,
+      metadata: params.metadata,
+      creatorOutput: params.creatorOutput,
+      treasuryOutput: params.treasuryOutput,
+    },
+    edicts: [{ id: { block: 0n, tx: 0n }, amount: params.maxSupply, output: inventoryOutput }],
+  });
+}
+
+export interface LaunchCurveBuyScriptParams {
+  duneId: string;
+  dogeIn: bigint;
+  tokensOut: bigint;
+  buyerOutput?: number;
+  minTokensOut?: bigint;
+}
+
+export function buildLaunchCurveBuyScript(params: LaunchCurveBuyScriptParams): Uint8Array {
+  if (params.dogeIn <= 0n) throw new Error('dogeIn must be positive');
+  if (params.tokensOut <= 0n) throw new Error('tokensOut must be positive');
+  const target = parseDuneId(params.duneId);
+  const buyerOutput = params.buyerOutput ?? 1;
+
+  return encodeDunestone({
+    magic: 'v2',
+    launchCurve: {
+      op: 'buy',
+      target,
+      output: buyerOutput,
+      dogeIn: params.dogeIn,
+      minTokensOut: params.minTokensOut ?? params.tokensOut,
+    },
+    edicts: [{ id: target, amount: params.tokensOut, output: buyerOutput }],
+  });
+}
+
+export interface LaunchCurveSellScriptParams {
+  duneId: string;
+  tokenAmount: bigint;
+  treasuryOutput: number;
+  sellerOutput?: number;
+  minDogeOut?: bigint;
+}
+
+export function buildLaunchCurveSellScript(params: LaunchCurveSellScriptParams): Uint8Array {
+  if (params.tokenAmount <= 0n) throw new Error('tokenAmount must be positive');
+  const target = parseDuneId(params.duneId);
+
+  return encodeDunestone({
+    magic: 'v2',
+    launchCurve: {
+      op: 'sell',
+      target,
+      output: params.sellerOutput ?? 1,
+      tokenAmount: params.tokenAmount,
+      minDogeOut: params.minDogeOut,
+      treasuryOutput: params.treasuryOutput,
+    },
+    edicts: [{ id: target, amount: params.tokenAmount, output: params.treasuryOutput }],
+  });
+}
+
+export interface LaunchCurveGraduateScriptParams {
+  duneId: string;
+  poolOutput?: number;
+  poolTokenAmount?: bigint;
+}
+
+export function buildLaunchCurveGraduateScript(params: LaunchCurveGraduateScriptParams): Uint8Array {
+  const target = parseDuneId(params.duneId);
+  const edicts = params.poolOutput !== undefined && params.poolTokenAmount !== undefined
+    ? [{ id: target, amount: params.poolTokenAmount, output: params.poolOutput }]
+    : undefined;
+
+  return encodeDunestone({
+    magic: 'v2',
+    launchCurve: {
+      op: 'graduate',
+      target,
+      output: params.poolOutput,
+    },
+    edicts,
   });
 }

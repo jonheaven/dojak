@@ -149,6 +149,35 @@ export {
 export type { DogeSdkLikeOutput, PlanPaymentOutputsParams } from './lib/tx';
 
 export {
+  buildEtchScript,
+  buildLaunchCurveBuyScript,
+  buildLaunchCurveEtchScript,
+  buildLaunchCurveGraduateScript,
+  buildLaunchCurveSellScript,
+  buildMintScript,
+  buildSendScript,
+  DUNE_V2_MAGIC,
+  DUNE_V2_VERSION,
+  duneNameToNumber,
+  duneNumberToLetters,
+  encodeDunestone,
+  parseDuneId,
+  parseSpacedDune,
+  renderSpacedDune,
+  type DuneEdict,
+  type DuneLaunchCurve,
+  type DuneTerms,
+  type DunestoneEtching,
+  type DunestoneMagic,
+  type DunestoneParams,
+  type LaunchCurveBuyScriptParams,
+  type LaunchCurveEtchScriptParams,
+  type LaunchCurveGraduateScriptParams,
+  type LaunchCurveOp,
+  type LaunchCurveSellScriptParams,
+} from './lib/dunestone';
+
+export {
   encodeDogenalsEra2AsciiModule,
   encodeDogenalsEra2Dxd,
   encodeDogenalsEra2Line,

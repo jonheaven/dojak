@@ -69,7 +69,7 @@ export function DunesToolsPanel({
     <div className={`space-y-6 ${className}`.trim()}>
       {!compact && (
         <div className="rounded-2xl border border-border-primary bg-bg-secondary p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary-500">Ðunes v2 · 0xÐ</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary-500">Ðunes · 0xÐ</p>
           <h2 className="mt-2 text-2xl font-bold text-text-primary">Etch, mint, and send Ðunes</h2>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
             UTXO-native tokens on Dogecoin — balances live on outputs. Deploy with an{' '}
