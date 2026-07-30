@@ -253,6 +253,46 @@ export type { DunesToolsPanelProps, DunesUiOp } from './components/dunes/DunesTo
 export { DuneDeployModal } from './components/DuneDeployModal';
 export { DuneMintModal } from './components/DuneMintModal';
 export { DuneSendModal } from './components/DuneSendModal';
+export { useDuneTxSigner } from './hooks/useDuneTxSigner';
+export {
+  etchDune,
+  mintDune,
+  sendDune,
+  humanToSmallestUnits,
+  smallestUnitsToHuman,
+} from './services/duneService';
+export type {
+  EtchDuneParams,
+  EtchResult,
+  MintDuneParams,
+  MintResult,
+  SendDuneParams,
+  SendResult,
+} from './services/duneService';
+export {
+  launchDuneCurve,
+  graduateDuneCurve,
+  buildDuneCurveBuyCosignPlan,
+  buildDuneCurveSellCosignPlan,
+  buildDuneCurveGraduateCosignPlan,
+} from './services/duneLaunchService';
+export type {
+  DuneLaunchCurveBuyPlanParams,
+  DuneLaunchCurveGraduateParams,
+  DuneLaunchCurveGraduatePlanParams,
+  DuneLaunchCurveLaunchParams,
+  DuneLaunchCurveOutputIndexes,
+  DuneLaunchCurvePsbtPlan,
+  DuneLaunchCurveSellPlanParams,
+  DuneLaunchCurveSigner,
+  DuneLaunchCurveTxResult,
+} from './services/duneLaunchService';
+export {
+  resolveDuneTxSigner,
+  assertDuneTxSigner,
+  type DuneTxSigner,
+  type DuneTxSignerResult,
+} from './lib/dune-tx-signer';
 
 export { CharmsToolsPanel } from './components/charms/CharmsToolsPanel';
 export type { CharmsToolsPanelProps, CharmsUiOp } from './components/charms/CharmsToolsPanel';
