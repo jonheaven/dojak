@@ -195,7 +195,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
         setStep('scaffold');
         toast.message(
           launch.dogecoin?.carrierHint ||
-            'App scaffolded — enable CHARMS_ENABLE_CANONICAL_DOGE_PREPARE + Dogecoin prove for a signable tx'
+            'App scaffolded — configure command.dog/api with a Dogecoin-aware Charms CLI/prover for a signable tx',
         );
         return;
       }
@@ -424,9 +424,10 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
                 <InformationCircleIcon className="h-4 w-4 text-amber-400" />
                 <AlertDescription className="text-xs leading-relaxed text-[var(--ds-text-muted)]">
                   The fungible <strong className="text-[var(--ds-text)]">app was scaffolded</strong> (template →
-                  VK → NormalizedSpell), but no signable Dogecoin carrier was returned yet. Enable{' '}
-                  <code className="text-[var(--ds-text)]">CHARMS_ENABLE_CANONICAL_DOGE_PREPARE</code> + a Dogecoin
-                  Charms prover; this wallet (<code className="text-[var(--ds-text)]">@dojak/web</code>) signs,{' '}
+                  VK → NormalizedSpell), but no signable Dogecoin carrier was returned yet. Configure{' '}
+                  <code className="text-[var(--ds-text)]">command.dog/api</code> with a Dogecoin-aware Charms
+                  CLI/prover and real app WASM; this wallet (
+                  <code className="text-[var(--ds-text)]">@dojak/web</code>) signs,{' '}
                   <code className="text-[var(--ds-text)]">dogex</code> indexes.
                   {scaffold.dogecoin?.carrierHint ? (
                     <>
