@@ -197,6 +197,8 @@ export class CharmsService {
     metadata?: Record<string, unknown>;
     tweaks?: Record<string, unknown>;
     mining?: { enabled: boolean; difficulty: number };
+    contractSource?: string;
+    publicInput?: unknown;
     fundingUtxo?: string;
     fundingValue?: bigint;
     prevTxs?: string[];
@@ -211,6 +213,8 @@ export class CharmsService {
       pack: params.pack ?? 'fair',
       tweaks: params.tweaks ?? {},
       ...(params.mining ? { mining: params.mining } : {}),
+      ...(params.contractSource ? { contractSource: params.contractSource } : {}),
+      ...(params.publicInput !== undefined ? { publicInput: params.publicInput } : {}),
       ...(params.metadata ? { metadata: params.metadata } : {}),
       ...(params.fundingUtxo ? { fundingUtxo: params.fundingUtxo } : {}),
       ...(params.fundingValue !== undefined ? { fundingValue: params.fundingValue.toString() } : {}),

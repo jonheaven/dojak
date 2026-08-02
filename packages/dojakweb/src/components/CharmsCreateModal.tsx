@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { charmsService } from '../lib/charms';
 import type { CharmsChainId, CharmsLaunchPack, PrepareLaunchResponse } from '../lib/charms/types';
-import { CHARMS_CHAIN_CONFIG } from '../lib/charms/constants';
 import {
   linkRevealToCommit,
   pickFundingUtxo,
@@ -41,13 +40,68 @@ interface Props {
 }
 
 type Step = 'form' | 'confirm' | 'broadcasting' | 'scaffold' | 'done';
+type LaunchMode = 'guided' | 'custom';
 
 const PACK_OPTIONS: { id: CharmsLaunchPack; label: string; hint: string }[] = [
-  { id: 'fair', label: 'Fair fungible', hint: 'Open-mint style template — conservation + mint rules' },
-  { id: 'tax', label: 'Tax mode', hint: 'Per-transfer tax / burn / reflections policy' },
-  { id: 'shill', label: 'Shill / referral', hint: 'Referral + optional PoW mining difficulty' },
-  { id: 'hodl', label: 'Hodl', hint: 'Lock / vesting oriented template' },
+  { id: 'fair', label: 'Genesis fungible', hint: 'Mints the declared supply once; later transfers use Charms token conservation.' },
+  { id: 'tax', label: 'Tax policy', hint: 'Template policy surface for burn / dev / reflection accounting.' },
+  { id: 'shill', label: 'Referral / mining', hint: 'Template policy surface for referral accounting and optional proof-of-work gates.' },
+  { id: 'hodl', label: 'Lock policy', hint: 'Template policy surface for vesting / liquidity-lock style constraints.' },
 ];
+
+const DOGENALS_CHARMS_CHAIN: CharmsChainId = 'doge';
+
+const DEFAULT_CUSTOM_CONTRACT_SOURCE = `use charms_sdk::data::{check, sum_token_amount, App, Data, Transaction, TOKEN};
+
+pub fn app_contract(app: &App, tx: &Transaction, x: &Data, _w: &Data) -> bool {
+    check!(app.tag == TOKEN);
+
+    let supply = x.value::<u64>().unwrap_or(0);
+    let minted = sum_token_amount(app, tx.outs.iter()).unwrap_or(u64::MAX);
+    let burned = sum_token_amount(app, tx.ins.iter().map(|(_, charms)| charms)).unwrap_or(u64::MAX);
+
+    check!(burned == 0);
+    check!(minted == supply);
+    true
+}
+`;
+
+const DEFAULT_TWEAKS = {
+  burnPercent: '0',
+  airdropPercent: '0',
+  lpPercent: '0',
+  lpLockDays: '0',
+  devPercent: '0',
+  reflectionsPercent: '0',
+  referralPercent: '0',
+  miningDifficulty: '4',
+  maxSellPercent: '100',
+};
+
+type TweakKey = keyof typeof DEFAULT_TWEAKS;
+
+const PACK_TWEAK_FIELDS: Record<Exclude<CharmsLaunchPack, 'custom'>, Array<{ key: TweakKey; label: string }>> = {
+  fair: [
+    { key: 'burnPercent', label: 'Burn %' },
+    { key: 'airdropPercent', label: 'Airdrop %' },
+    { key: 'lpPercent', label: 'Liquidity %' },
+    { key: 'lpLockDays', label: 'LP lock days' },
+  ],
+  tax: [
+    { key: 'burnPercent', label: 'Burn %' },
+    { key: 'devPercent', label: 'Dev %' },
+    { key: 'reflectionsPercent', label: 'Reflections %' },
+  ],
+  shill: [
+    { key: 'referralPercent', label: 'Referral %' },
+    { key: 'miningDifficulty', label: 'Mining difficulty' },
+  ],
+  hodl: [
+    { key: 'lpPercent', label: 'Liquidity %' },
+    { key: 'lpLockDays', label: 'LP lock days' },
+    { key: 'maxSellPercent', label: 'Max sell %' },
+  ],
+};
 
 export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const { address, connected, signPSBT } = useUnifiedWallet();
@@ -56,8 +110,12 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
   const [name, setName] = useState('');
   const [supply, setSupply] = useState('1000000');
   const [decimals, setDecimals] = useState('8');
-  const [chainId, setChainId] = useState<CharmsChainId>('doge');
+  const [launchMode, setLaunchMode] = useState<LaunchMode>('guided');
   const [pack, setPack] = useState<CharmsLaunchPack>('fair');
+  const [tweaks, setTweaks] = useState(DEFAULT_TWEAKS);
+  const [miningEnabled, setMiningEnabled] = useState(false);
+  const [customSource, setCustomSource] = useState(DEFAULT_CUSTOM_CONTRACT_SOURCE);
+  const [publicInput, setPublicInput] = useState('');
 
   const [step, setStep] = useState<Step>('form');
   const [error, setError] = useState<string | null>(null);
@@ -70,8 +128,12 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
     setName('');
     setSupply('1000000');
     setDecimals('8');
-    setChainId('doge');
+    setLaunchMode('guided');
     setPack('fair');
+    setTweaks(DEFAULT_TWEAKS);
+    setMiningEnabled(false);
+    setCustomSource(DEFAULT_CUSTOM_CONTRACT_SOURCE);
+    setPublicInput('');
     setStep('form');
     setError(null);
     setTxid(null);
@@ -81,6 +143,29 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
   const handleClose = () => {
     reset();
     onClose();
+  };
+
+  const setTweak = (key: TweakKey, value: string) => {
+    setTweaks((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const buildTweakPayload = () => {
+    const fields = PACK_TWEAK_FIELDS[pack as Exclude<CharmsLaunchPack, 'custom'>] ?? [];
+    return fields.reduce<Record<string, number>>((acc, field) => {
+      const n = Number(tweaks[field.key]);
+      if (Number.isFinite(n)) acc[field.key] = n;
+      return acc;
+    }, {});
+  };
+
+  const parsePublicInput = () => {
+    const trimmed = publicInput.trim();
+    if (!trimmed) return undefined;
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      throw new Error('Public input must be valid JSON');
+    }
   };
 
   const validateForm = () => {
@@ -104,6 +189,18 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
     if (Number(decimals) < 0 || Number(decimals) > 18) {
       setError('Decimals must be 0-18');
       return false;
+    }
+    if (launchMode === 'custom' && !customSource.trim()) {
+      setError('Custom contract source is required');
+      return false;
+    }
+    if (publicInput.trim()) {
+      try {
+        JSON.parse(publicInput);
+      } catch {
+        setError('Public input must be valid JSON');
+        return false;
+      }
     }
     return true;
   };
@@ -129,31 +226,41 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
       let prevTxs: string[] | undefined;
       const prevTxHexByTxid: Record<string, string> = {};
 
-      if (chainId === 'doge') {
-        const utxos = await fetchSpendableUtxosConservativeForAddress(address);
-        const { safe } = filterSafeSpendableUtxos(address, utxos);
-        const funding = pickFundingUtxo(safe);
-        if (!funding) {
-          throw new Error('No spendable plain DOGE UTXOs found for Charms launch fees.');
-        }
-        const prevHex = await getTxHex(funding.tx_hash);
-        prevTxHexByTxid[funding.tx_hash] = prevHex;
-        fundingUtxo = `${funding.tx_hash}:${funding.tx_output_n}`;
-        fundingValue = BigInt(funding.value);
-        prevTxs = [prevHex];
+      const utxos = await fetchSpendableUtxosConservativeForAddress(address);
+      const { safe } = filterSafeSpendableUtxos(address, utxos);
+      const funding = pickFundingUtxo(safe);
+      if (!funding) {
+        throw new Error('No spendable plain DOGE UTXOs found for Charms launch fees.');
       }
+      const prevHex = await getTxHex(funding.tx_hash);
+      prevTxHexByTxid[funding.tx_hash] = prevHex;
+      fundingUtxo = `${funding.tx_hash}:${funding.tx_output_n}`;
+      fundingValue = BigInt(funding.value);
+      prevTxs = [prevHex];
+      const selectedPack: CharmsLaunchPack = launchMode === 'custom' ? 'custom' : pack;
+      const launchTweaks = launchMode === 'guided' ? buildTweakPayload() : {};
+      const launchMining =
+        launchMode === 'guided' && miningEnabled
+          ? { enabled: true, difficulty: Number(tweaks.miningDifficulty) || 4 }
+          : undefined;
+      const customPublicInput = parsePublicInput();
 
       const launch = await charmsService.prepareLaunch({
         ticker: ticker.trim(),
         supply: BigInt(supply.replace(/,/g, '')),
         decimals: Number(decimals),
-        chainId,
+        chainId: DOGENALS_CHARMS_CHAIN,
         address,
-        pack,
+        pack: selectedPack,
+        tweaks: launchTweaks,
+        ...(launchMining ? { mining: launchMining } : {}),
+        ...(launchMode === 'custom' ? { contractSource: customSource } : {}),
+        ...(customPublicInput !== undefined ? { publicInput: customPublicInput } : {}),
         metadata: {
           name: name.trim(),
           ticker: ticker.trim(),
           decimals: Number(decimals),
+          launchMode,
         },
         ...(fundingUtxo ? { fundingUtxo } : {}),
         ...(fundingValue !== undefined ? { fundingValue } : {}),
@@ -177,7 +284,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
         const signedTxHex = coerceSignedPsdtToRawTxHex(signedPayload);
         const broadcast = await charmsService.broadcastSignedTx({
           signedTxHex,
-          chainId,
+          chainId: DOGENALS_CHARMS_CHAIN,
         });
         const { Transaction } = await import('bitcoinjs-lib');
         const txid = broadcast.txid || Transaction.fromHex(signedTxHex).getId();
@@ -210,7 +317,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
         } else {
           const broadcast = await charmsService.broadcastSignedTx({
             signedTxHex: commitHex,
-            chainId,
+            chainId: DOGENALS_CHARMS_CHAIN,
           });
           commitTxid = broadcast.txid;
           prevTxHexByTxid[commitTxid] = commitHex;
@@ -222,7 +329,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
         } else {
           const broadcast = await charmsService.broadcastSignedTx({
             signedTxHex: linkedReveal,
-            chainId,
+            chainId: DOGENALS_CHARMS_CHAIN,
           });
           lastTxid = broadcast.txid;
         }
@@ -308,40 +415,90 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
               </div>
 
               <div>
-                <Label className="mb-1 block text-[var(--ds-text)]">App template pack</Label>
-                <Select value={pack} onValueChange={(v) => setPack(v as CharmsLaunchPack)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PACK_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.id}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="mt-1 text-[11px] text-[var(--ds-text-muted)]">
-                  {PACK_OPTIONS.find((p) => p.id === pack)?.hint}
-                </p>
+                <Label className="mb-1 block text-[var(--ds-text)]">Contract mode</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['guided', 'custom'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setLaunchMode(mode)}
+                      className={[
+                        'rounded border px-3 py-2 text-sm font-medium transition',
+                        launchMode === mode
+                          ? 'border-[var(--ds-accent-border)] bg-[var(--ds-accent-soft)] text-[var(--ds-text)]'
+                          : 'border-[var(--ds-border)] bg-[var(--ds-bg)] text-[var(--ds-text-muted)] hover:text-[var(--ds-text)]',
+                      ].join(' ')}
+                    >
+                      {mode === 'guided' ? 'Guided' : 'Custom app'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div>
-                <Label className="mb-1 block text-[var(--ds-text)]">Chain</Label>
-                <Select value={chainId} onValueChange={(v) => setChainId(v as CharmsChainId)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CHARMS_CHAIN_CONFIG).map(([chain, config]) => (
-                      <SelectItem key={chain} value={chain}>
-                        {config.name}
-                        {chain !== 'doge' ? ' (experimental here)' : ''}
-                      </SelectItem>
+              {launchMode === 'guided' ? (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="mb-1 block text-[var(--ds-text)]">Guided contract</Label>
+                    <Select value={pack} onValueChange={(v) => setPack(v as CharmsLaunchPack)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PACK_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.id}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-[11px] text-[var(--ds-text-muted)]">
+                      {PACK_OPTIONS.find((p) => p.id === pack)?.hint}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {(PACK_TWEAK_FIELDS[pack as Exclude<CharmsLaunchPack, 'custom'>] ?? []).map((field) => (
+                      <div key={field.key}>
+                        <Label className="mb-1 block text-[var(--ds-text)]">{field.label}</Label>
+                        <Input
+                          type="number"
+                          value={tweaks[field.key]}
+                          onChange={(e) => setTweak(field.key, e.target.value)}
+                        />
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-sm text-[var(--ds-text-muted)]">
+                    <input
+                      type="checkbox"
+                      checked={miningEnabled}
+                      onChange={(e) => setMiningEnabled(e.target.checked)}
+                    />
+                    Enable mining gate
+                  </label>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="mb-1 block text-[var(--ds-text)]">Rust app contract</Label>
+                    <textarea
+                      value={customSource}
+                      onChange={(e) => setCustomSource(e.target.value)}
+                      spellCheck={false}
+                      className="min-h-[260px] w-full rounded border border-[var(--ds-border)] bg-[var(--ds-bg)] px-3 py-2 font-mono text-xs text-[var(--ds-text)] outline-none focus:border-[var(--ds-accent-border)]"
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-[var(--ds-text)]">Public input JSON</Label>
+                    <Input
+                      value={publicInput}
+                      onChange={(e) => setPublicInput(e.target.value)}
+                      placeholder="blank = declared supply"
+                    />
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <Alert variant="destructive">
@@ -379,11 +536,17 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
                   <span className="text-[var(--ds-text-muted)]">Supply</span> · {supply} ({decimals} decimals)
                 </p>
                 <p>
-                  <span className="text-[var(--ds-text-muted)]">Pack</span> · {pack}
+                  <span className="text-[var(--ds-text-muted)]">Mode</span> ·{' '}
+                  {launchMode === 'custom' ? 'Custom app source' : 'Guided contract'}
                 </p>
                 <p>
-                  <span className="text-[var(--ds-text-muted)]">Chain</span> ·{' '}
-                  {CHARMS_CHAIN_CONFIG[chainId]?.name ?? chainId}
+                  <span className="text-[var(--ds-text-muted)]">Contract</span> ·{' '}
+                  {launchMode === 'custom'
+                    ? 'Custom Charms app'
+                    : PACK_OPTIONS.find((p) => p.id === pack)?.label ?? pack}
+                </p>
+                <p>
+                  <span className="text-[var(--ds-text-muted)]">Chain</span> · Dogecoin
                 </p>
               </div>
               <p className="text-xs text-[var(--ds-text-muted)]">
@@ -406,7 +569,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
                   disabled={isLoading || !connected}
                   className={charmsModalPrimaryBtnClass}
                 >
-                  {isLoading ? 'Preparing…' : connected ? 'Scaffold & launch' : 'Connect wallet first'}
+                  {isLoading ? 'Preparing…' : connected ? 'Compile & launch' : 'Connect wallet first'}
                 </button>
               </div>
             </div>
@@ -414,7 +577,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
 
           {step === 'broadcasting' && (
             <p className="py-8 text-center text-sm text-[var(--ds-text-muted)]">
-              Scaffolding app contract / requesting prove payload…
+              Compiling app contract / requesting prove payload…
             </p>
           )}
 
@@ -423,7 +586,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
               <Alert className="border-amber-500/40 bg-amber-500/10">
                 <InformationCircleIcon className="h-4 w-4 text-amber-400" />
                 <AlertDescription className="text-xs leading-relaxed text-[var(--ds-text-muted)]">
-                  The fungible <strong className="text-[var(--ds-text)]">app was scaffolded</strong> (template →
+                  The Charms <strong className="text-[var(--ds-text)]">app compiled</strong> (source →
                   VK → NormalizedSpell), but no signable Dogecoin carrier was returned yet. Configure{' '}
                   <code className="text-[var(--ds-text)]">command.dog/api</code> with a Dogecoin-aware Charms
                   CLI/prover and real app WASM; this wallet (

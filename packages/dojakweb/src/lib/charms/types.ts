@@ -302,7 +302,7 @@ export interface PrepareMintResponse {
 }
 
 /** Pack ids for command.dog `/v1/charms/launch/prepare` app templates. */
-export type CharmsLaunchPack = 'fair' | 'tax' | 'shill' | 'hodl';
+export type CharmsLaunchPack = 'fair' | 'tax' | 'shill' | 'hodl' | 'custom';
 
 /**
  * Result of scaffolding a Charms fungible via command.dog `/v1/charms/launch/prepare`.
@@ -327,6 +327,7 @@ export interface PrepareLaunchResponse {
     decimals: number;
     chainId: CharmsChainId;
     pack: CharmsLaunchPack;
+    customContract?: boolean;
     address: string;
     allocations?: Array<{
       category: string;
