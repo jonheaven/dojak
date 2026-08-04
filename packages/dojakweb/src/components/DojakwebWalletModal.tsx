@@ -140,10 +140,13 @@ import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { useGlobalStore } from '../stores/globalStore';
 import {
   buildDxRegisterPayload,
+  buildDxRevokePayload,
+  buildDxRevokeSigningMessage,
   buildDxSigningMessage,
   normalizeDxXHandle,
   parseTweetIdFromInput,
   type DxRegisterPayload,
+  type DxRevokePayload,
 } from '../lib/dx/protocol';
 import {
   dxConfirm,
@@ -152,6 +155,12 @@ import {
   dxVisualStatusMessage,
   isCommandDogDxConfigured,
 } from '../lib/dx/commandDogApi';
+import {
+  createEasyDxInscribeJob,
+  isEasyDxInscribeConfigured,
+  pollEasyDxInscribeJob,
+} from '../lib/dx/easyInscribe';
+import type { InscribeJobResponse } from '../lib/inscribeJobs/commandDogInscribeJobs';
 import { DxPackRipReveal } from './dx/DxPackRipReveal';
 import { DOJAKWEB_DX_PM_PROTOCOL, DOJAKWEB_DX_RESPONSE, type DxPostMessageResponse } from '../lib/dx/postMessage';
 import { useDxHostStore } from '../stores/dxHostStore';
@@ -679,6 +688,10 @@ export function DojakwebWalletModal({
   const [dxFeeRate, setDxFeeRate] = useState(100_000);
   const [dxRegisterInscriptionId, setDxRegisterInscriptionId] = useState<string | null>(null);
   const [dxCardInscriptionId, setDxCardInscriptionId] = useState<string | null>(null);
+  const [dxEasyJob, setDxEasyJob] = useState<InscribeJobResponse | null>(null);
+  const [dxEasyStatus, setDxEasyStatus] = useState<string | null>(null);
+  const [dxRevokePrevId, setDxRevokePrevId] = useState('');
+  const [dxRevokePayload, setDxRevokePayload] = useState<DxRevokePayload | null>(null);
   const [dxErr, setDxErr] = useState<string | null>(null);
   /** command.dog `/v1/dx/initiate` session (when `VITE_COMMAND_DOG_API_URL` is set). */
   const [dxBackendSessionId, setDxBackendSessionId] = useState<string | null>(null);
@@ -837,6 +850,7 @@ export function DojakwebWalletModal({
     }
   }, []);
 
+  /** Local browser: commit/reveal. Extension (MyDoge etc.): Easy inscribe job. */
   const handleDxInscribeRegisterJson = useCallback(async () => {
     if (!dxPayload || !activeAddress) return;
     if (walletType === 'dogewatch') {
@@ -845,38 +859,89 @@ export function DojakwebWalletModal({
       );
       return;
     }
-    if (walletType !== 'browser' || !browser.wallet?.privateKey) {
-      toast.error(t('modal.verification.dxInscribeNeedBrowser'));
-      return;
-    }
+    const json = JSON.stringify(dxPayload);
+    const canBrowser = walletType === 'browser' && !!browser.wallet?.privateKey;
+
     setDxInscribeBusy(true);
+    setDxEasyStatus(null);
     try {
-      const json = JSON.stringify(dxPayload);
-      const buf = Buffer.from(json, 'utf8');
-      const ct = 'application/json';
-      const txCount = countDoginalTransactionsForContent(buf, ct);
-      const fee = Math.max(dxFeeRate, recommendedFeeRateForDxChain(dxFeeRate, txCount));
-      if (fee > dxFeeRate) {
-        setDxFeeRate(fee);
-        toast.info(
-          t('modal.verification.dxFeeRaised', {
-            from: dxFeeRate.toLocaleString(),
-            to: fee.toLocaleString(),
-            txs: String(txCount),
-          }),
+      if (canBrowser) {
+        const buf = Buffer.from(json, 'utf8');
+        const ct = 'application/json';
+        const txCount = countDoginalTransactionsForContent(buf, ct);
+        const fee = Math.max(dxFeeRate, recommendedFeeRateForDxChain(dxFeeRate, txCount));
+        if (fee > dxFeeRate) {
+          setDxFeeRate(fee);
+          toast.info(
+            t('modal.verification.dxFeeRaised', {
+              from: dxFeeRate.toLocaleString(),
+              to: fee.toLocaleString(),
+              txs: String(txCount),
+            }),
+          );
+        }
+        const plan = await signDoginalInscriptionChain({
+          content: buf,
+          contentType: ct,
+          fromAddress: activeAddress,
+          privateKeyWIF: browser.wallet!.privateKey!,
+          feeRate: fee,
+          excludedOutpoints: extractProtectedOutpoints(inscriptions),
+        });
+        await broadcastSignedDoginalChain(plan);
+        setDxRegisterInscriptionId(plan.inscriptionId);
+        setDxRevokePrevId(plan.inscriptionId);
+        toast.success(t('modal.verification.dxInscribeRegisterOk', { id: plan.inscriptionId }));
+        return;
+      }
+
+      // Easy path — MyDoge / Spooky / other extensions
+      if (!isEasyDxInscribeConfigured()) {
+        toast.error(t('modal.verification.dxInscribeNeedBrowser'));
+        return;
+      }
+      const job = await createEasyDxInscribeJob({
+        jsonBody: json,
+        feeRate: dxFeeRate,
+        displayName: `Ðoge𝕏ID ${dxPayload.x_handle}`,
+      });
+      setDxEasyJob(job);
+      setDxEasyStatus(
+        t('modal.verification.dxEasyCreated', { amount: job.amount_doge }) ||
+          `Send ${job.amount_doge} Ð to deposit`,
+      );
+      toast.success(
+        t('modal.verification.dxEasyCreated', { amount: job.amount_doge }) ||
+          `Easy job: deposit ${job.amount_doge} Ð`,
+      );
+
+      const doge = Number(job.amount_doge) || job.required_sats / 1e8;
+      try {
+        await sendTransaction(job.deposit_address, doge);
+        setDxEasyStatus(t('modal.verification.dxEasyDepositSent') || 'Deposit sent…');
+      } catch {
+        /* user can pay manually */
+      }
+
+      const final = await pollEasyDxInscribeJob(job.job_id, {
+        onUpdate: (j) => {
+          setDxEasyJob(j);
+          setDxEasyStatus(`${j.status}${j.funding_complete ? ' · funded' : ''}`);
+        },
+      });
+      setDxEasyJob(final);
+      const id = final.items?.[0]?.inscription_id;
+      if (final.status === 'complete' && id) {
+        setDxRegisterInscriptionId(id);
+        setDxRevokePrevId(id);
+        toast.success(t('modal.verification.dxEasyDone', { id }) || `Inscribed ${id}`);
+      } else {
+        toast.error(
+          t('modal.verification.dxEasyFailed', {
+            err: final.last_error || final.status,
+          }) || final.last_error || 'Easy inscribe failed',
         );
       }
-      const plan = await signDoginalInscriptionChain({
-        content: buf,
-        contentType: ct,
-        fromAddress: activeAddress,
-        privateKeyWIF: browser.wallet.privateKey,
-        feeRate: fee,
-        excludedOutpoints: extractProtectedOutpoints(inscriptions),
-      });
-      await broadcastSignedDoginalChain(plan);
-      setDxRegisterInscriptionId(plan.inscriptionId);
-      toast.success(t('modal.verification.dxInscribeRegisterOk', { id: plan.inscriptionId }));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (isBroadcastInputRejected(msg)) {
@@ -889,7 +954,107 @@ export function DojakwebWalletModal({
     } finally {
       setDxInscribeBusy(false);
     }
-  }, [activeAddress, browser.wallet?.privateKey, dxFeeRate, dxPayload, inscriptions, t, toast, walletType]);
+  }, [
+    activeAddress,
+    browser.wallet?.privateKey,
+    dxFeeRate,
+    dxPayload,
+    inscriptions,
+    sendTransaction,
+    t,
+    toast,
+    walletType,
+  ]);
+
+  const handleDxInscribeRevoke = useCallback(async () => {
+    if (!activeAddress) return;
+    let handle: string;
+    try {
+      handle = normalizeDxXHandle(dxHandleInput || dxPayload?.x_handle || '');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+      return;
+    }
+    const prev = (dxRevokePrevId || dxRegisterInscriptionId || '').trim().toLowerCase();
+    if (!prev.includes('i')) {
+      toast.error(t('modal.verification.dxRevokePrevId') || 'Previous register inscription id required');
+      return;
+    }
+    setDxInscribeBusy(true);
+    setDxEasyStatus(null);
+    try {
+      const challenge = buildDxRevokeSigningMessage(handle, activeAddress, prev);
+      const signatureBase64 = await signMessage(challenge);
+      const payload = buildDxRevokePayload({
+        xHandle: handle,
+        dogeAddress: activeAddress,
+        previousInscriptionId: prev,
+        signatureBase64,
+      });
+      setDxRevokePayload(payload);
+      const json = JSON.stringify(payload);
+      const canBrowser = walletType === 'browser' && !!browser.wallet?.privateKey;
+
+      if (canBrowser) {
+        const buf = Buffer.from(json, 'utf8');
+        const plan = await signDoginalInscriptionChain({
+          content: buf,
+          contentType: 'application/json',
+          fromAddress: activeAddress,
+          privateKeyWIF: browser.wallet!.privateKey!,
+          feeRate: dxFeeRate,
+          excludedOutpoints: extractProtectedOutpoints(inscriptions),
+        });
+        await broadcastSignedDoginalChain(plan);
+        toast.success(t('modal.verification.dxRevokeOk', { id: plan.inscriptionId }));
+        return;
+      }
+
+      if (!isEasyDxInscribeConfigured()) {
+        toast.error(t('modal.verification.dxInscribeNeedBrowser'));
+        return;
+      }
+      const job = await createEasyDxInscribeJob({
+        jsonBody: json,
+        feeRate: dxFeeRate,
+        displayName: `Ðoge𝕏ID revoke ${handle}`,
+      });
+      setDxEasyJob(job);
+      try {
+        const doge = Number(job.amount_doge) || job.required_sats / 1e8;
+        await sendTransaction(job.deposit_address, doge);
+      } catch {
+        /* manual pay */
+      }
+      const final = await pollEasyDxInscribeJob(job.job_id, {
+        onUpdate: (j) => setDxEasyJob(j),
+      });
+      const id = final.items?.[0]?.inscription_id;
+      if (final.status === 'complete' && id) {
+        toast.success(t('modal.verification.dxRevokeOk', { id }));
+      } else {
+        toast.error(final.last_error || 'Revoke Easy inscribe failed');
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDxInscribeBusy(false);
+    }
+  }, [
+    activeAddress,
+    browser.wallet?.privateKey,
+    dxFeeRate,
+    dxHandleInput,
+    dxPayload?.x_handle,
+    dxRegisterInscriptionId,
+    dxRevokePrevId,
+    inscriptions,
+    sendTransaction,
+    signMessage,
+    t,
+    toast,
+    walletType,
+  ]);
 
   const handleDxInscribeWalletCard = useCallback(async () => {
     if (!dxPayload || !activeAddress) return;
@@ -2184,6 +2349,37 @@ export function DojakwebWalletModal({
       void fetchAssets(activeAddress);
     }
   }, [step, activeAddress, fetchAssets]);
+
+  // Prefill revoke id from dogex when opening verification (if already linked).
+  useEffect(() => {
+    if (step !== 'verification' || !activeAddress) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const base = getIndexerApiBase().replace(/\/+$/, '');
+        const res = await fetch(`${base}/api/dx/address/${encodeURIComponent(activeAddress)}`, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok || cancelled) return;
+        const j = (await res.json()) as {
+          linked?: boolean;
+          registration?: { inscriptionId?: string; xHandle?: string };
+        };
+        if (j.linked && j.registration?.inscriptionId) {
+          setDxRevokePrevId(j.registration.inscriptionId);
+          if (j.registration.xHandle && !dxHandleInput.trim()) {
+            setDxHandleInput(j.registration.xHandle);
+          }
+        }
+      } catch {
+        /* indexer offline */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when opening verification for address
+  }, [step, activeAddress]);
 
   const openSettings = () => {
     const dp = getWalletDataProviderConfig();
@@ -5473,14 +5669,16 @@ export function DojakwebWalletModal({
                               </p>
                             ) : null}
                             <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3 font-mono text-xs leading-relaxed text-amber-50 break-all">
-                              {buildDxSigningMessage(dxNonce || '…', activeAddress)}
+                              {buildDxSigningMessage(dxNonce || '…', activeAddress, dxHandleInput || undefined)}
                             </div>
                             <Button
                               type="button"
                               className="w-full border border-white/15 bg-transparent text-[#FCD34D] hover:bg-white/5"
                               onClick={async () => {
                                 try {
-                                  await navigator.clipboard.writeText(buildDxSigningMessage(dxNonce, activeAddress));
+                                  await navigator.clipboard.writeText(
+                                    buildDxSigningMessage(dxNonce, activeAddress, dxHandleInput || undefined),
+                                  );
                                   toast.success(t('modal.verification.copied'));
                                 } catch {
                                   toast.error(t('modal.verification.copyFail'));
@@ -5526,7 +5724,11 @@ export function DojakwebWalletModal({
                                   setDxErr(e instanceof Error ? e.message : String(e));
                                   return;
                                 }
-                                const challenge = buildDxSigningMessage(dxNonce, activeAddress);
+                                const challenge = buildDxSigningMessage(
+                                  dxNonce,
+                                  activeAddress,
+                                  dxHandleInput || undefined,
+                                );
                                 setDxBusy(true);
                                 setDxAttestationVisual(null);
                                 try {
@@ -5650,6 +5852,9 @@ export function DojakwebWalletModal({
                               {t('modal.verification.copyPayload')}
                             </Button>
                             <p className="text-xs leading-5 text-white/55">{t('modal.verification.dxInscribeHint')}</p>
+                            {walletType !== 'browser' ? (
+                              <p className="text-xs leading-5 text-amber-200/85">{t('modal.verification.dxEasyHint')}</p>
+                            ) : null}
                             <label className="block text-sm text-white">
                               <span className="mb-2 block">{t('modal.verification.dxFeeLabel')}</span>
                               <input
@@ -5673,17 +5878,34 @@ export function DojakwebWalletModal({
                                 disabled={dxInscribeBusy}
                                 onClick={() => void handleDxInscribeRegisterJson()}
                               >
-                                {dxInscribeBusy ? t('modal.verification.dxInscribing') : t('modal.verification.dxInscribeRegisterBtn')}
+                                {dxInscribeBusy
+                                  ? t('modal.verification.dxInscribing')
+                                  : walletType === 'browser'
+                                    ? t('modal.verification.dxInscribeRegisterBtn')
+                                    : t('modal.verification.dxEasyInscribeBtn')}
                               </Button>
                               <Button
                                 type="button"
                                 className={cx('w-full', SECONDARY_BUTTON)}
-                                disabled={dxInscribeBusy || !dxBadgeInscriptionIdFromEnv()}
+                                disabled={dxInscribeBusy || !dxBadgeInscriptionIdFromEnv() || walletType !== 'browser'}
                                 onClick={() => void handleDxInscribeWalletCard()}
                               >
                                 {dxInscribeBusy ? t('modal.verification.dxInscribing') : t('modal.verification.dxInscribeCardBtn')}
                               </Button>
                             </div>
+                            {dxEasyJob ? (
+                              <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 space-y-1 text-[11px] text-amber-100/90">
+                                <p className="font-semibold">Easy Ð𝕏 job · {dxEasyJob.status}</p>
+                                <p className="font-mono break-all">Deposit: {dxEasyJob.deposit_address}</p>
+                                <p>
+                                  Amount: <strong>{dxEasyJob.amount_doge} Ð</strong>
+                                </p>
+                                {dxEasyStatus ? <p className="text-white/70">{dxEasyStatus}</p> : null}
+                                {dxEasyJob.items?.[0]?.inscription_id ? (
+                                  <p className="font-mono break-all">id {dxEasyJob.items[0].inscription_id}</p>
+                                ) : null}
+                              </div>
+                            ) : null}
                             {dxRegisterInscriptionId ? (
                               <p className="text-[11px] text-white/70 break-all">
                                 <span className="text-white/50">{t('modal.verification.dxLastRegisterId')}</span> {dxRegisterInscriptionId}
@@ -5694,11 +5916,45 @@ export function DojakwebWalletModal({
                                 <span className="text-white/50">{t('modal.verification.dxLastCardId')}</span> {dxCardInscriptionId}
                               </p>
                             ) : null}
+
                             <Button type="button" className={cx('w-full', SECONDARY_BUTTON)} onClick={() => setStep('dashboard')}>
                               {t('modal.verification.backToWallet')}
                             </Button>
                           </>
                         )}
+
+                        {/* Always available: revoke so MyDoge → browser re-link works without redoing phase 3 */}
+                        {activeAddress ? (
+                          <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                            <p className="text-sm font-semibold text-white/90">{t('modal.verification.dxRevokeTitle')}</p>
+                            <p className="text-[11px] leading-5 text-white/50">{t('modal.verification.dxRevokeHint')}</p>
+                            <label className="block text-sm text-white">
+                              <span className="mb-1 block text-xs text-white/60">{t('modal.verification.dxRevokePrevId')}</span>
+                              <input
+                                value={dxRevokePrevId}
+                                onChange={(e) => setDxRevokePrevId(e.target.value)}
+                                placeholder="…i0"
+                                className={cx(INPUT_CLASS, 'font-mono text-xs')}
+                                disabled={dxInscribeBusy}
+                              />
+                            </label>
+                            <Button
+                              type="button"
+                              className={cx('w-full', DANGER_BUTTON)}
+                              disabled={dxInscribeBusy || !dxRevokePrevId.trim()}
+                              onClick={() => void handleDxInscribeRevoke()}
+                            >
+                              {dxInscribeBusy ? t('modal.verification.dxInscribing') : t('modal.verification.dxRevokeBtn')}
+                            </Button>
+                            {dxEasyJob && dxRevokePayload ? (
+                              <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 p-2 text-[10px] text-amber-100/90 space-y-0.5">
+                                <p>Easy job · {dxEasyJob.status}</p>
+                                <p className="font-mono break-all">{dxEasyJob.deposit_address}</p>
+                                <p>{dxEasyJob.amount_doge} Ð</p>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     )}
 

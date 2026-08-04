@@ -323,9 +323,24 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.verification.dxFeeLabel': 'Fee rate (koinu per kB)',
   'modal.verification.dxFeeHint': 'Raises automatically for long inscription chains. Tune in Wallet → Broadcast if relays reject.',
   'modal.verification.dxInscribeRegisterBtn': 'Inscribe dx register (JSON)',
+  'modal.verification.dxEasyInscribeBtn': 'Easy inscribe (extension wallets)',
   'modal.verification.dxInscribeCardBtn': 'Inscribe wallet card (HTML)',
   'modal.verification.dxInscribing': 'Signing & broadcasting…',
-  'modal.verification.dxInscribeNeedBrowser': 'Unlock the Dojakweb in-browser wallet — dx inscribe needs your local key.',
+  'modal.verification.dxInscribeNeedBrowser':
+    'Unlock Local Browser Wallet for one-click inscribe, or use Easy inscribe (deposit) for MyDoge / extensions.',
+  'modal.verification.dxEasyHint':
+    'MyDoge / Spooky / extension: send plain DOGE to the deposit — command.dog inscribes your dx JSON (Easy bet style).',
+  'modal.verification.dxEasyCreated':
+    'Easy Ð𝕏 job ready. Send {amount} Ð to the deposit address (any wallet).',
+  'modal.verification.dxEasyDepositSent': 'Deposit sent — waiting for inscription…',
+  'modal.verification.dxEasyDone': 'Easy Ð𝕏 inscribed: {id}',
+  'modal.verification.dxEasyFailed': 'Easy Ð𝕏 inscribe failed: {err}',
+  'modal.verification.dxRevokeTitle': 'Revoke on-chain link',
+  'modal.verification.dxRevokeHint':
+    'Clear this address’s Ð𝕏 link so you can re-register on another wallet (e.g. MyDoge → Local Browser).',
+  'modal.verification.dxRevokePrevId': 'Previous register inscription id',
+  'modal.verification.dxRevokeBtn': 'Sign & inscribe revoke',
+  'modal.verification.dxRevokeOk': 'Revoke inscription broadcast: {id}',
   'modal.verification.dxBadgeIdMissing':
     'Set VITE_DX_BADGE_INSCRIPTION_ID to the inscription id of the shared Doge𝕏 Check image (inscribe public/dogexcheck-400.webp once).',
   'modal.verification.dxCardEnvHint':

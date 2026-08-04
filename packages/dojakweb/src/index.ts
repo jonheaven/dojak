@@ -460,13 +460,23 @@ export type { ActiveListing, ListingProtocol } from './services/listing-store';
 // Ð𝕏 (Dogenals dx v1) — identity verification helpers & embedder messaging
 export {
   buildDxRegisterPayload,
+  buildDxRevokePayload,
+  buildDxRevokeSigningMessage,
   buildDxSigningMessage,
+  buildDxSigningMessageV2,
+  buildDxSigningMessageLegacy,
   normalizeDxXHandle,
   parseTweetIdFromInput,
   DX_PROTOCOL_MARKER,
   DX_PROTOCOL_VERSION,
   type DxRegisterPayload,
+  type DxRevokePayload,
 } from './lib/dx/protocol';
+export {
+  createEasyDxInscribeJob,
+  pollEasyDxInscribeJob,
+  isEasyDxInscribeConfigured,
+} from './lib/dx/easyInscribe';
 export {
   DOJAKWEB_DX_PM_PROTOCOL,
   DOJAKWEB_DX_REQUEST,
