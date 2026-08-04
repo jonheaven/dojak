@@ -1109,13 +1109,28 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     async (
       recipientAddress: string,
       amount: number,
-      sendOptions?: { opReturnMessage?: string; skipApprovalUi?: boolean },
+      sendOptions?: {
+        opReturnMessage?: string;
+        opReturnHex?: string;
+        skipApprovalUi?: boolean;
+      },
     ): Promise<string> => {
       if (!isInitialized) {
         throw new Error('Wallet system not initialized');
       }
 
       const opReturnMessage = sendOptions?.opReturnMessage?.trim();
+      const opReturnHex = sendOptions?.opReturnHex?.trim();
+      if ((opReturnMessage || opReturnHex) && walletType === 'mydoge') {
+        throw new Error(
+          'MyDoge cannot attach protocol OP_RETURN yet. Use Local Browser Wallet or Dojak extension for Ðocial likes.',
+        );
+      }
+      if ((opReturnMessage || opReturnHex) && walletType === 'spookydoge') {
+        throw new Error(
+          'SpookyDoge cannot attach protocol OP_RETURN yet. Use Local Browser Wallet or Dojak for Ðocial likes.',
+        );
+      }
 
       if (walletType === 'mydoge') {
         return myDoge.sendTransaction(recipientAddress, amount);
@@ -1191,6 +1206,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
               minConfirmations: 0,
               includeInscribedUtxos: false,
               opReturnMessage,
+              opReturnHex,
             });
             try {
               const broadcasted = await broadcastTx(built.txHex);
@@ -1241,7 +1257,11 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           details: [
             { label: 'To', value: toAddress },
             { label: 'Amount', value: `${amount} DOGE` },
-            ...(opReturnMessage ? [{ label: 'Memo', value: opReturnMessage }] : []),
+            ...(opReturnHex
+              ? [{ label: 'Protocol signal', value: `OP_RETURN ${opReturnHex.slice(0, 24)}…` }]
+              : opReturnMessage
+                ? [{ label: 'Memo', value: opReturnMessage }]
+                : []),
           ],
           approveLabel: 'Approve send',
           onApprove: async (session) => runBrowserSend(session),

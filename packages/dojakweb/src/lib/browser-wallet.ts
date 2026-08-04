@@ -87,6 +87,11 @@ export interface BrowserWalletSendTransactionOptions {
   includeInscribedUtxos?: boolean;
   /** UTF-8 stake / attestation line (≤80 bytes) embedded as OP_RETURN in the same tx. */
   opReturnMessage?: string;
+  /**
+   * Binary OP_RETURN payload as hex (preferred for protocol signals like Ðocial `Ð:SOC`).
+   * Takes precedence over `opReturnMessage` when both are set. Max 80 bytes.
+   */
+  opReturnHex?: string;
 }
 
 const DEFAULT_DOGE_FEE_RATE = 1_000;
@@ -1061,11 +1066,20 @@ export class BrowserWallet {
     const sendValue = normalizeDogeAmountToKoinu(amountDoge);
 
     let opReturnPayload: Buffer | undefined;
-    const opReturnMessage = options.opReturnMessage?.trim();
-    if (opReturnMessage) {
-      opReturnPayload = Buffer.from(opReturnMessage, 'utf8');
-      if (opReturnPayload.length > 80) {
-        throw new Error('OP_RETURN message exceeds 80 bytes');
+    const opReturnHex = options.opReturnHex?.trim();
+    if (opReturnHex) {
+      const raw = hexToBytes(opReturnHex.replace(/^0x/i, ''));
+      if (raw.length === 0 || raw.length > 80) {
+        throw new Error('OP_RETURN hex must be 1–80 bytes');
+      }
+      opReturnPayload = Buffer.from(raw);
+    } else {
+      const opReturnMessage = options.opReturnMessage?.trim();
+      if (opReturnMessage) {
+        opReturnPayload = Buffer.from(opReturnMessage, 'utf8');
+        if (opReturnPayload.length > 80) {
+          throw new Error('OP_RETURN message exceeds 80 bytes');
+        }
       }
     }
 

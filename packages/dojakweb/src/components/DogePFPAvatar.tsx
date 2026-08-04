@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDogePFP } from '../hooks/useDogePFP';
+import { useChainProfile } from '../hooks/useChainProfile';
 import { useDoginals } from '../hooks/useDoginals';
 import { useConnectedWalletAddress } from '../wallet/getConnectedWalletAddress';
 import dogeNobgSrc from '../assets/doge-nobg.svg';
@@ -36,8 +37,10 @@ interface DogePFPAvatarProps {
    * doge mark on a wallet-hashed gradient (default avatar).
    */
   fallback?: React.ReactNode;
-  /** Seed for the default gradient (falls back to connected address). */
+  /** Seed for the default gradient + chain profile lookup (falls back to connected address). */
   address?: string | null;
+  /** Show a soft ring when dogex flags bind author no longer holds the media. */
+  showNotHoldingHint?: boolean;
 }
 
 /** Outer box is square for layout only; clip + SVG stroke hide the square visually. */
@@ -75,14 +78,19 @@ function HexFrame({
   className,
   children,
   outlineClassName,
+  title,
 }: {
   sizeKey: keyof typeof sizeClasses;
   className?: string;
   children: React.ReactNode;
   outlineClassName?: string;
+  title?: string;
 }) {
   return (
-    <div className={`relative shrink-0 ${sizeClasses[sizeKey]} ${className ?? ''}`}>
+    <div
+      className={`relative shrink-0 ${sizeClasses[sizeKey]} ${className ?? ''}`}
+      title={title}
+    >
       <div className="absolute inset-0 overflow-hidden bg-transparent" style={{ clipPath: HEX_CLIP }}>
         {children}
       </div>
@@ -117,30 +125,73 @@ function DefaultDogeAvatar({
   );
 }
 
+/**
+ * Hex ÐPFP avatar.
+ *
+ * Resolution order:
+ * 1. Connected self + local device pref (`useDogePFP`) — instant after "Set as ÐPFP"
+ * 2. dogex chain profile for `address` (`useChainProfile`) — eco-wide identity
+ * 3. Wallet-hashed default doge mark
+ */
 export const DogePFPAvatar: React.FC<DogePFPAvatarProps> = ({
   size = 'md',
   className = '',
   fallback,
   address: addressProp,
+  showNotHoldingHint = true,
 }) => {
-  const { pfpInscriptionId, pfpContentUrl, loading: pfpLoading } = useDogePFP();
+  const {
+    pfpInscriptionId: localId,
+    pfpContentUrl: localUrl,
+    loading: localLoading,
+  } = useDogePFP();
   const connectedAddress = useConnectedWalletAddress();
   const address = addressProp ?? connectedAddress;
-  const { doginals, loading: doginalsLoading } = useDoginals(connectedAddress || '');
+  const isSelf = Boolean(
+    address &&
+      connectedAddress &&
+      address.trim().toLowerCase() === connectedAddress.trim().toLowerCase(),
+  );
+
+  const {
+    pfpInscriptionId: chainId,
+    pfpContentUrl: chainUrl,
+    loading: chainLoading,
+    pfpNotHolding,
+  } = useChainProfile(address);
+
+  // Self: local first (optimistic). Others: chain only.
+  const pfpInscriptionId = isSelf ? localId ?? chainId : chainId;
+  const prefersLocal = Boolean(isSelf && localId);
+  const pfpContentUrl = prefersLocal
+    ? localUrl || (localId && localId === chainId ? chainUrl : null) || null
+    : chainUrl;
+
+  // Inventory lookup only when we have an id without a content URL (local self path).
+  const needDoginals = Boolean(pfpInscriptionId && !pfpContentUrl && isSelf && connectedAddress);
+  const { doginals, loading: doginalsLoading } = useDoginals(
+    needDoginals ? connectedAddress || '' : '',
+  );
   const [imgError, setImgError] = useState(false);
 
-  const pfpDoginal = pfpInscriptionId ? doginals.find((d) => d.inscriptionId === pfpInscriptionId) : undefined;
+  const pfpDoginal = pfpInscriptionId
+    ? doginals.find((d) => d.inscriptionId === pfpInscriptionId)
+    : undefined;
   const imgSrc =
-    (pfpContentUrl && pfpContentUrl.length > 0 ? pfpContentUrl : null) ?? pfpDoginal?.previewUrl ?? null;
+    (pfpContentUrl && pfpContentUrl.length > 0 ? pfpContentUrl : null) ??
+    pfpDoginal?.previewUrl ??
+    null;
 
   useEffect(() => {
     setImgError(false);
   }, [pfpInscriptionId, imgSrc]);
 
   const hasDirectImage = Boolean(pfpContentUrl && pfpContentUrl.length > 0);
-  const waitingOnDoginals = Boolean(pfpInscriptionId && !hasDirectImage && doginalsLoading);
+  const waitingOnDoginals = Boolean(needDoginals && pfpInscriptionId && !hasDirectImage && doginalsLoading);
+  const loading =
+    (isSelf ? localLoading || (!localId && chainLoading) : chainLoading) || waitingOnDoginals;
 
-  if (pfpLoading || waitingOnDoginals) {
+  if (loading) {
     return (
       <div
         className={`relative shrink-0 overflow-hidden rounded-full border border-amber-300/30 ${sizeClasses[size]} ${className}`}
@@ -161,8 +212,19 @@ export const DogePFPAvatar: React.FC<DogePFPAvatarProps> = ({
     return <DefaultDogeAvatar sizeKey={size} className={className} address={address} />;
   }
 
+  const notHolding = showNotHoldingHint && pfpNotHolding === true && !prefersLocal;
+  const outline = notHolding ? 'text-rose-400/55' : 'text-amber-400/35';
+  const title = notHolding
+    ? 'ÐPFP bind recorded, but author may not hold this media (soft flag)'
+    : undefined;
+
   return (
-    <HexFrame sizeKey={size} className={className} outlineClassName="text-amber-400/35">
+    <HexFrame
+      sizeKey={size}
+      className={`${className}${notHolding ? ' opacity-90' : ''}`}
+      outlineClassName={outline}
+      title={title}
+    >
       <img
         src={imgSrc}
         alt="ÐPFP"

@@ -177,6 +177,7 @@ import { useDogePFP } from '../hooks/useDogePFP';
 import { useDogePFA } from '../hooks/useDogePFA';
 import { useConnectedWalletAddress } from '../wallet/getConnectedWalletAddress';
 import { TechDetails } from './ui/tech-details';
+import { publishDpfpBindOnChain } from '../lib/dpfpPublish';
 
 export interface DojakwebWalletModalProps {
   isOpen: boolean;
@@ -698,6 +699,44 @@ export function DojakwebWalletModal({
   const activeWalletSummary = availableWallets.find((wallet) => wallet.isActive) ?? null;
   const activeWalletType = activeWalletSummary?.type ?? walletType ?? null;
   const activeAddress = activeWalletSummary?.address ?? pendingWallet?.address ?? null;
+
+  const publishProfileBind = useCallback(
+    async (role: 'pfp' | 'pfa', mediaInscriptionId: string) => {
+      if (!activeAddress || walletType !== 'browser' || !browser.wallet?.privateKey) {
+        toast.error(
+          t('modal.toast.dpfpPublishNeedBrowser') ||
+            'Unlock Local Browser Wallet to publish on-chain. Local profile was still set.',
+        );
+        return;
+      }
+      const toastId = toast.loading(
+        role === 'pfp' ? 'Publishing ÐPFP on-chain…' : 'Publishing ÐPFA on-chain…',
+      );
+      try {
+        const result = await publishDpfpBindOnChain({
+          role,
+          op: 'set',
+          mediaInscriptionId,
+          fromAddress: activeAddress,
+          privateKeyWIF: browser.wallet.privateKey,
+          feeRate: 100_000,
+          excludedOutpoints: extractProtectedOutpoints(inscriptions),
+          onProgress: (msg) => toast.loading(msg, { id: toastId }),
+        });
+        toast.success(
+          (role === 'pfp'
+            ? t('modal.toast.dpfpPublished', { id: result.bindInscriptionId })
+            : t('modal.toast.dpfaPublished', { id: result.bindInscriptionId })) ||
+            `Published bind ${result.bindInscriptionId}`,
+          { id: toastId },
+        );
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error(msg, { id: toastId });
+      }
+    },
+    [activeAddress, browser.wallet?.privateKey, inscriptions, t, walletType],
+  );
   const activeWalletName =
     walletType === 'browser'
       ? (browser.wallet?.nickname?.trim() || pendingWallet?.nickname?.trim() || '')
@@ -4301,50 +4340,100 @@ export function DojakwebWalletModal({
                                                     </Menu.Item>
                                                   ) : null}
                                                   {item.contentType?.startsWith('image/') ? (
-                                                    <Menu.Item>
-                                                      {({ focus, active }) => (
-                                                        <button
-                                                          type="button"
-                                                          onClick={() => {
-                                                            const u = inscriptionMediaUrlForProfile(item);
-                                                            setDogePFP(item.inscriptionId, u ? { contentUrl: u } : undefined);
-                                                            toast.success(t('modal.toast.dpfpSet'));
-                                                          }}
-                                                          className={cx(
-                                                            'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                            (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
-                                                          )}
-                                                        >
-                                                          <PhotoIcon className="h-4 w-4 shrink-0 text-yellow-200/90" aria-hidden />
-                                                          <span className="leading-tight">{t('modal.assets.setAsDpfp')}</span>
-                                                        </button>
-                                                      )}
-                                                    </Menu.Item>
+                                                    <>
+                                                      <Menu.Item>
+                                                        {({ focus, active }) => (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              const u = inscriptionMediaUrlForProfile(item);
+                                                              setDogePFP(item.inscriptionId, u ? { contentUrl: u } : undefined);
+                                                              toast.success(t('modal.toast.dpfpSet'));
+                                                            }}
+                                                            className={cx(
+                                                              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                              (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                                            )}
+                                                          >
+                                                            <PhotoIcon className="h-4 w-4 shrink-0 text-yellow-200/90" aria-hidden />
+                                                            <span className="leading-tight">{t('modal.assets.setAsDpfp')}</span>
+                                                          </button>
+                                                        )}
+                                                      </Menu.Item>
+                                                      <Menu.Item>
+                                                        {({ focus, active }) => (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              const u = inscriptionMediaUrlForProfile(item);
+                                                              setDogePFP(item.inscriptionId, u ? { contentUrl: u } : undefined);
+                                                              void publishProfileBind('pfp', item.inscriptionId);
+                                                            }}
+                                                            className={cx(
+                                                              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                              (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                                            )}
+                                                          >
+                                                            <PhotoIcon className="h-4 w-4 shrink-0 text-emerald-200/90" aria-hidden />
+                                                            <span className="leading-tight">
+                                                              {t('modal.assets.publishDpfp') || 'Publish ÐPFP on-chain'}
+                                                            </span>
+                                                          </button>
+                                                        )}
+                                                      </Menu.Item>
+                                                    </>
                                                   ) : null}
                                                   {item.contentType?.startsWith('audio/') ? (
-                                                    <Menu.Item>
-                                                      {({ focus, active }) => (
-                                                        <button
-                                                          type="button"
-                                                          onClick={() => {
-                                                            const u = inscriptionMediaUrlForProfile(item);
-                                                            if (!u) {
-                                                              toast.error(t('modal.toast.dpfaNoUrl'));
-                                                              return;
-                                                            }
-                                                            setDogePFA(item.inscriptionId, { contentUrl: u });
-                                                            toast.success(t('modal.toast.dpfaSet'));
-                                                          }}
-                                                          className={cx(
-                                                            'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                            (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
-                                                          )}
-                                                        >
-                                                          <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/90" aria-hidden />
-                                                          <span className="leading-tight">{t('modal.assets.setAsDpfa')}</span>
-                                                        </button>
-                                                      )}
-                                                    </Menu.Item>
+                                                    <>
+                                                      <Menu.Item>
+                                                        {({ focus, active }) => (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              const u = inscriptionMediaUrlForProfile(item);
+                                                              if (!u) {
+                                                                toast.error(t('modal.toast.dpfaNoUrl'));
+                                                                return;
+                                                              }
+                                                              setDogePFA(item.inscriptionId, { contentUrl: u });
+                                                              toast.success(t('modal.toast.dpfaSet'));
+                                                            }}
+                                                            className={cx(
+                                                              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                              (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                                            )}
+                                                          >
+                                                            <MusicalNoteIcon className="h-4 w-4 shrink-0 text-amber-200/90" aria-hidden />
+                                                            <span className="leading-tight">{t('modal.assets.setAsDpfa')}</span>
+                                                          </button>
+                                                        )}
+                                                      </Menu.Item>
+                                                      <Menu.Item>
+                                                        {({ focus, active }) => (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              const u = inscriptionMediaUrlForProfile(item);
+                                                              if (!u) {
+                                                                toast.error(t('modal.toast.dpfaNoUrl'));
+                                                                return;
+                                                              }
+                                                              setDogePFA(item.inscriptionId, { contentUrl: u });
+                                                              void publishProfileBind('pfa', item.inscriptionId);
+                                                            }}
+                                                            className={cx(
+                                                              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                              (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                                            )}
+                                                          >
+                                                            <MusicalNoteIcon className="h-4 w-4 shrink-0 text-emerald-200/90" aria-hidden />
+                                                            <span className="leading-tight">
+                                                              {t('modal.assets.publishDpfa') || 'Publish ÐPFA on-chain'}
+                                                            </span>
+                                                          </button>
+                                                        )}
+                                                      </Menu.Item>
+                                                    </>
                                                   ) : null}
                                                   <Menu.Item>
                                                     {({ focus, active }) => (

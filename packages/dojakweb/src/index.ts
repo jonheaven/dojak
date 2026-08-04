@@ -29,6 +29,17 @@ export { useDojakwebTheme, DojakwebThemeProvider } from './contexts/DojakwebThem
 export type { DojakwebTheme } from './contexts/DojakwebThemeContext';
 
 export { useZKVerification } from './hooks/useZKVerification';
+export {
+  buildDpfpBindInscriptionJson,
+  fetchChainProfile,
+  chainContentUrl,
+  publishDpfpBindOnChain,
+} from './lib/dpfpPublish';
+export type { DpfpRole, ChainProfile, PublishDpfpBindResult } from './lib/dpfpPublish';
+export { useDogePFP } from './hooks/useDogePFP';
+export { useDogePFA } from './hooks/useDogePFA';
+export { useChainProfile } from './hooks/useChainProfile';
+export { DogePFPAvatar, walletAvatarGradient } from './components/DogePFPAvatar';
 
 export {
   DOJAKWEB_PREFERRED_LOCALE_KEY,

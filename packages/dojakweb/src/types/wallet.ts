@@ -330,7 +330,13 @@ export interface UnifiedWalletContextValue {
     recipientAddress: string,
     amount: number,
     sendOptions?: {
+      /** UTF-8 OP_RETURN memo (≤80 bytes). */
       opReturnMessage?: string;
+      /**
+       * Binary OP_RETURN as hex (e.g. Ðocial engage). Preferred over opReturnMessage.
+       * Local browser wallet + any path that builds via BrowserWallet.
+       */
+      opReturnHex?: string;
       /**
        * Local Browser Wallet only: skip the second Approve sheet when the send UI
        * already collected explicit confirmation (unlocked session required).
