@@ -21,15 +21,16 @@ export interface WalletDrawerProps {
   initialAssetType?: 'nft' | 'drc20' | 'treats';
 }
 
-const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v2';
+const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v3';
 const DEFAULT_RIGHT = 14;
-/** Sit a bit off the floor so the Shiba paw reads clearly under the chassis. */
+/** Fallback before the browser has measured the drawer. Runtime default is top-safe. */
 const DEFAULT_BOTTOM = 28;
 const EDGE_PAD = 8;
 /** Never let the chassis top closer than this to the viewport top (header / clip). */
 const TOP_SAFE = 56;
-/** Allow sinking toward the floor; upward travel is capped by TOP_SAFE in clampPos. */
+/** Allow sinking until the chassis bottom touches the viewport bottom. */
 const MIN_BOTTOM = 0;
+const CLICK_DRAG_THRESHOLD_PX = 6;
 
 type DrawerPos = { right: number; bottom: number };
 
@@ -124,14 +125,26 @@ function measureDrawerSize(): { w: number; h: number } {
   return { w, h };
 }
 
+function defaultBottom(): number {
+  const { h: drawerH } = measureDrawerSize();
+  return Math.max(MIN_BOTTOM, window.innerHeight - drawerH - TOP_SAFE);
+}
+
+function defaultPos(): DrawerPos {
+  if (typeof window === 'undefined') {
+    return { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
+  }
+  return { right: DEFAULT_RIGHT, bottom: defaultBottom() };
+}
+
 function clampPos(right: number, bottom: number): DrawerPos {
-  const { w: drawerW, h: drawerH } = measureDrawerSize();
-  const vh = window.innerHeight;
+  const { w: drawerW } = measureDrawerSize();
   const vw = window.innerWidth;
   const maxRight = Math.max(EDGE_PAD, vw - drawerW - EDGE_PAD);
-  // Cap lift so chassis top stays >= TOP_SAFE from the viewport top.
-  // top = vh - bottom - drawerH >= TOP_SAFE  =>  bottom <= vh - drawerH - TOP_SAFE
-  const maxBottom = Math.max(MIN_BOTTOM, vh - drawerH - TOP_SAFE);
+  // CSS positions the drawer with `bottom`, so larger values move it upward.
+  // The default/top-safe position is the highest allowed point; drag may only
+  // lower it from there until the drawer bottom reaches the viewport bottom.
+  const maxBottom = defaultBottom();
   return {
     right: Math.min(maxRight, Math.max(EDGE_PAD, right)),
     bottom: Math.min(maxBottom, Math.max(MIN_BOTTOM, bottom)),
@@ -156,7 +169,7 @@ export default function WalletDrawer({
   const { theme } = useDojakwebTheme();
   const isDark = isDarkProp ?? theme === 'dark';
   const isMobile = useIsMobileWallet();
-  const [pos, setPos] = useState<DrawerPos | null>(() => readStoredPos());
+  const [pos, setPos] = useState<DrawerPos | null>(() => readStoredPos() ?? defaultPos());
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{
     pointerId: number;
@@ -164,6 +177,7 @@ export default function WalletDrawer({
     startY: number;
     originRight: number;
     originBottom: number;
+    moved: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -223,7 +237,7 @@ export default function WalletDrawer({
     if (!isOpen || isMobile) return;
     // Re-clamp on open so old localStorage positions that lifted the paw get fixed.
     setPos((prev) => {
-      const base = prev ?? { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
+      const base = prev ?? defaultPos();
       const next = clampPos(base.right, base.bottom);
       applyPosVars(next);
       try {
@@ -268,13 +282,14 @@ export default function WalletDrawer({
       if (e.button !== 0 || isMobile) return;
       e.preventDefault();
       e.stopPropagation();
-      const origin = pos ?? { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
+      const origin = pos ?? defaultPos();
       dragRef.current = {
         pointerId: e.pointerId,
         startX: e.clientX,
         startY: e.clientY,
         originRight: origin.right,
         originBottom: origin.bottom,
+        moved: false,
       };
       setDragging(true);
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -286,9 +301,14 @@ export default function WalletDrawer({
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== e.pointerId) return;
     e.preventDefault();
+    const deltaX = e.clientX - drag.startX;
+    const deltaY = e.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) > CLICK_DRAG_THRESHOLD_PX) {
+      drag.moved = true;
+    }
     const next = clampPos(
-      drag.originRight - (e.clientX - drag.startX),
-      drag.originBottom - (e.clientY - drag.startY),
+      drag.originRight - deltaX,
+      drag.originBottom - deltaY,
     );
     applyPosVars(next);
     setPos(next);
@@ -305,21 +325,21 @@ export default function WalletDrawer({
       } catch {
         /* already released */
       }
+      const wasClick =
+        !drag.moved &&
+        Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) <= CLICK_DRAG_THRESHOLD_PX;
+      if (wasClick) {
+        onClose();
+        return;
+      }
       const next = clampPos(
         drag.originRight - (e.clientX - drag.startX),
         drag.originBottom - (e.clientY - drag.startY),
       );
       persistPos(next);
     },
-    [persistPos],
+    [onClose, persistPos],
   );
-
-  const onDoubleClick = useCallback(() => {
-    if (isMobile) return;
-    const next = { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
-    persistPos(next);
-    applyPosVars(next);
-  }, [persistPos, isMobile]);
 
   const showPaw = isOpen && !isMobile;
 
@@ -333,8 +353,8 @@ export default function WalletDrawer({
                 className="wallet-paw-grip"
                 role="button"
                 tabIndex={-1}
-                aria-label="Drag to reposition wallet"
-                title="Drag to move · double-click to reset"
+                aria-label="Close wallet drawer or drag to reposition"
+                title="Click to close. Drag to move."
                 variants={gripVariants}
                 initial="hidden"
                 animate="visible"
@@ -343,7 +363,6 @@ export default function WalletDrawer({
                 onPointerMove={onPointerMove}
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
-                onDoubleClick={onDoubleClick}
               >
                 <motion.img
                   src={bundledPawSrc}
