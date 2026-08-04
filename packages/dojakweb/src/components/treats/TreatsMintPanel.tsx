@@ -7,6 +7,7 @@ import {
   buildTreatsDeployJson,
   buildTreatsMintJson,
   buildTreatsMintPowJson,
+  treatsPostPremineRemaining,
   buildTreatsTransferJson,
   signAndBroadcastTreats,
   fetchTreatsPowConfig,
@@ -66,6 +67,14 @@ export function TreatsMintPanel({
   );
   /** Empty = open mint (omit wire key `l`). */
   const [lim, setLim] = useState('');
+  /** v1.0 premine → paired dust recipient (treasury). Empty = no premine. */
+  const [premine, setPremine] = useState(
+    initialTick.toUpperCase() === 'NOIZ' ? '50000000' : '',
+  );
+  /** Deployer-only mint window (blocks). Empty = public mint immediately. */
+  const [deployerWindow, setDeployerWindow] = useState('');
+  /** Decimals 0–18 (wire `dec`). Default 0. */
+  const [decimals, setDecimals] = useState('0');
   const [amt, setAmt] = useState(
     initialTick.toUpperCase() === 'NOIZ' ? '1000000' : '1000',
   );
@@ -101,9 +110,19 @@ export function TreatsMintPanel({
     return tickRequiresPow(tick, powConfig);
   }, [requireMintPow, op, tick, powConfig, treasuryPhaseActive]);
 
+  const remainingAfterPremine = useMemo(
+    () => treatsPostPremineRemaining(max, premine.trim() || undefined),
+    [max, premine],
+  );
+
   const json = useMemo(() => {
     if (op === 'deploy') {
-      return buildTreatsDeployJson(tick, max, lim.trim() ? lim : undefined);
+      return buildTreatsDeployJson(tick, max, {
+        lim: lim.trim() ? lim : undefined,
+        premine: premine.trim() ? premine : undefined,
+        deployerWindow: deployerWindow.trim() ? deployerWindow : undefined,
+        decimals: decimals.trim() !== '' ? decimals : undefined,
+      });
     }
     if (op === 'mint') {
       if (powSolution) {
@@ -112,7 +131,7 @@ export function TreatsMintPanel({
       return buildTreatsMintJson(tick, amt);
     }
     return buildTreatsTransferJson(tick, amt);
-  }, [op, tick, max, lim, amt, powSolution]);
+  }, [op, tick, max, lim, premine, deployerWindow, decimals, amt, powSolution]);
 
   const isValid =
     Boolean(json) &&
@@ -289,31 +308,97 @@ export function TreatsMintPanel({
 
           {op === 'deploy' && (
             <>
-              <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">Max supply</label>
+              <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Max supply (base units)
+              </label>
               <input
-                type="number"
-                min={1}
+                type="text"
+                inputMode="numeric"
                 value={max}
                 onChange={(e) => {
                   setMax(e.target.value);
                   reset();
                 }}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-white"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-white"
               />
-              <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                Mint limit (optional — leave empty for open mint)
+              <label className="block text-xs font-medium uppercase tracking-wider text-amber-500/90">
+                Premine (optional) — credits your dust address now
               </label>
               <input
-                type="number"
-                min={1}
+                type="text"
+                inputMode="numeric"
+                value={premine}
+                onChange={(e) => {
+                  setPremine(e.target.value);
+                  reset();
+                }}
+                placeholder="e.g. 50000000 for 5% of 1B"
+                className="w-full rounded-xl border border-amber-500/30 bg-zinc-900 px-3 py-2 font-mono text-white placeholder:text-zinc-600"
+              />
+              <p className="text-[11px] text-zinc-500">
+                Treats v1.0: treasury gets <code className="text-zinc-400">pm</code> on the paired output (you below).
+                {remainingAfterPremine != null ? (
+                  <>
+                    {' '}
+                    Remaining for public mint:{' '}
+                    <span className="font-mono text-zinc-300">{remainingAfterPremine}</span>
+                  </>
+                ) : premine.trim() ? (
+                  <span className="text-red-400"> · premine must be ≤ max</span>
+                ) : null}
+              </p>
+              <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Mint limit per tx (optional)
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
                 value={lim}
                 onChange={(e) => {
                   setLim(e.target.value);
                   reset();
                 }}
-                placeholder="omit for open mint"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-white placeholder:text-zinc-600"
+                placeholder="omit for open mint size"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-white placeholder:text-zinc-600"
               />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Deployer window (blocks)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={deployerWindow}
+                    onChange={(e) => {
+                      setDeployerWindow(e.target.value);
+                      reset();
+                    }}
+                    placeholder="empty = open"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-sm text-white placeholder:text-zinc-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Decimals
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={decimals}
+                    onChange={(e) => {
+                      setDecimals(e.target.value);
+                      reset();
+                    }}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-sm text-white"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-zinc-500">
+                `dw` = only deployer may mint for N blocks. `dec` is display scale (default 0). Stay under ~72 JSON
+                bytes for OP_RETURN.
+              </p>
             </>
           )}
 

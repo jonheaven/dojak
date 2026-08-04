@@ -234,6 +234,7 @@ export {
   TREATS_DUST_KOINU,
   TREATS_MAX_OPRETURN_SCRIPT_BYTES,
   buildTreatsDeployJson,
+  treatsPostPremineRemaining,
   buildTreatsMintJson,
   buildTreatsTransferJson,
   buildTreatsBurnJson,
