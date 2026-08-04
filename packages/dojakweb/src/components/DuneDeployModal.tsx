@@ -138,14 +138,14 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   );
 
   const [name, setName] = useState(initialName ?? '');
-  const [divisibility, setDivisibility] = useState(
+  const [divisibility, setDivisibility] = useState<string>(
     isWhiteDune
       ? WHITE_INSTANT_MARKET.divisibility
       : isManifesto
         ? MANIFESTO_PRESET.divisibility
         : '0',
   );
-  const [symbol, setSymbol] = useState(
+  const [symbol, setSymbol] = useState<string>(
     isWhiteDune ? WHITE_INSTANT_MARKET.symbol : isManifesto ? MANIFESTO_PRESET.symbol : 'Ð',
   );
   const [feeRate, setFeeRate] = useState('1000');

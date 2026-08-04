@@ -1,18 +1,18 @@
 import type { InputHTMLAttributes } from 'react';
 
+type PasswordManagerIgnoreProps = InputHTMLAttributes<HTMLInputElement> & {
+  'data-form-type'?: string;
+  'data-lpignore'?: string;
+  'data-1p-ignore'?: string;
+  'data-bwignore'?: string;
+  'data-protonpass-ignore'?: string;
+};
+
 /**
  * Local wallet encryption secrets are NOT website logins.
  * These attrs reduce Chrome / 1Password / Bitwarden save prompts without changing crypto behavior.
  */
-export const ignoreBrowserPasswordManager: Pick<
-  InputHTMLAttributes<HTMLInputElement>,
-  | 'autoComplete'
-  | 'data-form-type'
-  | 'data-lpignore'
-  | 'data-1p-ignore'
-  | 'data-bwignore'
-  | 'data-protonpass-ignore'
-> = {
+export const ignoreBrowserPasswordManager: PasswordManagerIgnoreProps = {
   autoComplete: 'new-password',
   'data-form-type': 'other',
   'data-lpignore': 'true',

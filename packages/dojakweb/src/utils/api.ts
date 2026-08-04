@@ -917,20 +917,34 @@ export const walletDataApi = {
               : Array.isArray(payload)
                 ? payload
                 : [];
-        return rows.map((row: any) => ({
-          inscriptionId: row.inscriptionId ?? row.id ?? row.inscription_id ?? '',
-          inscriptionNumber: row.inscriptionNumber ?? row.number ?? row.inscription_number ?? 0,
-          contentType: row.contentType ?? row.content_type ?? 'image/png',
-          contentLength: row.contentLength ?? row.content_length,
-          content: null,
-          ownerAddress: row.ownerAddress ?? row.owner ?? row.address ?? address,
-          collectionSymbol: row.collectionId ?? row.collectionSlug ?? '',
-          collectionName: row.collectionName ?? '',
-          itemName: row.itemName ?? row.name ?? '',
-          listed: Boolean(row.listed),
-          price: row.price ?? null,
-          status: row.status ?? '',
-        } as MyDogeInscription));
+        return rows.map((row: any) => {
+          const inscriptionId = row.inscriptionId ?? row.id ?? row.inscription_id ?? '';
+          const content = inscriptionId ? dogexCdnContentUrl(inscriptionId) : '';
+          const mapped: MyDogeInscription & Record<string, unknown> = {
+            address: row.address ?? row.ownerAddress ?? row.owner ?? address,
+            content,
+            contentBody: row.contentBody ?? '',
+            contentLength: Number(row.contentLength ?? row.content_length ?? 0),
+            contentType: row.contentType ?? row.content_type ?? 'image/png',
+            genesisTransaction: row.genesisTransaction ?? row.genesis_transaction ?? row.txid ?? '',
+            inscriptionId,
+            inscriptionNumber: Number(row.inscriptionNumber ?? row.number ?? row.inscription_number ?? 0),
+            output: row.output ?? row.outpoint ?? '',
+            outputValue: String(row.outputValue ?? row.output_value ?? row.value ?? '0'),
+            preview: row.preview ?? content,
+            timestamp: Number(row.timestamp ?? row.time ?? 0),
+            height: Number(row.height ?? row.blockHeight ?? row.block_height ?? 0),
+            location: row.location ?? '',
+            ownerAddress: row.ownerAddress ?? row.owner ?? row.address ?? address,
+            collectionSymbol: row.collectionId ?? row.collectionSlug ?? '',
+            collectionName: row.collectionName ?? '',
+            itemName: row.itemName ?? row.name ?? '',
+            listed: Boolean(row.listed),
+            price: row.price ?? null,
+            status: row.status ?? '',
+          };
+          return mapped;
+        });
       } catch {
         return [];
       }
@@ -1296,7 +1310,7 @@ export const walletDataApi = {
       return { transactions: [], total: 0 };
     }
     const base = getWalletProviderBaseUrl();
-    const route = `/address/${address}?page=${page}&pageSize=${pageSize}`;
+    const route = `/address/${address}?details=txs&page=${page}&pageSize=${pageSize}`;
     const url = `${base}/wallet/info?route=${encodeURIComponent(route)}`;
     const data = await fetchJson(url);
 
@@ -1310,25 +1324,73 @@ export const walletDataApi = {
       ? nested.items
       : Array.isArray(data?.txs)
       ? data.txs
+      : Array.isArray(nested?.txids)
+      ? nested.txids.map((txid: string) => ({ txid }))
+      : Array.isArray(data?.txids)
+      ? data.txids.map((txid: string) => ({ txid }))
       : [];
 
-    const total: number = Number(nested?.total ?? nested?.totalTransactions ?? data?.total ?? rawTxs.length);
+    const total: number = Number(
+      nested?.total ??
+      nested?.totalTransactions ??
+      (typeof nested?.txs === 'number' ? nested.txs : undefined) ??
+      data?.total ??
+      rawTxs.length
+    );
+
+    const addressMatches = (candidate: unknown) => String(candidate ?? '').toLowerCase() === address.toLowerCase();
+    const outputBelongsToWallet = (output: any) =>
+      output?.isOwn === true ||
+      (Array.isArray(output?.addresses) && output.addresses.some(addressMatches)) ||
+      addressMatches(output?.address);
+    const inputBelongsToWallet = (input: any) =>
+      input?.isOwn === true ||
+      (Array.isArray(input?.addresses) && input.addresses.some(addressMatches)) ||
+      addressMatches(input?.address);
+    const koinuToDoge = (value: unknown) => {
+      const n = Number(value ?? 0);
+      return Number.isFinite(n) ? n / 100000000 : 0;
+    };
+    const normalizeFallbackAmount = (value: unknown) => {
+      const n = Number(value ?? 0);
+      if (!Number.isFinite(n)) return 0;
+      return Math.abs(n) > 100000 ? koinuToDoge(n) : n;
+    };
+    const firstAddress = (items: any[], predicate: (item: any) => boolean) => {
+      const item = items.find(predicate);
+      const first = Array.isArray(item?.addresses) ? item.addresses[0] : item?.address;
+      return typeof first === 'string' ? first : '';
+    };
 
     const transactions: DogeTransaction[] = rawTxs.map((tx: any) => {
-      // Determine sign from amount or explicit type
-      const rawAmount = Number(tx.amount ?? tx.value ?? 0);
+      const vin = Array.isArray(tx.vin) ? tx.vin : [];
+      const vout = Array.isArray(tx.vout) ? tx.vout : [];
+      const sentKoinu = vin.reduce(
+        (sum: number, input: any) => sum + (inputBelongsToWallet(input) ? Number(input.value ?? 0) : 0),
+        0
+      );
+      const receivedKoinu = vout.reduce(
+        (sum: number, output: any) => sum + (outputBelongsToWallet(output) ? Number(output.value ?? 0) : 0),
+        0
+      );
+      const netDoge = koinuToDoge(receivedKoinu - sentKoinu);
+      const rawAmount = normalizeFallbackAmount(tx.amount ?? tx.value ?? 0);
       const isSent =
         tx.type === 'sent' ||
         tx.type === 'send' ||
         tx.type === 'out' ||
         tx.direction === 'out' ||
+        netDoge < 0 ||
         rawAmount < 0;
 
-      const amount = Math.abs(rawAmount);
+      const amount = Math.abs(netDoge || rawAmount);
 
       // Counterparty address
-      const counterparty = tx.address ?? (isSent ? (tx.to ?? tx.toAddress ?? '') : (tx.from ?? tx.fromAddress ?? ''));
-      const address = String(counterparty ?? '');
+      const counterparty = tx.address ??
+        (isSent
+          ? (tx.to ?? tx.toAddress ?? firstAddress(vout, (output) => !outputBelongsToWallet(output) && output?.isAddress !== false))
+          : (tx.from ?? tx.fromAddress ?? firstAddress(vin, (input) => !inputBelongsToWallet(input))));
+      const counterpartyAddress = String(counterparty ?? '');
 
       // Confirmations
       const confirmations = Number(tx.confirmations ?? tx.confirms ?? 0);
@@ -1352,7 +1414,7 @@ export const walletDataApi = {
         txid: String(tx.txid ?? tx.txId ?? tx.hash ?? tx.id ?? ''),
         type: isSent ? 'sent' : 'received',
         amount,
-        address,
+        address: counterpartyAddress,
         confirmations,
         timestamp,
         pending,

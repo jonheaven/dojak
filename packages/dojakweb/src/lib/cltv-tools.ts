@@ -115,7 +115,7 @@ export function buildCltvAnnouncePayload(locktimeUnix: number, pubkeyHash: Buffe
   const buf = Buffer.alloc(28);
   buf.write('CLTV', 0, 4, 'ascii');
   buf.writeUInt32LE(locktimeUnix >>> 0, 4);
-  pubkeyHash.copy(buf, 8, 0, 20);
+  buf.set(pubkeyHash.subarray(0, 20), 8);
   return buf;
 }
 

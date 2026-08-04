@@ -413,7 +413,7 @@ export function MyDogeWalletProvider({ children }: { children: React.ReactNode }
               setConnected(true);
               // Optional: Try to fetch balance anyway if possible
               try {
-                const bal = await provider.getBalance();
+                const bal = await provider!.getBalance();
                 console.log('📊 [WALLET] Raw balance response (restore):', bal);
 
                 let balanceNum = 0;

@@ -10,7 +10,7 @@ function normalizeTicker(raw: string): string | null {
 function positiveIntString(v: string): string | null {
   const s = v.trim();
   if (!s || !/^[0-9]+$/.test(s)) return null;
-  if (s.length > 1 && s.starts_with('0')) return null;
+  if (s.length > 1 && s.startsWith('0')) return null;
   if (s === '0') return null;
   return s;
 }
@@ -121,7 +121,7 @@ export function buildTreatsMintPowJson(
   const n = pow.nonce.trim();
   const d = pow.difficulty;
   if (!/^[0-9a-f]{16}$/.test(c)) return null;
-  if (!/^[0-9]{1,12}$/.test(n) || (n.length > 1 && n.starts_with('0'))) return null;
+  if (!/^[0-9]{1,12}$/.test(n) || (n.length > 1 && n.startsWith('0'))) return null;
   if (!Number.isInteger(d) || d < 1 || d > 7) return null;
   return JSON.stringify({ p: 'dt', op: 'm', t, a, d: String(d), c, n });
 }

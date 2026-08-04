@@ -1076,10 +1076,11 @@ export class BrowserWallet {
     } else {
       const opReturnMessage = options.opReturnMessage?.trim();
       if (opReturnMessage) {
-        opReturnPayload = Buffer.from(opReturnMessage, 'utf8');
-        if (opReturnPayload.length > 80) {
+        const messagePayload = Buffer.from(opReturnMessage, 'utf8');
+        if (messagePayload.length > 80) {
           throw new Error('OP_RETURN message exceeds 80 bytes');
         }
+        opReturnPayload = messagePayload;
       }
     }
 

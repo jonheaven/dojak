@@ -71,7 +71,7 @@ export function validateDogecoinAddress(raw: string): DogeAddressValidation {
     };
   }
   try {
-    const script = dogecoinAddressToOutputScript(address);
+    const script = Buffer.from(dogecoinAddressToOutputScript(address));
     // Round-trip through network to catch exotic payloads that somehow decode.
     try {
       bitcoin.address.fromOutputScript(script, DOGE_NETWORK);
