@@ -118,6 +118,10 @@ import {
   dogexCdnContentUrl,
 } from '../utils/api';
 import { fetchDogexIndexerHealth } from '../lib/dogex-indexer-health';
+import {
+  readOneClickLocalSigningPolicy,
+  writeOneClickLocalSigningPolicy,
+} from '../lib/host-preferences-sync';
 import { browserRpcProxyAbsoluteUrl, fetchRpcDetailedHealth } from '../lib/rpc-proxy-client';
 import {
   testAllBroadcastRelayHealths,
@@ -1182,6 +1186,8 @@ export function DojakwebWalletModal({
   const [settingsCustomUrl, setSettingsCustomUrl] = useState('');
   const [settingsMergeInuBits, setSettingsMergeInuBits] = useState(true);
   const [settingsHideTextJson, setSettingsHideTextJson] = useState(false);
+  const [settingsOneClickLocalSigning, setSettingsOneClickLocalSigning] = useState(false);
+  const [settingsOneClickLocalSigningMaxDoge, setSettingsOneClickLocalSigningMaxDoge] = useState('0.05');
   const [hideTextJsonInscriptions, setHideTextJsonInscriptions] = useState(
     () => getWalletDataProviderConfig().hideTextJsonInscriptions === true,
   );
@@ -2407,6 +2413,9 @@ export function DojakwebWalletModal({
     setSettingsDogexCdnBase(dp.dogexCdnBase || '');
     setSettingsMergeInuBits(dp.mergeInuBitsInscriptions !== false);
     setSettingsHideTextJson(dp.hideTextJsonInscriptions === true);
+    const oneClick = readOneClickLocalSigningPolicy();
+    setSettingsOneClickLocalSigning(oneClick.enabled);
+    setSettingsOneClickLocalSigningMaxDoge(String(oneClick.maxDoge));
     setSettingsBroadcast(migrateBroadcastToAuto(loadBroadcastConfig()));
     setSettingsChainExplorer(loadDogeTxExplorerPreference());
     setSettingsPriceSources(getDogePriceSourceConfig().sources);
@@ -2616,6 +2625,10 @@ export function DojakwebWalletModal({
     );
     saveDogeTxExplorerPreference(settingsChainExplorer);
     setDogePriceSourceConfig({ sources: settingsPriceSources });
+    writeOneClickLocalSigningPolicy({
+      enabled: settingsOneClickLocalSigning,
+      maxDoge: Number(settingsOneClickLocalSigningMaxDoge) || 0.05,
+    });
     if (typeof window !== 'undefined') {
       localStorage.setItem(BROADCAST_DISABLED_KEY, JSON.stringify(disabledBroadcastProviders));
     }
@@ -6673,6 +6686,37 @@ export function DojakwebWalletModal({
                                 ))}
                               </div>
                               <p className="mt-1 text-[10px] text-white/30">Takes effect on next open</p>
+                            </div>
+
+                            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                              <button
+                                type="button"
+                                onClick={() => setSettingsOneClickLocalSigning((v) => !v)}
+                                className="flex w-full items-start gap-2.5 text-left"
+                              >
+                                <div className={cx('mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition', settingsOneClickLocalSigning ? 'border-[#D4A017] bg-[#D4A017]/20' : 'border-white/25')}>
+                                  {settingsOneClickLocalSigning && <span className="text-[9px] font-bold text-[#D4A017]">✓</span>}
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="text-sm font-semibold text-white">Auto-approve tiny local transactions</span>
+                                  <p className="mt-0.5 text-[11px] leading-snug text-white/45">
+                                    Allows unlocked Local Browser Wallet flows to sign and broadcast without another prompt when the estimated spend is below your limit. Keep off for review-every-time.
+                                  </p>
+                                </div>
+                              </button>
+                              <label className="mt-3 block">
+                                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-white/35">Auto-approve limit (DOGE)</span>
+                                <input
+                                  className={INPUT_CLASS}
+                                  type="number"
+                                  min="0.0001"
+                                  max="100"
+                                  step="0.001"
+                                  value={settingsOneClickLocalSigningMaxDoge}
+                                  onChange={(e) => setSettingsOneClickLocalSigningMaxDoge(e.target.value)}
+                                  disabled={!settingsOneClickLocalSigning}
+                                />
+                              </label>
                             </div>
 
                             {/* Drawer Side */}

@@ -39,6 +39,7 @@ import type {
 import { UnifiedWalletContext } from './unifiedWalletInternals';
 import { requestWalletApproval } from '../stores/walletApprovalStore';
 import { createDojakwebSessionSecretStore } from '../lib/dojakweb-biometric';
+import { readOneClickLocalSigningPolicy } from '../lib/host-preferences-sync';
 
 interface DojakState {
   connected: boolean;
@@ -1245,6 +1246,20 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         // Send review UI already confirmed — skip second Approve when session is unlocked.
         const sessionWif = browser.wallet?.privateKey;
         if (sendOptions?.skipApprovalUi && sessionWif && browser.address) {
+          return (await runBrowserSend({
+            privateKeyWif: sessionWif,
+            address: browser.address,
+          })) as string;
+        }
+
+        const autoPolicy = readOneClickLocalSigningPolicy();
+        if (
+          autoPolicy.enabled &&
+          amount > 0 &&
+          amount <= autoPolicy.maxDoge &&
+          sessionWif &&
+          browser.address
+        ) {
           return (await runBrowserSend({
             privateKeyWif: sessionWif,
             address: browser.address,
