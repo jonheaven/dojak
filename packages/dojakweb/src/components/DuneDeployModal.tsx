@@ -26,13 +26,32 @@ function singleCodePointSymbol(raw: string): string {
   return cp === undefined ? '' : String.fromCodePoint(cp);
 }
 
-/** THE•WHITE•DOGE liquidity dune tokenomics (div 0 units = whole tokens). */
-const WHITE_PRESET = {
+/**
+ * THE•WHITE•DOGE — default **instant market** (full premine, open mint off)
+ * so DOGE pool can chart day 1. Classic free-mint numbers kept as alt profile.
+ * See dogenals/docs/WHITE_DOGE_INSTANT_MARKET.md
+ */
+const WHITE_INSTANT_MARKET = {
+  premine: '420690180',
+  mintAmount: '',
+  mintCap: '',
+  divisibility: '0',
+  symbol: '🐕',
+  enablePremine: true,
+  enableMint: false,
+  turbo: true,
+} as const;
+
+/** Historical free-mint race — do not use if you want an instant tradeable chart. */
+const WHITE_CLASSIC_MINT = {
   premine: '42069000',
   mintAmount: '420',
   mintCap: '901479',
   divisibility: '0',
   symbol: '🐕',
+  enablePremine: true,
+  enableMint: true,
+  turbo: true,
 } as const;
 
 const MANIFESTO_PRESET = {
@@ -110,25 +129,41 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     plainInitial === 'THEWHITEDOGE'
   const isManifesto = plainInitial === 'DOGENALSOVERDOGINALS';
 
+  /**
+   * Instant market = full/premine float, open mint off (day-1 DOGE pool chart).
+   * Classic = optional free-mint race. Applies to any Ðune; white/manifesto are presets.
+   */
+  const [marketProfile, setMarketProfile] = useState<'instant' | 'classic'>(
+    isManifesto ? 'classic' : 'instant',
+  );
+
   const [name, setName] = useState(initialName ?? '');
   const [divisibility, setDivisibility] = useState(
-    isWhiteDune ? WHITE_PRESET.divisibility : isManifesto ? MANIFESTO_PRESET.divisibility : '0',
+    isWhiteDune
+      ? WHITE_INSTANT_MARKET.divisibility
+      : isManifesto
+        ? MANIFESTO_PRESET.divisibility
+        : '0',
   );
   const [symbol, setSymbol] = useState(
-    isWhiteDune ? WHITE_PRESET.symbol : isManifesto ? MANIFESTO_PRESET.symbol : '',
+    isWhiteDune ? WHITE_INSTANT_MARKET.symbol : isManifesto ? MANIFESTO_PRESET.symbol : 'Ð',
   );
   const [feeRate, setFeeRate] = useState('1000');
-  // Premine + open mint are independent — both can be on (hero dune pattern)
+  // Premine + open mint are independent — both can be on (classic race only)
   const [enablePremine, setEnablePremine] = useState(true);
   const [premine, setPremine] = useState(
-    isWhiteDune ? WHITE_PRESET.premine : isManifesto ? MANIFESTO_PRESET.premine : '1000000',
+    isWhiteDune
+      ? WHITE_INSTANT_MARKET.premine
+      : isManifesto
+        ? MANIFESTO_PRESET.premine
+        : '1000000000',
   );
-  const [enableMint, setEnableMint] = useState(isWhiteDune || isManifesto);
+  const [enableMint, setEnableMint] = useState(isManifesto);
   const [mintAmount, setMintAmount] = useState(
-    isWhiteDune ? WHITE_PRESET.mintAmount : isManifesto ? MANIFESTO_PRESET.mintAmount : '',
+    isWhiteDune ? '' : isManifesto ? MANIFESTO_PRESET.mintAmount : '',
   );
   const [mintCap, setMintCap] = useState(
-    isWhiteDune ? WHITE_PRESET.mintCap : isManifesto ? MANIFESTO_PRESET.mintCap : '',
+    isWhiteDune ? '' : isManifesto ? MANIFESTO_PRESET.mintCap : '',
   );
   const [turbo, setTurbo] = useState(true);
 
@@ -138,17 +173,43 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const [isLoading, setIsLoading] = useState(false);
   const [signingAddress, setSigningAddress] = useState<string | null>(null);
 
-  const applyPreset = (kind: 'white' | 'manifesto' | 'clear') => {
-    if (kind === 'white') {
-      setPremine(WHITE_PRESET.premine);
-      setMintAmount(WHITE_PRESET.mintAmount);
-      setMintCap(WHITE_PRESET.mintCap);
-      setDivisibility(WHITE_PRESET.divisibility);
-      setSymbol(WHITE_PRESET.symbol);
+  const applyMarketProfile = (profile: 'instant' | 'classic', plainName?: string) => {
+    setMarketProfile(profile);
+    const plain = (plainName ?? name).replace(/[•.\s]/g, '').toUpperCase();
+    if (plain === 'THEWHITEDOGE') {
+      const p = profile === 'instant' ? WHITE_INSTANT_MARKET : WHITE_CLASSIC_MINT;
+      setPremine(p.premine);
+      setMintAmount(p.mintAmount);
+      setMintCap(p.mintCap);
+      setDivisibility(p.divisibility);
+      setSymbol(p.symbol);
+      setEnablePremine(p.enablePremine);
+      setEnableMint(p.enableMint);
+      setTurbo(p.turbo);
+      return;
+    }
+    if (profile === 'instant') {
+      // Keep current premine if user already typed; ensure mint off
+      setEnablePremine(true);
+      setEnableMint(false);
+      setMintAmount('');
+      setMintCap('');
+      setTurbo(true);
+      if (!premine || premine === '0') setPremine('1000000000');
+    } else {
       setEnablePremine(true);
       setEnableMint(true);
-      setTurbo(true);
+      if (!mintAmount) setMintAmount('1000');
+      if (!mintCap) setMintCap('1000000');
+    }
+  };
+
+  const applyPreset = (kind: 'white' | 'manifesto' | 'clear') => {
+    if (kind === 'white') {
+      setName('THE•WHITE•DOGE');
+      applyMarketProfile('instant', 'THEWHITEDOGE');
     } else if (kind === 'manifesto') {
+      setName('DOGENALS•OVER•DOGINALS');
       setPremine(MANIFESTO_PRESET.premine);
       setMintAmount(MANIFESTO_PRESET.mintAmount);
       setMintCap(MANIFESTO_PRESET.mintCap);
@@ -156,6 +217,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
       setSymbol(MANIFESTO_PRESET.symbol);
       setEnablePremine(true);
       setEnableMint(true);
+      setMarketProfile('classic');
       setTurbo(true);
     }
   };
@@ -170,13 +232,14 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     if (plain === 'THEWHITEDOGE') applyPreset('white');
     else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
     else {
-      setPremine('1000000');
+      setPremine('1000000000');
       setMintAmount('');
       setMintCap('');
       setDivisibility('0');
-      setSymbol('');
+      setSymbol('Ð');
       setEnablePremine(true);
       setEnableMint(false);
+      setMarketProfile('instant');
       setTurbo(true);
     }
   };
@@ -193,6 +256,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
       const plain = n.replace(/[•.\s]/g, '');
       if (plain === 'THEWHITEDOGE') applyPreset('white');
       else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
+      else applyMarketProfile('instant', plain);
     }
   }, [isOpen, initialName]);
 
@@ -322,10 +386,52 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
         <div className="space-y-4">
           {step === 'form' && (
             <>
-              <p className="rounded-lg border border-border-primary bg-bg-secondary px-3 py-2 text-xs text-text-secondary">
-                <strong className="text-text-primary">Premine + open mint are independent.</strong> Turn both on for
-                hero launches (treasury LP + community mint). Max supply ≈ premine + (tokens per mint × cap).
-              </p>
+              <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-text-secondary">
+                <p>
+                  <strong className="text-text-primary">Any Ðune project.</strong> Instant market = premine float +
+                  open mint off → DOGE pool → LP → first swap paints the chart. Flagships are optional presets.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyMarketProfile('instant')}
+                    className={cn(
+                      'rounded border px-2 py-1 text-[11px] font-medium',
+                      marketProfile === 'instant'
+                        ? 'border-amber-500/60 bg-amber-500/20 text-text-primary'
+                        : 'border-border-primary text-text-secondary hover:text-text-primary',
+                    )}
+                  >
+                    Instant market (recommended)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyMarketProfile('classic')}
+                    className={cn(
+                      'rounded border px-2 py-1 text-[11px] font-medium',
+                      marketProfile === 'classic'
+                        ? 'border-amber-500/60 bg-amber-500/20 text-text-primary'
+                        : 'border-border-primary text-text-secondary hover:text-text-primary',
+                    )}
+                  >
+                    Classic free mint
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('white')}
+                    className="rounded border border-border-primary px-2 py-1 text-[11px] font-medium text-text-secondary hover:text-text-primary"
+                  >
+                    Preset: WHITE
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('manifesto')}
+                    className="rounded border border-border-primary px-2 py-1 text-[11px] font-medium text-text-secondary hover:text-text-primary"
+                  >
+                    Preset: manifesto
+                  </button>
+                </div>
+              </div>
 
               <div>
                 <Label className="mb-1 block text-text-primary">
@@ -334,8 +440,14 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 <Input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value.toUpperCase())}
-                  placeholder="e.g. THE•WHITE•DOGE"
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase();
+                    setName(v);
+                    const plain = v.replace(/[•.\s]/g, '');
+                    if (plain === 'THEWHITEDOGE') applyMarketProfile(marketProfile, plain);
+                    else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
+                  }}
+                  placeholder="e.g. MY•COIN or THE•WHITE•DOGE"
                   className="font-mono"
                 />
                 {nameError && <p className="mt-1 text-xs text-red-500">{nameError}</p>}
