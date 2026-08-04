@@ -137,6 +137,9 @@ export function resolveWalletApproval(value: unknown) {
   pending = null;
   emit();
   p.resolve(value);
+  // Same UX as extension popups: once the signing/broadcast action succeeds,
+  // dismiss the wallet surface so the host app can show the receipt/result.
+  closeDrawer();
 }
 
 export function rejectWalletApproval(message = 'User rejected the request') {
