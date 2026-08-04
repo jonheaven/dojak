@@ -12,7 +12,7 @@ import bundledPawSrc from '../assets/paw.png';
 export interface WalletDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  initialStep?: 'chooser' | 'entry' | 'dashboard' | 'settings' | 'unlock';
+  initialStep?: 'chooser' | 'entry' | 'dashboard' | 'settings' | 'unlock' | 'verification';
   /** Host override (e.g. ConnectWalletButton isDark). Falls back to DojakwebThemeProvider. */
   isDark?: boolean;
   openNonce?: number;

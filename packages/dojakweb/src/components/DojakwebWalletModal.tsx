@@ -2643,7 +2643,8 @@ export function DojakwebWalletModal({
     if (isOpen) {
       // Prefer staying on dashboard when local browser session already holds the key.
       const unlocked = Boolean(browser.wallet?.privateKey && browser.address);
-      setStep(unlocked ? 'dashboard' : initialStep);
+      const targetStep = initialStep === 'verification' ? 'verification' : unlocked ? 'dashboard' : initialStep;
+      setStep(targetStep);
       setSettingsTab(initialSettingsTab);
       if (initialDashboardTab) setTab(initialDashboardTab);
       if (initialAssetType) setAssetType(initialAssetType);
