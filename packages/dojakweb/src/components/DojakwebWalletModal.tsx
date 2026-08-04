@@ -3,6 +3,7 @@
 import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import JSZip from 'jszip';
 import { Dialog, Listbox, ListboxButton, ListboxOption, ListboxOptions, Menu, Transition } from '@headlessui/react';
+import clsx from 'clsx';
 import {
   ArrowPathIcon,
   CheckBadgeIcon,
@@ -114,6 +115,7 @@ import {
   getIndexerApiBase,
   getDefaultWalletDataProviderUrl,
   isDefaultWalletDataProviderUrl,
+  dogexCdnContentUrl,
 } from '../utils/api';
 import { fetchDogexIndexerHealth } from '../lib/dogex-indexer-health';
 import { browserRpcProxyAbsoluteUrl, fetchRpcDetailedHealth } from '../lib/rpc-proxy-client';
@@ -1127,6 +1129,17 @@ export function DojakwebWalletModal({
       const next = [tx, ...prev.filter((item) => item.txid !== tx.txid)];
       return next.slice(0, 12);
     });
+  }, []);
+
+  const resolveInscriptionMediaUrl = useCallback((inscription: MyDogeInscription | null) => {
+    if (!inscription) return '';
+    const id = inscription.inscriptionId?.trim();
+    const preview = inscription.preview?.trim();
+    const content = inscription.content?.trim();
+    if (id) return dogexCdnContentUrl(id);
+    if (preview) return preview;
+    if (content) return content;
+    return '';
   }, []);
 
   // ── Inscription action state ──
@@ -3285,7 +3298,12 @@ export function DojakwebWalletModal({
                             <ArrowLeftIcon className="h-4 w-4" />
                           </button>
                         )}
-                        <Dialog.Title className="truncate text-[15px] font-semibold tracking-tight text-white/95">
+                        <Dialog.Title
+                          className={clsx(
+                            'truncate text-[15px] font-semibold tracking-tight',
+                            isDark ? 'text-white/95' : 'text-zinc-950'
+                          )}
+                        >
                           {step === 'chooser'
                             ? t('wallet.connectionModal.title')
                             : step === 'import'
@@ -5065,7 +5083,19 @@ export function DojakwebWalletModal({
                       <div className="space-y-4">
                         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-3">
                           {selectedInscription.contentType?.startsWith('image/') ? (
-                            <img src={selectedInscription.content} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                            <img
+                              src={resolveInscriptionMediaUrl(selectedInscription)}
+                              alt=""
+                              className="h-14 w-14 rounded-lg object-cover"
+                              onError={(e) => {
+                                const fallback = selectedInscription.preview?.trim() || selectedInscription.content?.trim();
+                                if (fallback && e.currentTarget.src !== fallback) {
+                                  e.currentTarget.src = fallback;
+                                  return;
+                                }
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
                           ) : isTextishInscription(selectedInscription.contentType) ? (
                             <button
                               type="button"
@@ -5291,7 +5321,19 @@ export function DojakwebWalletModal({
                       <div className="space-y-4">
                         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-3">
                           {selectedInscription.contentType?.startsWith('image/') ? (
-                            <img src={selectedInscription.content} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                            <img
+                              src={resolveInscriptionMediaUrl(selectedInscription)}
+                              alt=""
+                              className="h-14 w-14 rounded-lg object-cover"
+                              onError={(e) => {
+                                const fallback = selectedInscription.preview?.trim() || selectedInscription.content?.trim();
+                                if (fallback && e.currentTarget.src !== fallback) {
+                                  e.currentTarget.src = fallback;
+                                  return;
+                                }
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
                           ) : isTextishInscription(selectedInscription.contentType) ? (
                             <button
                               type="button"

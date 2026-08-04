@@ -18,6 +18,7 @@ import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { DunesTab } from './DunesTab';
 import { CharmsTab } from './CharmsTab';
+import { dogexCdnContentUrl } from '../utils/api';
 
 interface WalletProps {
   onNavigateToSection?: (section: string) => void;
@@ -61,6 +62,16 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
     await navigator.clipboard.writeText(walletAddress);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const resolveInscriptionThumb = (inscription: typeof filteredInscriptions[number]) => {
+    const preview = inscription.preview?.trim();
+    const content = inscription.content?.trim();
+    const id = inscription.inscriptionId?.trim();
+    if (preview) return preview;
+    if (content) return content;
+    if (id) return dogexCdnContentUrl(id);
+    return '';
   };
 
   const isLoading = isLoadingWalletInfo || isLoadingDrc20Tokens || isLoadingInscriptions || isLoadingDunes || isLoadingUtxos || isLoadingCharms;
@@ -117,7 +128,11 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
               >
                 <div className="flex items-start space-x-4">
                   <div className="w-16 h-16 bg-bg-tertiary rounded-lg flex items-center justify-center overflow-hidden">
-                    {inscription.preview ? <img src={inscription.preview} alt={inscription.inscriptionId} className="w-full h-full object-cover rounded-lg" /> : <CubeIcon className="w-8 h-8 text-gray-400" />}
+                    {resolveInscriptionThumb(inscription) ? (
+                      <img src={resolveInscriptionThumb(inscription)} alt={inscription.inscriptionId} className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <CubeIcon className="w-8 h-8 text-gray-400" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-medium text-text-primary truncate">{inscription.inscriptionId}</h3>

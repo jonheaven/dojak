@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { XMarkIcon, ArrowTopRightOnSquareIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
+import { dogexCdnContentUrl } from '../utils/api';
 
 interface InscriptionData {
   address: string;
@@ -106,6 +107,17 @@ export const InscriptionModal: React.FC<InscriptionModalProps> = ({
     navigator.clipboard.writeText(text);
   };
 
+  const resolveImageSrc = () => {
+    if (!inscription) return '';
+    const preview = inscription.preview?.trim();
+    const content = inscription.content?.trim();
+    const id = inscription.inscriptionId?.trim();
+    if (preview) return preview;
+    if (content) return content;
+    if (id) return dogexCdnContentUrl(id);
+    return '';
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -167,11 +179,16 @@ export const InscriptionModal: React.FC<InscriptionModalProps> = ({
                 <div className="relative group">
                   {inscription.contentType?.startsWith('image/') ? (
                     <img
-                      src={inscription.content}
+                      src={resolveImageSrc()}
                       alt={t('inscriptionModal.alt.content', { id: inscription.inscriptionId })}
                       className="w-full max-h-96 object-contain rounded-lg bg-bg-primary"
                       onError={(e) => {
-                        e.currentTarget.src = inscription.preview || '';
+                        const fallback = inscription.preview?.trim() || inscription.content?.trim();
+                        if (fallback && e.currentTarget.src !== fallback) {
+                          e.currentTarget.src = fallback;
+                          return;
+                        }
+                        e.currentTarget.style.display = 'none';
                       }}
                     />
                   ) : (
