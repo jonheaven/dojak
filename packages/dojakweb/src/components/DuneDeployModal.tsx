@@ -65,7 +65,14 @@ const MANIFESTO_PRESET = {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (txid: string) => void;
+  onSuccess?: (
+    txid: string,
+    details?: {
+      op: 'deploy';
+      duneName: string;
+      address?: string | null;
+    },
+  ) => void;
   /** Pre-fill etch name (e.g. DOGENALS•OVER•DOGINALS). */
   initialName?: string;
 }
@@ -118,6 +125,18 @@ function rememberDuneEtchReceipt(receipt: { name: string; txid: string; address?
   } catch {
     /* best-effort receipt cache */
   }
+}
+
+function emitDuneEtchReceipt(receipt: { name: string; txid: string; address?: string | null }) {
+  if (typeof window === 'undefined') return;
+  const detail = {
+    op: 'deploy',
+    duneName: receipt.name,
+    txid: receipt.txid,
+    address: receipt.address || null,
+  };
+  window.dispatchEvent(new CustomEvent('dojakweb:dunes:tx', { detail }));
+  window.dispatchEvent(new CustomEvent('dojakweb:dunes:deploy', { detail }));
 }
 
 export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, initialName }) => {
@@ -363,10 +382,23 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
           txid: nextTxid,
           address: resolved.signer.fromAddress,
         });
+        emitDuneEtchReceipt({
+          name: name.trim(),
+          txid: nextTxid,
+          address: resolved.signer.fromAddress,
+        });
       }
       setStep('done');
-      toast.success(nextTxid ? 'Dune deployed. Transaction receipt ready.' : 'Dune deployed, but no txid was returned.');
-      onSuccess?.(nextTxid ?? '');
+      if (nextTxid) {
+        toast.success('Dune deploy broadcast. Transaction receipt ready.');
+        onSuccess?.(nextTxid, {
+          op: 'deploy',
+          duneName: name.trim(),
+          address: resolved.signer.fromAddress,
+        });
+      } else {
+        toast.error('Wallet action finished, but no broadcast txid was returned.');
+      }
     } catch (e: any) {
       setError(e.message ?? 'Transaction failed');
       setStep('confirm');
@@ -717,10 +749,18 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary">Ðune deployed (0xÐ)</h3>
+                <h3 className="text-lg font-semibold text-text-primary">
+                  {txid ? 'Ðune deploy broadcast (0xÐ)' : 'No broadcast receipt returned'}
+                </h3>
                 <p className="mt-1 text-sm text-text-secondary">
-                  <strong className="text-text-primary">{name}</strong> submitted. Confirm on dogex after a few
-                  blocks.
+                  {txid ? (
+                    <>
+                      <strong className="text-text-primary">{name}</strong> submitted. Confirm on dogex after a few
+                      blocks.
+                    </>
+                  ) : (
+                    'Check wallet activity before trying again. A deploy is only complete when a txid is returned.'
+                  )}
                 </p>
               </div>
               {txid ? (

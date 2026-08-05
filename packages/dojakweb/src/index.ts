@@ -271,7 +271,7 @@ export type { TreatsMintPanelProps, TreatsUiOp } from './components/treats/Treat
 export { TreatsPage } from './components/treats/TreatsPage';
 
 export { DunesToolsPanel } from './components/dunes/DunesToolsPanel';
-export type { DunesToolsPanelProps, DunesUiOp } from './components/dunes/DunesToolsPanel';
+export type { DunesToolsPanelProps, DunesToolsTxSuccess, DunesUiOp } from './components/dunes/DunesToolsPanel';
 export { DuneDeployModal } from './components/DuneDeployModal';
 export { DuneMintModal } from './components/DuneMintModal';
 export { DuneSendModal } from './components/DuneSendModal';

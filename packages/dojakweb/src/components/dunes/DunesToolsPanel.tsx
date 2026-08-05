@@ -9,12 +9,21 @@ import { DuneSendModal } from '../DuneSendModal';
 
 export type DunesUiOp = 'deploy' | 'mint' | 'send';
 
+export interface DunesToolsTxSuccess {
+  op: DunesUiOp;
+  txid: string;
+  duneName?: string;
+  address?: string | null;
+}
+
 export interface DunesToolsPanelProps {
   initialOp?: DunesUiOp;
   initialDune?: string;
   ops?: DunesUiOp[];
   compact?: boolean;
   className?: string;
+  onTxSuccess?: (event: DunesToolsTxSuccess) => void;
+  onDeploySuccess?: (txid: string, event: DunesToolsTxSuccess) => void;
 }
 
 const DEFAULT_OPS: DunesUiOp[] = ['deploy', 'mint', 'send'];
@@ -25,6 +34,8 @@ export function DunesToolsPanel({
   ops = DEFAULT_OPS,
   compact = false,
   className = '',
+  onTxSuccess,
+  onDeploySuccess,
 }: DunesToolsPanelProps) {
   const { address } = useUnifiedWallet();
   const firstOp = ops.includes(initialOp) ? initialOp : ops[0] ?? 'mint';
@@ -63,6 +74,12 @@ export function DunesToolsPanel({
 
   const onModalSuccess = () => {
     void refreshHoldings();
+  };
+
+  const notifyTxSuccess = (event: DunesToolsTxSuccess) => {
+    if (!event.txid) return;
+    onTxSuccess?.(event);
+    if (event.op === 'deploy') onDeploySuccess?.(event.txid, event);
   };
 
   return (
@@ -169,7 +186,13 @@ export function DunesToolsPanel({
         isOpen={deployOpen}
         onClose={() => setDeployOpen(false)}
         initialName={initialDune || undefined}
-        onSuccess={() => {
+        onSuccess={(txid, details) => {
+          notifyTxSuccess({
+            op: 'deploy',
+            txid,
+            duneName: details?.duneName ?? initialDune,
+            address: details?.address,
+          });
           onModalSuccess();
           setDeployOpen(false);
         }}
@@ -178,7 +201,12 @@ export function DunesToolsPanel({
         isOpen={mintOpen}
         onClose={() => setMintOpen(false)}
         duneName={initialDune || undefined}
-        onSuccess={() => {
+        onSuccess={(txid) => {
+          notifyTxSuccess({
+            op: 'mint',
+            txid,
+            duneName: initialDune,
+          });
           onModalSuccess();
           setMintOpen(false);
         }}
@@ -190,7 +218,12 @@ export function DunesToolsPanel({
           setSendHolding(undefined);
         }}
         holding={sendHolding}
-        onSuccess={() => {
+        onSuccess={(txid) => {
+          notifyTxSuccess({
+            op: 'send',
+            txid,
+            duneName: sendHolding?.dune ?? sendHolding?.ticker ?? initialDune,
+          });
           onModalSuccess();
           setSendOpen(false);
           setSendHolding(undefined);
