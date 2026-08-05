@@ -16,6 +16,11 @@ const REQUIRED = [
   'getIndexerApiBase',
   'requestWalletApproval',
   'openWalletDrawer',
+  // Hide-list helpers (dogenals holdings picker / drawer)
+  'loadHiddenInscriptionIds',
+  'hideInscription',
+  'unhideInscription',
+  'filterVisibleInscriptions',
 ];
 
 if (!fs.existsSync(distWallet)) {

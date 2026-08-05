@@ -58,6 +58,11 @@ import {
   isDlottoInscriptionText,
   loadInscriptionTextBody,
 } from '../utils/inscription-text';
+import {
+  hideInscription,
+  unhideInscription,
+  loadHiddenInscriptionIds,
+} from '../utils/hidden-inscriptions';
 import { WalletConnectChooser } from './WalletConnectChooser';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { walletCredentialInputProps, walletSecretDecoyFields, walletSecretInputProps } from '../lib/wallet-secret-input';
@@ -1192,6 +1197,24 @@ export function DojakwebWalletModal({
     () => getWalletDataProviderConfig().hideTextJsonInscriptions === true,
   );
   const [textInspectItem, setTextInspectItem] = useState<MyDogeInscription | null>(null);
+  /** Local per-address hide list (does not affect chain ownership). */
+  const [hiddenInscriptionIds, setHiddenInscriptionIds] = useState<Set<string>>(() => new Set());
+  const [showHiddenInscriptions, setShowHiddenInscriptions] = useState(false);
+
+  useEffect(() => {
+    if (!activeAddress) {
+      setHiddenInscriptionIds(new Set());
+      return;
+    }
+    setHiddenInscriptionIds(loadHiddenInscriptionIds(activeAddress));
+    const onChange = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ address?: string }>).detail;
+      if (detail?.address && detail.address.toLowerCase() !== activeAddress.toLowerCase()) return;
+      setHiddenInscriptionIds(loadHiddenInscriptionIds(activeAddress));
+    };
+    window.addEventListener('dojakweb-hidden-inscriptions-changed', onChange);
+    return () => window.removeEventListener('dojakweb-hidden-inscriptions-changed', onChange);
+  }, [activeAddress]);
 
   const uniqueInscriptions = useMemo(() => {
     const byId = new Map<string, MyDogeInscription>();
@@ -1205,6 +1228,12 @@ export function DojakwebWalletModal({
 
   const visibleInscriptions = useMemo(() => {
     let list = uniqueInscriptions;
+    if (!showHiddenInscriptions && hiddenInscriptionIds.size > 0) {
+      list = list.filter((item) => {
+        const id = (item.inscriptionId || '').trim();
+        return id ? !hiddenInscriptionIds.has(id) : true;
+      });
+    }
     if (nftFilter === 'media') {
       return list.filter((item) => !isTextishInscription(item.contentType));
     }
@@ -1215,7 +1244,14 @@ export function DojakwebWalletModal({
       list = list.filter((item) => !isTextishInscription(item.contentType));
     }
     return list;
-  }, [uniqueInscriptions, hideTextJsonInscriptions, nftFilter, dlottoFlags]);
+  }, [
+    uniqueInscriptions,
+    hideTextJsonInscriptions,
+    nftFilter,
+    dlottoFlags,
+    hiddenInscriptionIds,
+    showHiddenInscriptions,
+  ]);
 
   const textJsonInscriptionCount = useMemo(
     () => uniqueInscriptions.filter((item) => isTextishInscription(item.contentType)).length,
@@ -4477,6 +4513,7 @@ export function DojakwebWalletModal({
                                             </button>
                                           ))}
                                         </div>
+                                        <div className="flex flex-wrap items-center gap-2">
                                         {nftFilter === 'all' && textJsonInscriptionCount > 0 ? (
                                           <button
                                             type="button"
@@ -4504,11 +4541,32 @@ export function DojakwebWalletModal({
                                               ({textJsonInscriptionCount})
                                             </span>
                                           </button>
-                                        ) : nftFilter === 'dlotto' && dlottoClassifying ? (
+                                        ) : null}
+                                        {hiddenInscriptionIds.size > 0 ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => setShowHiddenInscriptions((v) => !v)}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/20 hover:text-white"
+                                          >
+                                            {showHiddenInscriptions ? (
+                                              <EyeSlashIcon className="h-3.5 w-3.5" aria-hidden />
+                                            ) : (
+                                              <EyeIcon className="h-3.5 w-3.5" aria-hidden />
+                                            )}
+                                            {showHiddenInscriptions
+                                              ? t('modal.assets.hideHiddenAgain') || 'Hide hidden'
+                                              : t('modal.assets.showHidden') || 'Show hidden'}
+                                            <span className="tabular-nums text-white/40">
+                                              ({hiddenInscriptionIds.size})
+                                            </span>
+                                          </button>
+                                        ) : null}
+                                        {nftFilter === 'dlotto' && dlottoClassifying ? (
                                           <span className="text-[11px] text-white/45">
                                             {t('modal.assets.filterDlottoLoading')}
                                           </span>
                                         ) : null}
+                                        </div>
                                       </div>
                                     <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
                                       {gridInscriptions.map((item) => (
@@ -4693,6 +4751,46 @@ export function DojakwebWalletModal({
                                                       </button>
                                                     )}
                                                   </Menu.Item>
+                                                  {activeAddress ? (
+                                                    <Menu.Item>
+                                                      {({ focus, active }) => {
+                                                        const id = item.inscriptionId || '';
+                                                        const isHidden = hiddenInscriptionIds.has(id);
+                                                        return (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              if (!activeAddress || !id) return;
+                                                              const next = isHidden
+                                                                ? unhideInscription(activeAddress, id)
+                                                                : hideInscription(activeAddress, id);
+                                                              setHiddenInscriptionIds(new Set(next));
+                                                              toast.success(
+                                                                isHidden
+                                                                  ? (t('modal.toast.inscriptionUnhidden') || 'Inscription unhidden')
+                                                                  : (t('modal.toast.inscriptionHidden') || 'Inscription hidden (this device)'),
+                                                              );
+                                                            }}
+                                                            className={cx(
+                                                              'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                              (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                                            )}
+                                                          >
+                                                            {isHidden ? (
+                                                              <EyeIcon className="h-4 w-4 shrink-0 text-sky-200/90" aria-hidden />
+                                                            ) : (
+                                                              <EyeSlashIcon className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
+                                                            )}
+                                                            <span className="leading-tight">
+                                                              {isHidden
+                                                                ? (t('modal.assets.unhide') || 'Unhide')
+                                                                : (t('modal.assets.hide') || 'Hide')}
+                                                            </span>
+                                                          </button>
+                                                        );
+                                                      }}
+                                                    </Menu.Item>
+                                                  ) : null}
                                               </WalletMenuItems>
                                             </Menu>
                                           </div>

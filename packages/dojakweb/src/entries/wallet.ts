@@ -71,6 +71,15 @@ export {
   type WalletDataProviderType,
 } from '../utils/api';
 
+export {
+  loadHiddenInscriptionIds,
+  saveHiddenInscriptionIds,
+  hideInscription,
+  unhideInscription,
+  isInscriptionHidden,
+  filterVisibleInscriptions,
+} from '../utils/hidden-inscriptions';
+
 /** Featured defaults: MyDoge bag + command.dog ops + explorer.dogenals.com (overrides still allowed). */
 export { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
 

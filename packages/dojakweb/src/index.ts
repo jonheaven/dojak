@@ -8,6 +8,16 @@ export { useMyDogeWallet } from './contexts/useMyDogeWallet';
 export type { UseMyDogeWalletReturn } from './contexts/MyDogeWalletContext';
 export { toast } from 'sonner';
 
+/** Client-only hide list (localStorage per address). Used by storefront holdings + drawer. */
+export {
+  loadHiddenInscriptionIds,
+  saveHiddenInscriptionIds,
+  hideInscription,
+  unhideInscription,
+  isInscriptionHidden,
+  filterVisibleInscriptions,
+} from './utils/hidden-inscriptions';
+
 export { default as WalletSelectionModal } from './components/WalletSelectionModal';
 export { ConnectWalletButton } from './components/ConnectWalletButton';
 export { default as SimpleWalletConnect } from './components/SimpleWalletConnect';

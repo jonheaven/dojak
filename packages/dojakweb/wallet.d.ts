@@ -33,6 +33,14 @@ export {
   type WalletDataProviderConfig,
   type WalletDataProviderType,
 } from './src/utils/api';
+export {
+  loadHiddenInscriptionIds,
+  saveHiddenInscriptionIds,
+  hideInscription,
+  unhideInscription,
+  isInscriptionHidden,
+  filterVisibleInscriptions,
+} from './src/utils/hidden-inscriptions';
 export { ensureDojakwebEcosystemDefaults } from './src/lib/ecosystemDefaults';
 export {
   broadcastSignedTransaction,
