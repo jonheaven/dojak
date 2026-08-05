@@ -160,8 +160,9 @@ function buildTaggedInscriptionChunks(
     chunks.push(bufToChunk(Buffer.from([7])));
     chunks.push(bufToChunk(Buffer.from(opts.metaprotocol, 'utf8')));
   }
-  // body separator (empty push at even field index for dogex parser)
-  chunks.push(bufToChunk(Buffer.alloc(0)));
+  // body separator — empty push (OP_0). Must remain a distinct stack item so dogex
+  // can split metaprotocol (tag 7) from the JSON body.
+  chunks.push({ buf: undefined, opcodenum: 0x00 });
   for (const part of parts) {
     chunks.push(bufToChunk(part));
   }
