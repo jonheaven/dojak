@@ -1855,7 +1855,7 @@ body.wallet-drawer-mobile-open .ds-wallet-modal-backdrop--drawer {
   }
 }
 
-/* Phone chassis: opaque, rounded, floating off the bottom — not a glass window. */
+/* Phone chassis: opaque, rounded, floating — fixed preferred height; bottom only moves it. */
 body.wallet-drawer-paw-open .ds-wallet-modal--drawer,
 body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   width: var(--wallet-drawer-width) !important;
@@ -1863,15 +1863,10 @@ body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   right: var(--wallet-drawer-right) !important;
   bottom: var(--wallet-drawer-bottom) !important;
   top: auto !important;
-  /* Height tracks bottom inset; top-safe keeps the chassis under browser/app chrome */
-  height: min(
-    78vh,
-    760px,
-    calc(100dvh - var(--wallet-drawer-bottom, 28px) - var(--wallet-drawer-top-safe, 56px))
-  ) !important;
-  max-height: calc(
-    100dvh - var(--wallet-drawer-bottom, 28px) - var(--wallet-drawer-top-safe, 56px)
-  ) !important;
+  /* Fixed chassis height — do NOT tie height to bottom (that pinned the top and
+     made vertical drag feel inverted / “range on the wrong side”). */
+  height: min(78vh, 760px) !important;
+  max-height: calc(100dvh - var(--wallet-drawer-top-safe, 56px)) !important;
   /* Above .wallet-paw-grip (9995) so the paw sits under the panel */
   z-index: 10050 !important;
   border-radius: var(--wallet-phone-radius) !important;

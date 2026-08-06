@@ -21,7 +21,7 @@ export interface WalletDrawerProps {
   initialAssetType?: 'nft' | 'drc20' | 'treats';
 }
 
-const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v3';
+const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v4';
 const DEFAULT_RIGHT = 14;
 /** Fallback before the browser has measured the drawer. Runtime default is top-safe. */
 const DEFAULT_BOTTOM = 28;
@@ -118,33 +118,33 @@ function measureDrawerSize(): { w: number; h: number } {
     document.querySelector<HTMLElement>('[data-headlessui-portal] .ds-wallet-dashboard');
   const fallbackW = Math.min(390, window.innerWidth * 0.94);
   const vh = window.innerHeight;
-  // Prefer live rect; fall back to CSS intent (78vh / 760, top-safe inset).
+  // Preferred chassis height matches CSS: min(78vh, 760px), capped by top-safe.
+  const preferredH = Math.min(vh * 0.78, 760, Math.max(120, vh - TOP_SAFE - EDGE_PAD));
   const w = drawer?.offsetWidth || fallbackW;
-  const cssH = Math.min(vh * 0.78, 760, Math.max(120, vh - TOP_SAFE - EDGE_PAD));
-  const h = drawer?.offsetHeight && drawer.offsetHeight > 40 ? drawer.offsetHeight : cssH;
+  const liveH = drawer?.offsetHeight && drawer.offsetHeight > 40 ? drawer.offsetHeight : 0;
+  // Prefer preferred height for clamp math so early/late measure don't invert the range.
+  const h = liveH > 0 ? Math.min(liveH, preferredH) || preferredH : preferredH;
   return { w, h };
 }
 
 function defaultBottom(): number {
   const { h: drawerH } = measureDrawerSize();
+  // Highest allowed: chassis top sits at TOP_SAFE.
   return Math.max(MIN_BOTTOM, window.innerHeight - drawerH - TOP_SAFE);
 }
 
 function defaultPos(): DrawerPos {
-  if (typeof window === 'undefined') {
-    return { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
-  }
-  return { right: DEFAULT_RIGHT, bottom: defaultBottom() };
+  // Rest near the floor (CSS default); user can drag up toward top-safe.
+  return { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
 }
 
 function clampPos(right: number, bottom: number): DrawerPos {
-  const { w: drawerW } = measureDrawerSize();
+  const { w: drawerW, h: drawerH } = measureDrawerSize();
   const vw = window.innerWidth;
+  const vh = window.innerHeight;
   const maxRight = Math.max(EDGE_PAD, vw - drawerW - EDGE_PAD);
-  // CSS positions the drawer with `bottom`, so larger values move it upward.
-  // The default/top-safe position is the highest allowed point; drag may only
-  // lower it from there until the drawer bottom reaches the viewport bottom.
-  const maxBottom = defaultBottom();
+  // CSS `bottom` — larger moves the chassis up. Cap so top never goes above TOP_SAFE.
+  const maxBottom = Math.max(MIN_BOTTOM, vh - drawerH - TOP_SAFE);
   return {
     right: Math.min(maxRight, Math.max(EDGE_PAD, right)),
     bottom: Math.min(maxBottom, Math.max(MIN_BOTTOM, bottom)),
@@ -236,17 +236,35 @@ export default function WalletDrawer({
   useEffect(() => {
     if (!isOpen || isMobile) return;
     // Re-clamp on open so old localStorage positions that lifted the paw get fixed.
-    setPos((prev) => {
-      const base = prev ?? defaultPos();
-      const next = clampPos(base.right, base.bottom);
-      applyPosVars(next);
-      try {
-        window.localStorage.setItem(POS_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
+    const reclamp = () => {
+      setPos((prev) => {
+        const base = prev ?? defaultPos();
+        const next = clampPos(base.right, base.bottom);
+        applyPosVars(next);
+        try {
+          window.localStorage.setItem(POS_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    };
+    reclamp();
+    const raf = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(reclamp);
     });
+    const drawer =
+      document.querySelector<HTMLElement>('.ds-wallet-modal--drawer') ||
+      document.querySelector<HTMLElement>('[data-headlessui-portal] .ds-wallet-dashboard');
+    let ro: ResizeObserver | null = null;
+    if (drawer && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => reclamp());
+      ro.observe(drawer);
+    }
+    return () => {
+      window.cancelAnimationFrame(raf);
+      ro?.disconnect();
+    };
   }, [isOpen, isMobile]);
 
   useEffect(() => {

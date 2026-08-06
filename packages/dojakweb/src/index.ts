@@ -112,6 +112,7 @@ export {
   createDclaim,
   createDclaimDeploy,
   buildClaimPayload,
+  buildClaimParcelHtml,
   buildDeployPayload,
   quoteDclaimMint,
   protocolFeeAmount,

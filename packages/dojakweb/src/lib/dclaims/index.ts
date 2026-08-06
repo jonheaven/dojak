@@ -49,6 +49,15 @@ export interface CreateDclaimParams extends DclaimRect {
   deploy?: string;
   note?: string;
   attributes?: Record<string, unknown>;
+  /**
+   * When true (default), mint an HTML parcel that crops the parent image and embeds
+   * the dclaims JSON in `<script type="application/json" id="dclaims">` for indexers.
+   * Set false for JSON-only (smaller, no on-chain crop preview).
+   */
+  visualParcel?: boolean;
+  /** Parent canvas pixel size — required for accurate crop when visualParcel is true. */
+  canvasWidth?: number;
+  canvasHeight?: number;
 }
 
 export interface DclaimFeeQuote {
@@ -138,6 +147,45 @@ export function buildClaimPayload(p: CreateDclaimParams): Record<string, unknown
   return body;
 }
 
+/**
+ * HTML claim parcel: recursive `/content/{parent}` crop + embedded dclaims JSON.
+ * dogex extracts the JSON from `#dclaims` so protocol truth stays indexable.
+ */
+export function buildClaimParcelHtml(
+  payload: Record<string, unknown>,
+  opts: {
+    parent: string;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    canvasWidth: number;
+    canvasHeight: number;
+  },
+): string {
+  const parent = opts.parent.trim().toLowerCase();
+  const x = Math.floor(opts.x);
+  const y = Math.floor(opts.y);
+  const w = Math.max(1, Math.floor(opts.w));
+  const h = Math.max(1, Math.floor(opts.h));
+  const cw = Math.max(w, Math.floor(opts.canvasWidth));
+  const ch = Math.max(h, Math.floor(opts.canvasHeight));
+  const json = JSON.stringify(payload);
+  // Keep HTML tight — every byte costs fees.
+  return (
+    `<!doctype html><html><head><meta charset=utf-8>` +
+    `<meta name=viewport content="width=device-width,initial-scale=1">` +
+    `<script type="application/json" id="dclaims">${json}</script>` +
+    `<style>` +
+    `html,body{margin:0;background:#000;overflow:hidden}` +
+    `.v{width:${w}px;height:${h}px;overflow:hidden;position:relative;max-width:100vw}` +
+    `img{position:absolute;left:-${x}px;top:-${y}px;width:${cw}px;height:${ch}px;max-width:none;image-rendering:pixelated}` +
+    `</style></head><body>` +
+    `<div class=v><img src="/content/${parent}" alt="dclaim ${x},${y} ${w}x${h}"></div>` +
+    `</body></html>`
+  );
+}
+
 export interface DclaimInscribeOptions {
   fromAddress: string;
   privateKeyWIF: string;
@@ -186,7 +234,22 @@ export async function createDclaim(
   },
 ): Promise<SignedInscriptionPair & { payload: Record<string, unknown> }> {
   const payload = buildClaimPayload(claim);
-  const text = JSON.stringify(payload);
+  const visual = claim.visualParcel !== false;
+  const canvasW = claim.canvasWidth ?? claim.w;
+  const canvasH = claim.canvasHeight ?? claim.h;
+  const text =
+    visual && canvasW > 0 && canvasH > 0
+      ? buildClaimParcelHtml(payload, {
+          parent: claim.parent,
+          x: claim.x,
+          y: claim.y,
+          w: claim.w,
+          h: claim.h,
+          canvasWidth: canvasW,
+          canvasHeight: canvasH,
+        })
+      : JSON.stringify(payload);
+  const contentType = visual ? 'text/html;charset=utf-8' : DCLAIMS_CONTENT_TYPE;
   const payments: RevealPaymentOutput[] = [...(wallet.extraRevealPayments ?? [])];
   if (fees) {
     if (fees.mintPrice > 0 && fees.creatorAddress) {
@@ -203,7 +266,7 @@ export async function createDclaim(
     feeRate: wallet.feeRate,
     excludedOutpoints: wallet.excludedOutpoints,
     inscriptionReceiveAddress: wallet.inscriptionReceiveAddress,
-    contentType: DCLAIMS_CONTENT_TYPE,
+    contentType,
     parents: [claim.parent],
     metaprotocol: DCLAIMS_P,
     extraRevealPayments: payments.length ? payments : undefined,
