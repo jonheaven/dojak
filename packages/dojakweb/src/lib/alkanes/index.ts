@@ -23,7 +23,7 @@ export type AlkaneMeta = {
   content_type?: string | null;
 };
 
-export type AmmTemplate = {
+export type AlkaneTemplate = {
   ok: boolean;
   name: string;
   description: string;
@@ -32,8 +32,42 @@ export type AmmTemplate = {
   wasm_hex: string;
   deploy_body_hex: string;
   ops: Record<string, string>;
-  fee_bps: number;
+  fee_bps?: number;
+  domain_tag?: string;
+  sign_payload?: string;
 };
+
+/** @deprecated use AlkaneTemplate */
+export type AmmTemplate = AlkaneTemplate;
+
+export async function fetchAlkaneTemplate(
+  apiBase: string,
+  id: 'amm' | 'oracle' | 'price-oracle' = 'amm',
+): Promise<AlkaneTemplate> {
+  const base = apiBase.replace(/\/$/, '');
+  const r = await fetch(`${base}/api/alkanes/templates/${id}`);
+  const j = (await r.json()) as AlkaneTemplate;
+  if (!j?.ok) throw new Error((j as { error?: string }).error || `${id} template fetch failed`);
+  return j;
+}
+
+export async function fetchAmmTemplate(apiBase: string): Promise<AlkaneTemplate> {
+  return fetchAlkaneTemplate(apiBase, 'amm');
+}
+
+export async function fetchAlkanesTemplatesList(
+  apiBase: string,
+): Promise<Array<{ id: string; name: string; path: string }>> {
+  const base = apiBase.replace(/\/$/, '');
+  const r = await fetch(`${base}/api/alkanes/templates`);
+  const j = (await r.json()) as {
+    ok?: boolean;
+    templates?: Array<{ id: string; name: string; path: string }>;
+    error?: string;
+  };
+  if (j.error && !j.templates) throw new Error(j.error);
+  return Array.isArray(j.templates) ? j.templates : [];
+}
 
 function encodeLeb128(n: bigint): number[] {
   let v = n < 0n ? 0n : n;
@@ -96,14 +130,6 @@ export function hexToBytes(hex: string): Uint8Array {
     out[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
   }
   return out;
-}
-
-export async function fetchAmmTemplate(apiBase: string): Promise<AmmTemplate> {
-  const base = apiBase.replace(/\/$/, '');
-  const r = await fetch(`${base}/api/alkanes/templates/amm`);
-  const j = (await r.json()) as AmmTemplate;
-  if (!j?.ok) throw new Error((j as { error?: string }).error || 'AMM template fetch failed');
-  return j;
 }
 
 export async function fetchAlkanesList(apiBase: string, limit = 40): Promise<AlkaneMeta[]> {

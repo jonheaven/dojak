@@ -9,13 +9,14 @@ import {
   deployAlkaneWasm,
   encodeCellpack,
   fetchAlkanesList,
-  fetchAmmTemplate,
+  fetchAlkaneTemplate,
   type AlkaneMeta,
-  type AmmTemplate,
+  type AlkaneTemplate,
 } from '../../lib/alkanes';
 import { upsertWalletTxJournalEntry } from '../../lib/wallet-tx-journal';
 
 export type AlkanesUiOp = 'deploy-amm' | 'simulate' | 'build-call' | 'broadcast-call';
+export type AlkanesTemplateId = 'amm' | 'oracle' | 'price-oracle';
 
 export interface AlkanesToolsPanelProps {
   initialOp?: AlkanesUiOp;
@@ -41,8 +42,9 @@ export function AlkanesToolsPanel({
   const browser = useBrowserWallet();
   const base = resolveApiBase(dogexApiBase);
   const [op, setOp] = useState<AlkanesUiOp>(initialOp);
+  const [templateId, setTemplateId] = useState<AlkanesTemplateId>('amm');
   const [items, setItems] = useState<AlkaneMeta[]>([]);
-  const [tmpl, setTmpl] = useState<AmmTemplate | null>(null);
+  const [tmpl, setTmpl] = useState<AlkaneTemplate | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,14 +56,17 @@ export function AlkanesToolsPanel({
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const [list, amm] = await Promise.all([fetchAlkanesList(base), fetchAmmTemplate(base)]);
+      const [list, t] = await Promise.all([
+        fetchAlkanesList(base),
+        fetchAlkaneTemplate(base, templateId),
+      ]);
       setItems(list);
-      setTmpl(amm);
+      setTmpl(t);
       if (list[0]) setTarget(list[0].id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'load failed');
     }
-  }, [base]);
+  }, [base, templateId]);
 
   useEffect(() => {
     void refresh();
@@ -71,7 +76,7 @@ export function AlkanesToolsPanel({
     setError(null);
     setStatus(null);
     if (!tmpl) {
-      setError('AMM template not loaded');
+      setError('Template not loaded');
       return;
     }
     if (walletType !== 'browser' || !address || !browser.wallet?.privateKey) {
@@ -85,9 +90,9 @@ export function AlkanesToolsPanel({
         contentType: tmpl.content_type,
         fromAddress: address,
         privateKeyWIF: browser.wallet.privateKey,
-        label: 'Ðalkanes AMM deploy',
+        label: `Ðalkanes ${tmpl.name} deploy`,
       });
-      setStatus(`Deployed AMM · ${r.inscriptionId}`);
+      setStatus(`Deployed ${tmpl.name} · ${r.inscriptionId}`);
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'deploy failed');
@@ -183,9 +188,9 @@ export function AlkanesToolsPanel({
     <div className={`rounded-xl border border-white/10 bg-black/40 p-4 text-white ${className}`}>
       <div className="mb-3">
         <p className="text-xs uppercase tracking-wide text-cyan-300/80">Ðalkanes</p>
-        <h3 className="text-lg font-semibold">WASM contracts · AMM demo</h3>
+        <h3 className="text-lg font-semibold">WASM contracts · templates</h3>
         <p className="mt-1 text-sm text-white/60">
-          Deploy the reference xy=k pool (30 bps), simulate swaps, build OP_RETURN 0xD1 scripts.{' '}
+          Deploy AMM, block/time oracle, or signed price oracle; simulate and broadcast OP_RETURN 0xD1.{' '}
           <a
             className="text-cyan-300 underline"
             href="https://dogenals.com/alkanescan"
@@ -240,18 +245,33 @@ export function AlkanesToolsPanel({
 
       {op === 'deploy-amm' && (
         <div className="space-y-3">
+          <label className="block text-sm">
+            Template
+            <select
+              className="mt-1 w-full rounded border border-white/10 bg-black/50 px-3 py-2 text-sm"
+              value={templateId}
+              onChange={(e) => setTemplateId(e.target.value as AlkanesTemplateId)}
+            >
+              <option value="amm">AMM (xy=k)</option>
+              <option value="oracle">Block/time oracle</option>
+              <option value="price-oracle">Signed price oracle</option>
+            </select>
+          </label>
           <p className="text-sm text-white/70">
             {tmpl
-              ? `Template ${tmpl.name} · ${tmpl.code_hash.slice(0, 16)}… · fee ${tmpl.fee_bps} bps`
+              ? `${tmpl.name} · ${tmpl.code_hash.slice(0, 16)}…${
+                  tmpl.fee_bps != null ? ` · fee ${tmpl.fee_bps} bps` : ''
+                }`
               : 'Loading template…'}
           </p>
+          {tmpl?.description && <p className="text-xs text-white/50">{tmpl.description}</p>}
           <button
             type="button"
             disabled={busy || !tmpl}
             onClick={() => void onDeployAmm()}
             className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
-            {busy ? 'Inscribing…' : 'One-click deploy AMM'}
+            {busy ? 'Inscribing…' : `One-click deploy ${tmpl?.name ?? 'template'}`}
           </button>
           <ul className="mt-3 max-h-40 space-y-1 overflow-auto font-mono text-xs text-white/60">
             {items.map((m) => (
