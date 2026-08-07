@@ -23,7 +23,8 @@ export type AlkanesTemplateId =
   | 'token'
   | 'tax-amm'
   | 'ico'
-  | 'prediction';
+  | 'prediction'
+  | 'custody-amm';
 
 export interface AlkanesToolsPanelProps {
   initialOp?: AlkanesUiOp;
@@ -57,6 +58,8 @@ export function AlkanesToolsPanel({
   const [busy, setBusy] = useState(false);
   const [target, setTarget] = useState('0:0');
   const [amountIn, setAmountIn] = useState('10000');
+  const [attachDoge, setAttachDoge] = useState('0');
+  const [callMode, setCallMode] = useState<'swap' | 'buy-yes' | 'buy-no' | 'resolve'>('swap');
   const [simOut, setSimOut] = useState<string | null>(null);
   const [scriptHex, setScriptHex] = useState<string | null>(null);
 
@@ -108,6 +111,19 @@ export function AlkanesToolsPanel({
     }
   };
 
+  const buildCallInputs = (): Array<number | string> => {
+    if (callMode === 'buy-yes') return [1, 1, amountIn];
+    if (callMode === 'buy-no') return [2, 1, amountIn];
+    if (callMode === 'resolve') return [3];
+    return [2, amountIn];
+  };
+
+  const attachSatoshis = (() => {
+    const n = Number(attachDoge);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return Math.round(n * 1e8);
+  })();
+
   const onSimulateSwap = async () => {
     setSimOut(null);
     setError(null);
@@ -119,8 +135,9 @@ export function AlkanesToolsPanel({
         body: JSON.stringify({
           target_block: Number(b),
           target_tx: Number(t),
-          inputs: ['2', amountIn],
+          inputs: buildCallInputs().map(String),
           fuel: 500_000,
+          value: attachSatoshis || undefined,
         }),
       });
       const j = await r.json();
@@ -134,19 +151,20 @@ export function AlkanesToolsPanel({
     setError(null);
     const [b, t] = target.split(':').map((x) => x.trim());
     try {
+      const inputs = buildCallInputs();
       const cell = encodeCellpack({
         targetBlock: Number(b),
         targetTx: Number(t),
         fuel: 200_000,
-        inputs: [2, amountIn],
+        inputs,
       });
       const hex = buildAlkanesCallScriptHex(cell);
       setScriptHex(hex);
       upsertWalletTxJournalEntry({
         protocol: 'alkanes',
         action: 'build-call',
-        title: 'Ðalkanes swap call script',
-        summary: `target ${target} · amount ${amountIn}`,
+        title: 'Ðalkanes call script',
+        summary: `target ${target} · ${callMode} · amount ${amountIn}`,
         status: 'draft',
         metadata: { scriptHex: hex },
       });
@@ -168,10 +186,11 @@ export function AlkanesToolsPanel({
       const r = await broadcastAlkanesCall({
         targetBlock: Number(b),
         targetTx: Number(t),
-        inputs: [2, amountIn],
+        inputs: buildCallInputs(),
         fuel: 200_000,
         fromAddress: address,
         privateKeyWIF: browser.wallet.privateKey,
+        attachSatoshis: attachSatoshis || undefined,
       });
       setScriptHex(r.scriptHex);
       setStatus(`Broadcast Ðalkanes call · ${r.txid}`);
@@ -179,7 +198,7 @@ export function AlkanesToolsPanel({
         protocol: 'alkanes',
         action: 'broadcast-call',
         title: 'Ðalkanes call',
-        summary: `target ${target} · amount ${amountIn}`,
+        summary: `target ${target} · ${callMode} · amount ${amountIn}`,
         status: 'broadcasted',
         txid: r.txid,
         metadata: { scriptHex: r.scriptHex, explorer: `https://explorer.dogenals.com/tx/${r.txid}` },
@@ -266,6 +285,7 @@ export function AlkanesToolsPanel({
               <option value="oracle">Block/time oracle</option>
               <option value="price-oracle">Signed price oracle</option>
               <option value="prediction">Prediction market</option>
+              <option value="custody-amm">DOGE custody AMM</option>
             </select>
           </label>
           <p className="text-sm text-white/70">
@@ -316,11 +336,33 @@ export function AlkanesToolsPanel({
             />
           </label>
           <label className="block text-sm">
-            Amount in (swap0→1)
+            Call mode
+            <select
+              className="mt-1 w-full rounded border border-white/10 bg-black/50 px-3 py-2 text-sm"
+              value={callMode}
+              onChange={(e) => setCallMode(e.target.value as typeof callMode)}
+            >
+              <option value="swap">AMM swap0→1</option>
+              <option value="buy-yes">Prediction buy YES</option>
+              <option value="buy-no">Prediction buy NO</option>
+              <option value="resolve">Prediction resolve</option>
+            </select>
+          </label>
+          <label className="block text-sm">
+            Amount {callMode === 'swap' ? '(swap / custody ain)' : '(stake koinu; 0 = attach)'}
             <input
               className="mt-1 w-full rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm"
               value={amountIn}
               onChange={(e) => setAmountIn(e.target.value)}
+            />
+          </label>
+          <label className="block text-sm">
+            Attach DOGE (alkane_value via tip out)
+            <input
+              className="mt-1 w-full rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm"
+              value={attachDoge}
+              onChange={(e) => setAttachDoge(e.target.value)}
+              placeholder="0.01"
             />
           </label>
           {op === 'simulate' ? (
@@ -329,7 +371,7 @@ export function AlkanesToolsPanel({
               onClick={() => void onSimulateSwap()}
               className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium"
             >
-              Dry-run swap on dogex
+              Dry-run on dogex
             </button>
           ) : op === 'broadcast-call' ? (
             <button

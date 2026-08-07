@@ -47,7 +47,8 @@ export type AlkanesTemplateId =
   | 'token'
   | 'tax-amm'
   | 'ico'
-  | 'prediction';
+  | 'prediction'
+  | 'custody-amm';
 
 export async function fetchAlkaneTemplate(
   apiBase: string,
@@ -173,6 +174,8 @@ export async function broadcastAlkanesCall(params: {
   fromAddress: string;
   privateKeyWIF: string;
   feeRate?: number;
+  /** Extra DOGE output (koinu) — counted as alkane_value via change heuristic. */
+  attachSatoshis?: number;
 }): Promise<{ txid: string; rawHex: string; scriptHex: string }> {
   const cell = encodeCellpack({
     targetBlock: params.targetBlock,
@@ -182,12 +185,17 @@ export async function broadcastAlkanesCall(params: {
   });
   const payload = buildAlkanesCallPayload(cell);
   const scriptHex = buildAlkanesCallScriptHex(cell);
+  const attach = params.attachSatoshis ?? 0;
   const signed = await signOpReturnTransaction({
     message: '',
     rawPayload: payload,
     fromAddress: params.fromAddress,
     privateKeyWIF: params.privateKeyWIF,
     feeRate: params.feeRate ?? 1000,
+    tip:
+      attach >= 100_000
+        ? { address: params.fromAddress, satoshis: attach }
+        : undefined,
   });
   const txid = await broadcastSignedTransaction(signed.rawHex);
   upsertWalletTxJournalEntry({
@@ -196,9 +204,11 @@ export async function broadcastAlkanesCall(params: {
     protocol: 'alkanes',
     action: 'call',
     title: 'Ðalkanes call',
-    summary: `target ${params.targetBlock}:${params.targetTx}`,
+    summary: `target ${params.targetBlock}:${params.targetTx}${
+      attach ? ` · attach ${attach} koinu` : ''
+    }`,
     status: 'broadcasted',
-    metadata: { scriptHex, inputs: params.inputs.map(String) },
+    metadata: { scriptHex, inputs: params.inputs.map(String), attachSatoshis: attach || undefined },
   });
   return { txid, rawHex: signed.rawHex, scriptHex };
 }
