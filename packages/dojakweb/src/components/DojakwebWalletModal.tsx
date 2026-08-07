@@ -38,6 +38,8 @@ import {
   MusicalNoteIcon,
   DocumentTextIcon,
   CircleStackIcon,
+  SparklesIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
 import { WalletMenuItems } from './wallet/WalletMenuItems';
@@ -212,7 +214,7 @@ export interface DojakwebWalletModalProps {
   /** Host open focus: Assets → NFT → ÐLotto filter */
   initialNftFilter?: 'all' | 'media' | 'dlotto';
   initialDashboardTab?: 'assets' | 'transactions' | 'listings';
-  initialAssetType?: 'nft' | 'drc20' | 'treats';
+  initialAssetType?: 'nft' | 'drc20' | 'treats' | 'charms' | 'alkanes';
 }
 
 type WalletStep =
@@ -670,7 +672,7 @@ export function DojakwebWalletModal({
   const [selectedLocalWalletAddress, setSelectedLocalWalletAddress] = useState<string | null>(null);
   const [walletNameDraft, setWalletNameDraft] = useState('');
   const [isSavingWalletName, setIsSavingWalletName] = useState(false);
-  const [assetType, setAssetType] = useState<'nft' | 'drc20' | 'treats'>('nft');
+  const [assetType, setAssetType] = useState<'nft' | 'drc20' | 'treats' | 'charms' | 'alkanes'>('nft');
   const [nftFilter, setNftFilter] = useState<'all' | 'media' | 'dlotto'>('all');
   /** inscriptionId → is ÐLotto (async classification cache) */
   const [dlottoFlags, setDlottoFlags] = useState<Record<string, boolean>>({});
@@ -681,6 +683,8 @@ export function DojakwebWalletModal({
   const [spendableBreakBusy, setSpendableBreakBusy] = useState(false);
   const [drc20Tokens, setDrc20Tokens] = useState<DRC20Token[]>([]);
   const [treatsTokens, setTreatsTokens] = useState<Array<{ tick: string; balance: string }>>([]);
+  const [charmsAssets, setCharmsAssets] = useState<Array<{ id: string; ticker: string; balance: string }>>([]);
+  const [alkanesAssets, setAlkanesAssets] = useState<Array<{ id: string; code_hash: string; code_len: number }>>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsError, setAssetsError] = useState<string | null>(null);
   const [sendPrefillAddress, setSendPrefillAddress] = useState<string | null>(null);
@@ -2402,6 +2406,50 @@ export function DojakwebWalletModal({
       setInscriptions(nfts);
       setDrc20Tokens(tokens);
       setTreatsTokens(treats);
+
+      // Charms: UTXO scan (best-effort)
+      try {
+        const { charmsService } = await import('../services/charmsService');
+        const utxoResponse = await walletDataApi.fetchUtxos(address);
+        const raw = utxoResponse as { utxos?: Array<{ txid?: string; vout?: number }> };
+        const utxos = Array.isArray(raw?.utxos) ? raw.utxos : [];
+        const charmResults = await Promise.allSettled(
+          utxos
+            .filter((u) => typeof u.txid === 'string' && Number.isFinite(Number(u.vout)))
+            .slice(0, 80)
+            .map((u) => charmsService.getCharmsByUtxo(String(u.txid), Number(u.vout))),
+        );
+        const nextCharms: Array<{ id: string; ticker: string; balance: string }> = [];
+        for (const r of charmResults) {
+          if (r.status !== 'fulfilled') continue;
+          for (const charm of r.value) {
+            if (charm.spent_by_txid) continue;
+            const bal = String(
+              charm.charm_data?.balance ?? charm.charm_data?.amount ?? charm.charm_data?.value ?? '1',
+            );
+            nextCharms.push({
+              id: `${charm.txid}:${charm.vout}:${charm.app_id}`,
+              ticker: charm.app_id,
+              balance: bal,
+            });
+          }
+        }
+        setCharmsAssets(nextCharms);
+      } catch {
+        setCharmsAssets([]);
+      }
+
+      // Ðalkanes: indexed contracts (global list; wallet deploys appear after index)
+      try {
+        const { fetchAlkanesList } = await import('../lib/alkanes');
+        const base = getIndexerApiBase().replace(/\/+$/, '');
+        const list = await fetchAlkanesList(base, 40);
+        setAlkanesAssets(
+          list.map((m) => ({ id: m.id, code_hash: m.code_hash, code_len: m.code_len })),
+        );
+      } catch {
+        setAlkanesAssets([]);
+      }
     } catch (err) {
       setAssetsError(t('modal.errors.assetsLoad'));
     } finally {
@@ -4337,7 +4385,7 @@ export function DojakwebWalletModal({
                                 <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2.5">
                                   <Listbox
                                     value={assetType}
-                                    onChange={(v: 'nft' | 'drc20' | 'treats') => setAssetType(v)}
+                                    onChange={(v: 'nft' | 'drc20' | 'treats' | 'charms' | 'alkanes') => setAssetType(v)}
                                   >
                                     <div className="relative min-w-0">
                                       <ListboxButton
@@ -4354,7 +4402,11 @@ export function DojakwebWalletModal({
                                             ? t('modal.assets.nftOption')
                                             : assetType === 'treats'
                                               ? t('modal.assets.treatsOption')
-                                              : t('modal.assets.drc20Option')}
+                                              : assetType === 'charms'
+                                                ? t('modal.assets.charmsOption')
+                                                : assetType === 'alkanes'
+                                                  ? t('modal.assets.alkanesOption')
+                                                  : t('modal.assets.drc20Option')}
                                         </span>
                                         <ChevronDownIcon
                                           className={cx(
@@ -4378,6 +4430,8 @@ export function DojakwebWalletModal({
                                             { id: 'nft' as const, label: t('modal.assets.nftOption') },
                                             { id: 'treats' as const, label: t('modal.assets.treatsOption') },
                                             { id: 'drc20' as const, label: t('modal.assets.drc20Option') },
+                                            { id: 'charms' as const, label: t('modal.assets.charmsOption') },
+                                            { id: 'alkanes' as const, label: t('modal.assets.alkanesOption') },
                                           ] as const
                                         ).map((opt) => (
                                           <ListboxOption
@@ -4446,6 +4500,47 @@ export function DojakwebWalletModal({
                                           </div>
                                           <div className="text-sm font-semibold tabular-nums text-white">
                                             {Number(token.balance).toLocaleString()}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                ) : assetType === 'charms' ? (
+                                  charmsAssets.length === 0 ? (
+                                    <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                                      <SparklesIcon className="h-8 w-8 text-white/30" />
+                                      <div className="text-sm font-semibold text-white">{t('modal.assets.noCharmsTitle')}</div>
+                                      <div className="text-xs text-white/45">{t('modal.assets.noCharmsHint')}</div>
+                                    </div>
+                                  ) : (
+                                    <div className="divide-y divide-white/5 px-1 py-1">
+                                      {charmsAssets.map((c) => (
+                                        <div key={c.id} className="flex items-center justify-between rounded-lg px-3 py-2.5 transition hover:bg-white/5">
+                                          <div className="min-w-0">
+                                            <div className="truncate text-sm font-semibold text-white">{c.ticker}</div>
+                                            <div className="truncate font-mono text-[10px] text-white/40">{c.id}</div>
+                                          </div>
+                                          <div className="text-sm font-semibold tabular-nums text-white">{c.balance}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                ) : assetType === 'alkanes' ? (
+                                  alkanesAssets.length === 0 ? (
+                                    <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                                      <CpuChipIcon className="h-8 w-8 text-white/30" />
+                                      <div className="text-sm font-semibold text-white">{t('modal.assets.noAlkanesTitle')}</div>
+                                      <div className="text-xs text-white/45">{t('modal.assets.noAlkanesHint')}</div>
+                                    </div>
+                                  ) : (
+                                    <div className="divide-y divide-white/5 px-1 py-1">
+                                      {alkanesAssets.map((a) => (
+                                        <div key={a.id} className="flex items-center justify-between rounded-lg px-3 py-2.5 transition hover:bg-white/5">
+                                          <div className="min-w-0">
+                                            <div className="font-mono text-sm font-semibold text-cyan-200">{a.id}</div>
+                                            <div className="truncate font-mono text-[10px] text-white/40">
+                                              {a.code_len} B · {a.code_hash.slice(0, 16)}…
+                                            </div>
                                           </div>
                                         </div>
                                       ))}

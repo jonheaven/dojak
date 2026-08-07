@@ -332,6 +332,17 @@ export type { CharmsToolsPanelProps, CharmsUiOp } from './components/charms/Char
 export { CharmsCreateModal } from './components/CharmsCreateModal';
 export { CharmsTransferModal } from './components/CharmsTransferModal';
 export type { CharmsToken } from './lib/charms/types';
+export { AlkanesToolsPanel } from './components/alkanes/AlkanesToolsPanel';
+export type { AlkanesToolsPanelProps, AlkanesUiOp } from './components/alkanes/AlkanesToolsPanel';
+export {
+  encodeCellpack,
+  buildAlkanesCallScriptHex,
+  deployAlkaneWasm,
+  fetchAmmTemplate,
+  fetchAlkanesList,
+  ALKANES_MAGIC,
+} from './lib/alkanes';
+export type { AlkaneMeta, AmmTemplate } from './lib/alkanes';
 export type {
   CommandDogTxMempoolBody,
   CommandDogTxStatusBody,

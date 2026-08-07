@@ -14,7 +14,16 @@ export type DojakwebWalletTxEntry = {
   id: string;
   txid?: string;
   address?: string | null;
-  protocol?: 'dogecoin' | 'doginals' | 'dunes' | 'treats' | 'charms' | 'marketplace' | 'dxd' | 'unknown';
+  protocol?:
+    | 'dogecoin'
+    | 'doginals'
+    | 'dunes'
+    | 'treats'
+    | 'charms'
+    | 'alkanes'
+    | 'marketplace'
+    | 'dxd'
+    | 'unknown';
   action: string;
   title: string;
   summary?: string;

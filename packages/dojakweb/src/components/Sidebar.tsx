@@ -18,6 +18,7 @@ import {
   HomeIcon,
   WrenchScrewdriverIcon,
   RssIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import { useFeatureStore, type FeatureId } from '../stores/featureStore';
 
@@ -53,6 +54,7 @@ const dogeTokensItems = [
   { id: 'drc20',  label: 'Legacy ÐRC-20', icon: CurrencyDollarIcon },
   { id: 'dunes',  label: 'Ðunes',  icon: CircleStackIcon },
   { id: 'charms', label: 'Charms', icon: SparklesIcon },
+  { id: 'alkanes', label: 'Ðalkanes', icon: CpuChipIcon },
 ] as const;
 
 const marketplaceItems = [

@@ -28,6 +28,7 @@ const FEATURE_LABELS: Record<FeatureId, string> = {
   dunes: 'Ðunes',
   'universal-drc20': 'Universal ÐRC-20 (legacy)',
   charms: 'Charms',
+  alkanes: 'Ðalkanes',
 };
 
 const FEATURE_DESCRIPTIONS: Record<FeatureId, string> = {
@@ -52,7 +53,8 @@ const FEATURE_DESCRIPTIONS: Record<FeatureId, string> = {
   drc20: 'Classic inscription DRC-20 — read-only balances; migrate to Ðunes for Era 2',
   dunes: 'Ðunes (under ÐogeTokens) — UTXO-native fungible token protocol',
   'universal-drc20': 'Legacy Universal ÐRC-20 nav — use ÐogeTreats instead',
-  charms: 'Charms (under ÐogeTokens) — cross-chain token protocol',
+  charms: 'Charms (under ÐogeTokens) — ZK / cross-chain charm tokens',
+  alkanes: 'Ðalkanes (under ÐogeTokens) — WASM contracts + AMM (0xD1)',
 };
 
 export const FeatureVisibilitySettings: React.FC<FeatureVisibilitySettingsProps> = ({

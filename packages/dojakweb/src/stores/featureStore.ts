@@ -23,7 +23,8 @@ export type FeatureId =
   | 'treats'
   | 'dunes'
   | 'universal-drc20'
-  | 'charms';
+  | 'charms'
+  | 'alkanes';
 
 interface FeatureVisibilityState {
   // Feature visibility flags
@@ -66,6 +67,7 @@ const DEFAULT_FEATURES: Record<FeatureId, boolean> = {
   dunes: true,
   'universal-drc20': false,
   charms: true,
+  alkanes: true,
 };
 
 export const useFeatureStore = create<FeatureVisibilityState>()(
@@ -101,7 +103,7 @@ export const useFeatureStore = create<FeatureVisibilityState>()(
     }),
     {
       name: 'dojakweb-feature-visibility',
-      version: 3,
+      version: 4,
       migrate: (persistedState, fromVersion) => {
         if (
           persistedState &&
@@ -119,6 +121,10 @@ export const useFeatureStore = create<FeatureVisibilityState>()(
             if (fromVersion < 3) {
               if (f.treats === undefined) f.treats = true;
               f['universal-drc20'] = false;
+            }
+            if (fromVersion < 4) {
+              if (f.alkanes === undefined) f.alkanes = true;
+              if (f.charms === undefined) f.charms = true;
             }
           }
         }

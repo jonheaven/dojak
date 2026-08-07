@@ -8,6 +8,7 @@ import {
   CubeIcon,
   CircleStackIcon,
   SparklesIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useDataProvider } from '../providers/DataProvider';
@@ -18,6 +19,7 @@ import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { DunesTab } from './DunesTab';
 import { CharmsTab } from './CharmsTab';
+import { AlkanesToolsPanel } from './alkanes/AlkanesToolsPanel';
 import { dogexCdnContentUrl } from '../utils/api';
 
 interface WalletProps {
@@ -226,6 +228,17 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
             error={charmsError ?? null}
             onRefresh={refreshCharms}
           />
+        ),
+      },
+      {
+        id: 'alkanes',
+        name: 'Ðalkanes',
+        icon: CpuChipIcon,
+        badge: 0,
+        content: (
+          <div className="p-2">
+            <AlkanesToolsPanel />
+          </div>
         ),
       },
     ],
