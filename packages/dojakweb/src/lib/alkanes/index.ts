@@ -46,7 +46,8 @@ export type AlkanesTemplateId =
   | 'price-oracle'
   | 'token'
   | 'tax-amm'
-  | 'ico';
+  | 'ico'
+  | 'prediction';
 
 export async function fetchAlkaneTemplate(
   apiBase: string,

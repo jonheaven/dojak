@@ -22,7 +22,8 @@ export type AlkanesTemplateId =
   | 'price-oracle'
   | 'token'
   | 'tax-amm'
-  | 'ico';
+  | 'ico'
+  | 'prediction';
 
 export interface AlkanesToolsPanelProps {
   initialOp?: AlkanesUiOp;
@@ -264,6 +265,7 @@ export function AlkanesToolsPanel({
               <option value="ico">ICO raise</option>
               <option value="oracle">Block/time oracle</option>
               <option value="price-oracle">Signed price oracle</option>
+              <option value="prediction">Prediction market</option>
             </select>
           </label>
           <p className="text-sm text-white/70">
