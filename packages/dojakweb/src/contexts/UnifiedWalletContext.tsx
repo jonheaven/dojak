@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMyDogeWallet } from './useMyDogeWallet';
 import { useBrowserWallet } from './BrowserWalletContext';
-import { BrowserWallet } from '../lib/browser-wallet';
+import { BrowserWallet, signDogecoinMessageWithWif } from '../lib/browser-wallet';
 import { LedgerWallet } from '../lib/ledger-wallet';
 import { DogewatchWallet } from '../lib/dogewatch-wallet';
 import {
@@ -1335,9 +1335,18 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         return signature;
       }
 
+      if (walletType === 'browser') {
+        warnIfUnexpectedSigningHostname('Message signing');
+        const session = browser.wallet;
+        if (session?.privateKey && (!address || session.address === address)) {
+          return signDogecoinMessageWithWif(session.privateKey, message);
+        }
+        return new BrowserWallet().signMessage(message, undefined, address ?? undefined);
+      }
+
       throw new Error('Message signing is not supported for the current wallet');
     },
-    [isInitialized, myDoge, walletType]
+    [address, browser.wallet, isInitialized, myDoge, walletType]
   );
 
   const signPSBT = useCallback(

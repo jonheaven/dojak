@@ -292,6 +292,14 @@ async function signDogecoinMessage(privateKeyWif: string, message: string): Prom
   return toBase64(compactSignature);
 }
 
+/** Sign a Dogecoin message with a WIF already held in memory (unlocked session). */
+export async function signDogecoinMessageWithWif(
+  privateKeyWif: string,
+  message: string
+): Promise<string> {
+  return signDogecoinMessage(privateKeyWif, message);
+}
+
 async function buildWalletDataFromPrivateKey(
   privateKeyBytes: Uint8Array,
   network: NetworkType,
@@ -604,6 +612,23 @@ export class BrowserWallet {
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to load wallet: ${message}`);
     }
+  }
+
+  /** Prefer explicit password, else tab session unlock secret (stay unlocked until tab end). */
+  async resolveUnlockPassword(password?: string): Promise<string | undefined> {
+    if (password) return password;
+    try {
+      const { createDojakwebSessionSecretStore } = await import('./dojakweb-biometric');
+      return (await createDojakwebSessionSecretStore().getSecret()) ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Load vault for signing — uses session unlock when React password state is empty. */
+  async loadWalletForSigning(password?: string, address?: string): Promise<WalletData | null> {
+    const pw = await this.resolveUnlockPassword(password);
+    return this.loadWallet(pw, address);
   }
 
   async loadSeedMaterial(
@@ -1210,7 +1235,7 @@ export class BrowserWallet {
 
     warnIfUnexpectedSigningHostname('Message signing');
 
-    const wallet = await this.loadWallet(password, address);
+    const wallet = await this.loadWalletForSigning(password, address);
     if (!wallet) {
       throw new Error('No browser wallet is available for signing');
     }
@@ -1231,7 +1256,7 @@ export class BrowserWallet {
 
     warnIfUnexpectedSigningHostname('PSDT signing');
 
-    const wallet = await this.loadWallet(password, address);
+    const wallet = await this.loadWalletForSigning(password, address);
     if (!wallet) {
       throw new Error('No browser wallet is available for signing');
     }
@@ -1253,7 +1278,7 @@ export class BrowserWallet {
 
     warnIfUnexpectedSigningHostname('PSDT signing');
 
-    const wallet = await this.loadWallet(password, address);
+    const wallet = await this.loadWalletForSigning(password, address);
     if (!wallet) {
       throw new Error('No browser wallet is available for signing');
     }
@@ -1289,7 +1314,7 @@ export class BrowserWallet {
       throw new Error('Intent has expired');
     }
 
-    const wallet = await this.loadWallet(password, address);
+    const wallet = await this.loadWalletForSigning(password, address);
     if (!wallet) {
       throw new Error('No browser wallet is available for intent signing');
     }
