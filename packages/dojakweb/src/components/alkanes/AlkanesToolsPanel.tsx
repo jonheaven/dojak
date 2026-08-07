@@ -26,7 +26,8 @@ export type AlkanesTemplateId =
   | 'prediction'
   | 'custody-amm'
   | 'event-oracle'
-  | 'poly-market';
+  | 'poly-market'
+  | 'multi-market';
 
 export interface AlkanesToolsPanelProps {
   initialOp?: AlkanesUiOp;
@@ -290,6 +291,7 @@ export function AlkanesToolsPanel({
               <option value="custody-amm">DOGE custody AMM</option>
               <option value="event-oracle">Event oracle (Polymarket mirror)</option>
               <option value="poly-market">Polymarket-mirrored market</option>
+              <option value="multi-market">Multi-choice Polymarket market</option>
             </select>
           </label>
           <p className="text-sm text-white/70">

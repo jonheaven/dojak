@@ -50,7 +50,8 @@ export type AlkanesTemplateId =
   | 'prediction'
   | 'custody-amm'
   | 'event-oracle'
-  | 'poly-market';
+  | 'poly-market'
+  | 'multi-market';
 
 export async function fetchAlkaneTemplate(
   apiBase: string,
