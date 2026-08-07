@@ -131,6 +131,11 @@ export function setWalletApprovalWorking(working: boolean, error?: string) {
   emit();
 }
 
+/** True while Approve is signing/broadcasting — Cancel / drawer-close must not abort. */
+export function isWalletApprovalWorking(): boolean {
+  return pending?.status === 'working';
+}
+
 export function resolveWalletApproval(value: unknown) {
   if (!pending) return;
   const p = pending;
@@ -142,14 +147,22 @@ export function resolveWalletApproval(value: unknown) {
   closeDrawer();
 }
 
-export function rejectWalletApproval(message = 'User rejected the request') {
-  if (!pending) return;
+/**
+ * Reject / dismiss the pending approval.
+ * Returns false if signing is already in flight — Cancel is too late once broadcast may have started.
+ */
+export function rejectWalletApproval(message = 'User rejected the request'): boolean {
+  if (!pending) return false;
+  if (pending.status === 'working') {
+    return false;
+  }
   const p = pending;
   pending = null;
   emit();
   p.reject(new WalletApprovalCancelledError(message));
   // Same UX as pressing X — dismiss the paw / drawer after reject.
   closeDrawer();
+  return true;
 }
 
 export class WalletApprovalCancelledError extends Error {

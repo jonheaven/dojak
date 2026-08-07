@@ -14,6 +14,7 @@ import { useDxHostStore, type WalletOpenFocus } from '../stores/dxHostStore';
 import { useIsMobileWallet } from '../hooks/useMediaQuery';
 import {
   rejectWalletApproval,
+  isWalletApprovalWorking,
   walletApprovalStore,
 } from '../stores/walletApprovalStore';
 
@@ -79,7 +80,12 @@ export function ConnectWalletButton({
   }, [approvalPending?.id]);
 
   const handleCloseDrawer = useCallback(() => {
-    if (walletApprovalStore.getSnapshot()) {
+    const pending = walletApprovalStore.getSnapshot();
+    if (pending) {
+      // Signing already in flight — closing would orphan a possibly-broadcast tx.
+      if (isWalletApprovalWorking() || pending.status === 'working') {
+        return;
+      }
       rejectWalletApproval('User closed the wallet');
     }
     setDrawerOpen(false);

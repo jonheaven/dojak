@@ -103,15 +103,9 @@ export function WalletApprovalPanel() {
   }, [browser, unlockPassword]);
 
   const onReject = useCallback(() => {
-    // Allow Cancel even while Working… — UTXO/indexer waits can stick for a long time
-    // after a rapid re-bet; users must be able to bail without refreshing the tab.
     if (!pending) return;
-    if (pending.status === 'working') {
-      approveLockRef.current = false;
-      rejectWalletApproval('Cancelled while signing');
-      return;
-    }
-    if (approveLockRef.current) return;
+    // Once signing/broadcast has started, Cancel is too late (tx may already be on-chain).
+    if (pending.status === 'working' || approveLockRef.current) return;
     rejectWalletApproval('User rejected the request');
   }, [pending]);
 
@@ -218,21 +212,32 @@ export function WalletApprovalPanel() {
         <button
           type="button"
           className="ds-wallet-approval__btn-reject"
-          disabled={unlockBusy}
+          disabled={busy}
+          aria-disabled={working}
+          title={
+            working
+              ? 'Signing already started — Cancel is unavailable once broadcast may be on-chain'
+              : undefined
+          }
           onClick={onReject}
         >
-          {working ? 'Cancel' : pending.rejectLabel || 'Reject'}
+          {pending.rejectLabel || 'Reject'}
         </button>
         <button
           type="button"
           className="ds-wallet-approval__btn-approve"
           disabled={busy || !sessionReady}
-          aria-busy={pending.status === 'working'}
+          aria-busy={working}
           onClick={() => void onApprove()}
         >
-          {pending.status === 'working' ? 'Working…' : pending.approveLabel || 'Approve'}
+          {working ? 'Signing…' : pending.approveLabel || 'Approve'}
         </button>
       </div>
+      {working ? (
+        <p className="ds-wallet-approval__hint" style={{ marginTop: '0.5rem', opacity: 0.85 }}>
+          Do not close this wallet — broadcast may already be on-chain.
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -29,6 +29,7 @@ export {
   openWalletDrawer,
   WalletApprovalCancelledError,
   isWalletApprovalCancelled,
+  isWalletApprovalWorking,
   type WalletApprovalRequest,
   type WalletApprovalDetail,
   type WalletApprovalSession,
