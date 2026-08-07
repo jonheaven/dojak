@@ -5,6 +5,7 @@ import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
 import { useUnifiedWallet } from '../../contexts/useUnifiedWallet';
 import {
   buildAlkanesCallScriptHex,
+  broadcastAlkanesCall,
   deployAlkaneWasm,
   encodeCellpack,
   fetchAlkanesList,
@@ -14,7 +15,7 @@ import {
 } from '../../lib/alkanes';
 import { upsertWalletTxJournalEntry } from '../../lib/wallet-tx-journal';
 
-export type AlkanesUiOp = 'deploy-amm' | 'simulate' | 'build-call';
+export type AlkanesUiOp = 'deploy-amm' | 'simulate' | 'build-call' | 'broadcast-call';
 
 export interface AlkanesToolsPanelProps {
   initialOp?: AlkanesUiOp;
@@ -142,6 +143,33 @@ export function AlkanesToolsPanel({
     }
   };
 
+  const onBroadcastCall = async () => {
+    setError(null);
+    setStatus(null);
+    if (walletType !== 'browser' || !address || !browser.wallet?.privateKey) {
+      setError('Unlock Local Browser Wallet to broadcast');
+      return;
+    }
+    const [b, t] = target.split(':').map((x) => x.trim());
+    setBusy(true);
+    try {
+      const r = await broadcastAlkanesCall({
+        targetBlock: Number(b),
+        targetTx: Number(t),
+        inputs: [2, amountIn],
+        fuel: 200_000,
+        fromAddress: address,
+        privateKeyWIF: browser.wallet.privateKey,
+      });
+      setScriptHex(r.scriptHex);
+      setStatus(`Broadcast Ðalkanes call · ${r.txid}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'broadcast failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className={`rounded-xl border border-white/10 bg-black/40 p-4 text-white ${className}`}>
       <div className="mb-3">
@@ -158,6 +186,7 @@ export function AlkanesToolsPanel({
             ['deploy-amm', 'Deploy AMM'],
             ['simulate', 'Simulate'],
             ['build-call', 'Build call'],
+            ['broadcast-call', 'Broadcast call'],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -211,7 +240,7 @@ export function AlkanesToolsPanel({
         </div>
       )}
 
-      {(op === 'simulate' || op === 'build-call') && (
+      {(op === 'simulate' || op === 'build-call' || op === 'broadcast-call') && (
         <div className="space-y-3">
           <label className="block text-sm">
             Target block:tx
@@ -236,6 +265,15 @@ export function AlkanesToolsPanel({
               className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium"
             >
               Dry-run swap on dogex
+            </button>
+          ) : op === 'broadcast-call' ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void onBroadcastCall()}
+              className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {busy ? 'Broadcasting…' : 'Sign & broadcast OP_RETURN 0xD1'}
             </button>
           ) : (
             <button

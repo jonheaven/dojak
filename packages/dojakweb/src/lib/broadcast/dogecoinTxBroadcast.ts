@@ -764,8 +764,13 @@ async function broadcastTransaction(rawTxHex: string): Promise<string> {
 // --------------------------------------------------------------------------
 
 export interface BroadcastOpReturnParams {
-  /** UTF-8 message to embed in OP_RETURN (max 80 bytes when encoded). */
+  /** UTF-8 message to embed in OP_RETURN (max 80 bytes when encoded). Ignored when `rawPayload` is set. */
   message: string;
+  /**
+   * Raw OP_RETURN payload bytes (e.g. Ðalkanes `0xD1` cellpack). When set, used instead of `message`.
+   * Must be ≤ 80 bytes for standard Dogecoin nulldata policy.
+   */
+  rawPayload?: Buffer;
   /** Sender's Dogecoin address. */
   fromAddress: string;
   /**
@@ -907,6 +912,7 @@ export async function signOpReturnTransaction(
 ): Promise<SignedOpReturnTx> {
   const {
     message,
+    rawPayload,
     fromAddress,
     privateKeyWIF,
     feeRate: rawFeeRate = 1000,
@@ -919,7 +925,15 @@ export async function signOpReturnTransaction(
     console.warn(`[dojakweb:doge-tx] feeRate ${rawFeeRate} below minimum relay fee — clamped to ${MIN_FEE_RATE_KOINU_PER_BYTE} koinu/byte`);
   }
 
-  const msgBytes = utf8PayloadForDogetagMessage(message);
+  const msgBytes = rawPayload
+    ? (() => {
+        if (!rawPayload.length) throw new Error('rawPayload cannot be empty');
+        if (rawPayload.length > 80) {
+          throw new Error(`OP_RETURN payload too large (${rawPayload.length} B, Dogecoin limit ~80)`);
+        }
+        return rawPayload;
+      })()
+    : utf8PayloadForDogetagMessage(message);
   const extra = additionalOpReturnPayloads ?? [];
   for (const b of extra) {
     if (!b.length) throw new Error('Additional OP_RETURN payload cannot be empty');

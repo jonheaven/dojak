@@ -337,6 +337,8 @@ export type { AlkanesToolsPanelProps, AlkanesUiOp } from './components/alkanes/A
 export {
   encodeCellpack,
   buildAlkanesCallScriptHex,
+  buildAlkanesCallPayload,
+  broadcastAlkanesCall,
   deployAlkaneWasm,
   fetchAmmTemplate,
   fetchAlkanesList,

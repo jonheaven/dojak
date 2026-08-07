@@ -3,7 +3,11 @@
  * Spec: dogenals/spec/protocols/alkanes/
  */
 import { signDoginalInscriptionChain } from '../dogetag/doginal-chain';
-import { broadcastTxWithStatus } from '../broadcast/dogecoinTxBroadcast';
+import {
+  broadcastTxWithStatus,
+  broadcastSignedTransaction,
+  signOpReturnTransaction,
+} from '../broadcast/dogecoinTxBroadcast';
 import { upsertWalletTxJournalEntry } from '../wallet-tx-journal';
 
 export const ALKANES_MAGIC = 0xd1;
@@ -112,6 +116,56 @@ export async function fetchAlkanesList(apiBase: string, limit = 40): Promise<Alk
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Full OP_RETURN push body: magic ‖ version ‖ cellpack (must fit ~80 B Dogecoin limit). */
+export function buildAlkanesCallPayload(cellpack: Uint8Array): Buffer {
+  const payload = Buffer.alloc(2 + cellpack.length);
+  payload[0] = ALKANES_MAGIC;
+  payload[1] = ALKANES_VERSION;
+  Buffer.from(cellpack).copy(payload, 2);
+  if (payload.length > 80) {
+    throw new Error(`Ðalkanes call payload ${payload.length} B exceeds Dogecoin OP_RETURN ~80 B limit`);
+  }
+  return payload;
+}
+
+export async function broadcastAlkanesCall(params: {
+  targetBlock: number;
+  targetTx: number;
+  inputs: Array<number | bigint | string>;
+  fuel?: number;
+  fromAddress: string;
+  privateKeyWIF: string;
+  feeRate?: number;
+}): Promise<{ txid: string; rawHex: string; scriptHex: string }> {
+  const cell = encodeCellpack({
+    targetBlock: params.targetBlock,
+    targetTx: params.targetTx,
+    fuel: params.fuel ?? 200_000,
+    inputs: params.inputs,
+  });
+  const payload = buildAlkanesCallPayload(cell);
+  const scriptHex = buildAlkanesCallScriptHex(cell);
+  const signed = await signOpReturnTransaction({
+    message: '',
+    rawPayload: payload,
+    fromAddress: params.fromAddress,
+    privateKeyWIF: params.privateKeyWIF,
+    feeRate: params.feeRate ?? 1000,
+  });
+  const txid = await broadcastSignedTransaction(signed.rawHex);
+  upsertWalletTxJournalEntry({
+    txid,
+    address: params.fromAddress,
+    protocol: 'alkanes',
+    action: 'call',
+    title: 'Ðalkanes call',
+    summary: `target ${params.targetBlock}:${params.targetTx}`,
+    status: 'broadcasted',
+    metadata: { scriptHex, inputs: params.inputs.map(String) },
+  });
+  return { txid, rawHex: signed.rawHex, scriptHex };
 }
 
 export async function deployAlkaneWasm(params: {
