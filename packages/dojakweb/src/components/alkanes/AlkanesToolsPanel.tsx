@@ -16,7 +16,13 @@ import {
 import { upsertWalletTxJournalEntry } from '../../lib/wallet-tx-journal';
 
 export type AlkanesUiOp = 'deploy-amm' | 'simulate' | 'build-call' | 'broadcast-call';
-export type AlkanesTemplateId = 'amm' | 'oracle' | 'price-oracle';
+export type AlkanesTemplateId =
+  | 'amm'
+  | 'oracle'
+  | 'price-oracle'
+  | 'token'
+  | 'tax-amm'
+  | 'ico';
 
 export interface AlkanesToolsPanelProps {
   initialOp?: AlkanesUiOp;
@@ -253,6 +259,9 @@ export function AlkanesToolsPanel({
               onChange={(e) => setTemplateId(e.target.value as AlkanesTemplateId)}
             >
               <option value="amm">AMM (xy=k)</option>
+              <option value="tax-amm">Tax AMM</option>
+              <option value="token">Token (ledger)</option>
+              <option value="ico">ICO raise</option>
               <option value="oracle">Block/time oracle</option>
               <option value="price-oracle">Signed price oracle</option>
             </select>

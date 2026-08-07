@@ -40,9 +40,17 @@ export type AlkaneTemplate = {
 /** @deprecated use AlkaneTemplate */
 export type AmmTemplate = AlkaneTemplate;
 
+export type AlkanesTemplateId =
+  | 'amm'
+  | 'oracle'
+  | 'price-oracle'
+  | 'token'
+  | 'tax-amm'
+  | 'ico';
+
 export async function fetchAlkaneTemplate(
   apiBase: string,
-  id: 'amm' | 'oracle' | 'price-oracle' = 'amm',
+  id: AlkanesTemplateId = 'amm',
 ): Promise<AlkaneTemplate> {
   const base = apiBase.replace(/\/$/, '');
   const r = await fetch(`${base}/api/alkanes/templates/${id}`);
