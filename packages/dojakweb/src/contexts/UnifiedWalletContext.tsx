@@ -1403,12 +1403,25 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
       if (walletType === 'browser') {
         const session = browser.wallet;
-        if (session?.privateKey && address && session.address === address) {
+        // Prefer in-memory unlock; do not require `address` (null address used to skip
+        // this branch and call loadWallet() without a password → false "encrypted" errors).
+        if (session?.privateKey && (!address || session.address === address)) {
           warnIfUnexpectedSigningHostname('PSDT signing');
           return await signPsdtWithWifToTxHex(psbtHex, session.privateKey);
         }
-        const w = await browser.loadWallet();
-        if (!w) {
+        let w = null as Awaited<ReturnType<typeof browser.loadWallet>>;
+        try {
+          const sessionSecret = await createDojakwebSessionSecretStore().getSecret();
+          if (sessionSecret) {
+            w = await browser.loadWallet(sessionSecret, address ?? undefined);
+          }
+        } catch {
+          /* fall through */
+        }
+        if (!w?.privateKey) {
+          w = await browser.loadWallet(undefined, address ?? undefined);
+        }
+        if (!w?.privateKey) {
           throw new Error('Unlock your browser wallet to sign PSBTs.');
         }
         const local = new BrowserWallet();
@@ -1521,13 +1534,24 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       if (walletType === 'browser') {
         const session = browser.wallet;
         let signed: string;
-        if (session?.privateKey && address && session.address === address) {
+        if (session?.privateKey && (!address || session.address === address)) {
           warnIfUnexpectedSigningHostname('partial PSDT signing');
           // signPartialPsdtWithWifToHex: signs buyer inputs only, returns PSBT hex (NOT finalized)
           signed = await signPartialPsdtWithWifToHex(psbtInput, session.privateKey);
         } else {
-          const w = await browser.loadWallet();
-          if (!w) {
+          let w = null as Awaited<ReturnType<typeof browser.loadWallet>>;
+          try {
+            const sessionSecret = await createDojakwebSessionSecretStore().getSecret();
+            if (sessionSecret) {
+              w = await browser.loadWallet(sessionSecret, address ?? undefined);
+            }
+          } catch {
+            /* fall through */
+          }
+          if (!w?.privateKey) {
+            w = await browser.loadWallet(undefined, address ?? undefined);
+          }
+          if (!w?.privateKey) {
             throw new Error('Unlock your browser wallet to sign PSBTs.');
           }
           const local = new BrowserWallet();

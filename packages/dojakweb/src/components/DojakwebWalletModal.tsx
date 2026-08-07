@@ -2058,6 +2058,22 @@ export function DojakwebWalletModal({
     return undefined;
   }, [activePassword]);
 
+  /**
+   * Listing / send / cancel must not call `loadWallet(undefined)` on an encrypted vault.
+   * UI can look "unlocked" via in-memory `browser.wallet` or tab session secret while
+   * React `activePassword` is still undefined (e.g. after refresh / vendor remount).
+   */
+  const loadUnlockedBrowserWallet = useCallback(async () => {
+    const mem = browser.wallet;
+    if (mem?.privateKey) return mem;
+    const pw = await resolveBrowserSessionPassword();
+    const loaded = await browser.loadWallet(pw, activeAddress ?? undefined);
+    if (!loaded?.privateKey) {
+      throw new Error(t('modal.throws.walletLocked'));
+    }
+    return loaded;
+  }, [activeAddress, browser, resolveBrowserSessionPassword, t]);
+
   const connectSavedLocalWallet = async (targetAddress: string, sessionPassword?: string) => {
     const storage = new BrowserWallet();
     await storage.selectWallet(targetAddress);
@@ -2853,8 +2869,7 @@ export function DojakwebWalletModal({
     setInscriptionSendBusy(true);
     setInscriptionSendError(null);
     try {
-      const w = await browser.loadWallet(activePassword);
-      if (!w) throw new Error(t('modal.throws.walletLocked'));
+      const w = await loadUnlockedBrowserWallet();
 
       const txHex = await signAndFinalizeSimplePSDT(inscriptionSendDraft.psbtBase64, w.privateKey);
       const txid = await broadcastOrdinalTx(txHex);
@@ -2906,8 +2921,7 @@ export function DojakwebWalletModal({
       let signedPsbt: string;
       if (walletType === 'browser') {
         console.log('[Listing] signing with browser wallet');
-        const w = await browser.loadWallet(activePassword);
-        if (!w) throw new Error(t('modal.throws.walletLocked'));
+        const w = await loadUnlockedBrowserWallet();
         signedPsbt = await signListingPSDT(unsignedPsbt, w.privateKey);
         console.log('[Listing] browser signed PSBT', {
           length: signedPsbt.length,
@@ -3058,8 +3072,7 @@ export function DojakwebWalletModal({
     setTrueCancelBusy(true);
     setTrueCancelError(null);
     try {
-      const w = await browser.loadWallet(activePassword);
-      if (!w) throw new Error(t('modal.throws.walletLockedShort'));
+      const w = await loadUnlockedBrowserWallet();
 
       // Extract inscription output value from the saved signed PSBT
       const inscriptionOutputValue = getInscriptionValueFromPsdt(listing.signedPsbtBase64);
