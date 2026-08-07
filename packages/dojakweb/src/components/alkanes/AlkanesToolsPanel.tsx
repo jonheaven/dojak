@@ -163,6 +163,15 @@ export function AlkanesToolsPanel({
       });
       setScriptHex(r.scriptHex);
       setStatus(`Broadcast Ðalkanes call · ${r.txid}`);
+      upsertWalletTxJournalEntry({
+        protocol: 'alkanes',
+        action: 'broadcast-call',
+        title: 'Ðalkanes call',
+        summary: `target ${target} · amount ${amountIn}`,
+        status: 'broadcasted',
+        txid: r.txid,
+        metadata: { scriptHex: r.scriptHex, explorer: `https://explorer.dogenals.com/tx/${r.txid}` },
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'broadcast failed');
     } finally {
@@ -176,7 +185,24 @@ export function AlkanesToolsPanel({
         <p className="text-xs uppercase tracking-wide text-cyan-300/80">Ðalkanes</p>
         <h3 className="text-lg font-semibold">WASM contracts · AMM demo</h3>
         <p className="mt-1 text-sm text-white/60">
-          Deploy the reference xy=k pool (30 bps), simulate swaps, build OP_RETURN 0xD1 scripts.
+          Deploy the reference xy=k pool (30 bps), simulate swaps, build OP_RETURN 0xD1 scripts.{' '}
+          <a
+            className="text-cyan-300 underline"
+            href="https://dogenals.com/alkanescan"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Ðalkanescan
+          </a>
+          {' · '}
+          <a
+            className="text-cyan-300 underline"
+            href="https://dogenals.com/alkanes"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Deploy UI
+          </a>
         </p>
       </div>
 
@@ -229,10 +255,18 @@ export function AlkanesToolsPanel({
           </button>
           <ul className="mt-3 max-h-40 space-y-1 overflow-auto font-mono text-xs text-white/60">
             {items.map((m) => (
-              <li key={m.id}>
+              <li key={m.id} className="flex flex-wrap items-center gap-2">
                 <button type="button" className="hover:text-cyan-200" onClick={() => setTarget(m.id)}>
                   {m.id} · {m.code_len}B
                 </button>
+                <a
+                  className="text-cyan-400/80 underline"
+                  href={`https://dogenals.com/alkanescan/${m.id.replace(':', '/')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  scan
+                </a>
               </li>
             ))}
             {items.length === 0 && <li>No indexed contracts yet</li>}
