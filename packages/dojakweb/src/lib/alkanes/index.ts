@@ -48,7 +48,9 @@ export type AlkanesTemplateId =
   | 'tax-amm'
   | 'ico'
   | 'prediction'
-  | 'custody-amm';
+  | 'custody-amm'
+  | 'event-oracle'
+  | 'poly-market';
 
 export async function fetchAlkaneTemplate(
   apiBase: string,
