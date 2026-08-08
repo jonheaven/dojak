@@ -45,6 +45,10 @@ export type AlkanesTemplateId =
   | 'oracle'
   | 'price-oracle'
   | 'token'
+  | 'freemint'
+  | 'clock-in'
+  | 'domains'
+  | 'dice'
   | 'tax-amm'
   | 'ico'
   | 'prediction'
@@ -234,7 +238,7 @@ export async function deployAlkaneWasm(params: {
   });
   for (let i = 0; i < pair.stages.length; i++) {
     const stage = pair.stages[i]!;
-    await broadcastTxWithStatus(stage.txHex);
+    await broadcastTxWithStatus(stage.txHex, () => {});
     if (i + 1 < pair.stages.length) await sleep(900);
   }
   const commitTxid = pair.stages[0]?.txid || '';

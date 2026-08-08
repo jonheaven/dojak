@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
 import { useUnifiedWallet } from '../../contexts/useUnifiedWallet';
 import {
   buildAlkanesCallScriptHex,
@@ -14,6 +13,7 @@ import {
   type AlkaneTemplate,
 } from '../../lib/alkanes';
 import { upsertWalletTxJournalEntry } from '../../lib/wallet-tx-journal';
+import { requestWalletApproval } from '../../stores/walletApprovalStore';
 
 export type AlkanesUiOp = 'deploy-amm' | 'simulate' | 'build-call' | 'broadcast-call';
 export type AlkanesTemplateId =
@@ -21,6 +21,10 @@ export type AlkanesTemplateId =
   | 'oracle'
   | 'price-oracle'
   | 'token'
+  | 'freemint'
+  | 'clock-in'
+  | 'domains'
+  | 'dice'
   | 'tax-amm'
   | 'ico'
   | 'prediction'
@@ -49,8 +53,7 @@ export function AlkanesToolsPanel({
   dogexApiBase,
   className = '',
 }: AlkanesToolsPanelProps) {
-  const { address, walletType } = useUnifiedWallet();
-  const browser = useBrowserWallet();
+  const { address, connected } = useUnifiedWallet();
   const base = resolveApiBase(dogexApiBase);
   const [op, setOp] = useState<AlkanesUiOp>(initialOp);
   const [templateId, setTemplateId] = useState<AlkanesTemplateId>('amm');
@@ -92,23 +95,37 @@ export function AlkanesToolsPanel({
       setError('Template not loaded');
       return;
     }
-    if (walletType !== 'browser' || !address || !browser.wallet?.privateKey) {
-      setError('Unlock Local Browser Wallet to deploy');
+    if (!connected || !address) {
+      setError('Connect / unlock Local Browser Wallet to deploy');
       return;
     }
     setBusy(true);
     try {
-      const r = await deployAlkaneWasm({
-        deployBodyHex: tmpl.deploy_body_hex,
-        contentType: tmpl.content_type,
-        fromAddress: address,
-        privateKeyWIF: browser.wallet.privateKey,
-        label: `Ðalkanes ${tmpl.name} deploy`,
-      });
+      const r = (await requestWalletApproval({
+        title: `Deploy Ðalkane · ${tmpl.name}`,
+        description:
+          'Inscribe the WASM contract with a Doginals commit/reveal (same path as Ðune etch). Approve to sign and broadcast.',
+        details: [
+          { label: 'Template', value: tmpl.name },
+          { label: 'Content-Type', value: tmpl.content_type || 'application/wasm' },
+          { label: 'Code hash', value: `${tmpl.code_hash.slice(0, 18)}…` },
+          { label: 'Receive', value: address },
+        ],
+        approveLabel: 'Approve deploy',
+        onApprove: async (session) =>
+          deployAlkaneWasm({
+            deployBodyHex: tmpl.deploy_body_hex,
+            contentType: tmpl.content_type,
+            fromAddress: session.address,
+            privateKeyWIF: session.privateKeyWif,
+            label: `Ðalkanes ${tmpl.name} deploy`,
+          }),
+      })) as { inscriptionId: string };
       setStatus(`Deployed ${tmpl.name} · ${r.inscriptionId}`);
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'deploy failed');
+      const msg = e instanceof Error ? e.message : 'deploy failed';
+      if (!/cancel/i.test(msg)) setError(msg);
     } finally {
       setBusy(false);
     }
@@ -179,22 +196,36 @@ export function AlkanesToolsPanel({
   const onBroadcastCall = async () => {
     setError(null);
     setStatus(null);
-    if (walletType !== 'browser' || !address || !browser.wallet?.privateKey) {
-      setError('Unlock Local Browser Wallet to broadcast');
+    if (!connected || !address) {
+      setError('Connect / unlock Local Browser Wallet to broadcast');
       return;
     }
     const [b, t] = target.split(':').map((x) => x.trim());
     setBusy(true);
     try {
-      const r = await broadcastAlkanesCall({
-        targetBlock: Number(b),
-        targetTx: Number(t),
-        inputs: buildCallInputs(),
-        fuel: 200_000,
-        fromAddress: address,
-        privateKeyWIF: browser.wallet.privateKey,
-        attachSatoshis: attachSatoshis || undefined,
-      });
+      const r = (await requestWalletApproval({
+        title: 'Broadcast Ðalkanes call',
+        description: 'Sign and broadcast OP_RETURN 0xD1 cellpack to the target contract.',
+        details: [
+          { label: 'Target', value: target },
+          { label: 'Mode', value: callMode },
+          { label: 'Amount', value: amountIn },
+          ...(attachSatoshis
+            ? [{ label: 'Attach', value: `${attachSatoshis / 1e8} DOGE` }]
+            : []),
+        ],
+        approveLabel: 'Approve call',
+        onApprove: async (session) =>
+          broadcastAlkanesCall({
+            targetBlock: Number(b),
+            targetTx: Number(t),
+            inputs: buildCallInputs(),
+            fuel: 200_000,
+            fromAddress: session.address,
+            privateKeyWIF: session.privateKeyWif,
+            attachSatoshis: attachSatoshis || undefined,
+          }),
+      })) as { txid: string; scriptHex: string };
       setScriptHex(r.scriptHex);
       setStatus(`Broadcast Ðalkanes call · ${r.txid}`);
       upsertWalletTxJournalEntry({
@@ -207,7 +238,8 @@ export function AlkanesToolsPanel({
         metadata: { scriptHex: r.scriptHex, explorer: `https://explorer.dogenals.com/tx/${r.txid}` },
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'broadcast failed');
+      const msg = e instanceof Error ? e.message : 'broadcast failed';
+      if (!/cancel/i.test(msg)) setError(msg);
     } finally {
       setBusy(false);
     }
@@ -284,6 +316,10 @@ export function AlkanesToolsPanel({
               <option value="amm">AMM (xy=k)</option>
               <option value="tax-amm">Tax AMM</option>
               <option value="token">Token (ledger)</option>
+              <option value="freemint">Freemint</option>
+              <option value="clock-in">Clock-in</option>
+              <option value="domains">Domains</option>
+              <option value="dice">Dice</option>
               <option value="ico">ICO raise</option>
               <option value="oracle">Block/time oracle</option>
               <option value="price-oracle">Signed price oracle</option>
