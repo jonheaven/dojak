@@ -18,12 +18,17 @@ const REQUIRED_EXPORTS = [
   'DojakwebWalletModal',
   'useUnifiedWallet',
   'setWalletDataProviderConfig',
+  'requestWalletApproval',
+  'openWalletDrawer',
+  'isWalletApprovalCancelled',
+  'WalletApprovalCancelledError',
   'normalizeDxXHandle',
   'isInscribeJobsClientConfigured',
   'createInscribeJob',
   'uploadInscribeJobItemContent',
   'runInscribeJob',
   'getInscribeJob',
+  'AlkanesToolsPanel',
 ];
 
 if (!fs.existsSync(distIndex)) {

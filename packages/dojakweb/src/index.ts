@@ -25,6 +25,18 @@ export {
   default as WalletDrawer,
   type WalletDrawerProps,
 } from './components/WalletDrawer';
+/** Host apps (dogenals aliases `@dojak/web/wallet` → this bundle for shared context). */
+export {
+  requestWalletApproval,
+  openWalletDrawer,
+  WalletApprovalCancelledError,
+  isWalletApprovalCancelled,
+  isWalletApprovalWorking,
+  type WalletApprovalRequest,
+  type WalletApprovalDetail,
+  type WalletApprovalSession,
+  type WalletOpenFocus,
+} from './stores/walletApprovalStore';
 export { default as DoginalDrawer } from './components/DoginalDrawer';
 export { DoginalDrawerProvider, useDoginalDrawer } from './contexts/DoginalDrawerContext';
 export type { DrawerData } from './contexts/DoginalDrawerContext';
