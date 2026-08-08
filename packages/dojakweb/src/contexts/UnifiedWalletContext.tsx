@@ -1460,11 +1460,12 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   );
 
   const signPSBTOnly = useCallback(
-    async (psbtInput: string): Promise<string> => {
+    async (psbtInput: string, opts?: { skipApprovalUi?: boolean }): Promise<string> => {
       console.log('[UnifiedWallet] signPSBTOnly:start', {
         walletType,
         length: psbtInput.length,
         prefix: psbtInput.slice(0, 32),
+        skipApprovalUi: Boolean(opts?.skipApprovalUi),
       });
 
       if (walletType === 'mydoge') {
@@ -1542,31 +1543,29 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
       if (walletType === 'browser') {
         const session = browser.wallet;
-        let signed: string;
-        if (session?.privateKey && (!address || session.address === address)) {
-          warnIfUnexpectedSigningHostname('partial PSDT signing');
-          // signPartialPsdtWithWifToHex: signs buyer inputs only, returns PSBT hex (NOT finalized)
-          signed = await signPartialPsdtWithWifToHex(psbtInput, session.privateKey);
-        } else {
-          let w = null as Awaited<ReturnType<typeof browser.loadWallet>>;
-          try {
-            const sessionSecret = await createDojakwebSessionSecretStore().getSecret();
-            if (sessionSecret) {
-              w = await browser.loadWallet(sessionSecret, address ?? undefined);
-            }
-          } catch {
-            /* fall through */
-          }
-          if (!w?.privateKey) {
-            w = await browser.loadWallet(undefined, address ?? undefined);
-          }
-          if (!w?.privateKey) {
-            throw new Error('Unlock your browser wallet to sign PSBTs.');
-          }
-          const local = new BrowserWallet();
-          // signPSBTOnly: partial sign → signed PSBT hex (not finalized raw tx)
-          signed = await local.signPSBTOnly(psbtInput, undefined, undefined, w.address);
+        warnIfUnexpectedSigningHostname('partial PSDT signing');
+        const runSign = async (privateKeyWif: string) => {
+          return signPartialPsdtWithWifToHex(psbtInput, privateKeyWif);
+        };
+        // Already inside requestWalletApproval (host dApp) — do not nest another panel.
+        if (opts?.skipApprovalUi) {
+          const wif = session?.privateKey;
+          if (!wif) throw new Error('Unlock your browser wallet to sign PSBTs.');
+          const signed = await runSign(wif);
+          console.log('[UnifiedWallet] signPSBTOnly:browser:result', {
+            length: signed.length,
+            prefix: signed.slice(0, 32),
+            skipApprovalUi: true,
+          });
+          return signed;
         }
+        const signed = (await requestWalletApproval({
+          title: 'Sign PSBT',
+          description: 'Approve to partially sign this PSBT/PSDT with your Local Browser Wallet.',
+          details: [{ label: 'Type', value: 'Marketplace / protocol PSBT' }],
+          approveLabel: 'Approve sign',
+          onApprove: async (s) => runSign(s.privateKeyWif),
+        })) as string;
         console.log('[UnifiedWallet] signPSBTOnly:browser:result', {
           length: signed.length,
           prefix: signed.slice(0, 32),
