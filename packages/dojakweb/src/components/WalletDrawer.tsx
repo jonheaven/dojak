@@ -18,7 +18,7 @@ export interface WalletDrawerProps {
   openNonce?: number;
   initialNftFilter?: 'all' | 'media' | 'dlotto';
   initialDashboardTab?: 'assets' | 'transactions' | 'listings';
-  initialAssetType?: 'nft' | 'drc20' | 'treats' | 'charms' | 'alkanes';
+  initialAssetType?: 'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes';
 }
 
 const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v4';

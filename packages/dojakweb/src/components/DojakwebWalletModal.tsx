@@ -134,7 +134,14 @@ import {
   testAllBroadcastRelayHealths,
   testBroadcastRelayHealth,
 } from '../lib/broadcast/relayHealth';
-import type { MyDogeInscription, DRC20Token, WalletDataProviderType, DogeTransaction } from '../utils/api';
+import type {
+  MyDogeInscription,
+  DRC20Token,
+  DuneHolding,
+  WalletDataProviderType,
+  DogeTransaction,
+} from '../utils/api';
+import { DuneSendModal } from './DuneSendModal';
 import {
   DOGE_PRICE_SOURCE_LIST,
   getDogePriceSourceConfig,
@@ -225,7 +232,7 @@ export interface DojakwebWalletModalProps {
   /** Host open focus: Assets → NFT → ÐLotto filter */
   initialNftFilter?: 'all' | 'media' | 'dlotto';
   initialDashboardTab?: 'assets' | 'transactions' | 'listings';
-  initialAssetType?: 'nft' | 'drc20' | 'treats' | 'charms' | 'alkanes';
+  initialAssetType?: 'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes';
 }
 
 type WalletStep =
@@ -682,7 +689,7 @@ export function DojakwebWalletModal({
   const [selectedLocalWalletAddress, setSelectedLocalWalletAddress] = useState<string | null>(null);
   const [walletNameDraft, setWalletNameDraft] = useState('');
   const [isSavingWalletName, setIsSavingWalletName] = useState(false);
-  const [assetType, setAssetType] = useState<'nft' | 'drc20' | 'treats' | 'charms' | 'alkanes'>('nft');
+  const [assetType, setAssetType] = useState<'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes'>('nft');
   const [nftFilter, setNftFilter] = useState<'all' | 'media' | 'dlotto'>('all');
   /** inscriptionId → is ÐLotto (async classification cache) */
   const [dlottoFlags, setDlottoFlags] = useState<Record<string, boolean>>({});
@@ -693,6 +700,9 @@ export function DojakwebWalletModal({
   const [spendableBreakBusy, setSpendableBreakBusy] = useState(false);
   const [drc20Tokens, setDrc20Tokens] = useState<DRC20Token[]>([]);
   const [treatsTokens, setTreatsTokens] = useState<Array<{ tick: string; balance: string }>>([]);
+  const [dunesHoldings, setDunesHoldings] = useState<DuneHolding[]>([]);
+  const [duneSendHolding, setDuneSendHolding] = useState<DuneHolding | undefined>(undefined);
+  const [duneSendOpen, setDuneSendOpen] = useState(false);
   const [charmsAssets, setCharmsAssets] = useState<Array<{ id: string; ticker: string; balance: string }>>([]);
   const [alkanesAssets, setAlkanesAssets] = useState<Array<{ id: string; code_hash: string; code_len: number }>>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
@@ -2458,14 +2468,16 @@ export function DojakwebWalletModal({
     setAssetsLoading(true);
     setAssetsError(null);
     try {
-      const [nfts, tokens, treats] = await Promise.all([
+      const [nfts, tokens, treats, dunes] = await Promise.all([
         walletDataApi.fetchInscriptions(address),
         walletDataApi.fetchDRC20Tokens(address),
         walletDataApi.fetchTreatsBalances(address),
+        walletDataApi.fetchDunes(address),
       ]);
       setInscriptions(nfts);
       setDrc20Tokens(tokens);
       setTreatsTokens(treats);
+      setDunesHoldings(Array.isArray(dunes) ? dunes : []);
 
       // Charms: UTXO scan (best-effort)
       try {
@@ -4445,7 +4457,9 @@ export function DojakwebWalletModal({
                                 <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2.5">
                                   <Listbox
                                     value={assetType}
-                                    onChange={(v: 'nft' | 'drc20' | 'treats' | 'charms' | 'alkanes') => setAssetType(v)}
+                                    onChange={(v: 'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes') =>
+                                      setAssetType(v)
+                                    }
                                   >
                                     <div className="relative min-w-0">
                                       <ListboxButton
@@ -4462,11 +4476,13 @@ export function DojakwebWalletModal({
                                             ? t('modal.assets.nftOption')
                                             : assetType === 'treats'
                                               ? t('modal.assets.treatsOption')
-                                              : assetType === 'charms'
-                                                ? t('modal.assets.charmsOption')
-                                                : assetType === 'alkanes'
-                                                  ? t('modal.assets.alkanesOption')
-                                                  : t('modal.assets.drc20Option')}
+                                              : assetType === 'dunes'
+                                                ? t('modal.assets.dunesOption')
+                                                : assetType === 'charms'
+                                                  ? t('modal.assets.charmsOption')
+                                                  : assetType === 'alkanes'
+                                                    ? t('modal.assets.alkanesOption')
+                                                    : t('modal.assets.drc20Option')}
                                         </span>
                                         <ChevronDownIcon
                                           className={cx(
@@ -4488,6 +4504,7 @@ export function DojakwebWalletModal({
                                         {(
                                           [
                                             { id: 'nft' as const, label: t('modal.assets.nftOption') },
+                                            { id: 'dunes' as const, label: t('modal.assets.dunesOption') },
                                             { id: 'treats' as const, label: t('modal.assets.treatsOption') },
                                             { id: 'drc20' as const, label: t('modal.assets.drc20Option') },
                                             { id: 'charms' as const, label: t('modal.assets.charmsOption') },
@@ -4563,6 +4580,56 @@ export function DojakwebWalletModal({
                                           </div>
                                         </div>
                                       ))}
+                                    </div>
+                                  )
+                                ) : assetType === 'dunes' ? (
+                                  dunesHoldings.length === 0 ? (
+                                    <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                                      <CircleStackIcon className="h-8 w-8 text-white/30" />
+                                      <div className="text-sm font-semibold text-white">{t('modal.assets.noDunesTitle')}</div>
+                                      <div className="text-xs text-white/45">{t('modal.assets.noDunesHint')}</div>
+                                    </div>
+                                  ) : (
+                                    <div className="divide-y divide-white/5 px-1 py-1">
+                                      {dunesHoldings.map((holding) => {
+                                        const label = holding.dune || holding.ticker || 'Ðune';
+                                        const bal = holding.balance || holding.amount || '0';
+                                        return (
+                                          <div
+                                            key={`${label}-${bal}`}
+                                            className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 transition hover:bg-white/5"
+                                          >
+                                            <div className="flex min-w-0 items-center gap-2">
+                                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FCD34D]/20 text-[10px] font-bold text-[#FCD34D]">
+                                                ÐU
+                                              </div>
+                                              <div className="min-w-0">
+                                                <div className="truncate font-mono text-sm font-semibold text-white">
+                                                  {label}
+                                                </div>
+                                                {holding.symbol ? (
+                                                  <div className="text-[10px] text-white/45">{holding.symbol}</div>
+                                                ) : null}
+                                              </div>
+                                            </div>
+                                            <div className="flex shrink-0 items-center gap-2">
+                                              <div className="text-sm font-semibold tabular-nums text-white">
+                                                {Number(bal).toLocaleString()}
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setDuneSendHolding(holding);
+                                                  setDuneSendOpen(true);
+                                                }}
+                                                className="rounded-lg border border-white/10 px-2 py-1 text-[11px] font-semibold text-[#FCD34D] hover:bg-white/5"
+                                              >
+                                                {t('modal.assets.send')}
+                                              </button>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   )
                                 ) : assetType === 'charms' ? (
@@ -7222,6 +7289,18 @@ export function DojakwebWalletModal({
         item={textInspectItem}
         open={Boolean(textInspectItem)}
         onClose={() => setTextInspectItem(null)}
+      />
+
+      <DuneSendModal
+        isOpen={duneSendOpen}
+        holding={duneSendHolding}
+        onClose={() => {
+          setDuneSendOpen(false);
+          setDuneSendHolding(undefined);
+        }}
+        onSuccess={() => {
+          if (activeAddress) void fetchAssets(activeAddress);
+        }}
       />
     </>
   );

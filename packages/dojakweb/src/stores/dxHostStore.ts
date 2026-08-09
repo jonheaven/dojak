@@ -12,7 +12,7 @@ export type WalletOpenFocus = {
   /** Dashboard tab */
   tab?: 'assets' | 'transactions' | 'listings';
   /** Assets subtype */
-  assetType?: 'nft' | 'drc20' | 'treats' | 'charms' | 'alkanes';
+  assetType?: 'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes';
   /** NFT grid filter */
   nftFilter?: 'all' | 'media' | 'dlotto';
 };
