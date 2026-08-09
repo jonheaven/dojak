@@ -149,6 +149,14 @@ import {
   dogeTxExplorerUrl,
   type DogeTxExplorerId,
 } from '../utils/dogeTxExplorer';
+import {
+  loadWalletTxJournal,
+  mergeWalletTxJournalIntoList,
+  subscribeWalletTxJournal,
+  upsertWalletTxJournalEntry,
+  type DojakwebWalletTxEntry,
+  type WalletTxListRow,
+} from '../lib/wallet-tx-journal';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { useGlobalStore } from '../stores/globalStore';
 import {
@@ -261,9 +269,7 @@ interface BroadcastConfig {
   tatumApiKey: string;
 }
 
-type DisplayDogeTransaction = DogeTransaction & {
-  localOnly?: boolean;
-};
+type DisplayDogeTransaction = WalletTxListRow;
 
 function normalizeBroadcastPriority(priority: unknown): BroadcastRelayProvider[] {
   /** Fill order matches DEFAULT_BROADCAST_PRIORITY (RPC first when credentials are set). */
@@ -1185,6 +1191,9 @@ export function DojakwebWalletModal({
   const [txPage, setTxPage] = useState(1);
   const [txTotal, setTxTotal] = useState(0);
   const [selectedTx, setSelectedTx] = useState<DisplayDogeTransaction | null>(null);
+  const [walletTxJournal, setWalletTxJournal] = useState<DojakwebWalletTxEntry[]>(() =>
+    typeof window !== 'undefined' ? loadWalletTxJournal() : [],
+  );
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [trueCancelBusy, setTrueCancelBusy] = useState(false);
   const [trueCancelError, setTrueCancelError] = useState<string | null>(null);
@@ -1373,10 +1382,57 @@ export function DojakwebWalletModal({
   const hardwareWallets = availableWallets.filter(
     (wallet) => wallet.type === 'ledger' || wallet.type === 'dogewatch'
   );
-  const mergedTransactions: DisplayDogeTransaction[] = [
-    ...localRecentTransactions,
-    ...transactions.filter((tx) => !localRecentTransactions.some((localTx) => localTx.txid === tx.txid)),
-  ];
+  const mergedTransactions: DisplayDogeTransaction[] = useMemo(() => {
+    const localFirst = [
+      ...localRecentTransactions,
+      ...transactions.filter((tx) => !localRecentTransactions.some((localTx) => localTx.txid === tx.txid)),
+    ];
+    return mergeWalletTxJournalIntoList(localFirst, walletTxJournal, { address: activeAddress });
+  }, [localRecentTransactions, transactions, walletTxJournal, activeAddress]);
+
+  useEffect(() => {
+    setWalletTxJournal(loadWalletTxJournal());
+    return subscribeWalletTxJournal(() => setWalletTxJournal(loadWalletTxJournal()));
+  }, []);
+
+  // When MyDoge (or other) history confirms a journaled tx, advance journal status.
+  useEffect(() => {
+    for (const tx of transactions) {
+      const txid = tx.txid?.trim().toLowerCase();
+      if (!txid) continue;
+      const entry = walletTxJournal.find((row) => row.txid === txid);
+      if (!entry) continue;
+      if (tx.confirmations > 0 && (entry.status === 'broadcasted' || entry.status === 'seen')) {
+        upsertWalletTxJournalEntry({
+          txid,
+          address: entry.address,
+          protocol: entry.protocol,
+          action: entry.action,
+          title: entry.title,
+          summary: entry.summary,
+          status: 'confirmed',
+          originHost: entry.originHost,
+          originPath: entry.originPath,
+          originLabel: entry.originLabel,
+          metadata: entry.metadata,
+        });
+      } else if (!tx.pending && entry.status === 'broadcasted') {
+        upsertWalletTxJournalEntry({
+          txid,
+          address: entry.address,
+          protocol: entry.protocol,
+          action: entry.action,
+          title: entry.title,
+          summary: entry.summary,
+          status: 'seen',
+          originHost: entry.originHost,
+          originPath: entry.originPath,
+          originLabel: entry.originLabel,
+          metadata: entry.metadata,
+        });
+      }
+    }
+  }, [transactions, walletTxJournal]);
 
   const refreshSavedLocalWallets = useCallback(async () => {
     const storage = new BrowserWallet();
@@ -4952,35 +5008,81 @@ export function DojakwebWalletModal({
                                     )}
                                     onClick={() => setSelectedTx(null)}
                                   >
-                                    <div className="absolute inset-0 bg-black/60" />
+                                    <div className={cx('absolute inset-0', isDark ? 'bg-black/60' : 'bg-zinc-900/40')} />
                                     <div
-                                      className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl text-center"
+                                      className={cx(
+                                        'relative w-full max-w-sm rounded-2xl p-6 shadow-2xl text-center',
+                                        isDark ? 'bg-zinc-950 text-white border border-white/10' : 'bg-white text-zinc-900 border border-zinc-200',
+                                      )}
                                       onClick={e => e.stopPropagation()}
                                     >
                                       <button
                                         type="button"
                                         onClick={() => setSelectedTx(null)}
-                                        className="absolute right-4 top-4 text-zinc-400 hover:text-zinc-700 transition"
+                                        className={cx(
+                                          'absolute right-4 top-4 transition',
+                                          isDark ? 'text-white/40 hover:text-white' : 'text-zinc-400 hover:text-zinc-700',
+                                        )}
                                         aria-label="Close transaction details"
                                       >
                                         <XMarkIcon className="h-5 w-5" />
                                       </button>
-                                      <div className="mb-4 text-xs font-bold uppercase tracking-widest text-zinc-400">
-                                        {selectedTx.type === 'sent' ? t('modal.tx.to') : t('modal.tx.from')}
+                                      <div className={cx(
+                                        'mb-3 text-xs font-bold uppercase tracking-widest',
+                                        isDark ? 'text-white/40' : 'text-zinc-400',
+                                      )}>
+                                        {selectedTx.title
+                                          || (selectedTx.type === 'sent' ? t('modal.tx.to') : t('modal.tx.from'))}
                                       </div>
+                                      {(selectedTx.protocolLabel || selectedTx.originLabel) && (
+                                        <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+                                          {selectedTx.protocolLabel && (
+                                            <span className={cx(
+                                              'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
+                                              isDark ? 'bg-amber-400/15 text-amber-200' : 'bg-amber-100 text-amber-800',
+                                            )}>
+                                              {selectedTx.protocolLabel}
+                                            </span>
+                                          )}
+                                          {selectedTx.originLabel && (
+                                            <span className={cx(
+                                              'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
+                                              isDark ? 'bg-sky-400/15 text-sky-200' : 'bg-sky-100 text-sky-800',
+                                            )}>
+                                              {selectedTx.originLabel}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                      {selectedTx.summary && (
+                                        <div className={cx(
+                                          'mb-3 text-xs leading-relaxed',
+                                          isDark ? 'text-white/55' : 'text-zinc-500',
+                                        )}>
+                                          {selectedTx.summary}
+                                        </div>
+                                      )}
                                       <div className="mb-1 flex items-center justify-center gap-2">
                                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-white">
-                                          {selectedTx.address.slice(0, 2).toUpperCase()}
+                                          {(selectedTx.address || selectedTx.protocolLabel || 'TX').slice(0, 2).toUpperCase()}
                                         </div>
-                                        <span className="font-mono text-sm font-semibold text-zinc-800 truncate max-w-[200px]">
+                                        <span className={cx(
+                                          'font-mono text-sm font-semibold truncate max-w-[200px]',
+                                          isDark ? 'text-white' : 'text-zinc-800',
+                                        )}>
                                           {selectedTx.address
                                             ? `${selectedTx.address.slice(0, 10)}…${selectedTx.address.slice(-4)}`
-                                            : '—'}
+                                            : selectedTx.localOnly
+                                              ? 'Local journal'
+                                              : '—'}
                                         </span>
                                         {selectedTx.address && (
                                           <button
                                             type="button"
-                                            className="text-zinc-400 hover:text-zinc-600 transition"
+                                            className={cx(
+                                              'transition',
+                                              isDark ? 'text-white/40 hover:text-white' : 'text-zinc-400 hover:text-zinc-600',
+                                            )}
                                             onClick={() => { void navigator.clipboard.writeText(selectedTx.address); }}
                                             title="Copy address"
                                           >
@@ -4988,23 +5090,70 @@ export function DojakwebWalletModal({
                                           </button>
                                         )}
                                       </div>
-                                      <div className="my-4 text-4xl font-bold text-zinc-900">
+                                      <div className={cx(
+                                        'my-4 text-4xl font-bold',
+                                        isDark ? 'text-white' : 'text-zinc-900',
+                                      )}>
                                         Ð{selectedTx.amount % 1 === 0 ? selectedTx.amount.toLocaleString() : selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
                                       </div>
                                       {selectedTx.pending && (
-                                        <div className="mb-3 rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700 inline-block">
+                                        <div className={cx(
+                                          'mb-3 rounded-full px-3 py-1 text-xs font-semibold inline-block',
+                                          isDark ? 'bg-yellow-400/20 text-yellow-200' : 'bg-yellow-100 text-yellow-700',
+                                        )}>
                                           {t('modal.tx.pending')}
                                         </div>
                                       )}
-                                      <div className="mt-2 divide-y divide-zinc-100 rounded-xl border border-zinc-200 text-left text-sm">
+                                      <div className={cx(
+                                        'mt-2 divide-y rounded-xl border text-left text-sm',
+                                        isDark ? 'divide-white/10 border-white/10' : 'divide-zinc-100 border-zinc-200',
+                                      )}>
+                                        <div className="flex items-center justify-between gap-3 px-4 py-2">
+                                          <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>TXID</span>
+                                          <div className="flex min-w-0 items-center gap-2">
+                                            <span className={cx(
+                                              'font-mono text-[11px] font-semibold truncate max-w-[11rem]',
+                                              isDark ? 'text-white' : 'text-zinc-800',
+                                            )}>
+                                              {selectedTx.txid
+                                                ? `${selectedTx.txid.slice(0, 10)}…${selectedTx.txid.slice(-8)}`
+                                                : '—'}
+                                            </span>
+                                            {selectedTx.txid && (
+                                              <button
+                                                type="button"
+                                                className={cx(
+                                                  'shrink-0 transition',
+                                                  isDark ? 'text-white/40 hover:text-white' : 'text-zinc-400 hover:text-zinc-600',
+                                                )}
+                                                onClick={() => { void navigator.clipboard.writeText(selectedTx.txid); }}
+                                                title="Copy txid"
+                                              >
+                                                <ClipboardDocumentIcon className="h-4 w-4" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
                                         <div className="flex items-center justify-between px-4 py-2">
-                                          <span className="text-zinc-500">{t('modal.tx.confirmations')}</span>
-                                          <span className="font-semibold text-zinc-800">{selectedTx.confirmations}</span>
+                                          <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>{t('modal.tx.confirmations')}</span>
+                                          <span className={cx('font-semibold', isDark ? 'text-white' : 'text-zinc-800')}>
+                                            {selectedTx.confirmations}
+                                          </span>
                                         </div>
                                         {selectedTx.timestamp && (
                                           <div className="flex items-center justify-between px-4 py-2">
-                                            <span className="text-zinc-500">{t('modal.tx.timestamp')}</span>
-                                            <span className="font-semibold text-zinc-800">{selectedTx.timestamp}</span>
+                                            <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>{t('modal.tx.timestamp')}</span>
+                                            <span className={cx('font-semibold', isDark ? 'text-white' : 'text-zinc-800')}>
+                                              {selectedTx.timestamp}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {selectedTx.journal?.status && (
+                                          <div className="flex items-center justify-between px-4 py-2">
+                                            <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>Journal</span>
+                                            <span className={cx('font-semibold capitalize', isDark ? 'text-white' : 'text-zinc-800')}>
+                                              {selectedTx.journal.status}
+                                            </span>
                                           </div>
                                         )}
                                       </div>
@@ -5013,7 +5162,12 @@ export function DojakwebWalletModal({
                                           href={dogeTxExplorerUrl(selectedTx.txid)}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700"
+                                          className={cx(
+                                            'mt-4 flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition',
+                                            isDark
+                                              ? 'bg-white text-zinc-900 hover:bg-zinc-100'
+                                              : 'bg-zinc-800 text-white hover:bg-zinc-700',
+                                          )}
                                         >
                                           {t('modal.tx.viewOnSoChain')}
                                           <ArrowDownTrayIcon className="h-4 w-4 rotate-[-90deg]" />
@@ -5026,26 +5180,32 @@ export function DojakwebWalletModal({
                                 {/* List */}
                                 {txError ? (
                                   <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
-                                    <div className="text-sm text-red-300">{txError}</div>
+                                    <div className={cx('text-sm', isDark ? 'text-red-300' : 'text-red-600')}>{txError}</div>
                                     <button
                                       type="button"
                                       onClick={() => activeAddress && void fetchTransactions(activeAddress, 1)}
-                                      className="text-xs text-yellow-400 underline"
+                                      className={cx('text-xs underline', isDark ? 'text-yellow-400' : 'text-amber-700')}
                                     >
                                       {t('modal.tx.retry')}
                                     </button>
                                   </div>
                                 ) : txLoading && mergedTransactions.length === 0 ? (
-                                  <div className="px-4 py-8 text-center text-sm text-white/50">{t('modal.tx.loading')}</div>
+                                  <div className={cx('px-4 py-8 text-center text-sm', isDark ? 'text-white/50' : 'text-zinc-500')}>
+                                    {t('modal.tx.loading')}
+                                  </div>
                                 ) : mergedTransactions.length === 0 ? (
                                   <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-                                    <ArrowPathIcon className="h-8 w-8 text-white/30" />
-                                    <div className="text-sm font-semibold text-white">{t('modal.tx.emptyTitle')}</div>
-                                    <div className="text-xs text-white/45">{t('modal.tx.emptyHint')}</div>
+                                    <ArrowPathIcon className={cx('h-8 w-8', isDark ? 'text-white/30' : 'text-zinc-300')} />
+                                    <div className={cx('text-sm font-semibold', isDark ? 'text-white' : 'text-zinc-900')}>
+                                      {t('modal.tx.emptyTitle')}
+                                    </div>
+                                    <div className={cx('text-xs', isDark ? 'text-white/45' : 'text-zinc-500')}>
+                                      {t('modal.tx.emptyHint')}
+                                    </div>
                                   </div>
                                 ) : (
                                   <div>
-                                    <div className="divide-y divide-zinc-800">
+                                    <div className={cx('divide-y', isDark ? 'divide-zinc-800' : 'divide-zinc-200')}>
                                       {mergedTransactions.map((tx, i) => {
                                         const timeAgo = (() => {
                                           if (!tx.timestamp) return '';
@@ -5061,29 +5221,71 @@ export function DojakwebWalletModal({
                                           if (mins > 0) return `${mins} minute${mins > 1 ? 's' : ''} ago`;
                                           return 'just now';
                                         })();
-                                        const addrShort = tx.address
-                                          ? `${tx.address.slice(0, 10)}…${tx.address.slice(-4)}`
-                                          : '—';
-                                        const initials = tx.address ? tx.address.slice(0, 2).toUpperCase() : '??';
+                                        const primary =
+                                          tx.title ||
+                                          (tx.address
+                                            ? `${tx.address.slice(0, 10)}…${tx.address.slice(-4)}`
+                                            : tx.txid
+                                              ? `${tx.txid.slice(0, 10)}…${tx.txid.slice(-6)}`
+                                              : '—');
+                                        const initials = (tx.protocolLabel || tx.address || 'TX').slice(0, 2).toUpperCase();
                                         return (
                                           <button
                                             key={`${tx.txid}-${i}`}
                                             type="button"
                                             onClick={() => setSelectedTx(tx)}
-                                            className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/5"
+                                            className={cx(
+                                              'flex w-full items-center gap-3 px-4 py-3 text-left transition',
+                                              isDark ? 'hover:bg-white/5' : 'hover:bg-zinc-100/80',
+                                            )}
                                           >
                                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-white">
                                               {initials}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                              <div className="truncate text-sm font-semibold text-white">{addrShort}</div>
-                                              <div className="text-xs text-white/40">{timeAgo || (tx.pending ? t('modal.tx.pending') : '')}</div>
+                                              <div className={cx(
+                                                'truncate text-sm font-semibold',
+                                                isDark ? 'text-white' : 'text-zinc-900',
+                                              )}>
+                                                {primary}
+                                              </div>
+                                              <div className={cx(
+                                                'mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px]',
+                                                isDark ? 'text-white/40' : 'text-zinc-500',
+                                              )}>
+                                                {tx.protocolLabel && tx.protocol !== 'dogecoin' && (
+                                                  <span className={cx(
+                                                    'rounded-full px-1.5 py-0.5 font-semibold',
+                                                    isDark ? 'bg-amber-400/15 text-amber-200' : 'bg-amber-100 text-amber-800',
+                                                  )}>
+                                                    {tx.protocolLabel}
+                                                  </span>
+                                                )}
+                                                {tx.originLabel && (
+                                                  <span className={cx(
+                                                    'rounded-full px-1.5 py-0.5 font-semibold',
+                                                    isDark ? 'bg-sky-400/15 text-sky-200' : 'bg-sky-50 text-sky-800',
+                                                  )}>
+                                                    {tx.originLabel}
+                                                  </span>
+                                                )}
+                                                <span>{timeAgo || (tx.pending ? t('modal.tx.pending') : '')}</span>
+                                                {tx.localOnly && <span>· local</span>}
+                                              </div>
+                                              {tx.txid && (
+                                                <div className={cx(
+                                                  'mt-0.5 font-mono text-[10px] truncate',
+                                                  isDark ? 'text-white/30' : 'text-zinc-400',
+                                                )}>
+                                                  {tx.txid.slice(0, 12)}…{tx.txid.slice(-8)}
+                                                </div>
+                                              )}
                                             </div>
                                             <div className={cx(
                                               'shrink-0 rounded-full px-3 py-1 text-sm font-semibold',
                                               tx.type === 'received'
-                                                ? 'bg-green-500/20 text-green-300'
-                                                : 'bg-zinc-700/60 text-zinc-300'
+                                                ? (isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700')
+                                                : (isDark ? 'bg-zinc-700/60 text-zinc-300' : 'bg-zinc-100 text-zinc-700'),
                                             )}>
                                               {tx.type === 'received' ? '+' : '-'}{tx.amount % 1 === 0 ? tx.amount : tx.amount.toFixed(tx.amount < 0.01 ? 8 : 3)}
                                             </div>
@@ -5092,7 +5294,7 @@ export function DojakwebWalletModal({
                                       })}
                                     </div>
                                     {transactions.length < txTotal && (
-                                      <div className="border-t border-zinc-800 px-4 py-3">
+                                      <div className={cx('border-t px-4 py-3', isDark ? 'border-zinc-800' : 'border-zinc-200')}>
                                         <button
                                           type="button"
                                           disabled={txLoading}
@@ -5102,7 +5304,10 @@ export function DojakwebWalletModal({
                                             setTxPage(nextPage);
                                             void fetchTransactions(activeAddress, nextPage, true);
                                           }}
-                                          className="w-full text-center text-xs text-yellow-400 hover:text-yellow-300 disabled:opacity-50 transition"
+                                          className={cx(
+                                            'w-full text-center text-xs disabled:opacity-50 transition',
+                                            isDark ? 'text-yellow-400 hover:text-yellow-300' : 'text-amber-700 hover:text-amber-800',
+                                          )}
                                         >
                                           {txLoading ? t('modal.tx.loading') : t('modal.tx.loadMore')}
                                         </button>

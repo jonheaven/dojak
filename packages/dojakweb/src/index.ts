@@ -252,14 +252,20 @@ export {
 export {
   DOJAKWEB_WALLET_TX_JOURNAL_CHANGED_EVENT,
   DOJAKWEB_WALLET_TX_JOURNAL_KEY,
+  WALLET_TX_PROTOCOL_LABELS,
   clearWalletTxJournal,
+  guessWalletTxOriginLabel,
   loadWalletTxJournal,
+  mergeWalletTxJournalIntoList,
   removeWalletTxJournalEntry,
   saveWalletTxJournal,
   subscribeWalletTxJournal,
   upsertWalletTxJournalEntry,
+  walletTxProtocolLabel,
   type DojakwebWalletTxEntry,
+  type DojakwebWalletTxProtocol,
   type DojakwebWalletTxStatus,
+  type WalletTxListRow,
 } from './lib/wallet-tx-journal';
 
 export {

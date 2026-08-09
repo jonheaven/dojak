@@ -26,7 +26,7 @@ import {
 } from './broadcast/dogecoinTxBroadcast';
 import { mergePaymentUtxos } from './mempoolSpendOverlay';
 import { dogeTxExplorerUrl } from '../utils/dogeTxExplorer';
-import { upsertWalletTxJournalEntry } from './wallet-tx-journal';
+import { loadWalletTxJournal, upsertWalletTxJournalEntry } from './wallet-tx-journal';
 
 // ── Dogecoin network params for bitcoinjs-lib ────────────────────────────────
 export const DOGE_NETWORK: bitcoin.Network = {
@@ -1365,13 +1365,32 @@ export async function broadcastTx(txHex: string): Promise<string> {
   const txid = await broadcastUtxoTx(txHex);
   console.log('[doginal-psdt] Broadcast succeeded via wallet relay order:', txid);
   const normalizedTxid = txid.toLowerCase();
-  upsertWalletTxJournalEntry({
-    txid: normalizedTxid,
-    protocol: 'dogecoin',
-    action: 'broadcast',
-    title: 'Dogecoin transaction broadcast',
-    summary: 'Raw transaction accepted by the configured Dojakweb relay path',
-    status: 'broadcasted',
-  });
+  // Do not clobber a richer protocol journal row (Ðunes / Ðalkanes / etc.) that the
+  // caller is about to (or already did) write for this txid.
+  const existing = loadWalletTxJournal().find((row) => row.txid === normalizedTxid);
+  if (!existing) {
+    upsertWalletTxJournalEntry({
+      txid: normalizedTxid,
+      protocol: 'dogecoin',
+      action: 'broadcast',
+      title: 'Dogecoin transaction broadcast',
+      summary: 'Raw transaction accepted by the configured Dojakweb relay path',
+      status: 'broadcasted',
+    });
+  } else if (existing.status === 'draft' || existing.status === 'signed') {
+    upsertWalletTxJournalEntry({
+      txid: normalizedTxid,
+      address: existing.address,
+      protocol: existing.protocol,
+      action: existing.action,
+      title: existing.title,
+      summary: existing.summary,
+      status: 'broadcasted',
+      originHost: existing.originHost,
+      originPath: existing.originPath,
+      originLabel: existing.originLabel,
+      metadata: existing.metadata,
+    });
+  }
   return normalizedTxid;
 }
