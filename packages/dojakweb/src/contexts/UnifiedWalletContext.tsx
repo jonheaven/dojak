@@ -1561,8 +1561,12 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         }
         const signed = (await requestWalletApproval({
           title: 'Sign PSBT',
-          description: 'Approve to partially sign this PSBT/PSDT with your Local Browser Wallet.',
-          details: [{ label: 'Type', value: 'Marketplace / protocol PSBT' }],
+          description:
+            'Approve to partially sign this PSBT/PSDT with your Local Browser Wallet. Host apps should pass richer details when possible.',
+          details: [
+            { label: 'Type', value: 'On-chain protocol PSBT (not a website DB write)' },
+            { label: 'Wallet', value: address ?? '—' },
+          ],
           approveLabel: 'Approve sign',
           onApprove: async (s) => runSign(s.privateKeyWif),
         })) as string;
