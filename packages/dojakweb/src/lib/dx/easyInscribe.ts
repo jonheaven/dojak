@@ -47,7 +47,7 @@ export async function createEasyDxInscribeJob(opts: {
   const bytes = new TextEncoder().encode(json).length;
   const job = await createInscribeJob({
     display_name: opts.displayName ?? 'Ðoge𝕏ID register',
-    fee_rate_koinu_per_kb: opts.feeRate ?? 100_000,
+    fee_rate_koinu_per_kb: opts.feeRate ?? 1_000_000,
     marker: 'dog',
     items: [
       {

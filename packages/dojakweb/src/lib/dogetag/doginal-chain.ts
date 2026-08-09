@@ -364,7 +364,7 @@ export async function signDoginalInscriptionChain(params: SignDoginalChainParams
     contentType,
     fromAddress,
     privateKeyWIF,
-    feeRate = 1000,
+    feeRate = 1_000_000,
     excludedOutpoints,
     inscriptionReceiveAddress: inscriptionReceiveRaw,
   } = params;

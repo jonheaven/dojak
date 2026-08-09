@@ -308,6 +308,7 @@ export async function fetchRpcDetailedHealth(creds: RpcCredentials): Promise<Rpc
 
 /** Dogecoin Core default relay minimum ≈0.001 DOGE/kB (koinu per kB). */
 const MIN_RELAY_KOINU_PER_KB = 100_000;
+const INCLUSION_FLOOR_KOINU_PER_KB = 1_000_000;
 const MAX_SANE_FEE_KOINU_PER_KB = 1_000_000_000; // 10 DOGE/kB cap against bad RPC data
 
 export type RpcSmartFeeResult =
@@ -347,7 +348,7 @@ export async function fetchRpcSmartFeeKoinuPerKb(
     const dogePerKb = parseDogePerKb(smart.result?.feerate);
     if (dogePerKb != null) {
       const koinuPerKb = Math.min(
-        Math.max(Math.ceil(dogePerKb * 1e8), MIN_RELAY_KOINU_PER_KB),
+        Math.max(Math.ceil(dogePerKb * 1e8), INCLUSION_FLOOR_KOINU_PER_KB),
         MAX_SANE_FEE_KOINU_PER_KB,
       );
       const blocks =
@@ -365,7 +366,7 @@ export async function fetchRpcSmartFeeKoinuPerKb(
     const v = legacy.result;
     if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
       const koinuPerKb = Math.min(
-        Math.max(Math.ceil(v * 1e8), MIN_RELAY_KOINU_PER_KB),
+        Math.max(Math.ceil(v * 1e8), INCLUSION_FLOOR_KOINU_PER_KB),
         MAX_SANE_FEE_KOINU_PER_KB,
       );
       return { ok: true, koinuPerKb, blocks: targetBlocks, source: 'estimatefee' };

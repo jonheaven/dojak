@@ -211,7 +211,7 @@ export const InscribePage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [contentBuffer, setContentBuffer] = useState<Buffer | null>(null);
   const [contentType, setContentType] = useState('');
-  const [feeRate, setFeeRate] = useState(100_000);
+  const [feeRate, setFeeRate] = useState(1_000_000);
   /** Empty = use connected wallet address (self-custody inscription). */
   const [inscriptionRecipientInput, setInscriptionRecipientInput] = useState('');
   const [usedDestinations, setUsedDestinations] = useState<Set<string>>(() => loadUsedInscriptionDestinations());
@@ -1565,17 +1565,17 @@ export const InscribePage: React.FC = () => {
               <Input
                 type="number"
                 value={feeRate}
-                min={100}
+                min={1_000_000}
                 onChange={(e) => {
-                  const v = Number(e.target.value) || 1000;
-                  // Never let the user set a fee rate below the Dogecoin minimum relay fee (100 koinu/byte).
-                  setFeeRate(Math.max(100, v));
+                  const v = Number(e.target.value) || 1_000_000;
+                  // Inclusion floor = 10× Core min-relay (1_000_000 koinu/kB).
+                  setFeeRate(Math.max(1_000_000, v));
                 }}
                 className="mt-1"
               />
-              {feeRate < 1000 && (
+              {feeRate < 1_000_000 && (
                 <p className="mt-1 text-xs text-amber-300/90">
-                  Warning: fee rate below 1000 koinu/byte may cause slow confirmation or mempool rejection.
+                  Warning: fee rate below 1,000,000 koinu/kB may leave inscriptions stuck in the mempool.
                 </p>
               )}
             </label>

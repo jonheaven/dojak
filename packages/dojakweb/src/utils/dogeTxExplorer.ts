@@ -78,7 +78,7 @@ export function dogeTxExplorerDisplayName(pref?: DogeTxExplorerId): string {
       return 'Blockchair';
     case 'dogenals':
     default:
-      return 'Ðexplorer';
+      return 'ÐExplorer';
   }
 }
 

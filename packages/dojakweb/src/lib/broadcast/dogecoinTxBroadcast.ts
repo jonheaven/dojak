@@ -44,7 +44,7 @@ const INSCRIPTION_CARRIER_VALUE = 100_000; // koinu
  * 100 koinu/byte (0.001 DOGE/kB); using anything lower guarantees rejection.
  * Callers should prefer 1000 koinu/byte (10×) for reliable inclusion.
  */
-export const MIN_FEE_RATE_KOINU_PER_BYTE = 100;
+export const MIN_FEE_RATE_KOINU_PER_BYTE = 1000; // inclusion floor (10× Core min-relay)
 
 function normalizeOutpointKey(txid: string, vout: number): string {
   return `${txid.toLowerCase()}:${vout}`;

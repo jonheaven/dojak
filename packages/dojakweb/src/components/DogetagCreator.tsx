@@ -79,7 +79,7 @@ export const DogetagCreator: React.FC<DogetagCreatorProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   /** koinu per kB — same unit as Dogecoin Core / Inscribe page (not “per byte”). */
-  const [feeRate, setFeeRate] = useState(100_000);
+  const [feeRate, setFeeRate] = useState(1_000_000);
   const [currentStep, setCurrentStep] = useState<CreationStep>('compose');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

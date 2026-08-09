@@ -462,7 +462,7 @@ export async function signInscriptionTxs(
     text,
     fromAddress,
     privateKeyWIF,
-    feeRate = 1000,
+    feeRate = 1_000_000,
     excludedOutpoints,
     inscriptionReceiveAddress: inscriptionReceiveRaw,
     contentType: contentTypeRaw,

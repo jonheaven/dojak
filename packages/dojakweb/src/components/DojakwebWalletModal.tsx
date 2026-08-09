@@ -147,8 +147,11 @@ import {
   loadDogeTxExplorerPreference,
   saveDogeTxExplorerPreference,
   dogeTxExplorerUrl,
+  dogeTxExplorerDisplayName,
+  useDogeTxExplorerPreference,
   type DogeTxExplorerId,
 } from '../utils/dogeTxExplorer';
+import { createPortal } from 'react-dom';
 import {
   loadWalletTxJournal,
   mergeWalletTxJournalIntoList,
@@ -613,6 +616,7 @@ export function DojakwebWalletModal({
 }: DojakwebWalletModalProps) {
   const { theme: walletTheme } = useDojakwebTheme();
   const isDark = isDarkProp ?? walletTheme === 'dark';
+  const txExplorerPref = useDogeTxExplorerPreference();
   const drawerSurfacePhoneRight = isDark
     ? 'bg-[#0c0c0e] text-text-primary border-l border-white/10 shadow-2xl'
     : 'bg-[#f7f5f0] text-zinc-950 border-l border-zinc-200 shadow-2xl';
@@ -706,7 +710,7 @@ export function DojakwebWalletModal({
   const [dxPayload, setDxPayload] = useState<DxRegisterPayload | null>(null);
   const [dxBusy, setDxBusy] = useState(false);
   const [dxInscribeBusy, setDxInscribeBusy] = useState(false);
-  const [dxFeeRate, setDxFeeRate] = useState(100_000);
+  const [dxFeeRate, setDxFeeRate] = useState(1_000_000);
   const [dxRegisterInscriptionId, setDxRegisterInscriptionId] = useState<string | null>(null);
   const [dxCardInscriptionId, setDxCardInscriptionId] = useState<string | null>(null);
   const [dxEasyJob, setDxEasyJob] = useState<InscribeJobResponse | null>(null);
@@ -753,7 +757,7 @@ export function DojakwebWalletModal({
           mediaInscriptionId,
           fromAddress: activeAddress,
           privateKeyWIF: browser.wallet.privateKey,
-          feeRate: 100_000,
+          feeRate: 1_000_000,
           excludedOutpoints: extractProtectedOutpoints(inscriptions),
           onProgress: (msg) => toast.loading(msg, { id: toastId }),
         });
@@ -5000,19 +5004,20 @@ export function DojakwebWalletModal({
                               /* ── Transactions tab ── */
                               <div>
                                 {/* Detail overlay */}
-                                {selectedTx && (
+                                {selectedTx &&
+                                  typeof document !== 'undefined' &&
+                                  createPortal(
                                   <div
-                                    className={cx(
-                                      'flex items-center justify-center p-4',
-                                      isDrawerMode ? 'absolute inset-0 z-[100]' : 'fixed inset-0 z-[9999]'
-                                    )}
+                                    className="fixed inset-0 z-[10060] flex items-center justify-center p-4"
                                     onClick={() => setSelectedTx(null)}
                                   >
-                                    <div className={cx('absolute inset-0', isDark ? 'bg-black/60' : 'bg-zinc-900/40')} />
+                                    <div className={cx('absolute inset-0', isDark ? 'bg-black/70' : 'bg-zinc-900/40')} />
                                     <div
                                       className={cx(
                                         'relative w-full max-w-sm rounded-2xl p-6 shadow-2xl text-center',
-                                        isDark ? 'bg-zinc-950 text-white border border-white/10' : 'bg-white text-zinc-900 border border-zinc-200',
+                                        isDark
+                                          ? 'bg-zinc-950 text-white border-2 border-white/35 ring-1 ring-white/20'
+                                          : 'bg-white text-zinc-900 border border-zinc-200 shadow-xl',
                                       )}
                                       onClick={e => e.stopPropagation()}
                                     >
@@ -5159,7 +5164,7 @@ export function DojakwebWalletModal({
                                       </div>
                                       {selectedTx.txid && (
                                         <a
-                                          href={dogeTxExplorerUrl(selectedTx.txid)}
+                                          href={dogeTxExplorerUrl(selectedTx.txid, txExplorerPref)}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className={cx(
@@ -5169,12 +5174,15 @@ export function DojakwebWalletModal({
                                               : 'bg-zinc-800 text-white hover:bg-zinc-700',
                                           )}
                                         >
-                                          {t('modal.tx.viewOnSoChain')}
+                                          {t('modal.tx.viewOnExplorer', {
+                                            name: dogeTxExplorerDisplayName(txExplorerPref),
+                                          })}
                                           <ArrowDownTrayIcon className="h-4 w-4 rotate-[-90deg]" />
                                         </a>
                                       )}
                                     </div>
-                                  </div>
+                                  </div>,
+                                  document.body,
                                 )}
 
                                 {/* List */}
@@ -6329,7 +6337,7 @@ export function DojakwebWalletModal({
                                 min={1000}
                                 step={1000}
                                 value={dxFeeRate}
-                                onChange={(e) => setDxFeeRate(Math.max(1000, Number(e.target.value) || 1000))}
+                                onChange={(e) => setDxFeeRate(Math.max(1_000_000, Number(e.target.value) || 1_000_000))}
                                 className={INPUT_CLASS}
                                 disabled={dxInscribeBusy}
                               />
@@ -6951,7 +6959,7 @@ export function DojakwebWalletModal({
                               <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/35">TX Explorer</div>
                               <div className="flex gap-2">
                                 {([
-                                  { id: 'dogenals' as const, label: 'Ðexplorer' },
+                                  { id: 'dogenals' as const, label: 'ÐExplorer' },
                                   { id: 'sochain' as const, label: 'SoChain' },
                                   { id: 'dogechain' as const, label: 'DogeChain' },
                                   { id: 'blockchair' as const, label: 'Blockchair' },

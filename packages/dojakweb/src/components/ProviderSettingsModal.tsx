@@ -269,10 +269,9 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
                       <SelectValue placeholder="Select fee rate" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="500">Slow (0.5 sat/byte) - ~0.001 DOGE</SelectItem>
-                      <SelectItem value="1000">Normal (1 sat/byte) - ~0.002 DOGE</SelectItem>
-                      <SelectItem value="2000">Fast (2 sat/byte) - ~0.004 DOGE</SelectItem>
-                      <SelectItem value="5000">Turbo (5 sat/byte) - ~0.01 DOGE</SelectItem>
+                      <SelectItem value="1000">Normal (1 koinu/byte) - inclusion floor</SelectItem>
+                      <SelectItem value="2000">Fast (2 koinu/byte)</SelectItem>
+                      <SelectItem value="5000">Turbo (5 koinu/byte)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-text-tertiary mt-1">
