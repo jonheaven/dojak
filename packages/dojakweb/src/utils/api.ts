@@ -144,17 +144,21 @@ export function getCommandDogApiBaseUrl(): string {
   return 'https://api.command.dog';
 }
 
-/** Indexer HTTP root for ÐogeTreats / doginals read APIs. */
+/** Public dogex indexer — Ðunes / Treats / DXD truth (not MyDoge). */
+export const DOGEX_PUBLIC_INDEXER_URL = 'https://dogex.command.dog';
+
+/** Indexer HTTP root for ÐogeTreats / doginals / Ðunes read APIs. */
 export function getIndexerApiBase(): string {
   if (typeof window !== 'undefined') {
     const cfg = getWalletDataProviderConfig();
     if (cfg.indexerApiBase) return cfg.indexerApiBase;
-    return normalizeBaseUrl(new URL('/__indexer', window.location.origin).href);
+    // Prefer /api/indexer (dogenals.com Vercel rewrite); /__indexer is legacy alias.
+    return normalizeBaseUrl(new URL('/api/indexer', window.location.origin).href);
   }
   const fromEnv = normalizeBaseUrl(
     getEnv('VITE_MARKETPLACE_API_BASE', '') || getEnv('NEXT_PUBLIC_MARKETPLACE_API_BASE', '')
   );
-  return fromEnv || 'https://indexer.command.dog';
+  return fromEnv || DOGEX_PUBLIC_INDEXER_URL;
 }
 
 /** wonky-dogeord HTTP root — Dunes UTXO balances (dogex proxies here server-side too). */
@@ -189,16 +193,51 @@ function mapWonkyDuneHoldings(payload: unknown): DuneHolding[] {
 }
 
 async function fetchDunesFromIndexer(address: string): Promise<DuneHolding[]> {
-  const base = getIndexerApiBase().replace(/\/+$/, '');
-  const url = `${base}/api/doginals/dunes/balance/${encodeURIComponent(address)}?list_dunes=true`;
-  try {
-    const res = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return mapWonkyDuneHoldings(data);
-  } catch {
-    return [];
+  const bases = [
+    getIndexerApiBase().replace(/\/+$/, ''),
+    DOGEX_PUBLIC_INDEXER_URL,
+  ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+
+  let lastErr: unknown;
+  for (const base of bases) {
+    const url = `${base}/api/doginals/dunes/balance/${encodeURIComponent(address)}?list_dunes=true`;
+    try {
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer =
+        ctrl && typeof window !== 'undefined'
+          ? window.setTimeout(() => ctrl.abort(), 20_000)
+          : null;
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+        signal: ctrl?.signal,
+      });
+      if (timer != null) window.clearTimeout(timer);
+      if (!res.ok) {
+        console.warn('[dojak:dunes] balance lookup failed', { status: res.status, url });
+        lastErr = new Error(`HTTP ${res.status}`);
+        continue;
+      }
+      const data = await res.json();
+      const rows = mapWonkyDuneHoldings(data);
+      if (rows.length > 0) {
+        console.info('[dojak:dunes] balance ok', {
+          base,
+          count: rows.length,
+          top: rows[0]?.dune,
+          bal: rows[0]?.balance,
+        });
+      }
+      return rows;
+    } catch (e) {
+      lastErr = e;
+      console.warn('[dojak:dunes] balance fetch error', { url, error: e instanceof Error ? e.message : e });
+    }
   }
+  if (lastErr) {
+    console.warn('[dojak:dunes] all indexer bases failed', lastErr);
+  }
+  return [];
 }
 
 async function fetchDunesFromWonky(address: string): Promise<DuneHolding[]> {

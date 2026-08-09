@@ -2468,16 +2468,23 @@ export function DojakwebWalletModal({
     setAssetsLoading(true);
     setAssetsError(null);
     try {
-      const [nfts, tokens, treats, dunes] = await Promise.all([
+      // allSettled so a MyDoge/DRC-20 failure cannot wipe a successful Ðunes (dogex) load
+      const settled = await Promise.allSettled([
         walletDataApi.fetchInscriptions(address),
         walletDataApi.fetchDRC20Tokens(address),
         walletDataApi.fetchTreatsBalances(address),
         walletDataApi.fetchDunes(address),
       ]);
-      setInscriptions(nfts);
-      setDrc20Tokens(tokens);
-      setTreatsTokens(treats);
-      setDunesHoldings(Array.isArray(dunes) ? dunes : []);
+      const [nftsR, tokensR, treatsR, dunesR] = settled;
+      setInscriptions(nftsR.status === 'fulfilled' ? nftsR.value : []);
+      setDrc20Tokens(tokensR.status === 'fulfilled' ? tokensR.value : []);
+      setTreatsTokens(treatsR.status === 'fulfilled' ? treatsR.value : []);
+      setDunesHoldings(
+        dunesR.status === 'fulfilled' && Array.isArray(dunesR.value) ? dunesR.value : [],
+      );
+      if (dunesR.status === 'rejected') {
+        console.warn('[dojak:dunes] fetchAssets dunes rejected', dunesR.reason);
+      }
 
       // Charms: UTXO scan (best-effort)
       try {
