@@ -4500,9 +4500,11 @@ export function DojakwebWalletModal({
                                         />
                                       </ListboxButton>
                                       <ListboxOptions
-                                        anchor="bottom start"
+                                        portal
+                                        anchor={{ to: 'bottom start', gap: 6, padding: 16 }}
                                         className={cx(
-                                          'z-[10060] mt-1 max-h-60 w-[min(16rem,calc(100vw-3rem))] overflow-auto rounded-xl border py-1 shadow-2xl outline-none',
+                                          // Must clear phone chassis / Dialog (z≈10050) or options look dead (no hover/click).
+                                          'z-[10140] mt-1 max-h-60 w-[min(16rem,calc(100vw-3rem))] overflow-auto rounded-xl border py-1 shadow-2xl outline-none pointer-events-auto',
                                           isDark
                                             ? 'border-white/10 bg-zinc-900 text-white'
                                             : 'border-black/10 bg-white text-zinc-900',
@@ -4523,8 +4525,9 @@ export function DojakwebWalletModal({
                                             value={opt.id}
                                             className={({ focus, selected }) =>
                                               cx(
-                                                'relative flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-sm outline-none',
+                                                'relative flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-sm outline-none transition-colors',
                                                 focus && (isDark ? 'bg-white/10' : 'bg-zinc-100'),
+                                                !focus && (isDark ? 'hover:bg-white/10' : 'hover:bg-zinc-100'),
                                                 selected && (isDark ? 'text-[#FCD34D]' : 'text-amber-700'),
                                               )
                                             }
