@@ -1197,6 +1197,9 @@ export const walletDataApi = {
       value: number;
       confirmations?: number;
       scriptPubKey?: string;
+      inscriptions?: unknown[];
+      dunes?: unknown[];
+      dune_balances?: unknown[];
     }>
   > => {
     const cfg = getWalletDataProviderConfig();
@@ -1211,6 +1214,9 @@ export const walletDataApi = {
       value: number;
       confirmations?: number;
       scriptPubKey?: string;
+      inscriptions?: unknown[];
+      dunes?: unknown[];
+      dune_balances?: unknown[];
     }> = [];
     let cursor: string | null | undefined = undefined;
     const maxPages = 25;
@@ -1237,18 +1243,37 @@ export const walletDataApi = {
         // Treat missing confirmations as confirmed (some providers omit the field).
         if (Number.isFinite(conf) && conf < 1) continue;
         const satRaw = row.satoshis ?? row.value ?? row.amount ?? row.sats;
-        const sat =
-          typeof satRaw === 'string' ? parseInt(satRaw, 10) : Number(satRaw);
+        // MyDoge sends satoshis as decimal strings ("20346208569"). Never treat those as DOGE.
+        let sat = 0;
+        if (typeof satRaw === 'string' && satRaw.trim()) {
+          const n = Number(satRaw);
+          sat = Number.isFinite(n)
+            ? satRaw.includes('.')
+              ? Math.round(n * 1e8)
+              : Math.round(n)
+            : 0;
+        } else if (typeof satRaw === 'number' && Number.isFinite(satRaw)) {
+          sat =
+            Number.isInteger(satRaw) || satRaw >= 1e6
+              ? Math.round(satRaw)
+              : Math.round(satRaw * 1e8);
+        }
         if (!Number.isFinite(sat) || sat <= 0) continue;
         const txid = String(row.txid ?? row.tx_hash ?? row.transaction_hash ?? '').trim();
         const vout = Number(row.vout ?? row.tx_output_n ?? row.index ?? row.n);
         if (!txid || !Number.isInteger(vout) || vout < 0) continue;
+        const inscriptions = Array.isArray(row.inscriptions) ? row.inscriptions : undefined;
+        const dunes = Array.isArray(row.dunes) ? row.dunes : undefined;
+        const dune_balances = Array.isArray(row.dune_balances) ? row.dune_balances : undefined;
         collected.push({
           txid,
           vout,
           value: sat,
           confirmations: Number.isFinite(conf) ? conf : undefined,
           scriptPubKey: String(row.scriptPubKey ?? row.script ?? row.script_hex ?? '') || undefined,
+          ...(inscriptions ? { inscriptions } : {}),
+          ...(dunes ? { dunes } : {}),
+          ...(dune_balances ? { dune_balances } : {}),
         });
       }
 
