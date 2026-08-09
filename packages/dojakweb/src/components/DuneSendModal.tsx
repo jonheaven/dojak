@@ -5,6 +5,12 @@ import { sendDune, smallestUnitsToHuman } from '../services/duneService';
 import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
 import { useDuneWalletConnection } from '../hooks/useDuneWalletConnection';
 import { walletDataApi, type DuneHolding, type DuneInfo } from '../utils/api';
+import {
+  dojakwebFeeRateKoinuPerKbFromPreference,
+  formatDojakwebFeeRate,
+  koinuPerByteToKoinuPerKb,
+} from '../lib/fees/txFeePreference';
+import { NetworkFeeControl } from './fees/NetworkFeeControl';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -27,7 +33,10 @@ export const DuneSendModal: React.FC<Props> = ({ isOpen, onClose, holding, onSuc
   const [recipient, setRecipient]       = useState('');
   const [amount, setAmount]             = useState('');
   const [postage, setPostage]           = useState('100000');
-  const [feeRate, setFeeRate]           = useState('1000');
+  const [feeRateKoinuPerByte, setFeeRateKoinuPerByte] = useState(
+    () => dojakwebFeeRateKoinuPerKbFromPreference() / 1000,
+  );
+  const feeRateKoinuPerKb = koinuPerByteToKoinuPerKb(feeRateKoinuPerByte);
   const [step, setStep]                 = useState<Step>('form');
   const [error, setError]               = useState<string | null>(null);
   const [txid, setTxid]                 = useState<string | null>(null);
@@ -42,7 +51,8 @@ export const DuneSendModal: React.FC<Props> = ({ isOpen, onClose, holding, onSuc
 
   const reset = () => {
     setInputName(holding?.dune ?? holding?.ticker ?? '');
-    setDuneInfo(null); setRecipient(''); setAmount(''); setPostage('100000'); setFeeRate('1000');
+    setDuneInfo(null); setRecipient(''); setAmount(''); setPostage('100000');
+    setFeeRateKoinuPerByte(dojakwebFeeRateKoinuPerKbFromPreference() / 1000);
     setStep('form'); setError(null); setTxid(null);
   };
 
@@ -90,7 +100,7 @@ export const DuneSendModal: React.FC<Props> = ({ isOpen, onClose, holding, onSuc
         divisibility: duneInfo!.divisibility,
         recipientAddress: recipient.trim(),
         postage: Number(postage),
-        feeRate: Number(feeRate),
+        feeRate: feeRateKoinuPerKb,
         signer: resolved.signer,
       });
 
@@ -239,20 +249,12 @@ export const DuneSendModal: React.FC<Props> = ({ isOpen, onClose, holding, onSuc
                     <p className="text-xs text-text-secondary mt-1">Minimum 100,000 (0.001 DOGE). Attached to the Ðune output sent to recipient.</p>
                   </div>
 
-                  {/* Fee rate */}
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">
-                      Fee Rate (koinu/kB)
-                    </label>
-                    <Input
-                      type="number"
-                      value={feeRate}
-                      onChange={e => setFeeRate(e.target.value)}
-                      min={100}
-                      placeholder="1000"
-                      className="w-full"
-                    />
-                  </div>
+                  <NetworkFeeControl
+                    opReturnScriptLen={40}
+                    inputs={1}
+                    outputs={3}
+                    onRateKoinuPerByteChange={setFeeRateKoinuPerByte}
+                  />
                 </>
               )}
 
@@ -283,7 +285,7 @@ export const DuneSendModal: React.FC<Props> = ({ isOpen, onClose, holding, onSuc
                 <Row label="Amount" value={`${amount}${duneInfo.symbol ? ` ${duneInfo.symbol}` : ''}`} />
                 <Row label="Recipient" value={recipient.trim()} mono />
                 <Row label="Postage" value={`${Number(postage).toLocaleString()} koinu`} />
-                <Row label="Fee rate" value={`${Number(feeRate).toLocaleString()} koinu/kB`} />
+                <Row label="Fee rate" value={formatDojakwebFeeRate(feeRateKoinuPerByte)} />
                 <Row label="From" value={address!} mono />
               </div>
 

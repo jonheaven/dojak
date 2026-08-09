@@ -315,7 +315,7 @@ export interface EtchDuneParams {
   terms?: DuneTerms;
   /** Enable turbo flag. */
   turbo?: boolean;
-  /** Fee rate in koinu/kB (default: 1000 = 1 sat/byte). */
+  /** Fee rate in koinu/kB (default: inclusion floor 1_000_000 = 1000 koinu/byte). */
   feeRate?: number;
   /** Browser WIF and/or extension PSBT signer (see resolveDuneTxSigner). */
   signer: DuneTxSigner;
@@ -339,7 +339,7 @@ export interface EtchResult {
 export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
   const {
     name, supply, divisibility, symbol, terms, turbo = false,
-    feeRate = 1000, signer, broadcast = true,
+    feeRate = 1_000_000, signer, broadcast = true,
   } = params;
 
   // Validate name
@@ -384,7 +384,7 @@ export interface MintDuneParams {
   destination?: string;
   /** Postage (koinu) to attach to the dune-bearing output. Default: 100 000. */
   postage?: number;
-  /** Fee rate in koinu/kB (default: 1000). */
+  /** Fee rate in koinu/kB (default: inclusion floor 1_000_000). */
   feeRate?: number;
   signer: DuneTxSigner;
   broadcast?: boolean;
@@ -404,7 +404,7 @@ export interface MintResult {
  */
 export async function mintDune(params: MintDuneParams): Promise<MintResult> {
   const {
-    duneId, postage = POSTAGE_KOINU, feeRate = 1000,
+    duneId, postage = POSTAGE_KOINU, feeRate = 1_000_000,
     signer, broadcast = true,
   } = params;
   const destination = params.destination?.trim() || signer.fromAddress;
@@ -443,7 +443,7 @@ export interface SendDuneParams {
   recipientAddress: string;
   /** Postage to attach to the recipient output (koinu). Default: 100 000. */
   postage?: number;
-  /** Fee rate in koinu/kB (default: 1000). */
+  /** Fee rate in koinu/kB (default: inclusion floor 1_000_000). */
   feeRate?: number;
   signer: DuneTxSigner;
   broadcast?: boolean;
@@ -465,7 +465,7 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
   const {
     duneId, amount, divisibility,
     recipientAddress, postage = POSTAGE_KOINU,
-    feeRate = 1000, signer, broadcast = true,
+    feeRate = 1_000_000, signer, broadcast = true,
   } = params;
 
   const amountBig = humanToSmallestUnits(amount, divisibility);

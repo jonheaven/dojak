@@ -8,6 +8,16 @@ import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
 import { useDuneWalletConnection } from '../hooks/useDuneWalletConnection';
 import { upsertWalletTxJournalEntry } from '../lib/wallet-tx-journal';
 import {
+  duneApprovalUserError,
+  runDuneTxWithWalletApproval,
+} from '../lib/dune-wallet-approval';
+import {
+  dojakwebFeeRateKoinuPerKbFromPreference,
+  formatDojakwebFeeRate,
+  koinuPerByteToKoinuPerKb,
+} from '../lib/fees/txFeePreference';
+import { NetworkFeeControl } from './fees/NetworkFeeControl';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -141,7 +151,7 @@ function emitDuneEtchReceipt(receipt: { name: string; txid: string; address?: st
 }
 
 export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, initialName }) => {
-  const { address, connected } = useDuneWalletConnection();
+  const { address, connected, isBrowser } = useDuneWalletConnection();
   const resolveSigner = useDuneTxSigner();
 
   const plainInitial = (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase();
@@ -168,7 +178,10 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const [symbol, setSymbol] = useState<string>(
     isWhiteDune ? WHITE_INSTANT_MARKET.symbol : isManifesto ? MANIFESTO_PRESET.symbol : 'Ð',
   );
-  const [feeRate, setFeeRate] = useState('1000');
+  const [feeRateKoinuPerByte, setFeeRateKoinuPerByte] = useState(() =>
+    dojakwebFeeRateKoinuPerKbFromPreference() / 1000,
+  );
+  const feeRateKoinuPerKb = koinuPerByteToKoinuPerKb(feeRateKoinuPerByte);
   // Premine + open mint are independent — both can be on (classic race only)
   const [enablePremine, setEnablePremine] = useState(true);
   const [premine, setPremine] = useState(
@@ -245,7 +258,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
   const reset = () => {
     const plain = (initialName ?? '').replace(/[•.\s]/g, '').toUpperCase();
     setName(initialName ?? '');
-    setFeeRate('1000');
+    setFeeRateKoinuPerByte(dojakwebFeeRateKoinuPerKbFromPreference() / 1000);
     setStep('form');
     setError(null);
     setTxid(null);
@@ -363,16 +376,39 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
           }
         : undefined;
 
-      const result = await etchDune({
+      const etchParams = {
         name: name.trim(),
-        // Premine amount (0 when premine off)
         supply: enablePremine ? premine.trim() : '0',
         divisibility: Number(divisibility),
         symbol: symbol.trim() || undefined,
         terms,
         turbo,
-        feeRate: Number(feeRate),
-        signer: resolved.signer,
+        feeRate: feeRateKoinuPerKb,
+      };
+
+      const result = await runDuneTxWithWalletApproval({
+        resolved,
+        preferBrowserApproval: isBrowser,
+        title: `Deploy Ðune · ${name.trim()}`,
+        description:
+          'Approve to sign and broadcast this Ðune etch (OP_RETURN 0xD0) from your Local Browser Wallet — same approval drawer as dogecoin.games.',
+        details: [
+          { label: 'Ðune', value: name.trim() },
+          { label: 'Magic', value: '0xD0 (Ðunes v2)' },
+          {
+            label: 'Premine',
+            value: enablePremine ? premine.trim().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '0',
+          },
+          {
+            label: 'Open mint',
+            value: enableMint ? `${mintAmount} × ${mintCap}` : 'off',
+          },
+          { label: 'Network fee', value: formatDojakwebFeeRate(feeRateKoinuPerByte) },
+          { label: 'Wallet', value: resolved.signer.fromAddress },
+        ],
+        approveLabel: 'Approve & deploy',
+        runWithLocalWif: (signer) => etchDune({ ...etchParams, signer }),
+        runWithResolvedSigner: (signer) => etchDune({ ...etchParams, signer }),
       });
 
       const nextTxid = result.txid?.trim() || null;
@@ -400,8 +436,9 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
       } else {
         toast.error('Wallet action finished, but no broadcast txid was returned.');
       }
-    } catch (e: any) {
-      setError(e.message ?? 'Transaction failed');
+    } catch (e: unknown) {
+      const msg = duneApprovalUserError(e, 'Transaction failed');
+      if (msg) setError(msg);
       setStep('confirm');
     } finally {
       setIsLoading(false);
@@ -616,16 +653,12 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 <Switch checked={turbo} onCheckedChange={setTurbo} aria-label="Turbo mode" />
               </div>
 
-              <div>
-                <Label className="mb-1 block text-text-primary">Fee rate (koinu/kB)</Label>
-                <Input
-                  type="number"
-                  value={feeRate}
-                  onChange={(e) => setFeeRate(e.target.value)}
-                  min={100}
-                />
-                <p className="mt-1 text-xs text-text-secondary">1000 koinu/kB recommended minimum</p>
-              </div>
+              <NetworkFeeControl
+                opReturnScriptLen={80}
+                inputs={1}
+                outputs={enablePremine ? 3 : 2}
+                onRateKoinuPerByteChange={setFeeRateKoinuPerByte}
+              />
 
               {connected && address ? (
                 <Alert>
@@ -691,7 +724,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
                 )}
                 <Row label="≈ Max supply" value={maxSupplyApprox.toLocaleString()} />
                 {turbo && <Row label="Turbo" value="on" />}
-                <Row label="Fee rate" value={`${Number(feeRate).toLocaleString()} koinu/kB`} />
+                <Row label="Fee rate" value={formatDojakwebFeeRate(feeRateKoinuPerByte)} />
                 <Row
                   label="Signing wallet"
                   value={signingAddress ?? address ?? 'Connect wallet'}

@@ -5,6 +5,12 @@ import { mintDune } from '../services/duneService';
 import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
 import { useDuneWalletConnection } from '../hooks/useDuneWalletConnection';
 import { walletDataApi, type DuneInfo } from '../utils/api';
+import {
+  dojakwebFeeRateKoinuPerKbFromPreference,
+  formatDojakwebFeeRate,
+  koinuPerByteToKoinuPerKb,
+} from '../lib/fees/txFeePreference';
+import { NetworkFeeControl } from './fees/NetworkFeeControl';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -26,7 +32,10 @@ export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSu
   const [duneInfo, setDuneInfo]         = useState<DuneInfo | null>(null);
   const [destination, setDestination]   = useState('');
   const [postage, setPostage]           = useState('100000');
-  const [feeRate, setFeeRate]           = useState('1000');
+  const [feeRateKoinuPerByte, setFeeRateKoinuPerByte] = useState(
+    () => dojakwebFeeRateKoinuPerKbFromPreference() / 1000,
+  );
+  const feeRateKoinuPerKb = koinuPerByteToKoinuPerKb(feeRateKoinuPerByte);
   const [step, setStep]                 = useState<Step>('form');
   const [error, setError]               = useState<string | null>(null);
   const [txid, setTxid]                 = useState<string | null>(null);
@@ -34,7 +43,7 @@ export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSu
 
   const reset = () => {
     setInputName(duneName ?? ''); setDuneInfo(null); setDestination('');
-    setPostage('100000'); setFeeRate('1000');
+    setPostage('100000'); setFeeRateKoinuPerByte(dojakwebFeeRateKoinuPerKbFromPreference() / 1000);
     setStep('form'); setError(null); setTxid(null);
   };
 
@@ -88,7 +97,7 @@ export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSu
         duneId: duneInfo!.id,
         destination: destination.trim() || resolved.signer.fromAddress,
         postage: Number(postage),
-        feeRate: Number(feeRate),
+        feeRate: feeRateKoinuPerKb,
         signer: resolved.signer,
       });
 
@@ -215,19 +224,12 @@ export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSu
                     <p className="text-xs text-text-secondary mt-1">Minimum 100,000 (0.001 DOGE). Attached to the Ðune output.</p>
                   </div>
 
-                  {/* Fee rate */}
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">
-                      Fee Rate (koinu/kB)
-                    </label>
-                    <Input
-                      type="number"
-                      value={feeRate}
-                      onChange={e => setFeeRate(e.target.value)}
-                      min={100}
-                      className="w-full"
-                    />
-                  </div>
+                  <NetworkFeeControl
+                    opReturnScriptLen={40}
+                    inputs={1}
+                    outputs={3}
+                    onRateKoinuPerByteChange={setFeeRateKoinuPerByte}
+                  />
                 </>
               )}
 
@@ -257,7 +259,7 @@ export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSu
                 {duneInfo.terms?.amount && <Row label="Tokens received" value={Number(duneInfo.terms.amount).toLocaleString()} />}
                 <Row label="Destination" value={destination.trim() || address!} mono />
                 <Row label="Postage" value={`${Number(postage).toLocaleString()} koinu (${(Number(postage) / 1e8).toFixed(4)} DOGE)`} />
-                <Row label="Fee rate" value={`${Number(feeRate).toLocaleString()} koinu/kB`} />
+                <Row label="Fee rate" value={formatDojakwebFeeRate(feeRateKoinuPerByte)} />
               </div>
 
               <div className="flex items-start gap-2 text-xs text-blue-300 bg-blue-400/10 rounded p-3">
