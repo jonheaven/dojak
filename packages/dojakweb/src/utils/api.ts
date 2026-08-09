@@ -1021,151 +1021,87 @@ export const walletDataApi = {
     }
   },
 
+  /**
+   * Ðunes always read from dogex indexer — never MyDoge / doggy.
+   * Wallet Data provider only gates era-1 Doginals / DRC-20 / UTXO list.
+   */
   fetchDunes: async (address: string): Promise<DuneHolding[]> => {
-    if (isCommandDogWalletDataProvider()) {
-      const cfg = getWalletDataProviderConfig();
-      const allowWonky =
-        cfg.wonkyOrdFallback === true ||
-        (typeof import.meta !== 'undefined' &&
-          import.meta.env?.VITE_WONKY_ORD_FALLBACK === '1');
+    if (!address?.trim()) return [];
+    const fromDogex = await fetchDunesFromIndexer(address);
+    if (fromDogex.length > 0) return fromDogex;
 
-      // Prefer wonky when fallback is on — indexer.command.dog is often offline (502).
-      if (allowWonky) {
-        try {
-          const fromWonky = await fetchDunesFromWonky(address);
-          if (fromWonky.length > 0) return fromWonky;
-        } catch {
-          /* try indexer next */
-        }
-      }
+    const cfg = getWalletDataProviderConfig();
+    const allowWonky =
+      cfg.wonkyOrdFallback === true ||
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WONKY_ORD_FALLBACK === '1');
+    if (!allowWonky) return fromDogex;
 
-      const fromDogex = await fetchDunesFromIndexer(address);
-      if (fromDogex.length > 0 || !allowWonky) {
-        return fromDogex;
-      }
-      try {
-        return await fetchDunesFromWonky(address);
-      } catch {
-        return fromDogex;
-      }
+    try {
+      return await fetchDunesFromWonky(address);
+    } catch {
+      return fromDogex;
     }
-    const data = await fetchJson(getWalletEndpoint('/Dunes/', address));
-    const dunes = extractArray(data);
-    return dunes.map((dune: any) => ({
-      dune: dune.dune ?? dune.name ?? dune.ticker,
-      ticker: dune.ticker ?? dune.symbol ?? dune.dune,
-      balance: String(dune.balance ?? dune.amount ?? '0'),
-      amount: String(dune.amount ?? dune.balance ?? '0'),
-      symbol: dune.symbol,
-    }));
   },
 
+  /** Ðune metadata — dogex only (optional wonky fallback). */
   fetchDuneInfo: async (name: string): Promise<DuneInfo | null> => {
-    if (isCommandDogWalletDataProvider()) {
-      const indexerBase = getIndexerApiBase().replace(/\/+$/, '');
-      const cleaned = name.replace(/[.•\s]/g, '').toUpperCase();
-      const indexerCandidates = [
-        `${indexerBase}/api/doginals/dunes/dune/${encodeURIComponent(name)}`,
-        `${indexerBase}/api/doginals/dunes/dune/${encodeURIComponent(cleaned)}`,
-      ];
-      for (const url of indexerCandidates) {
-        try {
-          const res = await fetch(url, { headers: { Accept: 'application/json' } });
-          if (!res.ok) continue;
-          const d = await res.json();
-          if (!d || typeof d !== 'object') continue;
-          const id = String(d.id ?? d.dune_id ?? d.duneId ?? '');
-          if (!id) continue;
-          return {
-            id,
-            name: String(d.spaced_name ?? d.name ?? name),
-            divisibility: Number(d.divisibility ?? 0),
-            symbol: d.symbol ? String(d.symbol) : undefined,
-            supply: d.supply != null ? String(d.supply) : undefined,
-            mints: d.mints != null ? String(d.mints) : undefined,
-            burned: d.burned != null ? String(d.burned) : undefined,
-            premine: d.premine != null ? String(d.premine) : undefined,
-            turbo: Boolean(d.turbo),
-            block: d.block != null ? Number(d.block) : undefined,
-            etching: d.etching ? String(d.etching) : undefined,
-            terms: d.terms ? {
-              amount: d.terms.amount != null ? String(d.terms.amount) : undefined,
-              cap: d.terms.cap != null ? String(d.terms.cap) : undefined,
-              heightStart: d.terms.height?.[0] ?? d.terms.heightStart ?? undefined,
-              heightEnd: d.terms.height?.[1] ?? d.terms.heightEnd ?? undefined,
-              offsetStart: d.terms.offset?.[0] ?? d.terms.offsetStart ?? undefined,
-              offsetEnd: d.terms.offset?.[1] ?? d.terms.offsetEnd ?? undefined,
-            } : undefined,
-            mintable: d.mintable != null ? Boolean(d.mintable) : (d.terms != null),
-          };
-        } catch {
-          continue;
-        }
-      }
-      const cfg = getWalletDataProviderConfig();
-      const allowWonky =
-        cfg.wonkyOrdFallback === true ||
-        (typeof import.meta !== 'undefined' &&
-          import.meta.env?.VITE_WONKY_ORD_FALLBACK === '1');
-      if (!allowWonky) {
-        return null;
-      }
-    }
-    if (isCommandDogWalletDataProvider()) {
-      const wonkyBase = getWonkyOrdApiBase().replace(/\/+$/, '');
-      const cleaned = name.replace(/[.•\s]/g, '').toUpperCase();
-      const candidates = [
-        `${wonkyBase}/dune/${encodeURIComponent(name)}`,
-        `${wonkyBase}/dune/${encodeURIComponent(cleaned)}`,
-      ];
-      for (const url of candidates) {
-        try {
-          const res = await fetch(url, { headers: { Accept: 'application/json' } });
-          if (!res.ok) continue;
-          const data = await res.json();
-          const d = data?.dune ?? data?.data ?? data?.result ?? data;
-          if (!d || typeof d !== 'object') continue;
-          const id = String(d.id ?? d.duneId ?? d.dune_id ?? '');
-          if (!id || !id.includes(':')) continue;
-          return {
-            id,
-            name: String(d.name ?? d.spaced_name ?? d.spaced_dune ?? name),
-            divisibility: Number(d.divisibility ?? 0),
-            symbol: d.symbol ? String(d.symbol) : undefined,
-            supply: d.supply != null ? String(d.supply) : undefined,
-            mints: d.mints != null ? String(d.mints) : undefined,
-            burned: d.burned != null ? String(d.burned) : undefined,
-            premine: d.premine != null ? String(d.premine) : undefined,
-            turbo: Boolean(d.turbo),
-            block: d.block != null ? Number(d.block) : undefined,
-            etching: d.etching ? String(d.etching) : undefined,
-            terms: d.terms ? {
-              amount: d.terms.amount != null ? String(d.terms.amount) : undefined,
-              cap: d.terms.cap != null ? String(d.terms.cap) : undefined,
-              heightStart: d.terms.height?.[0] ?? d.terms.heightStart ?? undefined,
-              heightEnd: d.terms.height?.[1] ?? d.terms.heightEnd ?? undefined,
-              offsetStart: d.terms.offset?.[0] ?? d.terms.offsetStart ?? undefined,
-              offsetEnd: d.terms.offset?.[1] ?? d.terms.offsetEnd ?? undefined,
-            } : undefined,
-            mintable: d.mintable != null ? Boolean(d.mintable) : (d.terms != null),
-          };
-        } catch {
-          continue;
-        }
-      }
-      return null;
-    }
-    const base = getWalletProviderBaseUrl();
+    const indexerBase = getIndexerApiBase().replace(/\/+$/, '');
     const cleaned = name.replace(/[.•\s]/g, '').toUpperCase();
-    // Try common provider path patterns for dune info
+    const indexerCandidates = [
+      `${indexerBase}/api/doginals/dunes/dune/${encodeURIComponent(name)}`,
+      `${indexerBase}/api/doginals/dunes/dune/${encodeURIComponent(cleaned)}`,
+    ];
+    for (const url of indexerCandidates) {
+      try {
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!res.ok) continue;
+        const d = await res.json();
+        if (!d || typeof d !== 'object') continue;
+        const id = String(d.id ?? d.dune_id ?? d.duneId ?? '');
+        if (!id) continue;
+        return {
+          id,
+          name: String(d.spaced_name ?? d.name ?? name),
+          divisibility: Number(d.divisibility ?? 0),
+          symbol: d.symbol ? String(d.symbol) : undefined,
+          supply: d.supply != null ? String(d.supply) : undefined,
+          mints: d.mints != null ? String(d.mints) : undefined,
+          burned: d.burned != null ? String(d.burned) : undefined,
+          premine: d.premine != null ? String(d.premine) : undefined,
+          turbo: Boolean(d.turbo),
+          block: d.block != null ? Number(d.block) : undefined,
+          etching: d.etching ? String(d.etching) : undefined,
+          terms: d.terms
+            ? {
+                amount: d.terms.amount != null ? String(d.terms.amount) : undefined,
+                cap: d.terms.cap != null ? String(d.terms.cap) : undefined,
+                heightStart: d.terms.height?.[0] ?? d.terms.heightStart ?? undefined,
+                heightEnd: d.terms.height?.[1] ?? d.terms.heightEnd ?? undefined,
+                offsetStart: d.terms.offset?.[0] ?? d.terms.offsetStart ?? undefined,
+                offsetEnd: d.terms.offset?.[1] ?? d.terms.offsetEnd ?? undefined,
+              }
+            : undefined,
+          mintable: d.mintable != null ? Boolean(d.mintable) : d.terms != null,
+        };
+      } catch {
+        continue;
+      }
+    }
+
+    const cfg = getWalletDataProviderConfig();
+    const allowWonky =
+      cfg.wonkyOrdFallback === true ||
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WONKY_ORD_FALLBACK === '1');
+    if (!allowWonky) return null;
+
+    const wonkyBase = getWonkyOrdApiBase().replace(/\/+$/, '');
     const candidates = [
-      `${base}/dune/${encodeURIComponent(name)}`,
-      `${base}/dune/${encodeURIComponent(cleaned)}`,
-      `${base}/Dune/${encodeURIComponent(name)}`,
+      `${wonkyBase}/dune/${encodeURIComponent(name)}`,
+      `${wonkyBase}/dune/${encodeURIComponent(cleaned)}`,
     ];
     for (const url of candidates) {
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
         if (!res.ok) continue;
         const data = await res.json();
         const d = data?.dune ?? data?.data ?? data?.result ?? data;
@@ -1184,15 +1120,17 @@ export const walletDataApi = {
           turbo: Boolean(d.turbo),
           block: d.block != null ? Number(d.block) : undefined,
           etching: d.etching ? String(d.etching) : undefined,
-          terms: d.terms ? {
-            amount: d.terms.amount != null ? String(d.terms.amount) : undefined,
-            cap: d.terms.cap != null ? String(d.terms.cap) : undefined,
-            heightStart: d.terms.height?.[0] ?? d.terms.heightStart ?? undefined,
-            heightEnd: d.terms.height?.[1] ?? d.terms.heightEnd ?? undefined,
-            offsetStart: d.terms.offset?.[0] ?? d.terms.offsetStart ?? undefined,
-            offsetEnd: d.terms.offset?.[1] ?? d.terms.offsetEnd ?? undefined,
-          } : undefined,
-          mintable: d.mintable != null ? Boolean(d.mintable) : (d.terms != null),
+          terms: d.terms
+            ? {
+                amount: d.terms.amount != null ? String(d.terms.amount) : undefined,
+                cap: d.terms.cap != null ? String(d.terms.cap) : undefined,
+                heightStart: d.terms.height?.[0] ?? d.terms.heightStart ?? undefined,
+                heightEnd: d.terms.height?.[1] ?? d.terms.heightEnd ?? undefined,
+                offsetStart: d.terms.offset?.[0] ?? d.terms.offsetStart ?? undefined,
+                offsetEnd: d.terms.offset?.[1] ?? d.terms.offsetEnd ?? undefined,
+              }
+            : undefined,
+          mintable: d.mintable != null ? Boolean(d.mintable) : d.terms != null,
         };
       } catch {
         continue;

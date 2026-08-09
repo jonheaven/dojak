@@ -6710,66 +6710,122 @@ export function DojakwebWalletModal({
                                 placeholder={`Custom API URL (optional) — default ${getDefaultWalletDataProviderUrl(settingsProvider)}`}
                                 className={cx(INPUT_CLASS, 'mt-2 text-xs')}
                               />
-                              {(settingsProvider === 'dogex' || settingsProvider === 'commanddog') && (
-                                <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-                                  <div className="text-[10px] font-semibold uppercase tracking-widest text-white/35">
-                                    {t('modal.settings.indexerSectionTitle')}
-                                  </div>
+
+                              <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                                <div className="text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                                  {t('modal.settings.sourceMapTitle')}
+                                </div>
+                                <p className="text-[10px] leading-relaxed text-white/40">
+                                  {t('modal.settings.sourceMapHint')}
+                                </p>
+                                <div className="divide-y divide-white/[0.06] font-mono text-[10px]">
+                                  {(
+                                    [
+                                      {
+                                        label: t('modal.settings.sourceMap.doge'),
+                                        source: t('modal.settings.sourceMap.fromWalletData'),
+                                      },
+                                      {
+                                        label: t('modal.settings.sourceMap.era1'),
+                                        source: t('modal.settings.sourceMap.fromWalletData'),
+                                      },
+                                      {
+                                        label: t('modal.settings.sourceMap.dunes'),
+                                        source: t('modal.settings.sourceMap.fromDogex'),
+                                      },
+                                      {
+                                        label: t('modal.settings.sourceMap.treats'),
+                                        source: t('modal.settings.sourceMap.fromDogex'),
+                                      },
+                                      {
+                                        label: t('modal.settings.sourceMap.charms'),
+                                        source: t('modal.settings.sourceMap.fromDogex'),
+                                      },
+                                    ] as const
+                                  ).map((row) => (
+                                    <div
+                                      key={row.label}
+                                      className="flex items-start justify-between gap-3 py-1.5 first:pt-0 last:pb-0"
+                                    >
+                                      <span className="text-white/70">{row.label}</span>
+                                      <span className="shrink-0 text-right text-[#FCD34D]/80">{row.source}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                                <div className="text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                                  {t('modal.settings.indexerSectionTitle')}
+                                </div>
+                                <label className="block space-y-1">
+                                  <span className="text-[11px] text-white/50">{t('modal.settings.indexerApiLabel')}</span>
+                                  <input
+                                    value={settingsIndexerApiBase}
+                                    onChange={(e) => setSettingsIndexerApiBase(e.target.value)}
+                                    placeholder={
+                                      typeof window !== 'undefined'
+                                        ? new URL('/__indexer', window.location.origin).href
+                                        : '/__indexer'
+                                    }
+                                    className={cx(INPUT_CLASS, 'text-xs font-mono')}
+                                  />
+                                  <span className="block text-[10px] text-white/30">
+                                    {t('modal.settings.indexerApiHint')}
+                                  </span>
+                                </label>
+                                {settingsProvider === 'dogex' && (
                                   <label className="block space-y-1">
-                                    <span className="text-[11px] text-white/50">{t('modal.settings.indexerApiLabel')}</span>
+                                    <span className="text-[11px] text-white/50">{t('modal.settings.dogexCdnLabel')}</span>
                                     <input
-                                      value={settingsIndexerApiBase}
-                                      onChange={(e) => setSettingsIndexerApiBase(e.target.value)}
-                                      placeholder={typeof window !== 'undefined' ? new URL('/__indexer', window.location.origin).href : '/__indexer'}
+                                      value={settingsDogexCdnBase}
+                                      onChange={(e) => setSettingsDogexCdnBase(e.target.value)}
+                                      placeholder={t('modal.settings.dogexCdnPlaceholder')}
                                       className={cx(INPUT_CLASS, 'text-xs font-mono')}
                                     />
-                                    <span className="block text-[10px] text-white/30">{t('modal.settings.indexerApiHint')}</span>
+                                    <span className="block text-[10px] text-white/30">
+                                      {t('modal.settings.dogexCdnHint')}
+                                    </span>
                                   </label>
-                                  {settingsProvider === 'dogex' && (
-                                    <label className="block space-y-1">
-                                      <span className="text-[11px] text-white/50">{t('modal.settings.dogexCdnLabel')}</span>
-                                      <input
-                                        value={settingsDogexCdnBase}
-                                        onChange={(e) => setSettingsDogexCdnBase(e.target.value)}
-                                        placeholder={t('modal.settings.dogexCdnPlaceholder')}
-                                        className={cx(INPUT_CLASS, 'text-xs font-mono')}
-                                      />
-                                      <span className="block text-[10px] text-white/30">{t('modal.settings.dogexCdnHint')}</span>
-                                    </label>
+                                )}
+                                <div className="flex items-center gap-2 pt-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleTestIndexerHealth()}
+                                    disabled={indexerHealth.status === 'loading'}
+                                    className="rounded border border-white/15 bg-white/[0.06] px-2 py-1 text-[10px] font-semibold text-white/55 transition hover:border-[#D4A017]/40 hover:text-white/85 disabled:opacity-40"
+                                  >
+                                    {indexerHealth.status === 'loading'
+                                      ? t('modal.settings.indexerHealthTesting')
+                                      : t('modal.settings.indexerHealthTest')}
+                                  </button>
+                                  {indexerHealth.status === 'ok' && (
+                                    <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-400">
+                                      <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden />
+                                      {indexerHealth.latencyMs != null ? `${indexerHealth.latencyMs}ms` : ''}
+                                      {indexerHealth.message ? ` · ${indexerHealth.message}` : ''}
+                                    </span>
                                   )}
-                                  <div className="flex items-center gap-2 pt-0.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => void handleTestIndexerHealth()}
-                                      disabled={indexerHealth.status === 'loading'}
-                                      className="rounded border border-white/15 bg-white/[0.06] px-2 py-1 text-[10px] font-semibold text-white/55 transition hover:border-[#D4A017]/40 hover:text-white/85 disabled:opacity-40"
+                                  {indexerHealth.status === 'warn' && (
+                                    <span
+                                      className="flex items-center gap-1.5 text-[10px] font-medium text-amber-300"
+                                      title={indexerHealth.message}
                                     >
-                                      {indexerHealth.status === 'loading'
-                                        ? t('modal.settings.indexerHealthTesting')
-                                        : t('modal.settings.indexerHealthTest')}
-                                    </button>
-                                    {indexerHealth.status === 'ok' && (
-                                      <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-400">
-                                        <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden />
-                                        {indexerHealth.latencyMs != null ? `${indexerHealth.latencyMs}ms` : ''}
-                                        {indexerHealth.message ? ` · ${indexerHealth.message}` : ''}
-                                      </span>
-                                    )}
-                                    {indexerHealth.status === 'warn' && (
-                                      <span className="flex items-center gap-1.5 text-[10px] font-medium text-amber-300" title={indexerHealth.message}>
-                                        <span className="h-2 w-2 rounded-full bg-amber-300" aria-hidden />
-                                        {indexerHealth.message}
-                                      </span>
-                                    )}
-                                    {indexerHealth.status === 'err' && (
-                                      <span className="flex items-center gap-1.5 text-[10px] font-medium text-red-300" title={indexerHealth.message}>
-                                        <span className="h-2 w-2 rounded-full bg-red-400" aria-hidden />
-                                        {indexerHealth.message ?? '✗'}
-                                      </span>
-                                    )}
-                                  </div>
+                                      <span className="h-2 w-2 rounded-full bg-amber-300" aria-hidden />
+                                      {indexerHealth.message}
+                                    </span>
+                                  )}
+                                  {indexerHealth.status === 'err' && (
+                                    <span
+                                      className="flex items-center gap-1.5 text-[10px] font-medium text-red-300"
+                                      title={indexerHealth.message}
+                                    >
+                                      <span className="h-2 w-2 rounded-full bg-red-400" aria-hidden />
+                                      {indexerHealth.message ?? '✗'}
+                                    </span>
+                                  )}
                                 </div>
-                              )}
+                              </div>
                             </div>
 
                             {/* Price sources */}
