@@ -235,6 +235,8 @@ export async function deployAlkaneWasm(params: {
     fromAddress: params.fromAddress,
     privateKeyWIF: params.privateKeyWIF,
     feeRate: params.feeRate ?? 1_000_000,
+  });
+  for (let i = 0; i < pair.stages.length; i++) {
     const stage = pair.stages[i]!;
     await broadcastTxWithStatus(stage.txHex, () => {});
     if (i + 1 < pair.stages.length) await sleep(900);
