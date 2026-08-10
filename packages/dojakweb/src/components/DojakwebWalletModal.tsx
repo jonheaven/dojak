@@ -53,8 +53,10 @@ import { getSpendableBalanceBreakdown, type SpendableBalanceBreakdown } from '..
 import { clearMempoolOverlayForAddress } from '../lib/mempoolSpendOverlay';
 import {
   TextInscriptionCardMedia,
+  WasmInscriptionCardMedia,
   InscriptionTextInspectModal,
   isTextishInscription,
+  isWasmInscription,
 } from './wallet/TextInscriptionPreview';
 import {
   isDlottoInscriptionText,
@@ -4828,6 +4830,11 @@ export function DojakwebWalletModal({
                                                 className="aspect-square w-full object-cover"
                                                 loading="lazy"
                                               />
+                                            ) : isWasmInscription(item.contentType) ? (
+                                              <WasmInscriptionCardMedia
+                                                item={item}
+                                                onInspect={() => setTextInspectItem(item)}
+                                              />
                                             ) : isTextishInscription(item.contentType) ? (
                                               <TextInscriptionCardMedia
                                                 item={item}
@@ -5606,6 +5613,18 @@ export function DojakwebWalletModal({
                                 e.currentTarget.style.display = 'none';
                               }}
                             />
+                          ) : isWasmInscription(selectedInscription.contentType) ? (
+                            <button
+                              type="button"
+                              onClick={() => setTextInspectItem(selectedInscription)}
+                              className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg border border-emerald-400/25 bg-[#0a0f0c] text-[8px] font-bold uppercase tracking-wide text-emerald-200 transition hover:brightness-110"
+                              title="Ðalkanes WASM"
+                            >
+                              <span className="font-mono text-sm leading-none" aria-hidden>
+                                {'{ }'}
+                              </span>
+                              WASM
+                            </button>
                           ) : isTextishInscription(selectedInscription.contentType) ? (
                             <button
                               type="button"
@@ -5844,6 +5863,18 @@ export function DojakwebWalletModal({
                                 e.currentTarget.style.display = 'none';
                               }}
                             />
+                          ) : isWasmInscription(selectedInscription.contentType) ? (
+                            <button
+                              type="button"
+                              onClick={() => setTextInspectItem(selectedInscription)}
+                              className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg border border-emerald-400/25 bg-[#0a0f0c] text-[8px] font-bold uppercase tracking-wide text-emerald-200 transition hover:brightness-110"
+                              title="Ðalkanes WASM"
+                            >
+                              <span className="font-mono text-sm leading-none" aria-hidden>
+                                {'{ }'}
+                              </span>
+                              WASM
+                            </button>
                           ) : isTextishInscription(selectedInscription.contentType) ? (
                             <button
                               type="button"

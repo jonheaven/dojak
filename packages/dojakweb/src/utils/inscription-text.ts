@@ -44,6 +44,13 @@ export function isTextishInscription(contentType?: string | null): boolean {
   return ct.startsWith('text/');
 }
 
+/** Ðalkanes / WASM bytecode inscriptions (application/wasm, alkane/*). */
+export function isWasmInscription(contentType?: string | null): boolean {
+  const ct = normalizeContentType(contentType);
+  if (!ct) return false;
+  return ct === 'application/wasm' || ct.includes('wasm') || ct.includes('alkane');
+}
+
 export function isJsonInscription(contentType?: string | null, body?: string | null): boolean {
   const ct = normalizeContentType(contentType);
   if (ct === 'application/json' || ct.endsWith('+json')) return true;

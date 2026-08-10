@@ -6,6 +6,7 @@ import { CodeBracketIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/2
 import {
   isJsonInscription,
   isTextishInscription,
+  isWasmInscription,
   loadInscriptionTextBody,
   parseInscriptionText,
   type ParsedInscriptionText,
@@ -78,6 +79,70 @@ async function loadBodyForItem(
     extraFallbackUrls: urls.slice(2),
     signal,
   });
+}
+
+/** Compact media tile for Ðalkanes / WASM bytecode inscriptions. */
+export function WasmInscriptionCardMedia({ item, onInspect, className = '' }: CardProps) {
+  const idShort = (item.inscriptionId || '').slice(0, 8);
+  return (
+    <button
+      type="button"
+      onClick={onInspect}
+      className={`relative flex aspect-square w-full flex-col items-center justify-center overflow-hidden bg-[#0a0f0c] p-3 text-left transition hover:brightness-110 ${className}`}
+      title="Ðalkanes WASM contract"
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-90"
+        style={{
+          background:
+            'radial-gradient(ellipse at 30% 20%, rgba(52,211,153,0.22), transparent 55%), radial-gradient(ellipse at 80% 90%, rgba(16,185,129,0.12), transparent 50%)',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.14]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(52,211,153,0.35) 1px, transparent 1px), linear-gradient(90deg, rgba(52,211,153,0.35) 1px, transparent 1px)',
+          backgroundSize: '14px 14px',
+        }}
+      />
+      <div className="relative z-[1] mb-2 inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200">
+        <span aria-hidden className="font-mono text-[10px] leading-none">
+          {'{ }'}
+        </span>
+        WASM
+      </div>
+      {/* Hex-chip mark — reads as bytecode without dumping MIME */}
+      <svg
+        viewBox="0 0 64 64"
+        className="relative z-[1] h-14 w-14 text-emerald-300/95 drop-shadow-[0_0_12px_rgba(52,211,153,0.35)]"
+        aria-hidden
+      >
+        <polygon
+          points="32,4 56,18 56,46 32,60 8,46 8,18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+        />
+        <polygon
+          points="32,14 48,23 48,41 32,50 16,41 16,23"
+          fill="rgba(52,211,153,0.12)"
+          stroke="currentColor"
+          strokeWidth="1.4"
+        />
+        <path
+          d="M24 28h16M24 32h12M24 36h14"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          opacity="0.85"
+        />
+      </svg>
+      <div className="relative z-[1] mt-2 max-w-full truncate font-mono text-[10px] text-emerald-100/70">
+        Ðalkanes · {idShort || 'contract'}
+      </div>
+    </button>
+  );
 }
 
 /** Compact media tile for text/JSON Doginals in the wallet NFT grid. */
@@ -313,4 +378,4 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
   );
 }
 
-export { isTextishInscription };
+export { isTextishInscription, isWasmInscription };
