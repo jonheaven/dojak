@@ -38,6 +38,7 @@ import {
   recordPaymentBroadcast,
 } from '../lib/mempoolSpendOverlay';
 import { upsertWalletTxJournalEntry } from '../lib/wallet-tx-journal';
+import { DOGEX_PUBLIC_INDEXER_URL, getIndexerApiBase } from '../utils/api';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -135,6 +136,10 @@ interface CoinSelection {
   changeSatoshis: number;
 }
 
+function outpointKey(u: Pick<NormalisedUtxo, 'tx_hash' | 'tx_output_n'>): string {
+  return `${u.tx_hash}:${u.tx_output_n}`;
+}
+
 function selectCoins(
   utxos: NormalisedUtxo[],
   requiredOutputSats: number,  // non-OP_RETURN outputs total
@@ -143,20 +148,38 @@ function selectCoins(
   feeRate: number,
   /** Values of non-OP_RETURN outputs that will exist before change (koinu). */
   fixedOutputValues: number[] = [],
+  /** Ðune-bearing (or otherwise required) inputs — always spent first. */
+  mustInclude: NormalisedUtxo[] = [],
 ): CoinSelection {
-  const sorted = [...utxos].sort((a, b) => b.value - a.value);
-  const selected: NormalisedUtxo[] = [];
-  let totalSats = 0;
+  const mustKeys = new Set(mustInclude.map(outpointKey));
+  const sorted = [...utxos]
+    .filter((u) => !mustKeys.has(outpointKey(u)))
+    .sort((a, b) => b.value - a.value);
+  const selected: NormalisedUtxo[] = [...mustInclude];
+  let totalSats = mustInclude.reduce((s, u) => s + u.value, 0);
   // Assume change exists for size estimate; soft-dust on fixed outs only until we know change.
-  let fee = calcFee(1, outputCount, opReturnBytes, feeRate, fixedOutputValues);
+  let fee = calcFee(
+    Math.max(1, selected.length),
+    outputCount,
+    opReturnBytes,
+    feeRate,
+    fixedOutputValues,
+  );
 
-  for (const utxo of sorted) {
-    selected.push(utxo);
-    totalSats += utxo.value;
+  const tryFinish = () => {
     fee = calcFee(selected.length, outputCount, opReturnBytes, feeRate, fixedOutputValues);
-    // Change must clear soft dust or it is discarded into the fee.
     const needed = fee + requiredOutputSats + SOFT_DUST_KOINU;
-    if (totalSats >= needed) break;
+    return totalSats >= needed;
+  };
+
+  if (!tryFinish()) {
+    for (const utxo of sorted) {
+      selected.push(utxo);
+      totalSats += utxo.value;
+      if (tryFinish()) break;
+    }
+  } else {
+    fee = calcFee(selected.length, outputCount, opReturnBytes, feeRate, fixedOutputValues);
   }
 
   let needed = fee + requiredOutputSats;
@@ -181,6 +204,8 @@ interface SignTxParams {
   extraOutputs: Array<{ address: string; value: number }>;
   utxos: NormalisedUtxo[];
   feeRate: number;
+  mustIncludeUtxos?: NormalisedUtxo[];
+  forceChangeOutput?: boolean;
 }
 
 interface BuiltTx {
@@ -209,10 +234,56 @@ interface BuildDuneTxParams {
   extraOutputs: Array<{ address: string; value: number }>;
   utxos: NormalisedUtxo[];
   feeRate: number;
+  /** Always spend these first (Ðune-bearing outpoints). */
+  mustIncludeUtxos?: NormalisedUtxo[];
+  /**
+   * Always create a soft-dust-safe change output to `fromAddress` and fold leftover
+   * DOGE into it. Used by sends so a pointer can park unallocated Ðunes.
+   */
+  forceChangeOutput?: boolean;
 }
 
 function planDuneTx(params: BuildDuneTxParams) {
-  const { fromAddress, opReturnScript, extraOutputs, utxos, feeRate } = params;
+  const {
+    fromAddress,
+    opReturnScript,
+    extraOutputs,
+    utxos,
+    feeRate,
+    mustIncludeUtxos = [],
+    forceChangeOutput = false,
+  } = params;
+
+  if (forceChangeOutput) {
+    // Recipient + min change postage; leftover DOGE folds into the change output.
+    const requiredOutputSats =
+      extraOutputs.reduce((s, o) => s + o.value, 0) + SOFT_DUST_KOINU;
+    const estOutputCount = 1 + extraOutputs.length + 1; // OP_RETURN + extras + change
+    const fixedOutputValues = [...extraOutputs.map((o) => o.value), SOFT_DUST_KOINU];
+    const { selected, feeSatoshis, changeSatoshis } = selectCoins(
+      utxos,
+      requiredOutputSats,
+      estOutputCount,
+      opReturnScript.length,
+      feeRate,
+      fixedOutputValues,
+      mustIncludeUtxos,
+    );
+    // changeSatoshis is DOGE above the reserved soft-dust change floor.
+    const finalChange = SOFT_DUST_KOINU + changeSatoshis;
+    const outputs: Array<{ value: number; script?: Uint8Array; address?: string }> = [
+      { value: 0, script: opReturnScript },
+      ...extraOutputs,
+      { address: fromAddress, value: finalChange },
+    ];
+    return {
+      selected,
+      feeSatoshis,
+      changeSatoshis: finalChange,
+      outputs,
+    };
+  }
+
   const requiredOutputSats = extraOutputs.reduce((s, o) => s + o.value, 0);
   const estOutputCount = 1 + extraOutputs.length + 1;
 
@@ -223,6 +294,7 @@ function planDuneTx(params: BuildDuneTxParams) {
     opReturnScript.length,
     feeRate,
     extraOutputs.map((o) => o.value),
+    mustIncludeUtxos,
   );
 
   const outputs: Array<{ value: number; script?: Uint8Array; address?: string }> = [
@@ -307,13 +379,24 @@ async function buildDunePsbt(params: BuildDuneTxParams): Promise<{
 }
 
 async function buildAndSign(params: SignTxParams): Promise<BuiltTx> {
-  const { fromAddress, privateKeyWIF, opReturnScript, extraOutputs, utxos, feeRate } = params;
+  const {
+    fromAddress,
+    privateKeyWIF,
+    opReturnScript,
+    extraOutputs,
+    utxos,
+    feeRate,
+    mustIncludeUtxos,
+    forceChangeOutput,
+  } = params;
   const { selected, feeSatoshis, changeSatoshis, outputs } = planDuneTx({
     fromAddress,
     opReturnScript,
     extraOutputs,
     utxos,
     feeRate,
+    mustIncludeUtxos,
+    forceChangeOutput,
   });
 
   const signer = DogeMemoryWallet.fromWIF(privateKeyWIF, 'doge');
@@ -335,15 +418,22 @@ async function signDuneTransaction(
   opReturnScript: Uint8Array,
   extraOutputs: Array<{ address: string; value: number }>,
   feeRate: number,
+  opts?: {
+    utxos?: NormalisedUtxo[];
+    mustIncludeUtxos?: NormalisedUtxo[];
+    forceChangeOutput?: boolean;
+  },
 ): Promise<BuiltTx> {
   assertDuneTxSigner(signer);
-  const utxos = await getSpendableUtxos(signer.fromAddress);
+  const utxos = opts?.utxos ?? (await getSpendableUtxos(signer.fromAddress));
   const buildParams: BuildDuneTxParams = {
     fromAddress: signer.fromAddress,
     opReturnScript,
     extraOutputs,
     utxos,
     feeRate,
+    mustIncludeUtxos: opts?.mustIncludeUtxos,
+    forceChangeOutput: opts?.forceChangeOutput,
   };
 
   if (signer.privateKeyWIF) {
@@ -354,6 +444,8 @@ async function signDuneTransaction(
       extraOutputs,
       utxos,
       feeRate,
+      mustIncludeUtxos: opts?.mustIncludeUtxos,
+      forceChangeOutput: opts?.forceChangeOutput,
     });
   }
 
@@ -403,6 +495,148 @@ async function getSpendableUtxos(address: string): Promise<NormalisedUtxo[]> {
     tx_output_n: u.vout,
     value: u.value,
   }));
+}
+
+function normalizeDuneId(id: string): string {
+  return id.trim().toLowerCase();
+}
+
+async function fetchOutpointDuneAmount(
+  txid: string,
+  vout: number,
+  duneId: string,
+): Promise<bigint | null> {
+  const want = normalizeDuneId(duneId);
+  const bases = [
+    getIndexerApiBase().replace(/\/+$/, ''),
+    DOGEX_PUBLIC_INDEXER_URL,
+  ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+
+  for (const base of bases) {
+    const url = `${base}/api/dunes/outpoint/${encodeURIComponent(txid)}/${vout}`;
+    try {
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer =
+        ctrl && typeof window !== 'undefined'
+          ? window.setTimeout(() => ctrl.abort(), 12_000)
+          : null;
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+        signal: ctrl?.signal,
+      });
+      if (timer != null) window.clearTimeout(timer);
+      if (!res.ok) continue;
+      const data = (await res.json()) as { dunes?: Array<{ dune_id?: string; amount?: string }> };
+      const rows = Array.isArray(data?.dunes) ? data.dunes : [];
+      for (const row of rows) {
+        if (normalizeDuneId(String(row?.dune_id ?? '')) === want) {
+          return BigInt(String(row?.amount ?? '0'));
+        }
+      }
+      return 0n;
+    } catch {
+      /* try next base */
+    }
+  }
+  return null;
+}
+
+/**
+ * Ðune edicts only move balances that exist on spent outpoints. Coin-select
+ * fee UTXOs alone (largest first) often skips the postage UTXO that holds the
+ * Ðune — producing a no-op / burn. Probe dogex per outpoint and force-include
+ * carriers that cover `amountNeeded`.
+ */
+async function getUtxosForDuneSend(
+  address: string,
+  duneId: string,
+  amountNeeded: bigint,
+): Promise<{ mustInclude: NormalisedUtxo[]; utxos: NormalisedUtxo[] }> {
+  const all = await fetchSpendableUtxosConservativeForAddress(address);
+  if (!all.length) {
+    throw new Error('No confirmed UTXOs found. Your wallet needs DOGE to pay fees and postage.');
+  }
+
+  type Carrier = NormalisedUtxo & { duneAmount: bigint };
+  const carriers: Carrier[] = [];
+  const CONCURRENCY = 6;
+  for (let i = 0; i < all.length; i += CONCURRENCY) {
+    const batch = all.slice(i, i + CONCURRENCY);
+    const probed = await Promise.all(
+      batch.map(async (u) => {
+        const amt = await fetchOutpointDuneAmount(u.tx_hash, u.tx_output_n, duneId);
+        if (amt == null || amt <= 0n) return null;
+        return { ...u, duneAmount: amt };
+      }),
+    );
+    for (const row of probed) {
+      if (row) carriers.push(row);
+    }
+  }
+
+  if (!carriers.length) {
+    throw new Error(
+      `No UTXOs holding Ðune ${duneId} were found for this address. ` +
+        `Wait for dogex to index your last receive, then refresh and retry.`,
+    );
+  }
+
+  carriers.sort((a, b) => (a.duneAmount === b.duneAmount ? 0 : a.duneAmount > b.duneAmount ? -1 : 1));
+  const mustInclude: NormalisedUtxo[] = [];
+  let covered = 0n;
+  for (const c of carriers) {
+    mustInclude.push({ tx_hash: c.tx_hash, tx_output_n: c.tx_output_n, value: c.value });
+    covered += c.duneAmount;
+    if (covered >= amountNeeded) break;
+  }
+  if (covered < amountNeeded) {
+    throw new Error(
+      `Insufficient Ðune on spendable UTXOs: need ${amountNeeded.toString()}, have ${covered.toString()} ` +
+        `(indexer outpoint total).`,
+    );
+  }
+
+  const mustKeys = new Set(mustInclude.map(outpointKey));
+  const { safe } = filterSafeSpendableUtxos(address, all);
+  // Ðune carriers are spendable even at inscription sentinel values; fee toppers stay "safe".
+  const payment = [
+    ...mustInclude,
+    ...safe.filter((u) => !mustKeys.has(outpointKey(u))),
+  ];
+
+  const merged = mergePaymentUtxos(
+    address,
+    payment.map((u) => ({
+      txid: u.tx_hash,
+      vout: u.tx_output_n,
+      value: u.value,
+    })),
+  );
+  const mergedKeys = new Set(merged.map((u) => `${u.txid}:${u.vout}`));
+  for (const m of mustInclude) {
+    if (!mergedKeys.has(outpointKey(m))) {
+      throw new Error(
+        `Ðune-bearing UTXO ${outpointKey(m)} looks spent in this session (pending mempool). ` +
+          `Wait for confirmation or clear the pending overlay, then retry.`,
+      );
+    }
+  }
+
+  const utxos = merged.map((u) => ({
+    tx_hash: u.txid,
+    tx_output_n: u.vout,
+    value: u.value,
+  }));
+
+  console.info('[dojakweb:dunes] send UTXO selection', {
+    carriers: carriers.length,
+    mustInclude: mustInclude.length,
+    covered: covered.toString(),
+    paymentPool: utxos.length,
+  });
+
+  return { mustInclude, utxos };
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -572,7 +806,8 @@ export interface SendResult {
  * Build, sign, and optionally broadcast a send (transfer) transaction.
  *
  * Creates an edict that moves `amount` dune tokens to `recipientAddress`.
- * The recipient output is at index 1 (after the OP_RETURN at index 0).
+ * Layout: OP_RETURN (0) → recipient postage (1) → change to sender (2).
+ * Pointer parks unallocated Ðunes on change so partial sends do not over-deliver.
  */
 export async function sendDune(params: SendDuneParams): Promise<SendResult> {
   const {
@@ -587,13 +822,27 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
     assertPlainPaymentKoinu('Postage', postage);
   }
 
-  const opReturnScript = buildSendScript(duneId, amountBig, 1);
+  const { mustInclude, utxos } = await getUtxosForDuneSend(
+    signer.fromAddress,
+    duneId,
+    amountBig,
+  );
+
+  // Recipient = 1, change = 2 — pointer keeps remainder with the sender.
+  const recipientOutput = 1;
+  const changePointer = 2;
+  const opReturnScript = buildSendScript(duneId, amountBig, recipientOutput, changePointer);
 
   const built = await signDuneTransaction(
     signer,
     opReturnScript,
     [{ address: recipientAddress, value: postage }],
     feeRate,
+    {
+      utxos,
+      mustIncludeUtxos: mustInclude,
+      forceChangeOutput: true,
+    },
   );
 
   let txid: string | undefined;

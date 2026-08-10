@@ -4184,7 +4184,7 @@ export function DojakwebWalletModal({
                             </div>
                           </div>
 
-                          {connected && isBrowserWallet && activeBrowserSeedGroup && activeBrowserSeedGroup.accounts.length > 1 ? (
+                          {connected && isBrowserWallet && activeBrowserSeedGroup ? (
                             <div className="mb-2 flex flex-wrap items-center gap-1.5 px-1">
                               {activeBrowserSeedGroup.accounts.map((acc) => {
                                 const isActiveAccount = acc.address === activeAddress;
@@ -7391,6 +7391,13 @@ export function DojakwebWalletModal({
       <DuneSendModal
         isOpen={duneSendOpen}
         holding={duneSendHolding}
+        siblingAccounts={
+          activeBrowserSeedGroup?.accounts.map((acc) => ({
+            address: acc.address,
+            accountIndex: acc.accountIndex ?? 0,
+            nickname: acc.nickname,
+          })) ?? []
+        }
         onClose={() => {
           setDuneSendOpen(false);
           setDuneSendHolding(undefined);

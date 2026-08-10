@@ -189,6 +189,14 @@ function mapWonkyDuneHoldings(payload: unknown): DuneHolding[] {
     balance: String(row?.total_balance ?? row?.balance ?? row?.amount ?? '0'),
     amount: String(row?.total_balance ?? row?.amount ?? row?.balance ?? '0'),
     symbol: row?.symbol != null ? String(row.symbol) : undefined,
+    duneId:
+      row?.dune_id != null || row?.duneId != null || row?.id != null
+        ? String(row.dune_id ?? row.duneId ?? row.id)
+        : undefined,
+    divisibility:
+      row?.divisibility != null && Number.isFinite(Number(row.divisibility))
+        ? Number(row.divisibility)
+        : undefined,
   }));
 }
 
@@ -616,6 +624,9 @@ export interface DuneHolding {
   balance: string;
   amount?: string;
   symbol?: string;
+  /** dogex `dune_id` (`block:tx`) when the balance row includes it. */
+  duneId?: string;
+  divisibility?: number;
 }
 
 export interface DuneTermsInfo {

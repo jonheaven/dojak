@@ -509,10 +509,19 @@ export function buildMintScript(duneId: string): Uint8Array {
  * @param duneId   Dune ID as "block:tx" string
  * @param amount   Amount to send in smallest units
  * @param output   Output index of the recipient (typically 1)
+ * @param pointer  Output that receives unallocated Ðunes (change). Required for
+ *                 partial sends — without it, remainder defaults to the first
+ *                 non-OP_RETURN (the recipient) and over-sends.
  */
-export function buildSendScript(duneId: string, amount: bigint, output = 1): Uint8Array {
+export function buildSendScript(
+  duneId: string,
+  amount: bigint,
+  output = 1,
+  pointer?: number,
+): Uint8Array {
   const { block, tx } = parseDuneId(duneId);
   return encodeDunestone({
+    ...(pointer !== undefined ? { pointer } : {}),
     edicts: [{ id: { block, tx }, amount, output }],
   });
 }
