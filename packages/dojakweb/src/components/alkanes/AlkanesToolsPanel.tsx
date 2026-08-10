@@ -245,15 +245,26 @@ export function AlkanesToolsPanel({
     }
   };
 
+  const fieldClass =
+    'mt-1 w-full rounded border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary';
+  const idleChipClass =
+    'rounded-lg border border-border-primary bg-bg-primary px-3 py-1.5 text-text-secondary transition hover:border-primary-500 hover:text-text-primary';
+  const activeChipClass =
+    'rounded-lg border border-primary-500/50 bg-primary-500/15 px-3 py-1.5 font-semibold text-primary-500';
+  const primaryBtnClass =
+    'rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-bg-primary transition hover:bg-primary-400 disabled:opacity-50';
+
   return (
-    <div className={`rounded-xl border border-white/10 bg-black/40 p-4 text-white ${className}`}>
+    <div
+      className={`rounded-xl border border-border-primary bg-bg-secondary p-4 text-text-primary ${className}`}
+    >
       <div className="mb-3">
-        <p className="text-xs uppercase tracking-wide text-cyan-300/80">Ðalkanes</p>
-        <h3 className="text-lg font-semibold">WASM contracts · templates</h3>
-        <p className="mt-1 text-sm text-white/60">
+        <p className="text-xs font-medium uppercase tracking-wide text-primary-500">Ðalkanes</p>
+        <h3 className="text-lg font-semibold text-text-primary">WASM contracts · templates</h3>
+        <p className="mt-1 text-sm text-text-secondary">
           Deploy AMM, block/time oracle, or signed price oracle; simulate and broadcast OP_RETURN 0xD1.{' '}
           <a
-            className="text-cyan-300 underline"
+            className="text-primary-500 underline hover:text-primary-400"
             href="https://dogenals.com/alkanescan"
             target="_blank"
             rel="noreferrer"
@@ -262,7 +273,7 @@ export function AlkanesToolsPanel({
           </a>
           {' · '}
           <a
-            className="text-cyan-300 underline"
+            className="text-primary-500 underline hover:text-primary-400"
             href="https://dogenals.com/alkanes"
             target="_blank"
             rel="noreferrer"
@@ -285,31 +296,25 @@ export function AlkanesToolsPanel({
             key={id}
             type="button"
             onClick={() => setOp(id)}
-            className={`rounded-lg px-3 py-1.5 ${
-              op === id ? 'bg-cyan-500/30 text-cyan-100' : 'bg-white/5 text-white/70'
-            }`}
+            className={op === id ? activeChipClass : idleChipClass}
           >
             {label}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          className="rounded-lg bg-white/5 px-3 py-1.5 text-white/70"
-        >
+        <button type="button" onClick={() => void refresh()} className={idleChipClass}>
           Refresh
         </button>
       </div>
 
-      {error && <p className="mb-2 text-sm text-red-300">{error}</p>}
-      {status && <p className="mb-2 text-sm text-emerald-300">{status}</p>}
+      {error && <p className="mb-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {status && <p className="mb-2 text-sm text-emerald-700 dark:text-emerald-400">{status}</p>}
 
       {op === 'deploy-amm' && (
         <div className="space-y-3">
-          <label className="block text-sm">
+          <label className="block text-sm text-text-primary">
             Template
             <select
-              className="mt-1 w-full rounded border border-white/10 bg-black/50 px-3 py-2 text-sm"
+              className={fieldClass}
               value={templateId}
               onChange={(e) => setTemplateId(e.target.value as AlkanesTemplateId)}
             >
@@ -330,30 +335,34 @@ export function AlkanesToolsPanel({
               <option value="multi-market">Multi-choice Polymarket market</option>
             </select>
           </label>
-          <p className="text-sm text-white/70">
+          <p className="text-sm text-text-secondary">
             {tmpl
               ? `${tmpl.name} · ${tmpl.code_hash.slice(0, 16)}…${
                   tmpl.fee_bps != null ? ` · fee ${tmpl.fee_bps} bps` : ''
                 }`
               : 'Loading template…'}
           </p>
-          {tmpl?.description && <p className="text-xs text-white/50">{tmpl.description}</p>}
+          {tmpl?.description && <p className="text-xs text-text-secondary">{tmpl.description}</p>}
           <button
             type="button"
             disabled={busy || !tmpl}
             onClick={() => void onDeployAmm()}
-            className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium disabled:opacity-50"
+            className={primaryBtnClass}
           >
             {busy ? 'Inscribing…' : `One-click deploy ${tmpl?.name ?? 'template'}`}
           </button>
-          <ul className="mt-3 max-h-40 space-y-1 overflow-auto font-mono text-xs text-white/60">
+          <ul className="mt-3 max-h-40 space-y-1 overflow-auto font-mono text-xs text-text-secondary">
             {items.map((m) => (
               <li key={m.id} className="flex flex-wrap items-center gap-2">
-                <button type="button" className="hover:text-cyan-200" onClick={() => setTarget(m.id)}>
+                <button
+                  type="button"
+                  className="text-text-primary hover:text-primary-500"
+                  onClick={() => setTarget(m.id)}
+                >
                   {m.id} · {m.code_len}B
                 </button>
                 <a
-                  className="text-cyan-400/80 underline"
+                  className="text-primary-500 underline hover:text-primary-400"
                   href={`https://dogenals.com/alkanescan/${m.id.replace(':', '/')}`}
                   target="_blank"
                   rel="noreferrer"
@@ -369,18 +378,18 @@ export function AlkanesToolsPanel({
 
       {(op === 'simulate' || op === 'build-call' || op === 'broadcast-call') && (
         <div className="space-y-3">
-          <label className="block text-sm">
+          <label className="block text-sm text-text-primary">
             Target block:tx
             <input
-              className="mt-1 w-full rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm"
+              className={`${fieldClass} font-mono`}
               value={target}
               onChange={(e) => setTarget(e.target.value)}
             />
           </label>
-          <label className="block text-sm">
+          <label className="block text-sm text-text-primary">
             Call mode
             <select
-              className="mt-1 w-full rounded border border-white/10 bg-black/50 px-3 py-2 text-sm"
+              className={fieldClass}
               value={callMode}
               onChange={(e) => setCallMode(e.target.value as typeof callMode)}
             >
@@ -390,29 +399,25 @@ export function AlkanesToolsPanel({
               <option value="resolve">Prediction resolve</option>
             </select>
           </label>
-          <label className="block text-sm">
+          <label className="block text-sm text-text-primary">
             Amount {callMode === 'swap' ? '(swap / custody ain)' : '(stake koinu; 0 = attach)'}
             <input
-              className="mt-1 w-full rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm"
+              className={`${fieldClass} font-mono`}
               value={amountIn}
               onChange={(e) => setAmountIn(e.target.value)}
             />
           </label>
-          <label className="block text-sm">
+          <label className="block text-sm text-text-primary">
             Attach DOGE (alkane_value via tip out)
             <input
-              className="mt-1 w-full rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm"
+              className={`${fieldClass} font-mono`}
               value={attachDoge}
               onChange={(e) => setAttachDoge(e.target.value)}
               placeholder="0.01"
             />
           </label>
           {op === 'simulate' ? (
-            <button
-              type="button"
-              onClick={() => void onSimulateSwap()}
-              className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium"
-            >
+            <button type="button" onClick={() => void onSimulateSwap()} className={primaryBtnClass}>
               Dry-run on dogex
             </button>
           ) : op === 'broadcast-call' ? (
@@ -420,24 +425,24 @@ export function AlkanesToolsPanel({
               type="button"
               disabled={busy}
               onClick={() => void onBroadcastCall()}
-              className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium disabled:opacity-50"
+              className={primaryBtnClass}
             >
               {busy ? 'Broadcasting…' : 'Sign & broadcast OP_RETURN 0xD1'}
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={onBuildCall}
-              className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium"
-            >
+            <button type="button" onClick={onBuildCall} className={primaryBtnClass}>
               Build OP_RETURN script
             </button>
           )}
           {simOut && (
-            <pre className="max-h-60 overflow-auto rounded bg-black/60 p-2 text-xs">{simOut}</pre>
+            <pre className="max-h-60 overflow-auto rounded border border-border-primary bg-bg-primary p-2 text-xs text-text-primary">
+              {simOut}
+            </pre>
           )}
           {scriptHex && (
-            <pre className="max-h-40 overflow-auto break-all rounded bg-black/60 p-2 text-xs">{scriptHex}</pre>
+            <pre className="max-h-40 overflow-auto break-all rounded border border-border-primary bg-bg-primary p-2 text-xs text-text-primary">
+              {scriptHex}
+            </pre>
           )}
         </div>
       )}
