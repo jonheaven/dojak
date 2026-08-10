@@ -473,7 +473,6 @@ export {
   INSCRIPTION_CARRIER_KOINU,
   MIN_PLAIN_PAYMENT_KOINU,
   INCLUSION_FEE_KOINU_PER_KB,
-  MIN_RELAY_KOINU_PER_KB,
   softDustFeePenaltyKoinu,
   isSoftDustOutputKoinu,
   mineableFeeKoinu,

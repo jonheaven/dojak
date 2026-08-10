@@ -30,8 +30,8 @@ export const MIN_PLAIN_PAYMENT_KOINU = SOFT_DUST_KOINU;
 /** Recommended inclusion fee rate (koinu / kB) — matches miner defaults. */
 export const INCLUSION_FEE_KOINU_PER_KB = 1_000_000;
 
-/** Core default min relay (koinu / kB). */
-export const MIN_RELAY_KOINU_PER_KB = 100_000;
+/** Core default min relay (koinu / kB). Prefer importing from `dogecoinFeePolicy` at the package root. */
+export { MIN_RELAY_KOINU_PER_KB } from '../fees/dogecoinFeePolicy';
 
 /**
  * Extra fee (koinu) required for soft-dust outputs.
