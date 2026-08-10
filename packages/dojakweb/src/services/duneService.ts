@@ -37,6 +37,7 @@ import {
   mergePaymentUtxos,
   recordPaymentBroadcast,
 } from '../lib/mempoolSpendOverlay';
+import { upsertWalletTxJournalEntry } from '../lib/wallet-tx-journal';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -602,6 +603,18 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
       spent: built.spent,
       change: built.change,
     });
+    if (txid) {
+      upsertWalletTxJournalEntry({
+        txid,
+        address: signer.fromAddress,
+        protocol: 'dunes',
+        action: 'send',
+        title: 'Ðune edict send',
+        summary: `${amount} → ${recipientAddress.slice(0, 12)}… (${duneId})`,
+        status: 'broadcasted',
+        metadata: { duneId, amount, recipientAddress },
+      });
+    }
   }
 
   return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis };

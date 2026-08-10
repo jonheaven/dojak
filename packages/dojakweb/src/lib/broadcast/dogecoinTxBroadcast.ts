@@ -1409,7 +1409,19 @@ async function waitForBroadcastAcceptance(
     waitOpts?.onProbe?.({ attemptIndex: i, rpcV, cdV, chair, cypher });
 
     if (rpcReads && rpcV) return;
-    if (cdPropagationReads && cdV) return;
+    if (cdPropagationReads && cdV) {
+      // Command.dog Core ≠ public mempool. Also peek BlockCypher so we don't
+      // treat a studio-only accept as fully propagated (MyDoge follows public peers).
+      const pub = await isTxVisibleOnBlockCypher(txid).catch(() => false);
+      if (pub) return;
+      chairStreak = 0; // reuse streak counter as cd-only attempts
+      // Fall through: keep polling; after enough cd-only sightings still accept
+      // (studio can run without public indexers) but only late in the wait.
+      if (i >= 12) return;
+      const delayMs = i < 4 ? 400 : i < 10 ? 900 : 1900;
+      await sleepMs(delayMs);
+      continue;
+    }
 
     if (skipPublicIndexers) {
       const delayMs = i < 4 ? 400 : i < 10 ? 900 : 1900;
