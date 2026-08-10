@@ -160,16 +160,11 @@ const INDEXER_READ_TIMEOUT_MS = 8_000;
 type BroadcastRelayProvider = 'blockchair' | 'blockcypher' | 'tatum' | 'rpc' | 'commanddog';
 type BroadcastProvider = 'auto' | BroadcastRelayProvider;
 /**
- * Default relay order: **command.dog** (proprietary Core relay) first, then public
- * relays and optional local RPC — users can reorder in Wallet → Settings.
+ * Default relay order: **command.dog** Core first, then optional local RPC.
+ * Public explorers (BlockCypher / Blockchair / Tatum) are **not** auto-appended —
+ * add them only in Wallet → Broadcast if you explicitly want a public fallback.
  */
-const DEFAULT_BROADCAST_PRIORITY: BroadcastRelayProvider[] = [
-  'commanddog',
-  'blockcypher',
-  'blockchair',
-  'tatum',
-  'rpc',
-];
+const DEFAULT_BROADCAST_PRIORITY: BroadcastRelayProvider[] = ['commanddog', 'rpc'];
 
 export interface BroadcastConfig {
   broadcastProvider: BroadcastProvider;
@@ -193,14 +188,14 @@ async function withTimeout<T>(label: string, ms: number, work: Promise<T>): Prom
 }
 
 function normalizeBroadcastPriority(priority: unknown): BroadcastRelayProvider[] {
-  /** Order used when filling missing relays — matches DEFAULT_BROADCAST_PRIORITY. */
   const allowed: BroadcastRelayProvider[] = ['rpc', 'tatum', 'blockcypher', 'blockchair', 'commanddog'];
   const input = Array.isArray(priority) ? priority : [];
   const picked = input.filter((item): item is BroadcastRelayProvider =>
     typeof item === 'string' && allowed.includes(item as BroadcastRelayProvider),
   );
   const unique = [...new Set(picked)];
-  for (const item of allowed) {
+  // Studio defaults only — never silently re-add BlockCypher/Blockchair/Tatum.
+  for (const item of DEFAULT_BROADCAST_PRIORITY) {
     if (!unique.includes(item)) unique.push(item);
   }
   return unique;
@@ -297,11 +292,11 @@ export function loadBroadcastConfig(): BroadcastConfig {
   }
 }
 
-const BROADCAST_DEFAULTS_MIGRATION_KEY = 'dojakweb-broadcast-defaults-v1';
+const BROADCAST_DEFAULTS_MIGRATION_KEY = 'dojakweb-broadcast-defaults-v2';
 
 /**
- * One-time: ensure command.dog leads the broadcast relay order (featured default).
- * Later user edits in Settings are left alone.
+ * One-time: command.dog first; drop legacy auto-appended BlockCypher/Blockchair/Tatum
+ * so confirmation polls stay on Core. Users can re-add public relays in Settings.
  */
 export function ensureDefaultBroadcastConfig(): void {
   if (typeof window === 'undefined') return;
@@ -322,12 +317,18 @@ export function ensureDefaultBroadcastConfig(): void {
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as Partial<BroadcastConfig>;
+        const stripped = (Array.isArray(parsed.broadcastPriority) ? parsed.broadcastPriority : [])
+          .filter(
+            (p): p is BroadcastRelayProvider =>
+              p === 'commanddog' || p === 'rpc' || p === 'tatum' || p === 'blockcypher' || p === 'blockchair',
+          )
+          .filter((p) => p === 'commanddog' || p === 'rpc');
         next = {
           ...next,
           ...parsed,
           broadcastProvider: 'auto',
           broadcastPriority: normalizeBroadcastPriority(
-            parsed.broadcastPriority ?? DEFAULT_BROADCAST_PRIORITY,
+            stripped.length ? stripped : DEFAULT_BROADCAST_PRIORITY,
           ),
         };
       } catch {
@@ -1410,14 +1411,9 @@ async function waitForBroadcastAcceptance(
 
     if (rpcReads && rpcV) return;
     if (cdPropagationReads && cdV) {
-      // Command.dog Core ≠ public mempool. Also peek BlockCypher so we don't
-      // treat a studio-only accept as fully propagated (MyDoge follows public peers).
-      const pub = await isTxVisibleOnBlockCypher(txid).catch(() => false);
-      if (pub) return;
-      chairStreak = 0; // reuse streak counter as cd-only attempts
-      // Fall through: keep polling; after enough cd-only sightings still accept
-      // (studio can run without public indexers) but only late in the wait.
-      if (i >= 12) return;
+      // Studio Core accept is enough — do not probe BlockCypher (404 noise +
+      // public mempool lag ≠ our relay).
+      if (i >= 2) return;
       const delayMs = i < 4 ? 400 : i < 10 ? 900 : 1900;
       await sleepMs(delayMs);
       continue;
@@ -1834,25 +1830,35 @@ export async function getBestDogeTxConfirmations(txid: string): Promise<number> 
 
   const rPromise = useRpcReads ? fetchConfirmationsFromRpc(id) : Promise.resolve(null);
   const cdPromise = commandDogChainReadsEnabled() ? fetchConfirmationsFromCommandDog(id) : Promise.resolve(null);
-  const aPromise = fromBlockchair();
-  const queryCypher = inBrowser ? blockcypherEnabledInSettings : !useRpcReads;
+  // Browser: command.dog / RPC only. Public explorers only when explicitly in
+  // Wallet broadcast order (never auto-probed).
+  const studioReadsOnly = inBrowser && (useRpcReads || commandDogChainReadsEnabled());
+  const aPromise = studioReadsOnly ? Promise.resolve(0) : fromBlockchair();
+  const queryCypher =
+    !studioReadsOnly && (inBrowser ? blockcypherEnabledInSettings : !useRpcReads);
   const bPromise = queryCypher ? fromBlockCypher() : Promise.resolve(0);
-  const tatPromise = queryTatum ? fromTatum() : Promise.resolve(0);
+  const tatPromise = !studioReadsOnly && queryTatum ? fromTatum() : Promise.resolve(0);
   const [r, cd, a, b, tat] = await Promise.all([rPromise, cdPromise, aPromise, bPromise, tatPromise]);
 
-  const parts: number[] = [a, b, tat];
+  const parts: number[] = [];
   if (r !== null) parts.push(r);
   if (cd !== null) parts.push(cd);
-  const best = Math.max(...parts);
+  if (!studioReadsOnly) {
+    parts.push(a, b, tat);
+  }
+  const best = parts.length ? Math.max(...parts) : 0;
   const cypherLabel = queryCypher
     ? String(b)
-    : inBrowser
-      ? 'skipped(browser; BlockCypher not in Wallet broadcast order)'
-      : 'skipped';
-  const tatumLabel = queryTatum ? String(tat) : 'skipped(no key or not in relay order)';
+    : studioReadsOnly
+      ? 'skipped(command.dog/RPC)'
+      : inBrowser
+        ? 'skipped(browser; BlockCypher not in Wallet broadcast order)'
+        : 'skipped';
+  const tatumLabel =
+    !studioReadsOnly && queryTatum ? String(tat) : 'skipped(studio reads or no key)';
   const cdLabel = commandDogChainReadsEnabled() ? String(cd ?? '—') : 'skipped(not in relay order)';
   console.log(
-    `[dojakweb:poll] ${id.slice(0, 8)}… confirmations rpc=${r ?? '—'} commanddog=${cdLabel} chair=${a} cypher=${cypherLabel} tatum=${tatumLabel} → max=${best}`,
+    `[dojakweb:poll] ${id.slice(0, 8)}… confirmations rpc=${r ?? '—'} commanddog=${cdLabel} chair=${studioReadsOnly ? 'skipped' : a} cypher=${cypherLabel} tatum=${tatumLabel} → max=${best}`,
   );
   dogeConfirmCacheSet(id, best);
   return best;

@@ -1,11 +1,13 @@
 /**
  * Dune transaction builder — etch, mint, and send dunes on Dogecoin.
  *
- * Each function builds, signs, and optionally broadcasts a raw transaction.
- * Uses the same infrastructure as the existing OP_RETURN (Dogetag) path:
- * - UTXO fetching via MyDoge/Blockchair/BlockCypher intersection
- * - DogeMemoryWallet + createP2PKHTransaction from doge-sdk for signing
- * - lib/broadcast/dogecoinTxBroadcast (relay + verification)
+ * Layout matches wonky-ord `wallet send` dunes (edict + postage outs), with our
+ * v2 magic (`0xD0` / ver `0x02`) and an explicit pointer so partial sends park
+ * remainder on change instead of over-delivering to the recipient:
+ *   OP_RETURN (0) → recipient postage (1) → change (2, pointer)
+ *
+ * Chain truth: wallet-provider UTXOs filtered by command.dog Core `gettxout`
+ * (`POST /v1/utxos/live`). Broadcast / confirm via command.dog — not BlockCypher.
  */
 
 import { createP2PKHTransaction, DogeMemoryWallet } from 'doge-sdk';

@@ -261,13 +261,7 @@ type WalletStep =
 type SettingsTab = 'data' | 'network' | 'display';
 type BroadcastRelayProvider = 'blockchair' | 'blockcypher' | 'tatum' | 'rpc' | 'commanddog';
 type BroadcastProvider = 'auto' | BroadcastRelayProvider;
-const DEFAULT_BROADCAST_PRIORITY: BroadcastRelayProvider[] = [
-  'rpc',
-  'tatum',
-  'blockcypher',
-  'blockchair',
-  'commanddog',
-];
+const DEFAULT_BROADCAST_PRIORITY: BroadcastRelayProvider[] = ['commanddog', 'rpc'];
 
 const BROADCAST_CONFIG_KEY = 'dojakweb-broadcast-config';
 const BROADCAST_DISABLED_KEY = 'dojakweb-broadcast-disabled';
@@ -285,14 +279,14 @@ interface BroadcastConfig {
 type DisplayDogeTransaction = WalletTxListRow;
 
 function normalizeBroadcastPriority(priority: unknown): BroadcastRelayProvider[] {
-  /** Fill order matches DEFAULT_BROADCAST_PRIORITY (RPC first when credentials are set). */
+  /** Studio defaults only — public explorers stay opt-in via Settings. */
   const allowed: BroadcastRelayProvider[] = ['rpc', 'tatum', 'blockcypher', 'blockchair', 'commanddog'];
   const input = Array.isArray(priority) ? priority : [];
   const picked = input.filter((item): item is BroadcastRelayProvider =>
     typeof item === 'string' && allowed.includes(item as BroadcastRelayProvider)
   );
   const unique = [...new Set(picked)];
-  for (const item of allowed) {
+  for (const item of DEFAULT_BROADCAST_PRIORITY) {
     if (!unique.includes(item)) unique.push(item);
   }
   return unique;

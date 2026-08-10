@@ -135,8 +135,9 @@ export async function rpcGetTxOutSpendable(u: UtxoRef): Promise<boolean | null> 
 }
 
 /**
- * When RPC is configured, remove UTXOs your node reports as spent/missing (Blockchair/Tatum lists are often stale).
- * If RPC is unavailable or errors, returns `utxos` unchanged.
+ * Prefer command.dog `POST /v1/utxos/live` (batch Core gettxout). Fall back to
+ * per-outpoint `/rpc/gettxout`. Never touches BlockCypher / Blockchair.
+ * If Core is unreachable, returns `utxos` unchanged.
  */
 export async function filterUtxosByRpcGetTxOutIfConfigured<T extends UtxoRef>(utxos: T[]): Promise<T[]> {
   if (utxos.length === 0) return utxos;
@@ -145,6 +146,11 @@ export async function filterUtxosByRpcGetTxOutIfConfigured<T extends UtxoRef>(ut
     Boolean(cfg.rpcUrl?.trim() && cfg.rpcUser?.trim() && cfg.rpcPass !== undefined && cfg.rpcPass !== '');
   const canCd = typeof window !== 'undefined' && getCommandDogApiBaseUrl().trim().length > 0;
   if (!hasWalletRpc && !canCd) return utxos;
+
+  if (canCd) {
+    const batched = await filterUtxosViaCommandDogLive(utxos);
+    if (batched != null) return batched;
+  }
 
   const kept: T[] = [];
   let dropped = 0;
@@ -160,6 +166,61 @@ export async function filterUtxosByRpcGetTxOutIfConfigured<T extends UtxoRef>(ut
     console.info(`[utxo-tools] filterUtxosByRpcGetTxOut: dropped ${dropped} stale/spent vs node`);
   }
   return kept;
+}
+
+/** Returns null when the batch endpoint is unavailable so callers can fall back. */
+async function filterUtxosViaCommandDogLive<T extends UtxoRef>(utxos: T[]): Promise<T[] | null> {
+  const base = getCommandDogApiBaseUrl().trim().replace(/\/+$/, '');
+  if (!base) return null;
+  try {
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer =
+      ctrl && typeof window !== 'undefined'
+        ? window.setTimeout(() => ctrl.abort(), 20_000)
+        : null;
+    const res = await fetch(`${base}/v1/utxos/live`, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        outpoints: utxos.map((u) => ({
+          txid: String(u.txid).trim().toLowerCase(),
+          vout: u.vout,
+        })),
+      }),
+      signal: ctrl?.signal,
+    });
+    if (timer != null) window.clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      live?: Array<{ txid?: string; vout?: number }>;
+      spent?: Array<{ txid?: string; vout?: number }>;
+    };
+    if (!Array.isArray(data?.live)) return null;
+    const liveKeys = new Set(
+      data.live
+        .map((r) => {
+          const t = String(r?.txid ?? '')
+            .trim()
+            .toLowerCase();
+          const v = Number(r?.vout);
+          return /^[0-9a-f]{64}$/.test(t) && Number.isFinite(v) ? `${t}:${v}` : '';
+        })
+        .filter(Boolean),
+    );
+    const kept = utxos.filter((u) =>
+      liveKeys.has(`${String(u.txid).trim().toLowerCase()}:${u.vout}`),
+    );
+    const dropped = utxos.length - kept.length;
+    if (dropped > 0) {
+      console.info(
+        `[utxo-tools] /v1/utxos/live: dropped ${dropped} spent/missing (Core gettxout); kept ${kept.length}`,
+      );
+    }
+    return kept;
+  } catch {
+    return null;
+  }
 }
 
 // ── Lock registry ─────────────────────────────────────────────────────────────
