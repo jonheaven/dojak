@@ -23,6 +23,7 @@ import { broadcastUtxoTx } from './utxo-tools';
 import {
   fetchSpendableUtxosConservativeForAddress,
   filterSafeSpendableUtxos,
+  waitForBroadcastPropagationVerified,
 } from './broadcast/dogecoinTxBroadcast';
 import { mergePaymentUtxos } from './mempoolSpendOverlay';
 import { dogeTxExplorerUrl } from '../utils/dogeTxExplorer';
@@ -1331,32 +1332,19 @@ export function sochainDogeTxUrl(txid: string): string {
 }
 
 /**
- * Best-effort poll BlockCypher until GET /txs/{txid} succeeds (mempool or confirmed).
- * May fail in some browsers (CORS); callers should treat false as inconclusive, not proof the tx is invalid.
+ * Poll until the tx is known to command.dog Core (or optional wallet RPC).
+ * Name kept for API compat — does **not** call BlockCypher.
  */
 export async function waitForTxOnBlockcypher(
   txid: string,
-  opts?: { attempts?: number; delayMs?: number },
+  _opts?: { attempts?: number; delayMs?: number },
 ): Promise<boolean> {
-  const attempts = opts?.attempts ?? 8;
-  const delayMs = opts?.delayMs ?? 1500;
-  const id = txid.trim().toLowerCase();
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const res = await fetch(`https://api.blockcypher.com/v1/doge/main/txs/${id}`);
-      if (!res.ok) {
-        await sleepMs(delayMs);
-        continue;
-      }
-      const data = await res.json().catch(() => null);
-      if (data && typeof (data as { hash?: string }).hash === 'string') return true;
-    } catch {
-      /* CORS or network — stop early */
-      return false;
-    }
-    await sleepMs(delayMs);
+  try {
+    await waitForBroadcastPropagationVerified(txid.trim().toLowerCase());
+    return true;
+  } catch {
+    return false;
   }
-  return false;
 }
 
 export async function broadcastTx(txHex: string): Promise<string> {
