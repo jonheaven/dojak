@@ -261,12 +261,19 @@ export {
   saveWalletTxJournal,
   subscribeWalletTxJournal,
   upsertWalletTxJournalEntry,
+  walletTxActionLabel,
   walletTxProtocolLabel,
   type DojakwebWalletTxEntry,
   type DojakwebWalletTxProtocol,
   type DojakwebWalletTxStatus,
   type WalletTxListRow,
 } from './lib/wallet-tx-journal';
+
+export {
+  enrichWalletTransactionsForAddress,
+  fetchAddressProtocolEnrichments,
+  txidFromInscriptionId,
+} from './lib/wallet-tx-enrichment';
 
 export {
   TREATS_PROTOCOL_ID,

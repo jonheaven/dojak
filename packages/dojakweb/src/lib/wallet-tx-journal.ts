@@ -316,6 +316,22 @@ export function subscribeWalletTxJournal(listener: () => void): () => void {
   };
 }
 
+export function walletTxActionLabel(entry?: DojakwebWalletTxEntry | null): string | undefined {
+  const fromMeta = entry?.metadata?.actionLabel;
+  if (typeof fromMeta === 'string' && fromMeta.trim()) return fromMeta.trim();
+  const a = entry?.action?.trim().toLowerCase();
+  if (!a) return undefined;
+  if (a === 'bet') return 'Bet';
+  if (a === 'payout') return 'Payout';
+  if (a === 'ticket') return 'Ticket';
+  if (a === 'win') return 'Win';
+  if (a === 'call') return 'Call';
+  if (a === 'send') return 'Send';
+  if (a === 'mint') return 'Mint';
+  if (a === 'etch') return 'Etch';
+  return undefined;
+}
+
 export type WalletTxListRow = {
   txid: string;
   type: 'sent' | 'received';
@@ -328,6 +344,8 @@ export type WalletTxListRow = {
   journal?: DojakwebWalletTxEntry;
   protocol?: DojakwebWalletTxProtocol;
   protocolLabel?: string;
+  /** Short action chip: Bet / Payout / Ticket / Call */
+  actionLabel?: string;
   originLabel?: string;
   title?: string;
   summary?: string;
@@ -371,14 +389,25 @@ export function mergeWalletTxJournalIntoList<T extends {
     const existing = byTxid.get(entry.txid);
     if (existing) {
       const protocol = richerProtocol(existing.protocol, entry.protocol);
+      const actionLabel = walletTxActionLabel(entry) || existing.actionLabel;
+      const type =
+        entry.action === 'payout' || entry.action === 'win'
+          ? 'received'
+          : existing.type;
       byTxid.set(entry.txid, {
         ...existing,
+        type,
         journal: entry,
         protocol,
         protocolLabel: walletTxProtocolLabel(protocol),
+        actionLabel,
         originLabel: entry.originLabel || existing.originLabel,
         title: entry.title || existing.title,
         summary: entry.summary || existing.summary,
+        amount:
+          typeof entry.metadata?.amountDoge === 'number' && entry.metadata.amountDoge > 0
+            ? entry.metadata.amountDoge
+            : existing.amount,
         pending: existing.pending || entry.status === 'broadcasted' || entry.status === 'seen',
         localOnly: false,
       });
@@ -386,7 +415,7 @@ export function mergeWalletTxJournalIntoList<T extends {
       const created = entry.createdAt || entry.updatedAt;
       byTxid.set(entry.txid, {
         txid: entry.txid,
-        type: 'sent',
+        type: entry.action === 'payout' || entry.action === 'win' ? 'received' : 'sent',
         amount: typeof entry.metadata?.amountDoge === 'number' ? entry.metadata.amountDoge : 0,
         address: entry.address || '',
         confirmations: entry.status === 'confirmed' || entry.status === 'indexed' ? 1 : 0,
@@ -396,6 +425,7 @@ export function mergeWalletTxJournalIntoList<T extends {
         journal: entry,
         protocol: entry.protocol || 'unknown',
         protocolLabel: walletTxProtocolLabel(entry.protocol),
+        actionLabel: walletTxActionLabel(entry),
         originLabel: entry.originLabel,
         title: entry.title,
         summary: entry.summary,

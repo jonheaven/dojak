@@ -169,6 +169,7 @@ import {
   type DojakwebWalletTxEntry,
   type WalletTxListRow,
 } from '../lib/wallet-tx-journal';
+import { enrichWalletTransactionsForAddress } from '../lib/wallet-tx-enrichment';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { useGlobalStore } from '../stores/globalStore';
 import {
@@ -2918,6 +2919,26 @@ export function DojakwebWalletModal({
     }
   }, [step, tab, activeAddress, fetchTransactions]);
 
+  // Label ÐGames / ÐLotto / Ðalkanes (and friends) via dogex indexes.
+  useEffect(() => {
+    if (step !== 'dashboard' || tab !== 'transactions' || !activeAddress) return;
+    const visible = [
+      ...localRecentTransactions.map((t) => t.txid),
+      ...transactions.map((t) => t.txid),
+    ].filter(Boolean);
+    let cancelled = false;
+    void enrichWalletTransactionsForAddress(activeAddress, visible)
+      .then(() => {
+        if (!cancelled) setWalletTxJournal(loadWalletTxJournal());
+      })
+      .catch((err) => {
+        console.warn('[dojakweb:tx] protocol enrichment failed', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step, tab, activeAddress, transactions, localRecentTransactions]);
+
 
   useEffect(() => {
     if (step !== 'dashboard' || !activeAddress || !connected) {
@@ -5123,7 +5144,7 @@ export function DojakwebWalletModal({
                                         {selectedTx.title
                                           || (selectedTx.type === 'sent' ? t('modal.tx.to') : t('modal.tx.from'))}
                                       </div>
-                                      {(selectedTx.protocolLabel || selectedTx.originLabel) && (
+                                      {(selectedTx.protocolLabel || selectedTx.originLabel || selectedTx.actionLabel) && (
                                         <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
                                           {selectedTx.protocolLabel && (
                                             <span className={cx(
@@ -5131,6 +5152,16 @@ export function DojakwebWalletModal({
                                               isDark ? 'bg-amber-400/15 text-amber-200' : 'bg-amber-100 text-amber-800',
                                             )}>
                                               {selectedTx.protocolLabel}
+                                            </span>
+                                          )}
+                                          {selectedTx.actionLabel && (
+                                            <span className={cx(
+                                              'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
+                                              selectedTx.actionLabel === 'Payout' || selectedTx.actionLabel === 'Win'
+                                                ? (isDark ? 'bg-green-400/15 text-green-200' : 'bg-green-100 text-green-800')
+                                                : (isDark ? 'bg-fuchsia-400/15 text-fuchsia-200' : 'bg-fuchsia-100 text-fuchsia-800'),
+                                            )}>
+                                              {selectedTx.actionLabel}
                                             </span>
                                           )}
                                           {selectedTx.originLabel && (
@@ -5143,6 +5174,24 @@ export function DojakwebWalletModal({
                                           )}
                                         </div>
                                       )}
+                                      <div className="mb-3">
+                                        <span className={cx(
+                                          'rounded-full px-3 py-1 text-xs font-semibold inline-block',
+                                          selectedTx.pending
+                                            ? (isDark ? 'bg-yellow-400/20 text-yellow-200' : 'bg-yellow-100 text-yellow-700')
+                                            : selectedTx.confirmations > 0 || selectedTx.journal?.status === 'indexed'
+                                              ? (isDark ? 'bg-emerald-400/15 text-emerald-200' : 'bg-emerald-100 text-emerald-800')
+                                              : (isDark ? 'bg-white/10 text-white/70' : 'bg-zinc-100 text-zinc-600'),
+                                        )}>
+                                          {selectedTx.pending
+                                            ? 'Mempool'
+                                            : selectedTx.journal?.status === 'indexed'
+                                              ? 'Indexed'
+                                              : selectedTx.confirmations > 0
+                                                ? `Confirmed · ${selectedTx.confirmations}`
+                                                : 'Seen'}
+                                        </span>
+                                      </div>
                                       {selectedTx.summary && (
                                         <div className={cx(
                                           'mb-3 text-xs leading-relaxed',
@@ -5185,14 +5234,6 @@ export function DojakwebWalletModal({
                                       )}>
                                         Ð{selectedTx.amount % 1 === 0 ? selectedTx.amount.toLocaleString() : selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
                                       </div>
-                                      {selectedTx.pending && (
-                                        <div className={cx(
-                                          'mb-3 rounded-full px-3 py-1 text-xs font-semibold inline-block',
-                                          isDark ? 'bg-yellow-400/20 text-yellow-200' : 'bg-yellow-100 text-yellow-700',
-                                        )}>
-                                          {t('modal.tx.pending')}
-                                        </div>
-                                      )}
                                       <div className={cx(
                                         'mt-2 divide-y rounded-xl border text-left text-sm',
                                         isDark ? 'divide-white/10 border-white/10' : 'divide-zinc-100 border-zinc-200',
@@ -5353,6 +5394,16 @@ export function DojakwebWalletModal({
                                                     {tx.protocolLabel}
                                                   </span>
                                                 )}
+                                                {tx.actionLabel && (
+                                                  <span className={cx(
+                                                    'rounded-full px-1.5 py-0.5 font-semibold',
+                                                    tx.actionLabel === 'Payout' || tx.actionLabel === 'Win'
+                                                      ? (isDark ? 'bg-green-400/15 text-green-200' : 'bg-green-100 text-green-800')
+                                                      : (isDark ? 'bg-fuchsia-400/15 text-fuchsia-200' : 'bg-fuchsia-100 text-fuchsia-800'),
+                                                  )}>
+                                                    {tx.actionLabel}
+                                                  </span>
+                                                )}
                                                 {tx.originLabel && (
                                                   <span className={cx(
                                                     'rounded-full px-1.5 py-0.5 font-semibold',
@@ -5361,7 +5412,15 @@ export function DojakwebWalletModal({
                                                     {tx.originLabel}
                                                   </span>
                                                 )}
-                                                <span>{timeAgo || (tx.pending ? t('modal.tx.pending') : '')}</span>
+                                                <span className={cx(
+                                                  'rounded-full px-1.5 py-0.5 font-semibold',
+                                                  tx.pending
+                                                    ? (isDark ? 'bg-yellow-400/15 text-yellow-200' : 'bg-yellow-100 text-yellow-700')
+                                                    : (isDark ? 'bg-emerald-400/10 text-emerald-300/90' : 'bg-emerald-50 text-emerald-700'),
+                                                )}>
+                                                  {tx.pending ? 'Mempool' : tx.journal?.status === 'indexed' ? 'Indexed' : 'Confirmed'}
+                                                </span>
+                                                <span>{timeAgo}</span>
                                                 {tx.localOnly && <span>· local</span>}
                                               </div>
                                               {tx.txid && (
