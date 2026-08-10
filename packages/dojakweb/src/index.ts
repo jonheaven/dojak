@@ -468,6 +468,22 @@ export type { NostrEvent, NostrOrderInfo, RelayInfo } from './services/nostr';
 export { UtxoManagement } from './components/wallet/UtxoManagement';
 export type { UtxoManagementProps } from './components/wallet/UtxoManagement';
 export {
+  HARD_DUST_KOINU,
+  SOFT_DUST_KOINU,
+  INSCRIPTION_CARRIER_KOINU,
+  MIN_PLAIN_PAYMENT_KOINU,
+  INCLUSION_FEE_KOINU_PER_KB,
+  MIN_RELAY_KOINU_PER_KB,
+  softDustFeePenaltyKoinu,
+  isSoftDustOutputKoinu,
+  mineableFeeKoinu,
+  discardSoftDustChangeKoinu,
+  assertPlainPaymentKoinu,
+  assertHardDustKoinu,
+  explainUnderpaidSoftDust,
+} from './lib/dogecoin/softDust';
+
+export {
   fetchAllAddressUtxos,
   fetchAllAddressUtxosWithMeta,
   loadLockedUtxos,
@@ -487,6 +503,7 @@ export {
   DUST_LIMIT,
   INSCRIPTION_LIKELY_UTXO_KOINU,
 } from './lib/utxo-tools';
+
 export type {
   ManagedUtxo,
   MergeFeeEstimate,

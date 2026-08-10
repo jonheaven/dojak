@@ -200,7 +200,7 @@ export async function broadcastAlkanesCall(params: {
     privateKeyWIF: params.privateKeyWIF,
     feeRate: params.feeRate ?? 1000,
     tip:
-      attach >= 100_000
+      attach >= 1_000_000
         ? { address: params.fromAddress, satoshis: attach }
         : undefined,
   });

@@ -19,6 +19,14 @@ import {
 } from '../tx/opReturn';
 import { planPaymentOutputsWithOptionalOpReturns } from '../tx/outputPlan';
 import type { DogetagTip } from '../tx/types';
+import {
+  HARD_DUST_KOINU,
+  MIN_PLAIN_PAYMENT_KOINU,
+  SOFT_DUST_KOINU,
+  assertPlainPaymentKoinu,
+  discardSoftDustChangeKoinu,
+  softDustFeePenaltyKoinu,
+} from '../dogecoin/softDust';
 
 export type { DogetagTip } from '../tx/types';
 
@@ -37,7 +45,7 @@ export interface NormalisedUtxo {
  * carriers on Dogecoin (the canonical Doginals dust amount). We NEVER spend them
  * in plain payment or OP_RETURN transactions to avoid destroying inscriptions.
  */
-const INSCRIPTION_CARRIER_VALUE = 100_000; // koinu
+const INSCRIPTION_CARRIER_VALUE = HARD_DUST_KOINU; // koinu — Doginals carrier sentinel
 
 /**
  * Absolute minimum fee rate we will ever use. Dogecoin's minimum relay fee is
@@ -864,13 +872,17 @@ export async function estimateOpReturnFee(
   }
 
   const tipSats = tip?.satoshis ?? 0;
+  if (tip && tipSats > 0) {
+    assertPlainPaymentKoinu('Tip', tipSats);
+  }
   const tipOutputSize = tip ? 34 : 0;
 
   // tx size estimate: 10 overhead + 148/input + 34 change + OP_RETURN output(s) + optional tip output
   const opReturnOutputsWeight = estimateOpReturnOutputsTxWeight(payloads);
   const singleInputSize = 10 + 148 + 34 + opReturnOutputsWeight + tipOutputSize;
   // feeRate is koinu/byte (default 1000) — do not divide by 1000 (that is for koinu/kB APIs).
-  const feeSatoshis = Math.max(100_000, Math.ceil(singleInputSize * feeRate));
+  const softExtra = softDustFeePenaltyKoinu(tipSats > 0 ? [tipSats] : []);
+  const feeSatoshis = Math.max(HARD_DUST_KOINU, Math.ceil(singleInputSize * feeRate)) + softExtra;
   const totalNeeded = feeSatoshis + tipSats;
 
   const sorted = [...spendable].sort((a, b) => b.value - a.value);
@@ -879,7 +891,7 @@ export async function estimateOpReturnFee(
   for (const u of sorted) {
     selected.push(u);
     total += u.value;
-    if (total >= totalNeeded + 100_000) break;
+    if (total >= totalNeeded + SOFT_DUST_KOINU) break;
   }
 
   if (!Number.isFinite(total) || total < totalNeeded) {
@@ -947,8 +959,11 @@ export async function signOpReturnTransaction(
   const tipSats = tip?.satoshis ?? 0;
   if (tip) {
     if (!tip.address) throw new Error('Tip address cannot be empty.');
-    if (!Number.isFinite(tipSats) || tipSats < 100_000) {
-      throw new Error('Tip amount must be at least 0.001 DOGE (100 000 sat) to avoid dust rejection.');
+    if (!Number.isFinite(tipSats) || tipSats < MIN_PLAIN_PAYMENT_KOINU) {
+      throw new Error(
+        `Tip amount must be at least 0.01 DOGE (${MIN_PLAIN_PAYMENT_KOINU} koinu). ` +
+          `Smaller tips are Dogecoin soft-dust and will not relay/mine without a +0.01 Ð fee penalty.`,
+      );
     }
   }
 
@@ -977,15 +992,18 @@ export async function signOpReturnTransaction(
   const tipOutputSize = tip ? 34 : 0;
   const baseSize = 10 + 34 + opReturnOutputsWeight + tipOutputSize; // overhead + change + OP_RETURN(s) + optional tip
   const perInputSize = 148;
-  // Floor 0.001 DOGE; real fee is size × koinu/byte (default 1000 ≈ 0.01 Ð/kB).
-  const MIN_FEE = 100_000;
+  // Floor hard dust; real fee is size × koinu/byte (default 1000 ≈ 0.01 Ð/kB) + soft-dust penalties.
+  const MIN_FEE = HARD_DUST_KOINU;
 
-  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate));
+  const tipOutputs = tip && tipSats > 0 ? [tipSats] : [];
+  const softDustExtra = () => softDustFeePenaltyKoinu([...tipOutputs, /* change assumed soft-dust-safe or discarded */]);
+
+  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate)) + softDustExtra();
 
   const sorted = [...spendableUtxos].sort((a, b) => b.value - a.value);
   const selected: NormalisedUtxo[] = [];
   let totalSats = 0;
-  const needed = () => feeSatoshis + tipSats + 100_000; // fee + tip + dust guard on change
+  const needed = () => feeSatoshis + tipSats + SOFT_DUST_KOINU; // fee + tip + soft-dust-safe change guard
 
   for (const utxo of sorted) {
     const sats = utxo.value;
@@ -997,10 +1015,8 @@ export async function signOpReturnTransaction(
     selected.push(utxo);
     totalSats += sats;
 
-    feeSatoshis = Math.max(
-      MIN_FEE,
-      Math.ceil((baseSize + perInputSize * selected.length) * feeRate),
-    );
+    feeSatoshis =
+      Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize * selected.length) * feeRate)) + softDustExtra();
 
     if (totalSats >= needed()) break;
   }
@@ -1027,13 +1043,20 @@ export async function signOpReturnTransaction(
     );
   }
 
-  const changeAmount = totalSats - feeSatoshis - tipSats;
+  let changeAmount = totalSats - feeSatoshis - tipSats;
 
   if (!Number.isFinite(changeAmount) || changeAmount < 0) {
     throw new Error(
       `Fee calculation produced invalid change (${changeAmount}). ` +
       'Please report this to the Dojak team.',
     );
+  }
+
+  // Soft-dust change is discarded into the fee (Dogecoin wallet discard threshold).
+  const keptChange = discardSoftDustChangeKoinu(changeAmount);
+  if (keptChange < changeAmount) {
+    feeSatoshis += changeAmount - keptChange;
+    changeAmount = keptChange;
   }
 
   // --- Build outputs (one OP_RETURN per payload; then tip; then change) ---
@@ -1130,7 +1153,9 @@ export async function buildOpReturnPSDT(
   const tipSats = tip?.satoshis ?? 0;
   if (tip) {
     if (!tip.address) throw new Error('Tip address cannot be empty.');
-    if (!Number.isFinite(tipSats) || tipSats < 100_000) throw new Error('Tip amount must be at least 0.001 DOGE.');
+    if (!Number.isFinite(tipSats) || tipSats < MIN_PLAIN_PAYMENT_KOINU) {
+      assertPlainPaymentKoinu('Tip', tipSats);
+    }
   }
 
   // --- Coin selection (same logic as signOpReturnTransaction) ---
@@ -1149,20 +1174,22 @@ export async function buildOpReturnPSDT(
   const tipOutputSize = tip ? 34 : 0;
   const baseSize = 10 + 34 + opReturnOutputsWeight + tipOutputSize;
   const perInputSize = 148;
-  const MIN_FEE = 100_000;
+  const MIN_FEE = HARD_DUST_KOINU;
+  const softExtra = () => softDustFeePenaltyKoinu(tipSats > 0 ? [tipSats] : []);
 
-  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate));
+  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate)) + softExtra();
   const sorted = [...spendableUtxos].sort((a, b) => b.value - a.value);
   const selected: NormalisedUtxo[] = [];
   let totalSats = 0;
-  const needed = () => feeSatoshis + tipSats + 100_000;
+  const needed = () => feeSatoshis + tipSats + SOFT_DUST_KOINU;
 
   for (const utxo of sorted) {
     const sats = utxo.value;
     if (!Number.isFinite(sats) || sats <= 0) continue;
     selected.push(utxo);
     totalSats += sats;
-    feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize * selected.length) * feeRate));
+    feeSatoshis =
+      Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize * selected.length) * feeRate)) + softExtra();
     if (totalSats >= needed()) break;
   }
 
@@ -1173,7 +1200,12 @@ export async function buildOpReturnPSDT(
     );
   }
 
-  const changeAmount = totalSats - feeSatoshis - tipSats;
+  let changeAmount = totalSats - feeSatoshis - tipSats;
+  const keptChange = discardSoftDustChangeKoinu(changeAmount);
+  if (keptChange < changeAmount) {
+    feeSatoshis += changeAmount - keptChange;
+    changeAmount = keptChange;
+  }
 
   // --- Fetch raw previous-tx hex for nonWitnessUtxo (required for P2PKH PSBT) ---
   const rawTxHexes = await Promise.all(

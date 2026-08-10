@@ -25,20 +25,22 @@ import {
   parseSpacedDune,
   type DuneTerms,
 } from '../lib/dunestone';
+import {
+  HARD_DUST_KOINU,
+  MIN_PLAIN_PAYMENT_KOINU,
+  SOFT_DUST_KOINU,
+  discardSoftDustChangeKoinu,
+  mineableFeeKoinu,
+  assertPlainPaymentKoinu,
+} from '../lib/dogecoin/softDust';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-/** Minimum relay fee floor (koinu). All transactions must pay at least this. */
-const MIN_FEE_KOINU = 100_000;
+/** Minimum relay fee floor (koinu). */
+const MIN_FEE_KOINU = HARD_DUST_KOINU;
 
-/** Soft dust (Dogecoin Core default): outputs below this need +0.01 Ð added to fee. */
-const SOFT_DUST_KOINU = 1_000_000;
-/**
- * Postage for a dune-bearing output.
- * Must be ≥ soft dust (0.01 DOGE) or peers/miners reject for underpaying the soft-dust fee.
- * (0.001 DOGE postage + tiny fee looks fine in explorers but never mines.)
- */
-const POSTAGE_KOINU = SOFT_DUST_KOINU;
+/** Postage for a dune-bearing output — soft-dust safe (0.01 DOGE). */
+const POSTAGE_KOINU = MIN_PLAIN_PAYMENT_KOINU;
 
 /** Byte size estimates for fee calculation. */
 const TX_OVERHEAD      = 10;
@@ -95,12 +97,12 @@ function calcFee(
   outputValues: number[] = [],
 ): number {
   const size = estimateTxSize(inputCount, outputCount, opReturnBytes);
-  const base = Math.max(MIN_FEE_KOINU, Math.ceil((size * feeRate) / 1000));
-  const softDustExtra = outputValues.reduce(
-    (sum, v) => sum + (v > 0 && v < SOFT_DUST_KOINU ? SOFT_DUST_KOINU : 0),
-    0,
-  );
-  return base + softDustExtra;
+  return mineableFeeKoinu({
+    vsize: size,
+    feeRateKoinuPerKb: feeRate,
+    outputValuesKoinu: outputValues,
+    minFeeFloorKoinu: MIN_FEE_KOINU,
+  });
 }
 
 // ── UTXO coin selection ───────────────────────────────────────────────────────
@@ -145,10 +147,7 @@ function selectCoins(
   }
 
   let changeSatoshis = totalSats - needed;
-  if (changeSatoshis > 0 && changeSatoshis < SOFT_DUST_KOINU) {
-    // Soft-dust change is uneconomic — burn into fee (Dogecoin discard threshold).
-    changeSatoshis = 0;
-  }
+  changeSatoshis = discardSoftDustChangeKoinu(changeSatoshis);
   return { selected, totalSats, feeSatoshis: totalSats - requiredOutputSats - changeSatoshis, changeSatoshis };
 }
 
@@ -437,9 +436,7 @@ export async function mintDune(params: MintDuneParams): Promise<MintResult> {
   const destination = params.destination?.trim() || signer.fromAddress;
 
   if (postage < POSTAGE_KOINU) {
-    throw new Error(
-      `Postage must be at least ${POSTAGE_KOINU} koinu (0.01 DOGE). Smaller outputs are soft-dust and will not relay/mine.`,
-    );
+    assertPlainPaymentKoinu('Postage', postage);
   }
 
   const opReturnScript = buildMintScript(duneId);
@@ -500,9 +497,7 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
   const amountBig = humanToSmallestUnits(amount, divisibility);
   if (amountBig <= 0n) throw new Error('Send amount must be greater than zero');
   if (postage < POSTAGE_KOINU) {
-    throw new Error(
-      `Postage must be at least ${POSTAGE_KOINU} koinu (0.01 DOGE). Smaller outputs are soft-dust and will not relay/mine.`,
-    );
+    assertPlainPaymentKoinu('Postage', postage);
   }
 
   const opReturnScript = buildSendScript(duneId, amountBig, 1);

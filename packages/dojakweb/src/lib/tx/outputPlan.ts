@@ -5,6 +5,10 @@
 
 import { buildOpReturnLockingScript, MAX_SCRIPT_ELEMENT_BYTES } from './opReturn';
 import type { DogetagTip } from './types';
+import {
+  assertPlainPaymentKoinu,
+  discardSoftDustChangeKoinu,
+} from '../dogecoin/softDust';
 
 /** One payment or metadata output in doge-sdk terms. */
 export type DogeSdkLikeOutput = {
@@ -13,11 +17,10 @@ export type DogeSdkLikeOutput = {
   address?: string;
 };
 
-const DUST_MIN_SATS = 100_000;
-
 function assertDustAddress(name: string, address: string | undefined, value: number): void {
-  if (value > 0 && value < DUST_MIN_SATS && address) {
-    throw new Error(`${name} below dust (${DUST_MIN_SATS} koinu) — use at least 0.001 DOGE or omit.`);
+  // Tips / plain payments: require soft-dust-safe amounts so OP_RETURN txs mine.
+  if (value > 0 && address) {
+    assertPlainPaymentKoinu(name, value);
   }
 }
 
@@ -60,7 +63,10 @@ export function planPaymentOutputsWithOptionalOpReturns(params: PlanPaymentOutpu
   }
 
   if (changeSats > 0) {
-    out.push({ address: changeAddress, value: changeSats });
+    const change = discardSoftDustChangeKoinu(changeSats);
+    if (change > 0) {
+      out.push({ address: changeAddress, value: change });
+    }
   }
 
   return out;

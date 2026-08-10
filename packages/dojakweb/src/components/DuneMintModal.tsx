@@ -79,8 +79,8 @@ export const DuneMintModal: React.FC<Props> = ({ isOpen, onClose, duneName, onSu
     const dest = destination.trim() || address;
     if (!dest) return setError('Destination address is required');
     const postageNum = Number(postage);
-    if (!Number.isFinite(postageNum) || postageNum < 100_000) {
-      return setError('Postage must be at least 100,000 koinu (0.001 DOGE)');
+    if (!Number.isFinite(postageNum) || postageNum < 1_000_000) {
+      return setError('Postage must be at least 1,000,000 koinu (0.01 DOGE) — Dogecoin soft dust');
     }
     setStep('confirm');
   };

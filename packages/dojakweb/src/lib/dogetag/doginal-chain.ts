@@ -24,16 +24,23 @@ import {
   parseDogecoinReceiveAddress,
 } from './dogecoinAddress';
 import { getInscriptionMarker } from '../../utils/inscription-settings';
+import {
+  HARD_DUST_KOINU,
+  SOFT_DUST_KOINU,
+  softDustFeePenaltyKoinu,
+} from '../dogecoin/softDust';
 
 const MAX_CHUNK_LEN = 240;
 const MAX_PAYLOAD_LEN = 1500;
 /** doginals.js MAX_SCRIPT_ELEMENT_SIZE */
 export const DOGINAL_MAX_CONTENT_TYPE_LEN = 520;
 
-const INSCRIPTION_DEST_AMOUNT = 100_000;
-const MIN_FEE_SATS = 1_000_000;
+const INSCRIPTION_DEST_AMOUNT = HARD_DUST_KOINU;
+/** Floor high enough to cover soft-dust on the 0.001 carrier + size fee. */
+const MIN_FEE_SATS = 2_000_000;
 const SIGHASH_ALL = 0x01;
-const DUST_SATS = 100_000;
+/** Change must clear soft dust or be discarded into fee. */
+const DUST_SATS = SOFT_DUST_KOINU;
 /** BIP-125 opt-in: inputs must use nSequence ≤ 0xfffffffd so fee bumps (RBF) are possible. */
 const RBF_SEQUENCE = 0xfffffffd;
 
@@ -144,8 +151,9 @@ function buildP2shOutputScript(lockScript: Buffer): Buffer {
   ]);
 }
 
-function feeFor(txBytes: number, feeRate: number): number {
-  return Math.max(MIN_FEE_SATS, Math.ceil((txBytes * feeRate) / 1000));
+function feeFor(txBytes: number, feeRate: number, softDustOutputs: number[] = [INSCRIPTION_DEST_AMOUNT]): number {
+  const sizeFee = Math.max(MIN_FEE_SATS, Math.ceil((txBytes * feeRate) / 1000));
+  return Math.max(MIN_FEE_SATS, sizeFee + softDustFeePenaltyKoinu(softDustOutputs));
 }
 
 /** Size of a tx that spends this P2SH and pays to `nextOutputScriptPubKey` (next P2SH carry, or used only for fee math). */

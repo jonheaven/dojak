@@ -23,6 +23,12 @@ import * as bitcoin from 'bitcoinjs-lib';
 import * as secp from '@noble/secp256k1';
 import { DogeMemoryWallet, createP2PKHTransaction, decodePrivateKeyFromWIF } from 'doge-sdk';
 import { fetchSpendableUtxosConservativeForAddress, filterSafeSpendableUtxos } from '../broadcast/dogecoinTxBroadcast';
+import {
+  HARD_DUST_KOINU,
+  SOFT_DUST_KOINU,
+  discardSoftDustChangeKoinu,
+  softDustFeePenaltyKoinu,
+} from '../dogecoin/softDust';
 import { DOGE_NETWORK, legacyOutputVbytes, parseDogecoinReceiveAddress } from './dogecoinAddress';
 
 // ── Protocol constants (matching doginals.js) ─────────────────────────────────
@@ -38,8 +44,8 @@ export const INSCRIPTION_CONTENT_TYPE = 'text/plain;charset=utf-8';
  */
 export const INSCRIPTION_MAX_CONTENT_BYTES = 1390;
 
-/** Satoshi value forwarded to the inscription recipient after reveal. */
-const INSCRIPTION_DEST_AMOUNT = 100_000; // 0.001 DOGE
+/** Satoshi value forwarded to the inscription recipient after reveal (Doginals carrier). */
+const INSCRIPTION_DEST_AMOUNT = HARD_DUST_KOINU; // 0.001 DOGE — soft-dust fee paid via reveal MIN_FEE / penalty
 
 /**
  * Per-transaction minimum fee floor for inscriptions (commit + reveal planning).
@@ -309,18 +315,20 @@ function computeP2shAmount(
   changeScriptPubKey: Buffer,
   extraPaymentSatoshis = 0,
   extraOutputCount = 0,
+  extraPaymentValues: number[] = [],
 ): number {
-  const revealFee = feeFor(
-    estimateRevealTxBytes(
-      partial,
-      lockScript,
-      inscriptionScriptPubKey,
-      changeScriptPubKey,
-      extraOutputCount,
-    ),
-    feeRate,
+  const revealSize = estimateRevealTxBytes(
+    partial,
+    lockScript,
+    inscriptionScriptPubKey,
+    changeScriptPubKey,
+    extraOutputCount,
   );
-  return INSCRIPTION_DEST_AMOUNT + Math.max(0, extraPaymentSatoshis) + revealFee;
+  const sizeFee = feeFor(revealSize, feeRate);
+  // Carrier (0.001) + any soft-dust reveal payments require +0.01 Ð each on top of size fee.
+  const soft = softDustFeePenaltyKoinu([INSCRIPTION_DEST_AMOUNT, ...extraPaymentValues]);
+  const revealFeeFinal = Math.max(MIN_FEE_SATS, sizeFee + soft);
+  return INSCRIPTION_DEST_AMOUNT + Math.max(0, extraPaymentSatoshis) + revealFeeFinal;
 }
 
 // ── Helpers exported to UI ────────────────────────────────────────────────────
@@ -488,7 +496,7 @@ export async function signInscriptionTxs(
       address: p.address.trim(),
       satoshis: Math.floor(Number(p.satoshis)),
     }))
-    .filter((p) => p.address && p.satoshis >= 100_000);
+    .filter((p) => p.address && p.satoshis >= HARD_DUST_KOINU);
   const paymentSatoshis = payments.reduce((s, p) => s + p.satoshis, 0);
 
   // ── Key material ────────────────────────────────────────────────────────────
@@ -546,6 +554,7 @@ export async function signInscriptionTxs(
     changeScriptPubKey,
     paymentSatoshis,
     paymentScripts.length,
+    payments.map((p) => p.satoshis),
   );
   const revealFee     = p2shAmount - INSCRIPTION_DEST_AMOUNT - paymentSatoshis;
 
@@ -582,7 +591,7 @@ export async function signInscriptionTxs(
       estimateCommitTxVbytes(selected.length, p2shScript, changeScriptPubKey),
       feeRate,
     );
-    if (totalSats >= cFee + p2shAmount + 100_000) break; // 100k dust guard on change
+    if (totalSats >= cFee + p2shAmount + SOFT_DUST_KOINU) break; // soft-dust-safe change guard
   }
 
   const commitFee = commitFeeFromEstimate(
@@ -596,7 +605,8 @@ export async function signInscriptionTxs(
     );
   }
 
-  const commitChange = totalSats - commitFee - p2shAmount;
+  let commitChange = totalSats - commitFee - p2shAmount;
+  commitChange = discardSoftDustChangeKoinu(commitChange);
 
   // ── Build and sign commit tx ────────────────────────────────────────────────
   // Standard P2PKH inputs → P2SH output + change.
@@ -607,7 +617,7 @@ export async function signInscriptionTxs(
     inputs:  selected.map((u) => ({ txid: u.tx_hash, vout: u.tx_output_n, value: u.value })),
     outputs: [
       { script: p2shScript, value: p2shAmount },
-      ...(commitChange >= 100_000 ? [{ address: fromAddress, value: commitChange }] : []),
+      ...(commitChange >= SOFT_DUST_KOINU ? [{ address: fromAddress, value: commitChange }] : []),
     ] as any,
   });
 

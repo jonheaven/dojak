@@ -21,6 +21,7 @@ import {
   resolveCanonicalDogeTxidFromRelay,
   waitForBroadcastPropagationVerified,
 } from './broadcast/dogecoinTxBroadcast';
+import { HARD_DUST_KOINU, SOFT_DUST_KOINU, softDustFeePenaltyKoinu } from './dogecoin/softDust';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,11 @@ const BLOCKCHAIR_URL = 'https://api.blockchair.com/dogecoin';
 const LOCKED_UTXOS_KEY_PREFIX = 'dojakweb-locked-utxos-';
 const BROADCAST_CONFIG_KEY = 'dojakweb-broadcast-config';
 
-export const DUST_LIMIT = 100_000;           // 0.001 DOGE — minimum output
+/** Hard dust / Doginals carrier floor (0.001 Ð). Soft dust is SOFT_DUST_KOINU (0.01 Ð). */
+export const DUST_LIMIT = HARD_DUST_KOINU;
+/** Same as hard dust — common doginals inscription carrier; auto-lock even without indexer hit. */
+export const INSCRIPTION_LIKELY_UTXO_KOINU = DUST_LIMIT;
+
 /**
  * Dogecoin Core default: minrelaytxfee = 0.001 DOGE/kB = 100 koinu/byte.
  * We use 1000 koinu/byte (10× minimum) for reliable relay and quick inclusion.
@@ -38,10 +43,7 @@ export const FEE_RATE_KOINU_PER_BYTE = 1000; // koinu / byte  (1 DOGE / kB)
 /** @deprecated use FEE_RATE_KOINU_PER_BYTE */
 export const FEE_RATE_SATS_PER_BYTE = FEE_RATE_KOINU_PER_BYTE;
 /** Floor: always pay at least this even for tiny transactions. */
-export const MIN_RELAY_FEE = 100_000;        // 0.001 DOGE
-
-/** Same as 0.001 DOGE — common doginals inscription carrier; auto-lock even without indexer hit. */
-export const INSCRIPTION_LIKELY_UTXO_KOINU = DUST_LIMIT;
+export const MIN_RELAY_FEE = HARD_DUST_KOINU;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -333,9 +335,12 @@ export function estimateMergeFee(inputCount: number): number {
   return Math.max(MIN_RELAY_FEE, estimateTxSize(inputCount, 1) * FEE_RATE_KOINU_PER_BYTE);
 }
 
-/** Estimate split fee for 1 UTXO → N outputs. */
-export function estimateSplitFee(outputCount: number): number {
-  return Math.max(MIN_RELAY_FEE, estimateTxSize(1, outputCount) * FEE_RATE_KOINU_PER_BYTE);
+/** Estimate split fee for 1 UTXO → N outputs (includes soft-dust penalties). */
+export function estimateSplitFee(outputCount: number, outputValues?: number[]): number {
+  const sizeFee = Math.max(MIN_RELAY_FEE, estimateTxSize(1, outputCount) * FEE_RATE_KOINU_PER_BYTE);
+  // Prefer soft-dust-safe outs; if caller creates hard-dust (0.001) carriers, add +0.01 each.
+  const values = outputValues ?? Array.from({ length: outputCount }, () => SOFT_DUST_KOINU);
+  return sizeFee + softDustFeePenaltyKoinu(values);
 }
 
 export function buildMergeFeeEstimate(utxos: ManagedUtxo[]): MergeFeeEstimate {
@@ -353,7 +358,7 @@ export function buildSplitFeeEstimate(
   utxo: ManagedUtxo,
   outputSatoshis: number[],
 ): SplitFeeEstimate {
-  const fee = estimateSplitFee(outputSatoshis.length);
+  const fee = estimateSplitFee(outputSatoshis.length, outputSatoshis);
   return {
     feeSatoshis: fee,
     outputCount: outputSatoshis.length,
@@ -364,12 +369,13 @@ export function buildSplitFeeEstimate(
 /** Divide a UTXO value into N equal chunks (minus fee). Returns amounts in satoshis. */
 export function calcEqualSplitOutputs(utxo: ManagedUtxo, count: number): number[] {
   if (count < 2) throw new Error('Need at least 2 outputs for a split');
-  const fee = estimateSplitFee(count);
+  // Soft-dust-safe plain splits — each out ≥ 0.01 Ð so the split itself mines.
+  const fee = estimateSplitFee(count, Array.from({ length: count }, () => SOFT_DUST_KOINU));
   const spendable = utxo.value - fee;
-  if (spendable < count * DUST_LIMIT) {
+  if (spendable < count * SOFT_DUST_KOINU) {
     throw new Error(
-      `Insufficient value to split into ${count} outputs after fee. ` +
-      `Each output must be ≥ ${(DUST_LIMIT / 1e8).toFixed(3)} DOGE.`,
+      `Insufficient value to split into ${count} soft-dust-safe outputs after fee. ` +
+      `Each output must be ≥ ${(SOFT_DUST_KOINU / 1e8).toFixed(3)} DOGE (Dogecoin soft dust).`,
     );
   }
   const base = Math.floor(spendable / count);
@@ -979,7 +985,7 @@ export async function buildAndSignSplitTx(
     );
   }
 
-  const fee = estimateSplitFee(outputSatoshis.length);
+  const fee = estimateSplitFee(outputSatoshis.length, outputSatoshis);
   const totalOut = outputSatoshis.reduce((s, v) => s + v, 0);
 
   if (totalOut + fee > utxo.value) {
