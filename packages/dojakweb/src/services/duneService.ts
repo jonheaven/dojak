@@ -33,6 +33,10 @@ import {
   mineableFeeKoinu,
   assertPlainPaymentKoinu,
 } from '../lib/dogecoin/softDust';
+import {
+  mergePaymentUtxos,
+  recordPaymentBroadcast,
+} from '../lib/mempoolSpendOverlay';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -71,10 +75,26 @@ function canonicalizeBroadcastTxid(relayTxid: string | undefined, computedTxid: 
   return computed;
 }
 
-async function broadcastDuneTransaction(rawHex: string): Promise<string> {
+async function broadcastDuneTransaction(
+  rawHex: string,
+  overlay?: {
+    address: string;
+    spent: Array<{ txid: string; vout: number }>;
+    change: { vout: number; value: number } | null;
+  },
+): Promise<string> {
   const computedTxid = await txidFromRawHex(rawHex);
   const relayTxid = await broadcastTx(rawHex);
-  return canonicalizeBroadcastTxid(relayTxid, computedTxid);
+  const txid = canonicalizeBroadcastTxid(relayTxid, computedTxid);
+  if (overlay) {
+    recordPaymentBroadcast({
+      address: overlay.address,
+      txid,
+      spent: overlay.spent,
+      change: overlay.change,
+    });
+  }
+  return txid;
 }
 
 // ── Fee calculation ───────────────────────────────────────────────────────────
@@ -167,6 +187,10 @@ interface BuiltTx {
   feeSatoshis: number;
   changeSatoshis: number;
   inputCount: number;
+  fromAddress: string;
+  spent: Array<{ txid: string; vout: number }>;
+  /** Change output index in the final tx (after OP_RETURN + extras), if any. */
+  change: { vout: number; value: number } | null;
 }
 
 const DOGE_NETWORK = {
@@ -212,7 +236,38 @@ function planDuneTx(params: BuildDuneTxParams) {
   return { selected, feeSatoshis, changeSatoshis, outputs };
 }
 
-async function buildDunePsbt(params: BuildDuneTxParams): Promise<{ psbtBase64: string; feeSatoshis: number; changeSatoshis: number; inputCount: number }> {
+function builtTxMeta(
+  fromAddress: string,
+  selected: NormalisedUtxo[],
+  feeSatoshis: number,
+  changeSatoshis: number,
+  extraOutputCount: number,
+): Pick<BuiltTx, 'fromAddress' | 'spent' | 'change' | 'feeSatoshis' | 'changeSatoshis' | 'inputCount'> {
+  const spent = selected.map((u) => ({ txid: u.tx_hash, vout: u.tx_output_n }));
+  // outputs: [OP_RETURN, ...extras, ?change]
+  const change =
+    changeSatoshis >= SOFT_DUST_KOINU
+      ? { vout: 1 + extraOutputCount, value: changeSatoshis }
+      : null;
+  return {
+    fromAddress,
+    spent,
+    change,
+    feeSatoshis,
+    changeSatoshis,
+    inputCount: selected.length,
+  };
+}
+
+async function buildDunePsbt(params: BuildDuneTxParams): Promise<{
+  psbtBase64: string;
+  feeSatoshis: number;
+  changeSatoshis: number;
+  inputCount: number;
+  fromAddress: string;
+  spent: Array<{ txid: string; vout: number }>;
+  change: { vout: number; value: number } | null;
+}> {
   const { selected, feeSatoshis, changeSatoshis, outputs } = planDuneTx(params);
   const rawTxHexes = await Promise.all(selected.map((u) => getTxHex(u.tx_hash)));
 
@@ -240,9 +295,13 @@ async function buildDunePsbt(params: BuildDuneTxParams): Promise<{ psbtBase64: s
 
   return {
     psbtBase64: psbt.toBase64(),
-    feeSatoshis,
-    changeSatoshis,
-    inputCount: selected.length,
+    ...builtTxMeta(
+      params.fromAddress,
+      selected,
+      feeSatoshis,
+      changeSatoshis,
+      params.extraOutputs.length,
+    ),
   };
 }
 
@@ -259,16 +318,14 @@ async function buildAndSign(params: SignTxParams): Promise<BuiltTx> {
   const signer = DogeMemoryWallet.fromWIF(privateKeyWIF, 'doge');
   const txBuilder = createP2PKHTransaction(signer, {
     address: fromAddress,
-    inputs: selected.map(u => ({ txid: u.tx_hash, vout: u.tx_output_n, value: u.value })),
+    inputs: selected.map((u) => ({ txid: u.tx_hash, vout: u.tx_output_n, value: u.value })),
     outputs: outputs as any,
   });
 
   const signedTx = await txBuilder.finalizeAndSign();
   return {
     rawHex: signedTx.toHex(),
-    feeSatoshis,
-    changeSatoshis,
-    inputCount: selected.length,
+    ...builtTxMeta(fromAddress, selected, feeSatoshis, changeSatoshis, extraOutputs.length),
   };
 }
 
@@ -308,6 +365,9 @@ async function signDuneTransaction(
       feeSatoshis: built.feeSatoshis,
       changeSatoshis: built.changeSatoshis,
       inputCount: built.inputCount,
+      fromAddress: built.fromAddress,
+      spent: built.spent,
+      change: built.change,
     };
   }
 
@@ -323,7 +383,25 @@ async function getSpendableUtxos(address: string): Promise<NormalisedUtxo[]> {
   if (!safe.length) {
     throw new Error('No safe spendable UTXOs. All UTXOs appear to be inscription-bearing (0.001 DOGE). Add plain DOGE to your wallet to cover fees.');
   }
-  return safe;
+  // Same mempool overlay as plain sends — avoids bad-txns-inputs-spent after recent edicts / LP steps.
+  const merged = mergePaymentUtxos(
+    address,
+    safe.map((u) => ({
+      txid: u.tx_hash,
+      vout: u.tx_output_n,
+      value: u.value,
+    })),
+  );
+  if (!merged.length) {
+    throw new Error(
+      'No spendable UTXOs after excluding coins already spent in this session (pending mempool). Wait a moment or confirm the prior tx, then retry.',
+    );
+  }
+  return merged.map((u) => ({
+    tx_hash: u.txid,
+    tx_output_n: u.vout,
+    value: u.value,
+  }));
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -392,7 +470,11 @@ export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
 
   let txid: string | undefined;
   if (broadcast) {
-    txid = await broadcastDuneTransaction(built.rawHex);
+    txid = await broadcastDuneTransaction(built.rawHex, {
+      address: built.fromAddress,
+      spent: built.spent,
+      change: built.change,
+    });
   }
 
   return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis, changeSatoshis: built.changeSatoshis };
@@ -450,7 +532,11 @@ export async function mintDune(params: MintDuneParams): Promise<MintResult> {
 
   let txid: string | undefined;
   if (broadcast) {
-    txid = await broadcastDuneTransaction(built.rawHex);
+    txid = await broadcastDuneTransaction(built.rawHex, {
+      address: built.fromAddress,
+      spent: built.spent,
+      change: built.change,
+    });
   }
 
   return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis };
@@ -511,7 +597,11 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
 
   let txid: string | undefined;
   if (broadcast) {
-    txid = await broadcastDuneTransaction(built.rawHex);
+    txid = await broadcastDuneTransaction(built.rawHex, {
+      address: built.fromAddress,
+      spent: built.spent,
+      change: built.change,
+    });
   }
 
   return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis };
