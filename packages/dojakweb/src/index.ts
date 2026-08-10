@@ -276,6 +276,14 @@ export {
 } from './lib/wallet-tx-enrichment';
 
 export {
+  clearMempoolOverlayForAddress,
+  friendlyPaymentSendError,
+  isInputsSpentBroadcastError,
+  markOutpointsSpent,
+  recordPaymentBroadcast,
+} from './lib/mempoolSpendOverlay';
+
+export {
   TREATS_PROTOCOL_ID,
   TREATS_DUST_KOINU,
   TREATS_MAX_OPRETURN_SCRIPT_BYTES,

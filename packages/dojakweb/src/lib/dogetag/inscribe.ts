@@ -439,6 +439,10 @@ export interface SignedInscriptionPair {
   revealFeeSatoshis: number;
   /** Sum of extra reveal payments (koinu), if any. */
   paymentSatoshis: number;
+  /** Commit inputs (for mempool spend overlay after broadcast). */
+  commitSpent: Array<{ txid: string; vout: number }>;
+  /** Commit change back to sender, if any. */
+  commitChange: { vout: number; value: number } | null;
 }
 
 /**
@@ -723,6 +727,18 @@ export async function signInscriptionTxs(
     commitFeeSatoshis: commitFee,
     revealFeeSatoshis: revealFee,
     paymentSatoshis,
+    commitSpent: selected.map((u) => ({
+      txid: u.tx_hash.trim().toLowerCase(),
+      vout: u.tx_output_n,
+    })),
+    commitChange:
+      commitChange >= SOFT_DUST_KOINU
+        ? {
+            // outs: [P2SH, ...?change] — change is last when present
+            vout: commitBtcTx.outs.length - 1,
+            value: commitChange,
+          }
+        : null,
   };
 }
 

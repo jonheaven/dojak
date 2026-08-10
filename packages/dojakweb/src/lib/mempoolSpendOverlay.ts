@@ -237,6 +237,10 @@ export function getLocalHoldStats(
   return { heldCount, heldKoinu };
 }
 
+export function listLocallySpentOutpointKeys(address: string): Set<string> {
+  return new Set(Object.keys(getBag(address).spent));
+}
+
 /** Drop local spent/change markers so coins can be retried after a failed / stuck broadcast. */
 export function clearMempoolOverlayForAddress(address: string): void {
   if (typeof sessionStorage === 'undefined') return;
@@ -278,8 +282,9 @@ export function friendlyPaymentSendError(err: unknown): string {
   const m = err instanceof Error ? err.message : String(err ?? 'Unknown error');
   if (isInputsSpentBroadcastError(err)) {
     return (
-      'Those coins were already spent (often from a recent casino bet or send). ' +
-      'We refreshed your spendable UTXOs — try again in a moment with a smaller amount or Max.'
+      'Those coins were already spent (often from a recent Ðune send, DXD LP commit, or casino bet). ' +
+      'We refreshed spendable UTXOs — wait a few seconds and try again. ' +
+      'If it keeps failing, wait for pending txs to confirm before retrying.'
     );
   }
   // Prefer our detailed estimate messages as-is

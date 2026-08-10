@@ -36,9 +36,13 @@ import {
 import {
   mergePaymentUtxos,
   recordPaymentBroadcast,
+  markOutpointsSpent,
+  isInputsSpentBroadcastError,
+  friendlyPaymentSendError,
+  listLocallySpentOutpointKeys,
 } from '../lib/mempoolSpendOverlay';
 import { upsertWalletTxJournalEntry } from '../lib/wallet-tx-journal';
-import { DOGEX_PUBLIC_INDEXER_URL, getIndexerApiBase } from '../utils/api';
+import { DOGEX_PUBLIC_INDEXER_URL, getCommandDogApiBaseUrl, getIndexerApiBase } from '../utils/api';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -137,7 +141,7 @@ interface CoinSelection {
 }
 
 function outpointKey(u: Pick<NormalisedUtxo, 'tx_hash' | 'tx_output_n'>): string {
-  return `${u.tx_hash}:${u.tx_output_n}`;
+  return `${u.tx_hash.trim().toLowerCase()}:${u.tx_output_n}`;
 }
 
 function selectCoins(
@@ -543,10 +547,51 @@ async function fetchOutpointDuneAmount(
 }
 
 /**
+ * Prefer Core-truth UTXOs from command.dog Esplora (`/address/.../utxo`).
+ * Returns null when unreachable so callers can fall back to the wallet provider.
+ */
+async function fetchCoreUnspentKeys(address: string): Promise<Set<string> | null> {
+  const base = getCommandDogApiBaseUrl().replace(/\/+$/, '');
+  if (!base) return null;
+  try {
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer =
+      ctrl && typeof window !== 'undefined'
+        ? window.setTimeout(() => ctrl.abort(), 10_000)
+        : null;
+    const res = await fetch(`${base}/address/${encodeURIComponent(address)}/utxo`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+      signal: ctrl?.signal,
+    });
+    if (timer != null) window.clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data)) return null;
+    const keys = new Set<string>();
+    for (const row of data) {
+      const txid = String(row?.txid ?? row?.tx_hash ?? '')
+        .trim()
+        .toLowerCase();
+      const vout = Number(row?.vout ?? row?.tx_output_n ?? row?.n);
+      if (/^[0-9a-f]{64}$/.test(txid) && Number.isFinite(vout) && vout >= 0) {
+        keys.add(`${txid}:${vout}`);
+      }
+    }
+    return keys;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Ðune edicts only move balances that exist on spent outpoints. Coin-select
  * fee UTXOs alone (largest first) often skips the postage UTXO that holds the
  * Ðune — producing a no-op / burn. Probe dogex per outpoint and force-include
  * carriers that cover `amountNeeded`.
+ *
+ * Also intersects Core (command.dog) + session spent overlay so LP commits /
+ * prior edicts that MyDoge still lists as live do not get re-spent.
  */
 async function getUtxosForDuneSend(
   address: string,
@@ -558,11 +603,26 @@ async function getUtxosForDuneSend(
     throw new Error('No confirmed UTXOs found. Your wallet needs DOGE to pay fees and postage.');
   }
 
+  const coreKeys = await fetchCoreUnspentKeys(address);
+  const localSpent = listLocallySpentOutpointKeys(address);
+  const live = all.filter((u) => {
+    const k = outpointKey(u);
+    if (localSpent.has(k)) return false;
+    if (coreKeys && !coreKeys.has(k)) return false;
+    return true;
+  });
+  if (!live.length) {
+    throw new Error(
+      'No live spendable UTXOs after excluding coins Core already spent (or pending in this session). ' +
+        'Wait for recent LP / sends to confirm, then retry.',
+    );
+  }
+
   type Carrier = NormalisedUtxo & { duneAmount: bigint };
   const carriers: Carrier[] = [];
   const CONCURRENCY = 6;
-  for (let i = 0; i < all.length; i += CONCURRENCY) {
-    const batch = all.slice(i, i + CONCURRENCY);
+  for (let i = 0; i < live.length; i += CONCURRENCY) {
+    const batch = live.slice(i, i + CONCURRENCY);
     const probed = await Promise.all(
       batch.map(async (u) => {
         const amt = await fetchOutpointDuneAmount(u.tx_hash, u.tx_output_n, duneId);
@@ -577,8 +637,8 @@ async function getUtxosForDuneSend(
 
   if (!carriers.length) {
     throw new Error(
-      `No UTXOs holding Ðune ${duneId} were found for this address. ` +
-        `Wait for dogex to index your last receive, then refresh and retry.`,
+      `No live UTXOs holding Ðune ${duneId} were found. ` +
+        `If you just tried DXD LP / another send, wait for confirmation (or for failed commits to clear), then refresh.`,
     );
   }
 
@@ -592,14 +652,13 @@ async function getUtxosForDuneSend(
   }
   if (covered < amountNeeded) {
     throw new Error(
-      `Insufficient Ðune on spendable UTXOs: need ${amountNeeded.toString()}, have ${covered.toString()} ` +
-        `(indexer outpoint total).`,
+      `Insufficient Ðune on live UTXOs: need ${amountNeeded.toString()}, have ${covered.toString()} ` +
+        `(after excluding spent / Core-missing coins).`,
     );
   }
 
   const mustKeys = new Set(mustInclude.map(outpointKey));
-  const { safe } = filterSafeSpendableUtxos(address, all);
-  // Ðune carriers are spendable even at inscription sentinel values; fee toppers stay "safe".
+  const { safe } = filterSafeSpendableUtxos(address, live);
   const payment = [
     ...mustInclude,
     ...safe.filter((u) => !mustKeys.has(outpointKey(u))),
@@ -618,7 +677,7 @@ async function getUtxosForDuneSend(
     if (!mergedKeys.has(outpointKey(m))) {
       throw new Error(
         `Ðune-bearing UTXO ${outpointKey(m)} looks spent in this session (pending mempool). ` +
-          `Wait for confirmation or clear the pending overlay, then retry.`,
+          `Wait for confirmation, then retry.`,
       );
     }
   }
@@ -634,6 +693,8 @@ async function getUtxosForDuneSend(
     mustInclude: mustInclude.length,
     covered: covered.toString(),
     paymentPool: utxos.length,
+    coreFiltered: coreKeys != null,
+    coreLive: coreKeys?.size ?? null,
   });
 
   return { mustInclude, utxos };
@@ -808,6 +869,9 @@ export interface SendResult {
  * Creates an edict that moves `amount` dune tokens to `recipientAddress`.
  * Layout: OP_RETURN (0) → recipient postage (1) → change to sender (2).
  * Pointer parks unallocated Ðunes on change so partial sends do not over-deliver.
+ *
+ * On `bad-txns-inputs-spent`, marks those inputs spent locally and retries once
+ * (same pattern as plain DOGE sends) — common after DXD LP commits when MyDoge lags.
  */
 export async function sendDune(params: SendDuneParams): Promise<SendResult> {
   const {
@@ -822,51 +886,72 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
     assertPlainPaymentKoinu('Postage', postage);
   }
 
-  const { mustInclude, utxos } = await getUtxosForDuneSend(
-    signer.fromAddress,
-    duneId,
-    amountBig,
-  );
-
-  // Recipient = 1, change = 2 — pointer keeps remainder with the sender.
   const recipientOutput = 1;
   const changePointer = 2;
   const opReturnScript = buildSendScript(duneId, amountBig, recipientOutput, changePointer);
 
-  const built = await signDuneTransaction(
-    signer,
-    opReturnScript,
-    [{ address: recipientAddress, value: postage }],
-    feeRate,
-    {
-      utxos,
-      mustIncludeUtxos: mustInclude,
-      forceChangeOutput: true,
-    },
-  );
+  const attempt = async (): Promise<SendResult> => {
+    const { mustInclude, utxos } = await getUtxosForDuneSend(
+      signer.fromAddress,
+      duneId,
+      amountBig,
+    );
 
-  let txid: string | undefined;
-  if (broadcast) {
-    txid = await broadcastDuneTransaction(built.rawHex, {
-      address: built.fromAddress,
-      spent: built.spent,
-      change: built.change,
-    });
-    if (txid) {
-      upsertWalletTxJournalEntry({
-        txid,
-        address: signer.fromAddress,
-        protocol: 'dunes',
-        action: 'send',
-        title: 'Ðune edict send',
-        summary: `${amount} → ${recipientAddress.slice(0, 12)}… (${duneId})`,
-        status: 'broadcasted',
-        metadata: { duneId, amount, recipientAddress },
-      });
+    const built = await signDuneTransaction(
+      signer,
+      opReturnScript,
+      [{ address: recipientAddress, value: postage }],
+      feeRate,
+      {
+        utxos,
+        mustIncludeUtxos: mustInclude,
+        forceChangeOutput: true,
+      },
+    );
+
+    if (!broadcast) {
+      return { txHex: built.rawHex, feeSatoshis: built.feeSatoshis };
     }
-  }
 
-  return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis };
+    try {
+      const txid = await broadcastDuneTransaction(built.rawHex, {
+        address: built.fromAddress,
+        spent: built.spent,
+        change: built.change,
+      });
+      if (txid) {
+        upsertWalletTxJournalEntry({
+          txid,
+          address: signer.fromAddress,
+          protocol: 'dunes',
+          action: 'send',
+          title: 'Ðune edict send',
+          summary: `${amount} → ${recipientAddress.slice(0, 12)}… (${duneId})`,
+          status: 'broadcasted',
+          metadata: { duneId, amount, recipientAddress },
+        });
+      }
+      return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis };
+    } catch (err) {
+      if (isInputsSpentBroadcastError(err)) {
+        markOutpointsSpent(built.fromAddress, built.spent);
+      }
+      throw err;
+    }
+  };
+
+  try {
+    return await attempt();
+  } catch (err) {
+    if (broadcast && isInputsSpentBroadcastError(err)) {
+      try {
+        return await attempt();
+      } catch (err2) {
+        throw new Error(friendlyPaymentSendError(err2));
+      }
+    }
+    throw err instanceof Error ? err : new Error(String(err));
+  }
 }
 
 // ── Unit helpers ──────────────────────────────────────────────────────────────

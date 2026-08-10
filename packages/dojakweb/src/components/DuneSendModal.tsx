@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { XMarkIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'sonner';
 import { sendDune, smallestUnitsToHuman } from '../services/duneService';
+import { friendlyPaymentSendError, isInputsSpentBroadcastError } from '../lib/mempoolSpendOverlay';
 import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
 import { useDuneWalletConnection } from '../hooks/useDuneWalletConnection';
 import { walletDataApi, type DuneHolding, type DuneInfo } from '../utils/api';
@@ -172,7 +173,12 @@ export const DuneSendModal: React.FC<Props> = ({
       toast.success('Send transaction broadcast!');
       onSuccess?.(result.txid ?? '');
     } catch (e: any) {
-      setError(e.message ?? 'Transaction failed');
+      const raw = e?.message ?? 'Transaction failed';
+      setError(
+        isInputsSpentBroadcastError(e) || /bad-txns-inputs-spent/i.test(raw)
+          ? friendlyPaymentSendError(e)
+          : raw,
+      );
       setStep('confirm');
     } finally {
       setIsLoading(false);
