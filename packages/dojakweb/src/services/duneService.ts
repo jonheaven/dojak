@@ -42,7 +42,8 @@ import {
   listLocallySpentOutpointKeys,
 } from '../lib/mempoolSpendOverlay';
 import { upsertWalletTxJournalEntry } from '../lib/wallet-tx-journal';
-import { DOGEX_PUBLIC_INDEXER_URL, getCommandDogApiBaseUrl, getIndexerApiBase } from '../utils/api';
+import { filterUtxosByRpcGetTxOutIfConfigured } from '../lib/utxo-tools';
+import { DOGEX_PUBLIC_INDEXER_URL, getIndexerApiBase } from '../utils/api';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -547,51 +548,15 @@ async function fetchOutpointDuneAmount(
 }
 
 /**
- * Prefer Core-truth UTXOs from command.dog Esplora (`/address/.../utxo`).
- * Returns null when unreachable so callers can fall back to the wallet provider.
- */
-async function fetchCoreUnspentKeys(address: string): Promise<Set<string> | null> {
-  const base = getCommandDogApiBaseUrl().replace(/\/+$/, '');
-  if (!base) return null;
-  try {
-    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer =
-      ctrl && typeof window !== 'undefined'
-        ? window.setTimeout(() => ctrl.abort(), 10_000)
-        : null;
-    const res = await fetch(`${base}/address/${encodeURIComponent(address)}/utxo`, {
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
-      signal: ctrl?.signal,
-    });
-    if (timer != null) window.clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!Array.isArray(data)) return null;
-    const keys = new Set<string>();
-    for (const row of data) {
-      const txid = String(row?.txid ?? row?.tx_hash ?? '')
-        .trim()
-        .toLowerCase();
-      const vout = Number(row?.vout ?? row?.tx_output_n ?? row?.n);
-      if (/^[0-9a-f]{64}$/.test(txid) && Number.isFinite(vout) && vout >= 0) {
-        keys.add(`${txid}:${vout}`);
-      }
-    }
-    return keys;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Ðune edicts only move balances that exist on spent outpoints. Coin-select
  * fee UTXOs alone (largest first) often skips the postage UTXO that holds the
  * Ðune — producing a no-op / burn. Probe dogex per outpoint and force-include
  * carriers that cover `amountNeeded`.
  *
- * Also intersects Core (command.dog) + session spent overlay so LP commits /
- * prior edicts that MyDoge still lists as live do not get re-spent.
+ * Filter with Core `gettxout` (command.dog `/rpc/gettxout`) + session spent
+ * overlay. Do **not** trust empty `/address/.../utxo` from scantxoutset — that
+ * path often returns [] while gettxout still shows live coins (LP / HD wallets
+ * not imported into Core).
  */
 async function getUtxosForDuneSend(
   address: string,
@@ -603,18 +568,27 @@ async function getUtxosForDuneSend(
     throw new Error('No confirmed UTXOs found. Your wallet needs DOGE to pay fees and postage.');
   }
 
-  const coreKeys = await fetchCoreUnspentKeys(address);
   const localSpent = listLocallySpentOutpointKeys(address);
-  const live = all.filter((u) => {
-    const k = outpointKey(u);
-    if (localSpent.has(k)) return false;
-    if (coreKeys && !coreKeys.has(k)) return false;
-    return true;
-  });
+  const notSessionSpent = all.filter((u) => !localSpent.has(outpointKey(u)));
+  const probed = await filterUtxosByRpcGetTxOutIfConfigured(
+    notSessionSpent.map((u) => ({
+      txid: u.tx_hash,
+      vout: u.tx_output_n,
+      tx_hash: u.tx_hash,
+      tx_output_n: u.tx_output_n,
+      value: u.value,
+    })),
+  );
+  const live: NormalisedUtxo[] = probed.map((u) => ({
+    tx_hash: u.tx_hash,
+    tx_output_n: u.tx_output_n,
+    value: u.value,
+  }));
   if (!live.length) {
     throw new Error(
-      'No live spendable UTXOs after excluding coins Core already spent (or pending in this session). ' +
-        'Wait for recent LP / sends to confirm, then retry.',
+      'No live spendable UTXOs after Core gettxout (or pending in this session). ' +
+        'MyDoge may still list spent coins from LP / prior sends — wait a few seconds and retry, ' +
+        'or clear this site’s session storage if a failed send marked everything spent.',
     );
   }
 
@@ -693,8 +667,8 @@ async function getUtxosForDuneSend(
     mustInclude: mustInclude.length,
     covered: covered.toString(),
     paymentPool: utxos.length,
-    coreFiltered: coreKeys != null,
-    coreLive: coreKeys?.size ?? null,
+    afterGetTxOut: live.length,
+    fromProvider: all.length,
   });
 
   return { mustInclude, utxos };
