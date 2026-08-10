@@ -22,7 +22,7 @@
 import * as bitcoin from 'bitcoinjs-lib';
 import * as secp from '@noble/secp256k1';
 import { DogeMemoryWallet, createP2PKHTransaction, decodePrivateKeyFromWIF } from 'doge-sdk';
-import { fetchSpendableUtxosConservativeForAddress, filterSafeSpendableUtxos } from '../broadcast/dogecoinTxBroadcast';
+import { fetchSpendableUtxosConservativeForAddress, filterPaymentSpendableUtxos } from '../broadcast/dogecoinTxBroadcast';
 import {
   HARD_DUST_KOINU,
   SOFT_DUST_KOINU,
@@ -578,7 +578,7 @@ export async function signInscriptionTxs(
   }
 
   const afterExcludes = filterExcluded(rawUtxos, excludedOutpoints);
-  const { safe: spendable } = filterSafeSpendableUtxos(fromAddress, afterExcludes as any);
+  const { safe: spendable } = await filterPaymentSpendableUtxos(fromAddress, afterExcludes as any);
   if (!spendable.length) {
     throw new Error('No spendable UTXOs remain after excluding protected and inscription-likely outputs.');
   }

@@ -22,7 +22,7 @@ import { browserRpcProxyAbsoluteUrl, rpcViaProxy } from './rpc-proxy-client';
 import { broadcastUtxoTx } from './utxo-tools';
 import {
   fetchSpendableUtxosConservativeForAddress,
-  filterSafeSpendableUtxos,
+  filterPaymentSpendableUtxos,
   waitForBroadcastPropagationVerified,
 } from './broadcast/dogecoinTxBroadcast';
 import { mergePaymentUtxos } from './mempoolSpendOverlay';
@@ -561,7 +561,7 @@ export async function getAddressUtxos(address: string): Promise<OrdUtxo[]> {
   // ── Primary browser path: wallet provider + local spent overlay ──────────
   try {
     const conservative = await fetchSpendableUtxosConservativeForAddress(address);
-    const { safe } = filterSafeSpendableUtxos(address, conservative);
+    const { safe } = await filterPaymentSpendableUtxos(address, conservative);
     const merged = mergePaymentUtxos(
       address,
       safe.map((u) => ({

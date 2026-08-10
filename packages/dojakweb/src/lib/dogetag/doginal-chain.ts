@@ -15,7 +15,7 @@ import * as secp from '@noble/secp256k1';
 import { createP2PKHTransaction, DogeMemoryWallet, decodePrivateKeyFromWIF } from 'doge-sdk';
 import {
   fetchSpendableUtxosConservativeForAddress,
-  filterSafeSpendableUtxos,
+  filterPaymentSpendableUtxos,
   type NormalisedUtxo,
 } from '../broadcast/dogecoinTxBroadcast';
 import {
@@ -311,7 +311,7 @@ async function fetchUtxosWithRetry(address: string): Promise<NormalisedUtxo[]> {
       const raw = await fetchSpendableUtxosConservativeForAddress(address);
       // Guard: never use 0.001 DOGE (100 000 koinu) UTXOs — those are inscription carriers.
       // Also skips any UTXOs locked in the dojakweb lock registry for this address.
-      const { safe } = filterSafeSpendableUtxos(address, raw);
+      const { safe } = await filterPaymentSpendableUtxos(address, raw);
       if (safe.length > 0 || attempt === 2) return safe;
     } catch {
       /* retry */

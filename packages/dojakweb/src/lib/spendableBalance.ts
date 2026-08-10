@@ -5,7 +5,7 @@
  */
 import {
   fetchSpendableUtxosConservativeForAddress,
-  filterSafeSpendableUtxos,
+  filterPaymentSpendableUtxos,
 } from './broadcast/dogecoinTxBroadcast';
 import { getLocalHoldStats, mergePaymentUtxos } from './mempoolSpendOverlay';
 import { INSCRIPTION_LIKELY_UTXO_KOINU, loadLockedUtxos } from './utxo-tools';
@@ -74,7 +74,7 @@ export async function getSpendableBalanceBreakdown(
       }
     }
 
-    const { safe } = filterSafeSpendableUtxos(address, conservative);
+    const { safe } = await filterPaymentSpendableUtxos(address, conservative);
     const spendable = mergePaymentUtxos(
       address,
       safe.map((u) => ({

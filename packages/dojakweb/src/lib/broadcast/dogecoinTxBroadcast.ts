@@ -27,6 +27,7 @@ import {
   discardSoftDustChangeKoinu,
   softDustFeePenaltyKoinu,
 } from '../dogecoin/softDust';
+import { excludeDogexDuneBearingUtxos } from '../duneOutpointGuard';
 
 export type { DogetagTip } from '../tx/types';
 
@@ -119,6 +120,24 @@ export function filterSafeSpendableUtxos(
     );
   }
   return { safe, skippedCount };
+}
+
+/**
+ * Inscription / lock filter, then drop dogex Ðune-bearing outs.
+ * Use for plain DOGE, tips, OP_RETURN fees — not for intentional Ðune sends
+ * (those force-include carriers via mustInclude + {@link excludeDogexDuneBearingUtxos} keepKeys).
+ */
+export async function filterPaymentSpendableUtxos(
+  address: string,
+  utxos: NormalisedUtxo[],
+): Promise<{ safe: NormalisedUtxo[]; skippedCount: number; skippedDuneCount: number }> {
+  const { safe: base, skippedCount } = filterSafeSpendableUtxos(address, utxos);
+  const { safe, skippedDuneCount } = await excludeDogexDuneBearingUtxos(base);
+  return {
+    safe,
+    skippedCount: skippedCount + skippedDuneCount,
+    skippedDuneCount,
+  };
 }
 
 /**
@@ -867,9 +886,9 @@ export async function estimateOpReturnFee(
   const utxos = await fetchSpendableUtxosConservativeForAddress(fromAddress);
   if (!utxos.length) throw new Error('No confirmed UTXOs found for this address.');
   const { spendable: afterExcludes } = filterExcludedUtxos(utxos, excludedOutpoints);
-  const { safe: spendable } = filterSafeSpendableUtxos(fromAddress, afterExcludes);
+  const { safe: spendable } = await filterPaymentSpendableUtxos(fromAddress, afterExcludes);
   if (!spendable.length) {
-    throw new Error('No spendable UTXOs remain after excluding protected and inscription-likely outputs.');
+    throw new Error('No spendable UTXOs remain after excluding protected, inscription-likely, and Ðune-bearing outputs.');
   }
 
   const tipSats = tip?.satoshis ?? 0;
@@ -982,9 +1001,9 @@ export async function signOpReturnTransaction(
   if (excludedCount > 0) {
     console.log('[dojakweb:doge-tx] excluded protected UTXOs', { excludedCount });
   }
-  const { safe: spendableUtxos } = filterSafeSpendableUtxos(fromAddress, afterExcludes);
+  const { safe: spendableUtxos } = await filterPaymentSpendableUtxos(fromAddress, afterExcludes);
   if (!spendableUtxos.length) {
-    throw new Error('No spendable UTXOs remain after excluding protected and inscription-likely outputs. Ensure you have plain DOGE UTXOs > 0.001 DOGE.');
+    throw new Error('No spendable UTXOs remain after excluding protected, inscription-likely, and Ðune-bearing outputs. Ensure you have plain DOGE UTXOs.');
   }
 
   // --- Fee & coin selection ---
@@ -1166,9 +1185,9 @@ export async function buildOpReturnPSDT(
   if (excludedCount > 0) {
     console.log('[dojakweb:doge-tx] excluded protected UTXOs', { excludedCount });
   }
-  const { safe: spendableUtxos } = filterSafeSpendableUtxos(fromAddress, afterExcludes);
+  const { safe: spendableUtxos } = await filterPaymentSpendableUtxos(fromAddress, afterExcludes);
   if (!spendableUtxos.length) {
-    throw new Error('No spendable UTXOs remain after excluding protected and inscription-likely outputs. Ensure you have plain DOGE UTXOs > 0.001 DOGE.');
+    throw new Error('No spendable UTXOs remain after excluding protected, inscription-likely, and Ðune-bearing outputs. Ensure you have plain DOGE UTXOs.');
   }
 
   const opReturnOutputsWeight = estimateOpReturnOutputsTxWeight(payloads);

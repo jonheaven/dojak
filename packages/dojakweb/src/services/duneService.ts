@@ -13,7 +13,7 @@
 import { createP2PKHTransaction, DogeMemoryWallet } from 'doge-sdk';
 import {
   fetchSpendableUtxosConservativeForAddress,
-  filterSafeSpendableUtxos,
+  filterPaymentSpendableUtxos,
   txidFromRawHex,
   type NormalisedUtxo,
 } from '../lib/broadcast/dogecoinTxBroadcast';
@@ -479,9 +479,9 @@ async function signDuneTransaction(
 async function getSpendableUtxos(address: string): Promise<NormalisedUtxo[]> {
   const all = await fetchSpendableUtxosConservativeForAddress(address);
   if (!all.length) throw new Error('No confirmed UTXOs found. Your wallet needs DOGE to pay the transaction fee.');
-  const { safe } = filterSafeSpendableUtxos(address, all);
+  const { safe } = await filterPaymentSpendableUtxos(address, all);
   if (!safe.length) {
-    throw new Error('No safe spendable UTXOs. All UTXOs appear to be inscription-bearing (0.001 DOGE). Add plain DOGE to your wallet to cover fees.');
+    throw new Error('No safe spendable UTXOs. All UTXOs appear inscription- or Ðune-bearing. Add plain DOGE to cover fees.');
   }
   // Same mempool overlay as plain sends — avoids bad-txns-inputs-spent after recent edicts / LP steps.
   const merged = mergePaymentUtxos(
@@ -634,7 +634,8 @@ async function getUtxosForDuneSend(
   }
 
   const mustKeys = new Set(mustInclude.map(outpointKey));
-  const { safe } = filterSafeSpendableUtxos(address, live);
+  // Fee/postage extras: never spend *other* Ðune carriers as plain DOGE.
+  const { safe } = await filterPaymentSpendableUtxos(address, live);
   const payment = [
     ...mustInclude,
     ...safe.filter((u) => !mustKeys.has(outpointKey(u))),

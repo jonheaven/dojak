@@ -19,7 +19,7 @@ import {
 } from '../lib/charms/launch-tx';
 import {
   fetchSpendableUtxosConservativeForAddress,
-  filterSafeSpendableUtxos,
+  filterPaymentSpendableUtxos,
 } from '../lib/broadcast/dogecoinTxBroadcast';
 import { coerceSignedPsdtToRawTxHex, getTxHex, tryParsePsdt } from '../lib/doginal-psdt';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -227,7 +227,7 @@ export const CharmsCreateModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
       const prevTxHexByTxid: Record<string, string> = {};
 
       const utxos = await fetchSpendableUtxosConservativeForAddress(address);
-      const { safe } = filterSafeSpendableUtxos(address, utxos);
+      const { safe } = await filterPaymentSpendableUtxos(address, utxos);
       const funding = pickFundingUtxo(safe);
       if (!funding) {
         throw new Error('No spendable plain DOGE UTXOs found for Charms launch fees.');

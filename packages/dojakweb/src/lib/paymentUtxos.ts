@@ -1,10 +1,10 @@
 /**
  * Spendable UTXOs for plain DOGE payments (send / tips / fees).
- * Wallet data provider (MyDoge by default) + local mempool overlay.
+ * Wallet data provider (MyDoge by default) + dogex Ðune guard + local mempool overlay.
  */
 import {
   fetchSpendableUtxosConservativeForAddress,
-  filterSafeSpendableUtxos,
+  filterPaymentSpendableUtxos,
 } from './broadcast/dogecoinTxBroadcast';
 import {
   mergePaymentUtxos,
@@ -23,7 +23,7 @@ export async function getPaymentUtxosForSend(address: string): Promise<PaymentUt
 
   try {
     const conservative = await fetchSpendableUtxosConservativeForAddress(address);
-    const { safe } = filterSafeSpendableUtxos(address, conservative);
+    const { safe } = await filterPaymentSpendableUtxos(address, conservative);
     indexed = safe.map((u) => ({
       txid: u.tx_hash,
       vout: u.tx_output_n,
@@ -36,11 +36,18 @@ export async function getPaymentUtxosForSend(address: string): Promise<PaymentUt
   if (indexed.length === 0) {
     try {
       const fallback = await getAddressUtxos(address);
-      indexed = fallback.map((u) => ({
-        txid: u.txid,
-        vout: u.vout,
+      const { safe } = await filterPaymentSpendableUtxos(
+        address,
+        fallback.map((u) => ({
+          tx_hash: u.txid,
+          tx_output_n: u.vout,
+          value: u.value,
+        })),
+      );
+      indexed = safe.map((u) => ({
+        txid: u.tx_hash,
+        vout: u.tx_output_n,
         value: u.value,
-        scriptPubKey: u.scriptPubKey,
       }));
     } catch {
       indexed = [];

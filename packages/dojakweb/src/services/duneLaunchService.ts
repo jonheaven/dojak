@@ -12,7 +12,7 @@
 import { createP2PKHTransaction, DogeMemoryWallet } from 'doge-sdk';
 import {
   fetchSpendableUtxosConservativeForAddress,
-  filterSafeSpendableUtxos,
+  filterPaymentSpendableUtxos,
   txidFromRawHex,
   type NormalisedUtxo,
 } from '../lib/broadcast/dogecoinTxBroadcast';
@@ -205,9 +205,9 @@ function selectCoins(
 async function spendableUtxos(address: string): Promise<NormalisedUtxo[]> {
   const all = await fetchSpendableUtxosConservativeForAddress(address);
   if (!all.length) throw new Error('No confirmed UTXOs found. Add plain DOGE to pay fees.');
-  const { safe } = filterSafeSpendableUtxos(address, all);
+  const { safe } = await filterPaymentSpendableUtxos(address, all);
   if (!safe.length) {
-    throw new Error('No safe plain DOGE UTXOs found. Add a non-inscription DOGE UTXO to pay fees.');
+    throw new Error('No safe plain DOGE UTXOs found. Add a non-inscription / non-Ðune DOGE UTXO to pay fees.');
   }
   return safe;
 }

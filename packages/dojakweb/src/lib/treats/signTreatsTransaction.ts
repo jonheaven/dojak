@@ -2,7 +2,7 @@ import { createP2PKHTransaction, DogeMemoryWallet } from 'doge-sdk';
 import {
   broadcastSignedTransaction,
   fetchSpendableUtxosConservativeForAddress,
-  filterSafeSpendableUtxos,
+  filterPaymentSpendableUtxos,
   MIN_FEE_RATE_KOINU_PER_BYTE,
   type NormalisedUtxo,
 } from '../broadcast/dogecoinTxBroadcast';
@@ -135,9 +135,9 @@ async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> 
   }
 
   const { spendable: afterExcludes } = filterExcludedUtxos(utxos, excludedOutpoints);
-  const { safe: spendableUtxos } = filterSafeSpendableUtxos(fromAddress, afterExcludes);
+  const { safe: spendableUtxos } = await filterPaymentSpendableUtxos(fromAddress, afterExcludes);
   if (!spendableUtxos.length) {
-    throw new Error('No spendable plain DOGE UTXOs remain after excluding inscription-likely outputs.');
+    throw new Error('No spendable plain DOGE UTXOs remain after excluding inscription-likely and Ðune-bearing outputs.');
   }
 
   const opReturnWeight = estimateOpReturnOutputsTxWeight([payload]);
