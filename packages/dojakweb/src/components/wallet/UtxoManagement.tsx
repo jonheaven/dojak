@@ -47,6 +47,7 @@ import {
   calcEqualSplitOutputs,
   DUST_LIMIT,
   type UtxoListSource,
+  type ManagedUtxoDune,
 } from '../../lib/utxo-tools';
 import { DogeAmount } from '../DogeAmount';
 import { DogeCurrencyIcon } from '../DogeCurrencyIcon';
@@ -88,6 +89,40 @@ function confColor(c: number) {
   return 'text-red-400';
 }
 
+function utxoHasDunes(u: ManagedUtxo): boolean {
+  return Array.isArray(u.dunes) && u.dunes.length > 0;
+}
+
+function isPlainPaymentUtxo(u: ManagedUtxo): boolean {
+  return u.inscriptions.length === 0 && !utxoHasDunes(u);
+}
+
+function formatDuneAmount(amount: string, divisibility?: number): string {
+  try {
+    const n = BigInt(amount);
+    const d = Math.max(0, Math.min(38, divisibility ?? 0));
+    if (d === 0) return n.toString();
+    const s = n.toString().padStart(d + 1, '0');
+    const whole = s.slice(0, -d) || '0';
+    const frac = s.slice(-d).replace(/0+$/, '');
+    return frac ? `${whole}.${frac}` : whole;
+  } catch {
+    return amount;
+  }
+}
+
+function duneDisplayLabel(d: ManagedUtxoDune): string {
+  return d.spacedName || d.name || d.symbol || d.duneId;
+}
+
+function duneSearchBlob(u: ManagedUtxo): string {
+  if (!u.dunes?.length) return '';
+  return u.dunes
+    .map((d) => [d.duneId, d.name, d.spacedName, d.symbol].filter(Boolean).join(' '))
+    .join(' ')
+    .toLowerCase();
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const UtxoManagement: React.FC<UtxoManagementProps> = ({
@@ -105,7 +140,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
 
   // ── Selection / filter ────────────────────────────────────────────────────
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [filter, setFilter] = useState<'all' | 'inscribed' | 'plain' | 'locked'>('all');
+  const [filter, setFilter] = useState<'all' | 'inscribed' | 'dunes' | 'plain' | 'locked'>('all');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'amount' | 'txid'>('amount');
   const [sortAsc, setSortAsc] = useState(false);
@@ -173,11 +208,14 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
     let list = [...utxos];
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter(u => u.txid.toLowerCase().includes(q));
+      list = list.filter(
+        (u) => u.txid.toLowerCase().includes(q) || duneSearchBlob(u).includes(q),
+      );
     }
     switch (filter) {
       case 'inscribed': list = list.filter(u => u.inscriptions.length > 0); break;
-      case 'plain':     list = list.filter(u => u.inscriptions.length === 0); break;
+      case 'dunes':     list = list.filter(u => utxoHasDunes(u)); break;
+      case 'plain':     list = list.filter(u => isPlainPaymentUtxo(u)); break;
       case 'locked':    list = list.filter(u => u.locked); break;
     }
     list.sort((a, b) => {
@@ -220,10 +258,11 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
       hasConfirmationData: hasConf,
       total: utxos.length,
       inscribed: utxos.filter(u => u.inscriptions.length > 0).length,
-      plain: utxos.filter(u => u.inscriptions.length === 0).length,
+      dunes: utxos.filter(u => utxoHasDunes(u)).length,
+      plain: utxos.filter(u => isPlainPaymentUtxo(u)).length,
       locked: utxos.filter(u => u.locked).length,
       spendable: utxos.filter(
-        u => !u.locked && u.inscriptions.length === 0 && u.rpcSpendable !== false,
+        u => !u.locked && isPlainPaymentUtxo(u) && u.rpcSpendable !== false,
       ).length,
     };
   }, [utxos]);
@@ -282,7 +321,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
   const getPlainSelected = (): ManagedUtxo[] =>
     utxos.filter(u =>
       selected.has(`${u.txid}:${u.vout}`) &&
-      u.inscriptions.length === 0 &&
+      isPlainPaymentUtxo(u) &&
       !u.locked,
     );
 
@@ -331,6 +370,10 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
   const openSplit = (u: ManagedUtxo) => {
     if (u.inscriptions.length > 0) {
       toast.error(t('utxo.toast.cannotSplitInscribed'));
+      return;
+    }
+    if (utxoHasDunes(u)) {
+      toast.error(t('utxo.toast.cannotSplitDunes'));
       return;
     }
     if (u.locked) {
@@ -486,6 +529,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
         {[
           { id: 'utxos', label: t('utxo.summary.utxos'), value: summary.total, color: 'text-text-primary dark:text-white' },
           { id: 'insc', label: t('utxo.summary.inscribed'), value: summary.inscribed, color: 'text-orange-400' },
+          { id: 'dunes', label: t('utxo.summary.dunes'), value: summary.dunes, color: 'text-violet-400' },
           { id: 'plain', label: t('utxo.summary.plain'), value: summary.plain, color: 'text-emerald-400' },
           { id: 'locked', label: t('utxo.summary.locked'), value: summary.locked, color: 'text-yellow-400' },
           { id: 'spend', label: t('utxo.summary.spendable'), value: summary.spendable, color: 'text-sky-400' },
@@ -579,6 +623,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
           { key: 'all', label: t('utxo.filter.all'), count: utxos.length },
           { key: 'plain', label: t('utxo.filter.plain'), count: summary.plain },
           { key: 'inscribed', label: t('utxo.filter.inscribed'), count: summary.inscribed },
+          { key: 'dunes', label: t('utxo.filter.dunes'), count: summary.dunes },
           { key: 'locked', label: t('utxo.filter.locked'), count: summary.locked },
         ] as const).map(({ key, label, count }) => (
           <button
@@ -687,6 +732,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                       {t('utxo.th.conf')}
                     </th>
                     <th className="px-3 py-2 text-center font-medium text-white/50 uppercase tracking-wider">{t('utxo.th.inscriptions')}</th>
+                    <th className="px-3 py-2 text-center font-medium text-white/50 uppercase tracking-wider">{t('utxo.th.dunes')}</th>
                     <th className="px-3 py-2 text-center font-medium text-white/50 uppercase tracking-wider">{t('utxo.th.status')}</th>
                     <th className="px-3 py-2 text-center font-medium text-white/50 uppercase tracking-wider">{t('utxo.th.actions')}</th>
                   </tr>
@@ -696,6 +742,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                     const id = `${utxo.txid}:${utxo.vout}`;
                     const isSel = selected.has(id);
                     const hasInscriptions = utxo.inscriptions.length > 0;
+                    const hasDunes = utxoHasDunes(utxo);
                     return (
                       <tr
                         key={id}
@@ -718,6 +765,26 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                           <span className="text-white/80 break-all" title={id}>
                             {utxo.txid}:{utxo.vout}
                           </span>
+                          {hasDunes && (
+                            <div className="mt-1 space-y-0.5">
+                              {utxo.dunes!.slice(0, 3).map((d) => (
+                                <div
+                                  key={d.duneId}
+                                  className="truncate text-[10px] text-violet-300/80"
+                                  title={`${duneDisplayLabel(d)} · ${formatDuneAmount(d.amount, d.divisibility)}${d.symbol ? ` ${d.symbol}` : ''}`}
+                                >
+                                  {duneDisplayLabel(d)}{' '}
+                                  <span className="text-violet-400/60">
+                                    {formatDuneAmount(d.amount, d.divisibility)}
+                                    {d.symbol ? ` ${d.symbol}` : ''}
+                                  </span>
+                                </div>
+                              ))}
+                              {utxo.dunes!.length > 3 && (
+                                <div className="text-[9px] text-violet-400/50">+{utxo.dunes!.length - 3}</div>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-right">
                           <div className="font-medium text-white"><DogeAmount sats={utxo.value} /></div>
@@ -745,11 +812,24 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                           )}
                         </td>
                         <td className="px-3 py-2 text-center">
+                          {hasDunes ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
+                              {utxo.dunes!.length}
+                            </span>
+                          ) : (
+                            <span className="text-white/20">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-center">
                           {utxo.rpcSpendable === false ? (
                             <span className="text-[10px] font-semibold text-white/45">{t('utxo.watchOnly')}</span>
                           ) : utxo.locked ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/20 px-2 py-0.5 text-[10px] font-semibold text-yellow-400">
                               <LockClosedIcon className="h-3 w-3" /> {t('utxo.summary.locked')}
+                            </span>
+                          ) : hasDunes ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
+                              {t('utxo.status.dunes')}
                             </span>
                           ) : (
                             <span className="text-[10px] font-semibold text-emerald-400">{t('utxo.spendable')}</span>
@@ -771,7 +851,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                                 ? <LockClosedIcon className="h-3.5 w-3.5" />
                                 : <LockOpenIcon className="h-3.5 w-3.5" />}
                             </button>
-                            {!hasInscriptions && !utxo.locked && (
+                            {!hasInscriptions && !hasDunes && !utxo.locked && (
                               <button
                                 type="button"
                                 onClick={() => openSplit(utxo)}
@@ -797,6 +877,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                 const id = `${utxo.txid}:${utxo.vout}`;
                 const isSel = selected.has(id);
                 const hasInscriptions = utxo.inscriptions.length > 0;
+                const hasDunes = utxoHasDunes(utxo);
                 return (
                   <div key={id} className={`p-3 ${isSel ? 'bg-[#D4A017]/10' : ''}`}>
                     <div className="flex items-start gap-3">
@@ -832,12 +913,21 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                                 : t('utxo.mobile.inscriptionsMany', { n: String(utxo.inscriptions.length) })}
                             </span>
                           )}
+                          {hasDunes && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-violet-300">
+                              {utxo.dunes!.length === 1
+                                ? t('utxo.mobile.dunesOne', { n: String(utxo.dunes!.length) })
+                                : t('utxo.mobile.dunesMany', { n: String(utxo.dunes!.length) })}
+                            </span>
+                          )}
                           {utxo.rpcSpendable === false ? (
                             <span className="text-[9px] font-semibold text-white/45">{t('utxo.watchOnly')}</span>
                           ) : utxo.locked ? (
                             <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-yellow-400">
                               <LockClosedIcon className="h-2.5 w-2.5" /> {t('utxo.summary.locked')}
                             </span>
+                          ) : hasDunes ? (
+                            <span className="text-[9px] font-semibold text-violet-300">{t('utxo.status.dunes')}</span>
                           ) : (
                             <span className="text-[9px] font-semibold text-emerald-400">{t('utxo.spendable')}</span>
                           )}
@@ -851,7 +941,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                         >
                           {utxo.locked ? <LockClosedIcon className="h-4 w-4" /> : <LockOpenIcon className="h-4 w-4" />}
                         </button>
-                        {!hasInscriptions && !utxo.locked && (
+                        {!hasInscriptions && !hasDunes && !utxo.locked && (
                           <button
                             type="button"
                             onClick={() => openSplit(utxo)}
@@ -864,12 +954,22 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                         )}
                       </div>
                     </div>
-                    {/* Inscription IDs on expand */}
                     {hasInscriptions && (
                       <div className="mt-2 rounded bg-orange-500/5 px-2 py-1.5 border border-orange-500/20">
                         <p className="text-[9px] font-semibold uppercase tracking-wider text-orange-400/70 mb-1">{t('utxo.inscriptionIds')}</p>
                         {utxo.inscriptions.map(id => (
                           <p key={id} className="font-mono text-[9px] text-orange-300/60 truncate">{id}</p>
+                        ))}
+                      </div>
+                    )}
+                    {hasDunes && (
+                      <div className="mt-2 rounded bg-violet-500/5 px-2 py-1.5 border border-violet-500/20">
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-violet-400/70 mb-1">{t('utxo.duneBalances')}</p>
+                        {utxo.dunes!.map((d) => (
+                          <p key={d.duneId} className="truncate text-[9px] text-violet-300/70">
+                            {duneDisplayLabel(d)} · {formatDuneAmount(d.amount, d.divisibility)}
+                            {d.symbol ? ` ${d.symbol}` : ''}
+                          </p>
                         ))}
                       </div>
                     )}

@@ -22,6 +22,7 @@ import {
   waitForBroadcastPropagationVerified,
 } from './broadcast/dogecoinTxBroadcast';
 import { HARD_DUST_KOINU, SOFT_DUST_KOINU, softDustFeePenaltyKoinu } from './dogecoin/softDust';
+import { enrichUtxosWithDogexDunes } from './duneOutpointGuard';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,16 @@ export const MIN_RELAY_FEE = HARD_DUST_KOINU;
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** A fully-enriched UTXO as managed by dojakweb. */
+/** Ðune balances on this outpoint (dogex). Empty = checked, none. Absent = not enriched. */
+export type ManagedUtxoDune = {
+  duneId: string;
+  amount: string;
+  name?: string;
+  spacedName?: string;
+  symbol?: string;
+  divisibility?: number;
+};
+
 export interface ManagedUtxo {
   txid: string;
   vout: number;
@@ -59,6 +70,11 @@ export interface ManagedUtxo {
    * Empty array = plain DOGE, safe to spend freely.
    */
   inscriptions: string[];
+  /**
+   * dogex Ðune balances for this outpoint.
+   * Empty = no Ðunes; undefined = indexer not queried / unknown.
+   */
+  dunes?: ManagedUtxoDune[];
   /**
    * User-locked. Locked UTXOs are excluded from coin-selection and
    * cannot be merged/split until explicitly unlocked.
@@ -308,6 +324,7 @@ export type UtxoListSource =
 /**
  * Fetch ALL UTXOs for an address via Core RPC (if authoritative) or the wallet data provider.
  * Cross-reference against the inscription list to tag inscription-bearing outs.
+ * Enrich with dogex Ðune outpoint balances (Coins & UTXOs).
  * Lock status is applied from localStorage automatically.
  */
 export async function fetchAllAddressUtxosWithMeta(
@@ -342,7 +359,7 @@ export async function fetchAllAddressUtxosWithMeta(
   if (rpcUtxos !== null) {
     // RPC succeeded (listunspent OR scantxoutset) — trust the result even if empty.
     console.log(`[utxo-tools] RPC authoritative: ${rpcUtxos.length} UTXOs`);
-    const utxos = rpcUtxos.map(u => {
+    let utxos = rpcUtxos.map(u => {
       const key = `${u.txid}:${u.vout}`;
       return {
         ...u,
@@ -350,6 +367,11 @@ export async function fetchAllAddressUtxosWithMeta(
         locked: locked.has(key),
       };
     });
+    try {
+      utxos = await enrichUtxosWithDogexDunes(utxos);
+    } catch {
+      /* non-fatal — manager still shows inscriptions */
+    }
     return { utxos, source: 'dogecoin-core-rpc' };
   }
 
@@ -362,7 +384,7 @@ export async function fetchAllAddressUtxosWithMeta(
 
   // ── Wallet data provider (MyDoge by default; no Blockchair/BlockCypher) ──
   const providerRows = await walletDataApi.fetchUtxosPaginated(address);
-  const utxos = providerRows.map((u) => {
+  let utxos = providerRows.map((u) => {
     const key = `${u.txid}:${u.vout}`;
     return {
       txid: u.txid,
@@ -375,6 +397,11 @@ export async function fetchAllAddressUtxosWithMeta(
       rpcSpendable: undefined,
     };
   });
+  try {
+    utxos = await enrichUtxosWithDogexDunes(utxos);
+  } catch {
+    /* non-fatal */
+  }
   console.log(`[utxo-tools] wallet data provider: ${utxos.length} UTXOs`);
   return { utxos, source: 'mydoge' };
 }

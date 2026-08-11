@@ -520,6 +520,7 @@ export {
 
 export type {
   ManagedUtxo,
+  ManagedUtxoDune,
   MergeFeeEstimate,
   SplitFeeEstimate,
   UtxoListSource,

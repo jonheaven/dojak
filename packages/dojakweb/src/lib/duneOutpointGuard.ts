@@ -13,24 +13,38 @@ export type DuneGuardUtxo = {
   value: number;
 };
 
+/** Protocol balance on one outpoint (dogex truth). */
+export type DogexOutpointDune = {
+  duneId: string;
+  amount: string;
+  name?: string;
+  spacedName?: string;
+  symbol?: string;
+  divisibility?: number;
+};
+
 function outpointKey(u: { tx_hash: string; tx_output_n: number }): string {
   return `${String(u.tx_hash).trim().toLowerCase()}:${u.tx_output_n}`;
 }
 
-/** true = has Ðunes, false = none, null = indexer unreachable / unknown */
-export async function outpointHasDogexDunes(
+function dogexBases(): string[] {
+  return [getIndexerApiBase().replace(/\/+$/, ''), DOGEX_PUBLIC_INDEXER_URL].filter(
+    (b, i, arr) => b && arr.indexOf(b) === i,
+  );
+}
+
+/**
+ * Fetch Ðune balances for one outpoint. `null` = indexer unreachable;
+ * empty array = no Ðunes (or 404).
+ */
+export async function fetchDogexDuneBalancesForOutpoint(
   txid: string,
   vout: number,
-): Promise<boolean | null> {
+): Promise<DogexOutpointDune[] | null> {
   const tid = String(txid).trim().toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(tid) || !Number.isFinite(vout) || vout < 0) return null;
 
-  const bases = [
-    getIndexerApiBase().replace(/\/+$/, ''),
-    DOGEX_PUBLIC_INDEXER_URL,
-  ].filter((b, i, arr) => b && arr.indexOf(b) === i);
-
-  for (const base of bases) {
+  for (const base of dogexBases()) {
     const url = `${base}/api/dunes/outpoint/${encodeURIComponent(tid)}/${vout}`;
     try {
       const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -44,23 +58,85 @@ export async function outpointHasDogexDunes(
         signal: ctrl?.signal,
       });
       if (timer != null) window.clearTimeout(timer);
-      if (res.status === 404) return false;
+      if (res.status === 404) return [];
       if (!res.ok) continue;
-      const data = (await res.json()) as { dunes?: Array<{ amount?: string }> };
+      const data = (await res.json()) as {
+        dunes?: Array<{
+          dune_id?: string;
+          id?: string;
+          amount?: string;
+          name?: string | null;
+          spaced_name?: string | null;
+          symbol?: string | null;
+          divisibility?: number | null;
+        }>;
+      };
       const rows = Array.isArray(data?.dunes) ? data.dunes : [];
+      const out: DogexOutpointDune[] = [];
       for (const row of rows) {
+        const duneId = String(row?.dune_id ?? row?.id ?? '').trim();
+        const amount = String(row?.amount ?? '0');
         try {
-          if (BigInt(String(row?.amount ?? '0')) > 0n) return true;
+          if (!duneId || BigInt(amount) <= 0n) continue;
         } catch {
-          /* ignore bad amount */
+          continue;
         }
+        const name = row?.name != null ? String(row.name) : undefined;
+        const spacedName = row?.spaced_name != null ? String(row.spaced_name) : undefined;
+        const symbol = row?.symbol != null ? String(row.symbol) : undefined;
+        const div =
+          typeof row?.divisibility === 'number' && Number.isFinite(row.divisibility)
+            ? row.divisibility
+            : undefined;
+        out.push({
+          duneId,
+          amount,
+          name,
+          spacedName,
+          symbol,
+          divisibility: div,
+        });
       }
-      return false;
+      return out;
     } catch {
       /* try next base */
     }
   }
   return null;
+}
+
+/** true = has Ðunes, false = none, null = indexer unreachable / unknown */
+export async function outpointHasDogexDunes(
+  txid: string,
+  vout: number,
+): Promise<boolean | null> {
+  const rows = await fetchDogexDuneBalancesForOutpoint(txid, vout);
+  if (rows === null) return null;
+  return rows.length > 0;
+}
+
+/**
+ * Attach dogex Ðune tags onto UTXOs (Coins & UTXOs manager).
+ * On indexer failure for a row, leaves `dunes` undefined (unknown).
+ */
+export async function enrichUtxosWithDogexDunes<
+  T extends { txid: string; vout: number; dunes?: DogexOutpointDune[] },
+>(utxos: T[], opts?: { concurrency?: number }): Promise<T[]> {
+  if (!utxos.length) return utxos;
+  const concurrency = Math.max(1, Math.min(opts?.concurrency ?? 6, 12));
+  const out = utxos.slice();
+  for (let i = 0; i < out.length; i += concurrency) {
+    const batch = out.slice(i, i + concurrency);
+    const tags = await Promise.all(
+      batch.map((u) => fetchDogexDuneBalancesForOutpoint(u.txid, u.vout)),
+    );
+    for (let j = 0; j < batch.length; j++) {
+      const rows = tags[j];
+      if (rows === null) continue;
+      out[i + j] = { ...out[i + j], dunes: rows };
+    }
+  }
+  return out;
 }
 
 /**
