@@ -703,6 +703,9 @@ export function WalletSendFlow({
           {spendBreak && spendBreak.unavailableDoge > 0.05 ? (
             <span className="block text-white/40">
               {formatDoge(spendBreak.unavailableDoge, 2)} Ð locked
+              {spendBreak.duneBearingDoge > 0.05
+                ? ` · ${formatDoge(spendBreak.duneBearingDoge, 2)} Ð in Ðune outs`
+                : ''}
               {spendBreak.localHoldDoge > 0.001
                 ? ` · ${formatDoge(spendBreak.localHoldDoge, 2)} Ð held from a recent broadcast (may still be in mempool)`
                 : ''}

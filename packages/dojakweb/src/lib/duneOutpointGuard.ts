@@ -147,13 +147,21 @@ export async function enrichUtxosWithDogexDunes<
 export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
   utxos: T[],
   opts?: { keepKeys?: Set<string>; concurrency?: number },
-): Promise<{ safe: T[]; skippedDuneCount: number; unknownCount: number }> {
-  if (!utxos.length) return { safe: [], skippedDuneCount: 0, unknownCount: 0 };
+): Promise<{
+  safe: T[];
+  skippedDuneCount: number;
+  skippedDuneKoinu: number;
+  unknownCount: number;
+}> {
+  if (!utxos.length) {
+    return { safe: [], skippedDuneCount: 0, skippedDuneKoinu: 0, unknownCount: 0 };
+  }
 
   const keep = opts?.keepKeys ?? new Set<string>();
   const concurrency = Math.max(1, Math.min(opts?.concurrency ?? 6, 12));
   const safe: T[] = [];
   let skippedDuneCount = 0;
+  let skippedDuneKoinu = 0;
   let unknownCount = 0;
 
   for (let i = 0; i < utxos.length; i += concurrency) {
@@ -172,6 +180,7 @@ export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
       const flag = flags[j];
       if (flag === 'dune') {
         skippedDuneCount++;
+        skippedDuneKoinu += Number(batch[j].value) || 0;
         continue;
       }
       if (flag === 'unknown') unknownCount++;
@@ -183,9 +192,10 @@ export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
     console.info('[dojakweb:dunes] excludeDogexDuneBearingUtxos', {
       kept: safe.length,
       skippedDuneCount,
+      skippedDuneKoinu,
       unknownCount,
     });
   }
 
-  return { safe, skippedDuneCount, unknownCount };
+  return { safe, skippedDuneCount, skippedDuneKoinu, unknownCount };
 }

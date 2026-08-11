@@ -130,13 +130,19 @@ export function filterSafeSpendableUtxos(
 export async function filterPaymentSpendableUtxos(
   address: string,
   utxos: NormalisedUtxo[],
-): Promise<{ safe: NormalisedUtxo[]; skippedCount: number; skippedDuneCount: number }> {
+): Promise<{
+  safe: NormalisedUtxo[];
+  skippedCount: number;
+  skippedDuneCount: number;
+  skippedDuneKoinu: number;
+}> {
   const { safe: base, skippedCount } = filterSafeSpendableUtxos(address, utxos);
-  const { safe, skippedDuneCount } = await excludeDogexDuneBearingUtxos(base);
+  const { safe, skippedDuneCount, skippedDuneKoinu } = await excludeDogexDuneBearingUtxos(base);
   return {
     safe,
     skippedCount: skippedCount + skippedDuneCount,
     skippedDuneCount,
+    skippedDuneKoinu,
   };
 }
 

@@ -4305,11 +4305,14 @@ export function DojakwebWalletModal({
                                     {spendableBreak && spendableBreak.unavailableDoge > 0.05 ? (
                                       <p className="text-[11px] leading-snug text-white/40">
                                         {spendableBreak.unavailableDoge.toLocaleString(undefined, { maximumFractionDigits: 2 })} Ð not sendable
+                                        {spendableBreak.duneBearingDoge > 0.05
+                                          ? ` · ${spendableBreak.duneBearingDoge.toLocaleString(undefined, { maximumFractionDigits: 2 })} Ð in Ðune outs`
+                                          : ''}
                                         {spendableBreak.localHoldDoge > 0.001
                                           ? ` · ${spendableBreak.localHoldDoge.toLocaleString(undefined, { maximumFractionDigits: 2 })} Ð held after recent broadcast`
                                           : ''}
                                         {spendableBreak.dustCarrierCount > 0
-                                          ? ` · ${spendableBreak.dustCarrierCount} inscription carrier${spendableBreak.dustCarrierCount === 1 ? '' : 's'}`
+                                          ? ` · ${spendableBreak.dustCarrierCount}× 0.001 Ð inscription carrier${spendableBreak.dustCarrierCount === 1 ? '' : 's'}`
                                           : ''}
                                         {' · '}
                                         <button

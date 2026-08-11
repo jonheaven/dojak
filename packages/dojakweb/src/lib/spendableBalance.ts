@@ -1,7 +1,7 @@
 /**
  * Spendable vs locked DOGE breakdown for dashboard / send UX.
- * Total (indexer) often includes inscription carriers + coins still settling;
- * spendable is what plain DOGE sends may actually pick.
+ * Total (indexer) often includes inscription carriers, Ðune-bearing outs, and
+ * coins still settling; spendable is what plain DOGE sends may actually pick.
  */
 import {
   fetchSpendableUtxosConservativeForAddress,
@@ -22,6 +22,10 @@ export type SpendableBalanceBreakdown = {
   dustCarrierKoinu: number;
   dustCarrierCount: number;
   dustCarrierDoge: number;
+  /** dogex Ðune-bearing outs excluded from plain payment coin-select. */
+  duneBearingKoinu: number;
+  duneBearingCount: number;
+  duneBearingDoge: number;
   /** Manually / auto-locked outpoints. */
   lockedKoinu: number;
   lockedCount: number;
@@ -45,6 +49,8 @@ export async function getSpendableBalanceBreakdown(
   let spendableCount = 0;
   let dustCarrierKoinu = 0;
   let dustCarrierCount = 0;
+  let duneBearingKoinu = 0;
+  let duneBearingCount = 0;
   let lockedKoinu = 0;
   let lockedCount = 0;
   let localHoldKoinu = 0;
@@ -74,7 +80,12 @@ export async function getSpendableBalanceBreakdown(
       }
     }
 
-    const { safe } = await filterPaymentSpendableUtxos(address, conservative);
+    const { safe, skippedDuneCount, skippedDuneKoinu } = await filterPaymentSpendableUtxos(
+      address,
+      conservative,
+    );
+    duneBearingCount = skippedDuneCount;
+    duneBearingKoinu = skippedDuneKoinu;
     const spendable = mergePaymentUtxos(
       address,
       safe.map((u) => ({
@@ -102,6 +113,9 @@ export async function getSpendableBalanceBreakdown(
     dustCarrierKoinu,
     dustCarrierCount,
     dustCarrierDoge: toDoge(dustCarrierKoinu),
+    duneBearingKoinu,
+    duneBearingCount,
+    duneBearingDoge: toDoge(duneBearingKoinu),
     lockedKoinu,
     lockedCount,
     lockedDoge: toDoge(lockedKoinu),
