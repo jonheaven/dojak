@@ -349,6 +349,8 @@ export type WalletTxListRow = {
   originLabel?: string;
   title?: string;
   summary?: string;
+  /** Token units for Ðune (etc.) — Activity chip; DOGE `amount` stays postage. */
+  tokenAmountLabel?: string;
 };
 
 /**
@@ -415,6 +417,15 @@ export function mergeWalletTxJournalIntoList<T extends {
         entry.action === 'payout' || entry.action === 'win'
           ? 'received'
           : existing.type;
+      const metaToken =
+        typeof entry.metadata?.amountDisplay === 'string' ||
+        typeof entry.metadata?.amountDisplay === 'number'
+          ? String(entry.metadata.amountDisplay)
+          : metaAmount;
+      const tokenAmountLabel =
+        protocol === 'dunes' && metaToken
+          ? `${type === 'received' ? '+' : '-'}${metaToken}${metaDuneName ? ` ${metaDuneName.replace(/•/g, '').slice(0, 12)}` : ''}`
+          : existing.tokenAmountLabel;
       byTxid.set(entry.txid, {
         ...existing,
         type,
@@ -440,14 +451,21 @@ export function mergeWalletTxJournalIntoList<T extends {
           typeof entry.metadata?.amountDoge === 'number' && entry.metadata.amountDoge > 0
             ? entry.metadata.amountDoge
             : existing.amount,
+        tokenAmountLabel,
         pending: existing.pending || entry.status === 'broadcasted' || entry.status === 'seen',
         localOnly: false,
       });
     } else {
       const created = entry.createdAt || entry.updatedAt;
+      const type = entry.action === 'payout' || entry.action === 'win' ? 'received' : 'sent';
+      const metaToken =
+        typeof entry.metadata?.amountDisplay === 'string' ||
+        typeof entry.metadata?.amountDisplay === 'number'
+          ? String(entry.metadata.amountDisplay)
+          : metaAmount;
       byTxid.set(entry.txid, {
         txid: entry.txid,
-        type: entry.action === 'payout' || entry.action === 'win' ? 'received' : 'sent',
+        type,
         amount: typeof entry.metadata?.amountDoge === 'number' ? entry.metadata.amountDoge : 0,
         address: metaRecipient || entry.address || '',
         confirmations: entry.status === 'confirmed' || entry.status === 'indexed' ? 1 : 0,
@@ -463,6 +481,10 @@ export function mergeWalletTxJournalIntoList<T extends {
           entry.title ||
           (entry.protocol === 'dunes' && metaDuneName ? `Send ${metaDuneName}` : undefined),
         summary: entry.summary,
+        tokenAmountLabel:
+          entry.protocol === 'dunes' && metaToken
+            ? `${type === 'received' ? '+' : '-'}${metaToken}${metaDuneName ? ` ${metaDuneName.replace(/•/g, '').slice(0, 12)}` : ''}`
+            : undefined,
       });
     }
   }

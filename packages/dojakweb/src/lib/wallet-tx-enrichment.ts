@@ -248,7 +248,7 @@ export async function fetchAddressProtocolEnrichments(
 }
 
 /**
- * Probe dogex for txids still unlabeled (alkanes call receipts, single-play lookup).
+ * Probe dogex for txids still unlabeled (alkanes call receipts, single-play lookup, Ðune outs).
  * Caps concurrency to keep the Transactions tab snappy.
  */
 export async function probeTxProtocolEnrichments(
@@ -281,11 +281,54 @@ export async function probeTxProtocolEnrichments(
             txid,
             enrichmentFromAlkaneReceipt(txid, (alk as any).receipt as Record<string, unknown>),
           );
+          return;
         }
+        const dune = await enrichmentFromDuneOutpoints(txid);
+        if (dune) out.set(txid, dune);
       }),
     );
   }
   return out;
+}
+
+/** dogex `/api/dunes/outpoint/:txid/:vout` — Ðune amount lives here, not in MyDoge DOGE history. */
+async function enrichmentFromDuneOutpoints(txid: string): Promise<WalletTxEnrichment | null> {
+  // Standard Ðune send: OP_RETURN(0) → recipient postage(1) → change(2). Prefer vout 1.
+  const order = [1, 0, 2, 3, 4, 5];
+  for (const vout of order) {
+    const body = await fetchFirstJson([`/api/dunes/outpoint/${txid}/${vout}`]);
+    if (!body || typeof body !== 'object') continue;
+    const dunes = Array.isArray((body as any).dunes) ? ((body as any).dunes as unknown[]) : [];
+    if (!dunes.length && !(body as any).has_dunes) continue;
+    const row = (dunes[0] && typeof dunes[0] === 'object' ? dunes[0] : null) as Record<
+      string,
+      unknown
+    > | null;
+    if (!row) continue;
+    const amount = String(row.amount ?? row.balance ?? '').trim();
+    if (!amount || amount === '0') continue;
+    const spaced = String(row.spaced_name ?? row.spacedName ?? '').trim();
+    const name = String(row.name ?? row.dune ?? row.ticker ?? '').trim();
+    const label = spaced || name || String(row.dune_id ?? row.id ?? 'Ðune');
+    const duneId = String(row.dune_id ?? row.id ?? '').trim();
+    return {
+      txid,
+      protocol: 'dunes',
+      action: 'transfer',
+      actionLabel: 'Ðune',
+      title: `Ðune · ${label}`,
+      summary: `${amount} ${label}`,
+      indexed: true,
+      metadata: {
+        amount,
+        duneName: label,
+        duneId: duneId || undefined,
+        outpointVout: vout,
+        amountDisplay: amount,
+      },
+    };
+  }
+  return null;
 }
 
 /** Persist enrichments into the local journal so labels survive refreshes. */

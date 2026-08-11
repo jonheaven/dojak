@@ -5478,9 +5478,11 @@ export function DojakwebWalletModal({
                                                 ? (isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700')
                                                 : (isDark ? 'bg-zinc-700/60 text-zinc-300' : 'bg-zinc-100 text-zinc-700'),
                                             )}>
-                                              {tx.protocol === 'dunes'
-                                                ? 'Ðune'
-                                                : `${tx.type === 'received' ? '+' : '-'}${tx.amount % 1 === 0 ? tx.amount : tx.amount.toFixed(tx.amount < 0.01 ? 8 : 3)}`}
+                                              {tx.tokenAmountLabel
+                                                ? tx.tokenAmountLabel
+                                                : tx.protocol === 'dunes'
+                                                  ? 'Ðune'
+                                                  : `${tx.type === 'received' ? '+' : '-'}${tx.amount % 1 === 0 ? tx.amount : tx.amount.toFixed(tx.amount < 0.01 ? 8 : 3)}`}
                                             </div>
                                           </button>
                                         );

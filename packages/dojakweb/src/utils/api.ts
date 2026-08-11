@@ -1478,7 +1478,7 @@ export const walletDataApi = {
         getIndexerApiBase().replace(/\/+$/, ''),
         DOGEX_PUBLIC_INDEXER_URL,
       ].filter((b, i, arr) => b && arr.indexOf(b) === i);
-      const candidates = transactions.filter((t) => t.txid && !t.protocolHint).slice(0, 8);
+      const candidates = transactions.filter((t) => t.txid && !t.protocolHint).slice(0, 12);
       await Promise.all(
         candidates.map(async (t) => {
           const tid = t.txid.trim().toLowerCase();
@@ -1508,7 +1508,12 @@ export const walletDataApi = {
               } catch {
                 /* plain hex body */
               }
-              if (hex.includes('6a01d0') || hex.includes('6a02d002')) {
+              // 6a01d0… / 6a02d002… / OP_RETURN push then 0xD0 magic anywhere in first pushes
+              if (
+                hex.includes('6a01d0') ||
+                hex.includes('6a02d002') ||
+                /6a[0-9a-f]{0,4}d0/.test(hex)
+              ) {
                 t.protocolHint = 'dunes';
                 t.title = t.type === 'sent' ? 'Ðune send' : 'Ðune receive';
                 t.summary =
