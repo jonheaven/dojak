@@ -201,19 +201,23 @@ function mapWonkyDuneHoldings(payload: unknown): DuneHolding[] {
 }
 
 async function fetchDunesFromIndexer(address: string): Promise<{ rows: DuneHolding[]; reached: boolean }> {
-  const bases = [
-    getIndexerApiBase().replace(/\/+$/, ''),
-    DOGEX_PUBLIC_INDEXER_URL,
-  ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+  // On dogenals, `/api/indexer` already rewrites to dogex.command.dog — do not also
+  // hit the public host (that doubles a hung-tunnel wait and freezes Assets on "Loading…").
+  const primary = getIndexerApiBase().replace(/\/+$/, '');
+  const pub = DOGEX_PUBLIC_INDEXER_URL.replace(/\/+$/, '');
+  const bases =
+    primary.includes('/api/indexer') || primary.includes('dogex.command.dog')
+      ? [primary]
+      : [primary, pub].filter((b, i, arr) => b && arr.indexOf(b) === i);
 
-  let reached = false;
+  const TIMEOUT_MS = 8_000;
   for (const base of bases) {
     const url = `${base}/api/doginals/dunes/balance/${encodeURIComponent(address)}?list_dunes=true`;
     try {
       const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
       const timer =
         ctrl && typeof window !== 'undefined'
-          ? window.setTimeout(() => ctrl.abort(), 12_000)
+          ? window.setTimeout(() => ctrl.abort(), TIMEOUT_MS)
           : null;
       const res = await fetch(url, {
         cache: 'no-store',
@@ -225,7 +229,6 @@ async function fetchDunesFromIndexer(address: string): Promise<{ rows: DuneHoldi
         console.warn('[dojak:dunes] balance lookup failed', { status: res.status, url });
         continue;
       }
-      reached = true;
       const data = await res.json();
       const rows = mapWonkyDuneHoldings(data);
       if (rows.length > 0) {
@@ -235,20 +238,38 @@ async function fetchDunesFromIndexer(address: string): Promise<{ rows: DuneHoldi
           top: rows[0]?.dune,
           bal: rows[0]?.balance,
         });
+      } else {
+        console.info('[dojak:dunes] balance ok (empty)', { base });
       }
-      return { rows, reached };
+      return { rows, reached: true };
     } catch (e) {
-      console.warn('[dojak:dunes] balance fetch error', { url, error: e instanceof Error ? e.message : e });
+      console.warn('[dojak:dunes] balance fetch error', {
+        url,
+        error: e instanceof Error ? e.message : e,
+      });
     }
   }
-  return { rows: [], reached };
+  return { rows: [], reached: false };
 }
 
 async function fetchDunesFromWonky(address: string): Promise<DuneHolding[]> {
   const base = getWonkyOrdApiBase().replace(/\/+$/, '');
   const url = `${base}/dunes/balance/${encodeURIComponent(address)}?list_dunes=true`;
-  const data = await fetchJson(url);
-  return mapWonkyDuneHoldings(data);
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer =
+    ctrl && typeof window !== 'undefined' ? window.setTimeout(() => ctrl.abort(), 6_000) : null;
+  try {
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+      signal: ctrl?.signal,
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return mapWonkyDuneHoldings(data);
+  } finally {
+    if (timer != null) window.clearTimeout(timer);
+  }
 }
 
 /** Path for `POST` body `{ hex }` → `{ txid }` (see command.dog/api `http_tx_broadcast`). */
@@ -1071,9 +1092,15 @@ export const walletDataApi = {
     const { rows: fromDogex, reached } = await fetchDunesFromIndexer(address);
     if (fromDogex.length > 0 || reached) return fromDogex;
 
-    // dogex tunnel/proxy down — try wonky so Ðunes tab isn't blank (opt-out with wonkyOrdFallback=false).
+    // Opt-in only — wonky is not chain-truth and often 502s; default empty so Assets UI unblocks.
     const cfg = getWalletDataProviderConfig();
-    if (cfg.wonkyOrdFallback === false) return fromDogex;
+    const allowWonky =
+      cfg.wonkyOrdFallback === true ||
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WONKY_ORD_FALLBACK === '1');
+    if (!allowWonky) {
+      console.warn('[dojak:dunes] dogex unreachable — Ðunes empty (tunnel/indexer down)');
+      return [];
+    }
     try {
       const fromWonky = await fetchDunesFromWonky(address);
       if (fromWonky.length > 0) {
@@ -1081,7 +1108,7 @@ export const walletDataApi = {
       }
       return fromWonky;
     } catch {
-      return fromDogex;
+      return [];
     }
   },
 

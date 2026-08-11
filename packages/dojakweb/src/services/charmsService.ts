@@ -62,8 +62,12 @@ const CHARMS_FAIL_OPEN_AFTER = 3;
 const CHARMS_UTXO_TIMEOUT_MS = 4_000;
 let charmsFailStreak = 0;
 let charmsCircuitOpenUntil = 0;
-/** command.dog `/v1/charms/utxos` is often unwired — skip after first 404/501 this session. */
-let skipCommandDogCharmsUtxos = false;
+/** command.dog `/v1/charms/utxos` is unwired on most hosts — skip unless explicitly enabled. */
+let skipCommandDogCharmsUtxos =
+  !(
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CHARMS_COMMANDDOG_UTXOS === '1') ||
+    (typeof process !== 'undefined' && process.env?.CHARMS_COMMANDDOG_UTXOS === '1')
+  );
 
 export function charmsLookupsPaused(): boolean {
   return Date.now() < charmsCircuitOpenUntil;

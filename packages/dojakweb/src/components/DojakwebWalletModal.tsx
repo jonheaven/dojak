@@ -2495,36 +2495,44 @@ export function DojakwebWalletModal({
       if (dunesR.status === 'rejected') {
         console.warn('[dojak:dunes] fetchAssets dunes rejected', dunesR.reason);
       }
+    } catch (err) {
+      setAssetsError(t('modal.errors.assetsLoad'));
+    } finally {
+      // Unblock Assets UI before slow Charms/Ðalkanes probes (those must never freeze "Loading…").
+      setAssetsLoading(false);
+    }
 
-      // Charms: UTXO scan (best-effort — never blocks inscriptions/Ðunes)
+    // Background — soft-fail, do not toggle assetsLoading
+    void (async () => {
       try {
         const { charmsService, charmsLookupsPaused } = await import('../services/charmsService');
         if (charmsLookupsPaused()) {
           setCharmsAssets([]);
-        } else {
-          const utxoResponse = await walletDataApi.fetchUtxos(address);
-          const raw = utxoResponse as { utxos?: Array<{ txid?: string; vout?: number }> };
-          const utxos = Array.isArray(raw?.utxos) ? raw.utxos : [];
-          const indexed = await charmsService.scanCharmsForUtxos(utxos, { limit: 24 });
-          const nextCharms: Array<{ id: string; ticker: string; balance: string }> = [];
-          for (const charm of indexed) {
-            if (charm.spent_by_txid) continue;
-            const bal = String(
-              charm.charm_data?.balance ?? charm.charm_data?.amount ?? charm.charm_data?.value ?? '1',
-            );
-            nextCharms.push({
-              id: `${charm.txid}:${charm.vout}:${charm.app_id}`,
-              ticker: charm.app_id,
-              balance: bal,
-            });
-          }
-          setCharmsAssets(nextCharms);
+          return;
         }
+        const utxoResponse = await walletDataApi.fetchUtxos(address);
+        const raw = utxoResponse as { utxos?: Array<{ txid?: string; vout?: number }> };
+        const utxos = Array.isArray(raw?.utxos) ? raw.utxos : [];
+        const indexed = await charmsService.scanCharmsForUtxos(utxos, { limit: 24 });
+        const nextCharms: Array<{ id: string; ticker: string; balance: string }> = [];
+        for (const charm of indexed) {
+          if (charm.spent_by_txid) continue;
+          const bal = String(
+            charm.charm_data?.balance ?? charm.charm_data?.amount ?? charm.charm_data?.value ?? '1',
+          );
+          nextCharms.push({
+            id: `${charm.txid}:${charm.vout}:${charm.app_id}`,
+            ticker: charm.app_id,
+            balance: bal,
+          });
+        }
+        setCharmsAssets(nextCharms);
       } catch {
         setCharmsAssets([]);
       }
+    })();
 
-      // Ðalkanes: indexed contracts (global list; wallet deploys appear after index)
+    void (async () => {
       try {
         const { fetchAlkanesList } = await import('../lib/alkanes');
         const base = getIndexerApiBase().replace(/\/+$/, '');
@@ -2535,11 +2543,7 @@ export function DojakwebWalletModal({
       } catch {
         setAlkanesAssets([]);
       }
-    } catch (err) {
-      setAssetsError(t('modal.errors.assetsLoad'));
-    } finally {
-      setAssetsLoading(false);
-    }
+    })();
   }, [t]);
 
   useEffect(() => {
