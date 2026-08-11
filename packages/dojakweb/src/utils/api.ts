@@ -921,70 +921,6 @@ async function fetchInubitsWalletInscriptions(address: string): Promise<MyDogeIn
   return out;
 }
 
-async function fetchInscriptionsFromIndexer(address: string): Promise<MyDogeInscription[]> {
-  const bases = [
-    getIndexerApiBase().replace(/\/+$/, ''),
-    DOGEX_PUBLIC_INDEXER_URL,
-  ].filter((b, i, arr) => b && arr.indexOf(b) === i);
-
-  for (const indexerBase of bases) {
-    try {
-      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timer =
-        ctrl && typeof window !== 'undefined'
-          ? window.setTimeout(() => ctrl.abort(), 15_000)
-          : null;
-      const res = await fetch(
-        `${indexerBase}/api/doginals/address/${encodeURIComponent(address)}/inscriptions?limit=100`,
-        { headers: { Accept: 'application/json' }, cache: 'no-store', signal: ctrl?.signal },
-      );
-      if (timer != null) window.clearTimeout(timer);
-      if (!res.ok) continue;
-      const payload = (await res.json()) as any;
-      const rows: any[] = Array.isArray(payload?.inscriptions)
-        ? payload.inscriptions
-        : Array.isArray(payload?.items)
-          ? payload.items
-          : Array.isArray(payload?.data)
-            ? payload.data
-            : Array.isArray(payload)
-              ? payload
-              : [];
-      return rows.map((row: any) => {
-        const inscriptionId = row.inscriptionId ?? row.id ?? row.inscription_id ?? '';
-        const content = inscriptionId ? dogexCdnContentUrl(inscriptionId) : '';
-        const mapped: MyDogeInscription & Record<string, unknown> = {
-          address: row.address ?? row.ownerAddress ?? row.owner ?? address,
-          content,
-          contentBody: row.contentBody ?? '',
-          contentLength: Number(row.contentLength ?? row.content_length ?? 0),
-          contentType: row.contentType ?? row.content_type ?? 'image/png',
-          genesisTransaction: row.genesisTransaction ?? row.genesis_transaction ?? row.txid ?? '',
-          inscriptionId,
-          inscriptionNumber: Number(row.inscriptionNumber ?? row.number ?? row.inscription_number ?? 0),
-          output: row.output ?? row.outpoint ?? '',
-          outputValue: String(row.outputValue ?? row.output_value ?? row.value ?? '0'),
-          preview: row.preview ?? content,
-          timestamp: Number(row.timestamp ?? row.time ?? 0),
-          height: Number(row.height ?? row.blockHeight ?? row.block_height ?? 0),
-          location: row.location ?? '',
-          ownerAddress: row.ownerAddress ?? row.owner ?? row.address ?? address,
-          collectionSymbol: row.collectionId ?? row.collectionSlug ?? '',
-          collectionName: row.collectionName ?? '',
-          itemName: row.itemName ?? row.name ?? '',
-          listed: Boolean(row.listed),
-          price: row.price ?? null,
-          status: row.status ?? '',
-        };
-        return mapped;
-      });
-    } catch {
-      continue;
-    }
-  }
-  return [];
-}
-
 async function fetchInscriptionsFromMyDoge(address: string): Promise<MyDogeInscription[]> {
   try {
     const data = await fetchJson(
@@ -1007,35 +943,52 @@ export const walletDataApi = {
     return mapWalletInfo(address, data);
   },
 
-  /** Resolve inscription id against Dojakweb wallet settings (MyDoge / custom URL / wzrd). Returns null if unknown. */
+  /** Resolve inscription id — MyDoge / doggy for era-1 metadata (not dogex). */
   fetchInscriptionById: async (inscriptionId: string): Promise<InscriptionLookupResult | null> => {
-    const base = getWalletProviderBaseUrl();
     const id = normalizeDoginalInscriptionId(inscriptionId);
-    const path = isCommandDogWalletDataProvider() ? '/v1/inscription/' : '/inscription/';
-    const url = `${base}${path}${encodeURIComponent(id)}`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const data = (await res.json()) as InscriptionLookupResult;
-      if (!data?.inscriptionId && id) {
-        return { ...data, inscriptionId: id };
-      }
-      return data;
-    } catch {
-      return null;
+    const candidates: string[] = [];
+    if (isCommandDogWalletDataProvider()) {
+      candidates.push(`${DEFAULT_MYDOGE_PROVIDER_URL}/inscription/${encodeURIComponent(id)}`);
+    } else {
+      const base = getWalletProviderBaseUrl();
+      candidates.push(`${base}/inscription/${encodeURIComponent(id)}`);
     }
+    try {
+      const { doggyMarketInscriptionJsonUrl } = await import('../lib/doggy-market-inscription');
+      candidates.push(doggyMarketInscriptionJsonUrl(id));
+    } catch {
+      // doggy helper unavailable
+    }
+    for (const url of candidates) {
+      try {
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!res.ok) continue;
+        const data = (await res.json()) as InscriptionLookupResult;
+        if (!data?.inscriptionId && id) {
+          return { ...data, inscriptionId: id };
+        }
+        return data;
+      } catch {
+        continue;
+      }
+    }
+    return null;
   },
 
   fetchInscriptions: async (address: string): Promise<MyDogeInscription[]> => {
+    // Era-1 Doginals live on MyDoge (and optional InuBits merge) — dogex is not
+    // configured to scan classic Doginals, so never prefer the indexer for this list.
     if (isCommandDogWalletDataProvider()) {
-      // Prefer dogex; when tunnel/proxy is 502/524, fall back to MyDoge so the wallet isn't empty.
-      const fromIndexer = await fetchInscriptionsFromIndexer(address);
-      if (fromIndexer.length > 0) return fromIndexer;
       const fromMyDoge = await fetchInscriptionsFromMyDoge(address);
-      if (fromMyDoge.length > 0) {
-        console.info('[wallet] inscriptions via MyDoge fallback (indexer unavailable)');
+      const { mergeInuBitsInscriptions } = getWalletDataProviderConfig();
+      if (mergeInuBitsInscriptions === false) return fromMyDoge;
+      try {
+        const fromInu = await fetchInubitsWalletInscriptions(address);
+        return mergeInscriptionListsById(fromMyDoge, fromInu);
+      } catch (e) {
+        console.warn('[walletDataApi] InuBits inscription merge failed', e);
+        return fromMyDoge;
       }
-      return fromMyDoge;
     }
     const data = await fetchJson(getWalletEndpoint('/inscriptions/', address));
     const primary = extractArray(data) as MyDogeInscription[];
