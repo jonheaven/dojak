@@ -262,6 +262,7 @@ export {
   subscribeWalletTxJournal,
   upsertWalletTxJournalEntry,
   walletTxActionLabel,
+  walletTxDisplayChips,
   walletTxProtocolLabel,
   type DojakwebWalletTxEntry,
   type DojakwebWalletTxProtocol,

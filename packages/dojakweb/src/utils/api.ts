@@ -1514,7 +1514,7 @@ export const walletDataApi = {
         ...(hasDuneOpReturn
           ? {
               protocolHint: 'dunes' as const,
-              title: isSent ? 'Ðune send' : 'Ðune receive',
+              title: isSent ? 'Send' : 'Receive',
               summary: 'OP_RETURN Ðune · magic 0xD0 — DOGE amount is postage/fee, not the token.',
             }
           : {}),
@@ -1564,7 +1564,7 @@ export const walletDataApi = {
                 /6a[0-9a-f]{0,4}d0/.test(hex)
               ) {
                 t.protocolHint = 'dunes';
-                t.title = t.type === 'sent' ? 'Ðune send' : 'Ðune receive';
+                t.title = t.type === 'sent' ? 'Send' : 'Receive';
                 t.summary =
                   'OP_RETURN Ðune · magic 0xD0 — DOGE amount is postage/fee, not the token.';
               }

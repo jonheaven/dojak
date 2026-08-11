@@ -167,6 +167,7 @@ import {
   mergeWalletTxJournalIntoList,
   subscribeWalletTxJournal,
   upsertWalletTxJournalEntry,
+  walletTxDisplayChips,
   type DojakwebWalletTxEntry,
   type WalletTxListRow,
 } from '../lib/wallet-tx-journal';
@@ -5165,46 +5166,49 @@ export function DojakwebWalletModal({
                                         isDark ? 'text-white/40' : 'text-zinc-400',
                                       )}>
                                         {selectedTx.title
+                                          ?.replace(/^Ðune\s*[·•.-]\s*/i, '')
                                           || (selectedTx.type === 'sent' ? t('modal.tx.to') : t('modal.tx.from'))}
                                       </div>
-                                      {(selectedTx.protocolLabel || selectedTx.originLabel || selectedTx.actionLabel) && (
+                                      {(selectedTx.protocolLabel || selectedTx.originLabel || selectedTx.actionLabel) && (() => {
+                                        const chips = walletTxDisplayChips(selectedTx);
+                                        if (!chips.protocolLabel && !chips.actionLabel && !chips.originLabel) return null;
+                                        return (
                                         <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
-                                          {selectedTx.protocolLabel && (
+                                          {chips.protocolLabel && (
                                             <span className={cx(
                                               'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
                                               isDark ? 'bg-amber-400/15 text-amber-200' : 'bg-amber-100 text-amber-800',
                                             )}>
-                                              {selectedTx.protocolLabel}
+                                              {chips.protocolLabel}
                                             </span>
                                           )}
-                                          {selectedTx.actionLabel && (
+                                          {chips.actionLabel && (
                                             <span className={cx(
                                               'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
-                                              selectedTx.actionLabel === 'Payout' || selectedTx.actionLabel === 'Win'
+                                              chips.actionLabel === 'Payout' || chips.actionLabel === 'Win'
                                                 ? (isDark ? 'bg-green-400/15 text-green-200' : 'bg-green-100 text-green-800')
                                                 : (isDark ? 'bg-fuchsia-400/15 text-fuchsia-200' : 'bg-fuchsia-100 text-fuchsia-800'),
                                             )}>
-                                              {selectedTx.actionLabel}
+                                              {chips.actionLabel}
                                             </span>
                                           )}
-                                          {selectedTx.originLabel && (
+                                          {chips.originLabel && (
                                             <span className={cx(
                                               'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
                                               isDark ? 'bg-sky-400/15 text-sky-200' : 'bg-sky-100 text-sky-800',
                                             )}>
-                                              {selectedTx.originLabel}
+                                              {chips.originLabel}
                                             </span>
                                           )}
                                         </div>
-                                      )}
+                                        );
+                                      })()}
                                       <div className="mb-3">
                                         <span className={cx(
-                                          'rounded-full px-3 py-1 text-xs font-semibold inline-block',
+                                          'text-xs font-medium',
                                           selectedTx.pending
-                                            ? (isDark ? 'bg-yellow-400/20 text-yellow-200' : 'bg-yellow-100 text-yellow-700')
-                                            : selectedTx.confirmations > 0 || selectedTx.journal?.status === 'indexed'
-                                              ? (isDark ? 'bg-emerald-400/15 text-emerald-200' : 'bg-emerald-100 text-emerald-800')
-                                              : (isDark ? 'bg-white/10 text-white/70' : 'bg-zinc-100 text-zinc-600'),
+                                            ? (isDark ? 'text-yellow-200' : 'text-yellow-700')
+                                            : (isDark ? 'text-emerald-300/90' : 'text-emerald-700'),
                                         )}>
                                           {selectedTx.pending
                                             ? 'Mempool'
@@ -5215,7 +5219,7 @@ export function DojakwebWalletModal({
                                                 : 'Seen'}
                                         </span>
                                       </div>
-                                      {selectedTx.summary && (
+                                      {selectedTx.summary && selectedTx.protocol !== 'dunes' && (
                                         <div className={cx(
                                           'mb-3 text-xs leading-relaxed',
                                           isDark ? 'text-white/55' : 'text-zinc-500',
@@ -5257,15 +5261,15 @@ export function DojakwebWalletModal({
                                       )}>
                                         {selectedTx.protocol === 'dunes' && selectedTx.summary ? (
                                           <div className="space-y-2">
-                                            <div className="text-lg font-semibold leading-snug sm:text-xl">
-                                              {selectedTx.title || 'Ðune transfer'}
-                                            </div>
-                                            <div className={cx(
-                                              'text-sm font-normal leading-relaxed',
-                                              isDark ? 'text-white/55' : 'text-zinc-500',
-                                            )}>
-                                              {selectedTx.summary}
-                                            </div>
+                                            {selectedTx.tokenAmountLabel ? (
+                                              <div className="text-2xl font-bold leading-snug sm:text-3xl">
+                                                {selectedTx.tokenAmountLabel}
+                                              </div>
+                                            ) : (
+                                              <div className="text-lg font-semibold leading-snug sm:text-xl">
+                                                {selectedTx.summary}
+                                              </div>
+                                            )}
                                             {selectedTx.amount > 0 ? (
                                               <div className="text-base font-semibold text-[#FCD34D]">
                                                 Ð{selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
@@ -5404,25 +5408,32 @@ export function DojakwebWalletModal({
                                           if (mins > 0) return `${mins} minute${mins > 1 ? 's' : ''} ago`;
                                           return 'just now';
                                         })();
-                                        const primary =
+                                        const rawPrimary =
                                           tx.title ||
                                           (tx.address
                                             ? `${tx.address.slice(0, 10)}…${tx.address.slice(-4)}`
                                             : tx.txid
                                               ? `${tx.txid.slice(0, 10)}…${tx.txid.slice(-6)}`
                                               : '—');
+                                        const primary = String(rawPrimary).replace(/^Ðune\s*[·•.-]\s*/i, '');
                                         const initials =
                                           tx.protocol === 'dunes'
                                             ? 'ÐU'
                                             : (tx.protocolLabel || tx.address || 'TX').slice(0, 2).toUpperCase();
+                                        const chips = walletTxDisplayChips(tx);
+                                        const statusText = tx.pending
+                                          ? 'Mempool'
+                                          : tx.journal?.status === 'indexed'
+                                            ? 'Indexed'
+                                            : 'Confirmed';
                                         return (
                                           <button
                                             key={`${tx.txid}-${i}`}
                                             type="button"
                                             onClick={() => setSelectedTx(tx)}
                                             className={cx(
-                                              'flex w-full items-center gap-3 px-4 py-3 text-left transition',
-                                              isDark ? 'hover:bg-white/5' : 'hover:bg-zinc-100/80',
+                                              'flex w-full items-center gap-3 px-4 py-2.5 text-left transition',
+                                              isDark ? 'hover:bg-white/5' : 'hover:bg-black/[0.04]',
                                             )}
                                           >
                                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-white">
@@ -5436,60 +5447,51 @@ export function DojakwebWalletModal({
                                                 {primary}
                                               </div>
                                               <div className={cx(
-                                                'mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px]',
-                                                isDark ? 'text-white/40' : 'text-zinc-500',
+                                                'mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px]',
+                                                isDark ? 'text-white/45' : 'text-zinc-500',
                                               )}>
-                                                {tx.protocolLabel && tx.protocol !== 'dogecoin' && (
-                                                  <span className={cx(
-                                                    'rounded-full px-1.5 py-0.5 font-semibold',
-                                                    isDark ? 'bg-amber-400/15 text-amber-200' : 'bg-amber-100 text-amber-800',
-                                                  )}>
-                                                    {tx.protocolLabel}
+                                                {chips.protocolLabel ? (
+                                                  <span className={isDark ? 'text-amber-200/90' : 'text-amber-800'}>
+                                                    {chips.protocolLabel}
                                                   </span>
-                                                )}
-                                                {tx.actionLabel && (
-                                                  <span className={cx(
-                                                    'rounded-full px-1.5 py-0.5 font-semibold',
-                                                    tx.actionLabel === 'Payout' || tx.actionLabel === 'Win'
-                                                      ? (isDark ? 'bg-green-400/15 text-green-200' : 'bg-green-100 text-green-800')
-                                                      : (isDark ? 'bg-fuchsia-400/15 text-fuchsia-200' : 'bg-fuchsia-100 text-fuchsia-800'),
-                                                  )}>
-                                                    {tx.actionLabel}
-                                                  </span>
-                                                )}
-                                                {tx.originLabel && (
-                                                  <span className={cx(
-                                                    'rounded-full px-1.5 py-0.5 font-semibold',
-                                                    isDark ? 'bg-sky-400/15 text-sky-200' : 'bg-sky-50 text-sky-800',
-                                                  )}>
-                                                    {tx.originLabel}
-                                                  </span>
-                                                )}
-                                                <span className={cx(
-                                                  'rounded-full px-1.5 py-0.5 font-semibold',
-                                                  tx.pending
-                                                    ? (isDark ? 'bg-yellow-400/15 text-yellow-200' : 'bg-yellow-100 text-yellow-700')
-                                                    : (isDark ? 'bg-emerald-400/10 text-emerald-300/90' : 'bg-emerald-50 text-emerald-700'),
-                                                )}>
-                                                  {tx.pending ? 'Mempool' : tx.journal?.status === 'indexed' ? 'Indexed' : 'Confirmed'}
-                                                </span>
-                                                <span>{timeAgo}</span>
-                                                {tx.localOnly && <span>· local</span>}
+                                                ) : null}
+                                                {chips.actionLabel ? (
+                                                  <>
+                                                    {chips.protocolLabel ? <span aria-hidden>·</span> : null}
+                                                    <span>{chips.actionLabel}</span>
+                                                  </>
+                                                ) : null}
+                                                {chips.originLabel ? (
+                                                  <>
+                                                    {(chips.protocolLabel || chips.actionLabel) ? <span aria-hidden>·</span> : null}
+                                                    <span className={isDark ? 'text-sky-200/80' : 'text-sky-800'}>
+                                                      {chips.originLabel}
+                                                    </span>
+                                                  </>
+                                                ) : null}
+                                                {(chips.protocolLabel || chips.actionLabel || chips.originLabel) ? (
+                                                  <span aria-hidden>·</span>
+                                                ) : null}
+                                                <span>{statusText}</span>
+                                                {timeAgo ? (
+                                                  <>
+                                                    <span aria-hidden>·</span>
+                                                    <span>{timeAgo}</span>
+                                                  </>
+                                                ) : null}
+                                                {tx.localOnly ? (
+                                                  <>
+                                                    <span aria-hidden>·</span>
+                                                    <span>local</span>
+                                                  </>
+                                                ) : null}
                                               </div>
-                                              {tx.txid && (
-                                                <div className={cx(
-                                                  'mt-0.5 font-mono text-[10px] truncate',
-                                                  isDark ? 'text-white/30' : 'text-zinc-400',
-                                                )}>
-                                                  {tx.txid.slice(0, 12)}…{tx.txid.slice(-8)}
-                                                </div>
-                                              )}
                                             </div>
                                             <div className={cx(
-                                              'shrink-0 rounded-full px-3 py-1 text-sm font-semibold',
+                                              'shrink-0 text-right text-sm font-semibold tabular-nums',
                                               tx.type === 'received'
-                                                ? (isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700')
-                                                : (isDark ? 'bg-zinc-700/60 text-zinc-300' : 'bg-zinc-100 text-zinc-700'),
+                                                ? (isDark ? 'text-green-300' : 'text-green-700')
+                                                : (isDark ? 'text-zinc-200' : 'text-zinc-800'),
                                             )}>
                                               {tx.tokenAmountLabel
                                                 ? tx.tokenAmountLabel
@@ -7534,7 +7536,7 @@ export function DojakwebWalletModal({
               localOnly: true,
               protocol: 'dunes',
               protocolLabel: 'Ðunes',
-              title: 'Ðune send',
+              title: 'Send',
               summary: 'Broadcast — refresh Activity if the protocol chip is missing.',
             });
             setTab('transactions');

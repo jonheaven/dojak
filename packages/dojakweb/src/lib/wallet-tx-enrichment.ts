@@ -315,8 +315,8 @@ async function enrichmentFromDuneOutpoints(txid: string): Promise<WalletTxEnrich
       txid,
       protocol: 'dunes',
       action: 'transfer',
-      actionLabel: 'Ðune',
-      title: `Ðune · ${label}`,
+      // No actionLabel — protocol chip already says Ðunes; title is the token name.
+      title: label,
       summary: `${amount} ${label}`,
       indexed: true,
       metadata: {

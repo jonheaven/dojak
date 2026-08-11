@@ -108,9 +108,8 @@ export function guessWalletTxOriginLabel(host: string, path: string): string {
   }
   if (h.includes('dogenals')) {
     if (p.includes('alkane')) return 'dogenals · Ðalkanes';
-    if (p.includes('dune') || p.includes('deploy') || p.includes('white')) return 'dogenals · Ðunes';
     if (p.includes('dogepark')) return 'dogenals · DogePark';
-    if (p.includes('mint')) return 'dogenals · mint';
+    // Protocol (Ðunes / Treats) already has its own chip — don't restamp "dogenals · Ðunes".
     return 'dogenals.com';
   }
   if (h.includes('dojak')) return 'Dojakweb';
@@ -316,9 +315,99 @@ export function subscribeWalletTxJournal(listener: () => void): () => void {
   };
 }
 
+function foldWalletChipText(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[ÐðĐđ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+/** True when a chip is just restating the protocol (Ðune vs Ðunes, Treat vs Treats, …). */
+function chipRestatesProtocol(chip: string, protocolFolded: string): boolean {
+  if (!protocolFolded) return false;
+  const c = foldWalletChipText(chip);
+  if (!c) return true;
+  if (c === 'transfer' || c === 'dune' || c === 'dunes' || c === 'treat' || c === 'treats') {
+    if (
+      protocolFolded === c ||
+      protocolFolded === `${c}s` ||
+      protocolFolded.replace(/s$/, '') === c ||
+      protocolFolded.includes(c)
+    ) {
+      return true;
+    }
+  }
+  return (
+    c === protocolFolded ||
+    protocolFolded === `${c}s` ||
+    protocolFolded.replace(/s$/, '') === c ||
+    (c.length >= 4 && protocolFolded.startsWith(c)) ||
+    (protocolFolded.length >= 4 && c.startsWith(protocolFolded))
+  );
+}
+
+/**
+ * Collapse redundant protocol / action / origin chips for history + detail.
+ * Keeps useful action chips (Bet, Mint, Etch) and distinct origins (dogecoin.games).
+ */
+export function walletTxDisplayChips(row: {
+  protocol?: DojakwebWalletTxProtocol | string | null;
+  protocolLabel?: string | null;
+  actionLabel?: string | null;
+  originLabel?: string | null;
+}): { protocolLabel?: string; actionLabel?: string; originLabel?: string } {
+  const protocol =
+    row.protocol && isProtocol(row.protocol) && row.protocol !== 'dogecoin' && row.protocol !== 'unknown'
+      ? row.protocol
+      : undefined;
+  const protocolLabel = protocol
+    ? (row.protocolLabel?.trim() || WALLET_TX_PROTOCOL_LABELS[protocol])
+    : undefined;
+  const pFold = protocolLabel ? foldWalletChipText(protocolLabel) : '';
+
+  let actionLabel = row.actionLabel?.trim() || undefined;
+  if (actionLabel && chipRestatesProtocol(actionLabel, pFold || foldWalletChipText(String(row.protocol || '')))) {
+    actionLabel = undefined;
+  }
+  if (actionLabel && foldWalletChipText(actionLabel) === 'transfer') {
+    actionLabel = undefined;
+  }
+
+  let originLabel = row.originLabel?.trim() || undefined;
+  if (originLabel) {
+    const oFold = foldWalletChipText(originLabel);
+    // Bare host restates “you’re on dogenals” — drop unless it names another product.
+    if (oFold === 'dogenalscom' || oFold === 'dogenals' || oFold === 'dojakweb') {
+      originLabel = undefined;
+    } else if (pFold && oFold.startsWith('dogenals') && oFold.includes(pFold)) {
+      // "dogenals · Ðunes" when protocol is already Ðunes — drop.
+      originLabel = undefined;
+    } else if (pFold && chipRestatesProtocol(originLabel, pFold) && !oFold.includes('games')) {
+      originLabel = undefined;
+    }
+  }
+
+  return {
+    ...(protocolLabel ? { protocolLabel } : {}),
+    ...(actionLabel ? { actionLabel } : {}),
+    ...(originLabel ? { originLabel } : {}),
+  };
+}
+
 export function walletTxActionLabel(entry?: DojakwebWalletTxEntry | null): string | undefined {
   const fromMeta = entry?.metadata?.actionLabel;
-  if (typeof fromMeta === 'string' && fromMeta.trim()) return fromMeta.trim();
+  if (typeof fromMeta === 'string' && fromMeta.trim()) {
+    const raw = fromMeta.trim();
+    const protocol = entry?.protocol;
+    const protocolLabel = protocol ? walletTxProtocolLabel(protocol) : '';
+    if (chipRestatesProtocol(raw, foldWalletChipText(protocolLabel || String(protocol || '')))) {
+      // fall through to action-based label
+    } else {
+      return raw;
+    }
+  }
   const a = entry?.action?.trim().toLowerCase();
   if (!a) return undefined;
   if (a === 'bet') return 'Bet';
@@ -328,7 +417,8 @@ export function walletTxActionLabel(entry?: DojakwebWalletTxEntry | null): strin
   if (a === 'call') return 'Call';
   if (a === 'send') return 'Send';
   if (a === 'mint') return 'Mint';
-  if (a === 'etch') return 'Etch';
+  if (a === 'etch' || a === 'dune-etch') return 'Etch';
+  if (a === 'transfer') return undefined;
   return undefined;
 }
 
