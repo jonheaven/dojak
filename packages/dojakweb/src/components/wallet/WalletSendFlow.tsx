@@ -92,6 +92,12 @@ function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
+export type WalletSendSiblingAccount = {
+  address: string;
+  accountIndex: number;
+  nickname?: string;
+};
+
 export type WalletSendFlowProps = {
   connected: boolean;
   activeAddress: string | null;
@@ -106,6 +112,8 @@ export type WalletSendFlowProps = {
   initialRecipient?: string;
   /** Optional fiat line under amounts */
   formatFiat?: (doge: number) => string | null;
+  /** Other HD accounts under the same seed — one-tap recipient (same as Ðune send). */
+  siblingAccounts?: WalletSendSiblingAccount[];
 };
 
 export function WalletSendFlow({
@@ -116,6 +124,7 @@ export function WalletSendFlow({
   refreshBalance,
   initialRecipient,
   formatFiat,
+  siblingAccounts = [],
 }: WalletSendFlowProps) {
   const browser = useBrowserWallet();
   const { entries, addEntry, markUsed, updateEntry } = useAddressBook();
@@ -131,12 +140,26 @@ export function WalletSendFlow({
   const [quote, setQuote] = useState<PaymentSendQuote | null>(null);
   const [txid, setTxid] = useState<string | null>(null);
   const [recent, setRecent] = useState<RecentRecipient[]>(() => loadRecent());
+  const otherSiblings = useMemo(
+    () =>
+      siblingAccounts.filter(
+        (a) =>
+          a.address &&
+          (!activeAddress || a.address.toLowerCase() !== activeAddress.toLowerCase()),
+      ),
+    [siblingAccounts, activeAddress],
+  );
   const [showContacts, setShowContacts] = useState(false);
   const [saveLabel, setSaveLabel] = useState('');
   const [copied, setCopied] = useState(false);
   const [spendableDoge, setSpendableDoge] = useState<number | null>(null);
   const [spendableBusy, setSpendableBusy] = useState(false);
   const [spendBreak, setSpendBreak] = useState<SpendableBalanceBreakdown | null>(null);
+
+  // Open the picker when this seed has other HD accounts (the main inter-account UX).
+  useEffect(() => {
+    if (otherSiblings.length > 0) setShowContacts(true);
+  }, [otherSiblings.length]);
 
   // Keep spendable UTXO total visible (often lower than wallet indexer balance).
   useEffect(() => {
@@ -628,12 +651,70 @@ export function WalletSendFlow({
             One wrong character fails the checksum — paste when you can.
           </p>
         )}
+        {connected && otherSiblings.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className="w-full text-[10px] uppercase tracking-wide text-white/35">
+              Your other HD accounts
+            </span>
+            {otherSiblings.map((acc) => {
+              const selected =
+                recipient.trim().toLowerCase() === acc.address.trim().toLowerCase();
+              return (
+                <button
+                  key={acc.address}
+                  type="button"
+                  onClick={() => pickAddress(acc.address, acc.nickname || `Account #${acc.accountIndex}`)}
+                  title={acc.address}
+                  disabled={busy}
+                  className={cx(
+                    'rounded-md border px-2 py-1 text-[11px] font-semibold tabular-nums transition',
+                    selected
+                      ? 'border-[#FCD34D]/60 bg-[#FCD34D]/15 text-[#FCD34D]'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white',
+                  )}
+                >
+                  #{acc.accountIndex}
+                  {acc.nickname ? ` · ${acc.nickname}` : ''}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       {showContacts ? (
         <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-white/10 bg-[#0A0A0A] p-2">
-          {sortedBook.length === 0 && recent.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-white/45">No saved contacts yet.</p>
+          {otherSiblings.length > 0 ? (
+            <>
+              <p className="px-2 pt-1 text-[10px] uppercase tracking-wide text-white/35">
+                Same seed
+              </p>
+              {otherSiblings.map((acc) => (
+                <button
+                  key={`sib-${acc.address}`}
+                  type="button"
+                  className="flex w-full flex-col rounded-lg px-3 py-2 text-left transition hover:bg-white/5"
+                  onClick={() =>
+                    pickAddress(acc.address, acc.nickname || `Account #${acc.accountIndex}`)
+                  }
+                >
+                  <span className="text-sm font-medium text-white">
+                    Account #{acc.accountIndex}
+                    {acc.nickname ? ` · ${acc.nickname}` : ''}
+                  </span>
+                  <span className="truncate font-mono text-[10px] text-white/45">{acc.address}</span>
+                </button>
+              ))}
+            </>
+          ) : null}
+          {sortedBook.length === 0 && recent.length === 0 && otherSiblings.length === 0 ? (
+            <p className="px-2 py-3 text-xs text-white/45">
+              No saved contacts yet. Add HD accounts with + on the dashboard, or save addresses in
+              Address Book.
+            </p>
+          ) : null}
+          {sortedBook.length > 0 ? (
+            <p className="px-2 pt-2 text-[10px] uppercase tracking-wide text-white/35">Saved</p>
           ) : null}
           {sortedBook.slice(0, 12).map((e) => (
             <button

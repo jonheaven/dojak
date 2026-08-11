@@ -303,7 +303,7 @@ export const DuneSendModal: React.FC<Props> = ({
                       placeholder="D..."
                       className="w-full font-mono"
                     />
-                    {connected && otherSiblings.length > 0 && (
+                    {connected && otherSiblings.length > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <span className="w-full text-[10px] uppercase tracking-wide text-text-secondary">
                           Your other HD accounts
@@ -325,7 +325,13 @@ export const DuneSendModal: React.FC<Props> = ({
                           </button>
                         ))}
                       </div>
-                    )}
+                    ) : connected && siblingAccounts.length <= 1 ? (
+                      <p className="mt-2 text-[11px] leading-snug text-text-secondary">
+                        No other HD accounts yet. On the wallet dashboard, tap{' '}
+                        <span className="font-semibold text-text-primary">+</span> next to account #
+                        to derive the next address, then send DOGE / Ðunes here.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>

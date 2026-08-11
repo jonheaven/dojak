@@ -12,10 +12,20 @@ import { useAddressBook, type AddressBookEntry } from '../hooks/useAddressBook';
 import { validateDogecoinAddress } from '../lib/dogecoinAddressValidate';
 import { toast } from 'sonner';
 
+export type AddressBookSiblingAccount = {
+  address: string;
+  accountIndex: number;
+  nickname?: string;
+};
+
 export type AddressBookViewProps = {
   onSelectAddress?: (address: string) => void;
   /** Called after selecting an address (e.g. navigate back). */
   onAfterSelect?: () => void;
+  /** Active wallet address — excluded from “same seed” picks. */
+  activeAddress?: string | null;
+  /** Other HD accounts under the same seed. */
+  siblingAccounts?: AddressBookSiblingAccount[];
 };
 
 function useAddressBookLogic(onSelectAddress?: (address: string) => void, onAfterSelect?: () => void) {
@@ -121,7 +131,12 @@ function useAddressBookLogic(onSelectAddress?: (address: string) => void, onAfte
  * Full-screen wallet chrome view (no floating modal chrome).
  * Host provides Back / title via the phone drawer header.
  */
-export function AddressBookView({ onSelectAddress, onAfterSelect }: AddressBookViewProps) {
+export function AddressBookView({
+  onSelectAddress,
+  onAfterSelect,
+  activeAddress,
+  siblingAccounts = [],
+}: AddressBookViewProps) {
   const {
     sortedEntries,
     isAdding,
@@ -141,8 +156,50 @@ export function AddressBookView({ onSelectAddress, onAfterSelect }: AddressBookV
     handleImport,
   } = useAddressBookLogic(onSelectAddress, onAfterSelect);
 
+  const otherSiblings = siblingAccounts.filter(
+    (a) =>
+      a.address &&
+      (!activeAddress || a.address.toLowerCase() !== activeAddress.toLowerCase()),
+  );
+
   return (
     <div className="space-y-3">
+      {otherSiblings.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-white/40">
+            Same seed · HD accounts
+          </p>
+          {otherSiblings.map((acc) => (
+            <div
+              key={acc.address}
+              className="rounded-xl border border-[#FCD34D]/20 bg-[#FCD34D]/5 p-3.5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#FCD34D]">
+                    Account #{acc.accountIndex}
+                    {acc.nickname ? ` · ${acc.nickname}` : ''}
+                  </p>
+                  <p className="mt-0.5 break-all font-mono text-[11px] text-white/50">{acc.address}</p>
+                </div>
+                {onSelectAddress ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectAddress(acc.address);
+                      onAfterSelect?.();
+                    }}
+                    className="shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-400 transition hover:bg-amber-500/20 hover:text-amber-300"
+                  >
+                    Select
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -264,13 +321,20 @@ export function AddressBookView({ onSelectAddress, onAfterSelect }: AddressBookV
       )}
 
       {sortedEntries.length === 0 && !isAdding && !importMode ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="flex flex-col items-center justify-center py-8 text-center">
           <BookOpenIcon className="mb-3 h-10 w-10 text-white/20" />
-          <p className="text-sm font-medium text-white/40">No saved addresses</p>
-          <p className="mt-1 text-xs text-white/25">Tap &ldquo;Add Address&rdquo; to get started</p>
+          <p className="text-sm font-medium text-white/40">No saved contacts yet</p>
+          <p className="mt-1 max-w-[16rem] text-xs text-white/25">
+            {otherSiblings.length > 0
+              ? 'Your other HD accounts are listed above — or tap Add Address for external wallets.'
+              : 'Add another HD account with + on the dashboard, or tap Add Address for external wallets.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
+          {sortedEntries.length > 0 ? (
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/40">Saved</p>
+          ) : null}
           {sortedEntries.map((entry) => (
             <div
               key={entry.id}

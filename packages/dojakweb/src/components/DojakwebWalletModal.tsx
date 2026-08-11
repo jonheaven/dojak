@@ -6637,6 +6637,13 @@ export function DojakwebWalletModal({
                         connected={connected}
                         activeAddress={activeAddress}
                         balance={balance}
+                        siblingAccounts={
+                          activeBrowserSeedGroup?.accounts.map((acc) => ({
+                            address: acc.address,
+                            accountIndex: acc.accountIndex ?? 0,
+                            nickname: acc.nickname,
+                          })) ?? []
+                        }
                         sendTransaction={async (to, amountDoge, opts) => {
                           const txid = await sendTransaction(to, amountDoge, opts);
                           pushLocalTransaction({
@@ -7422,6 +7429,14 @@ export function DojakwebWalletModal({
 
                     {step === 'address_book' && (
                       <AddressBookView
+                        activeAddress={activeAddress}
+                        siblingAccounts={
+                          activeBrowserSeedGroup?.accounts.map((acc) => ({
+                            address: acc.address,
+                            accountIndex: acc.accountIndex ?? 0,
+                            nickname: acc.nickname,
+                          })) ?? []
+                        }
                         onSelectAddress={(addr) => {
                           setSendPrefillAddress(addr);
                           setStep('send');
