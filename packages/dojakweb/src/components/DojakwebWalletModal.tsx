@@ -695,6 +695,12 @@ export function DojakwebWalletModal({
   const [inscriptions, setInscriptions] = useState<MyDogeInscription[]>([]);
   const [spendableBreak, setSpendableBreak] = useState<SpendableBalanceBreakdown | null>(null);
   const [spendableBreakBusy, setSpendableBreakBusy] = useState(false);
+  /** Full-viewport Coins & UTXOs (outside narrow drawer). */
+  const [utxoManagerOpen, setUtxoManagerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) setUtxoManagerOpen(false);
+  }, [isOpen]);
   const [drc20Tokens, setDrc20Tokens] = useState<DRC20Token[]>([]);
   const [treatsTokens, setTreatsTokens] = useState<Array<{ tick: string; balance: string }>>([]);
   const [dunesHoldings, setDunesHoldings] = useState<DuneHolding[]>([]);
@@ -744,6 +750,13 @@ export function DojakwebWalletModal({
   const activeWalletSummary = availableWallets.find((wallet) => wallet.isActive) ?? null;
   const activeWalletType = activeWalletSummary?.type ?? walletType ?? null;
   const activeAddress = activeWalletSummary?.address ?? pendingWallet?.address ?? null;
+
+  useEffect(() => {
+    if (step === 'utxos' && activeAddress) {
+      setUtxoManagerOpen(true);
+      setStep('dashboard');
+    }
+  }, [step, activeAddress]);
 
   const publishProfileBind = useCallback(
     async (role: 'pfp' | 'pfa', mediaInscriptionId: string) => {
@@ -4280,7 +4293,7 @@ export function DojakwebWalletModal({
                                   <div className="mt-3 space-y-1">
                                     <button
                                       type="button"
-                                      onClick={() => setStep('utxos')}
+                                      onClick={() => setUtxoManagerOpen(true)}
                                       className="mx-auto block text-center text-[12px] font-medium text-white/70 transition hover:text-[#FCD34D]"
                                     >
                                       {spendableBreakBusy && !spendableBreak
@@ -4302,7 +4315,7 @@ export function DojakwebWalletModal({
                                         <button
                                           type="button"
                                           className="text-[#FCD34D]/80 underline-offset-2 hover:underline"
-                                          onClick={() => setStep('utxos')}
+                                          onClick={() => setUtxoManagerOpen(true)}
                                         >
                                           Manage
                                         </button>
@@ -4400,7 +4413,7 @@ export function DojakwebWalletModal({
                                       ] as const)
                                     : []),
                                   { key: 'xVerify', label: t('modal.dashboard.menu.xVerify'), Icon: CheckBadgeIcon, action: () => setStep('verification') },
-                                  { key: 'utxos', label: 'Coins & UTXOs', Icon: CircleStackIcon, action: () => setStep('utxos') },
+                                  { key: 'utxos', label: 'Coins & UTXOs', Icon: CircleStackIcon, action: () => setUtxoManagerOpen(true) },
                                   { key: 'settings', label: t('modal.dashboard.menu.settings'), Icon: Cog6ToothIcon, action: openSettings },
                                   { key: 'disconnect', label: t('modal.dashboard.menu.disconnect'), Icon: PowerIcon, action: handleDisconnectWallet },
                                 ].map(({ key, label, Icon, action }) => (
@@ -6597,33 +6610,18 @@ export function DojakwebWalletModal({
                     {step === 'utxos' && activeAddress && (
                       <div className="space-y-3">
                         <p className="text-[11px] leading-relaxed text-white/45">
-                          Wallet total can look higher than Spendable. Inscription carriers (0.001 Ð), locked coins,
-                          and inputs from a recent underfee / stuck mempool send stay unavailable until that tx
-                          confirms or drops from the network (often 1–3 days). Local holds from this browser can be cleared below.
+                          Coins &amp; UTXOs opens fullscreen for room to manage locks, Ðune carriers, and holds.
                         </p>
-                        {spendableBreak && spendableBreak.localHoldCount > 0 ? (
-                          <button
-                            type="button"
-                            className={cx(SECONDARY_BUTTON, 'w-full text-xs')}
-                            onClick={() => {
-                              clearMempoolOverlayForAddress(activeAddress);
-                              setSpendableBreak(null);
-                              toast.success('Cleared local spend holds — refresh if coins reappear as spendable');
-                              void getSpendableBalanceBreakdown(activeAddress, balance).then(setSpendableBreak);
-                            }}
-                          >
-                            Release local holds ({spendableBreak.localHoldCount} UTXO
-                            {spendableBreak.localHoldCount === 1 ? '' : 's'}
-                            {spendableBreak.localHoldDoge > 0
-                              ? ` · ${spendableBreak.localHoldDoge.toLocaleString(undefined, { maximumFractionDigits: 4 })} Ð`
-                              : ''}
-                            )
-                          </button>
-                        ) : null}
-                        <UtxoManagement
-                          walletAddress={activeAddress}
-                          showAddressBanner={false}
-                        />
+                        <Button
+                          type="button"
+                          className={cx('w-full', PRIMARY_BUTTON)}
+                          onClick={() => {
+                            setUtxoManagerOpen(true);
+                            setStep('dashboard');
+                          }}
+                        >
+                          Open Coins &amp; UTXOs
+                        </Button>
                         <Button type="button" className={cx('w-full', SECONDARY_BUTTON)} onClick={() => setStep('dashboard')}>
                           Back to wallet
                         </Button>
@@ -7459,6 +7457,98 @@ export function DojakwebWalletModal({
           if (activeAddress) void fetchAssets(activeAddress);
         }}
       />
+
+      {utxoManagerOpen &&
+        activeAddress &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[10120] flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Coins and UTXOs"
+            data-ds-theme={isDark ? 'dark' : 'light'}
+          >
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+              aria-label="Close coins manager"
+              onClick={() => setUtxoManagerOpen(false)}
+            />
+            <div
+              className={cx(
+                'relative z-[1] mx-auto flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden border-x shadow-2xl',
+                isDark
+                  ? 'border-white/10 bg-[#12100c] text-white'
+                  : 'border-zinc-200 bg-white text-zinc-900',
+              )}
+            >
+              <header
+                className={cx(
+                  'flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 sm:px-6',
+                  isDark ? 'border-white/10' : 'border-zinc-200',
+                )}
+              >
+                <div className="min-w-0">
+                  <p
+                    className={cx(
+                      'text-[10px] font-medium uppercase tracking-[0.2em]',
+                      isDark ? 'text-[#FCD34D]' : 'text-amber-700',
+                    )}
+                  >
+                    Wallet tools
+                  </p>
+                  <h2 className="truncate text-lg font-semibold">Coins &amp; UTXOs</h2>
+                  <p className={cx('truncate font-mono text-[11px]', isDark ? 'text-white/45' : 'text-zinc-500')}>
+                    {activeAddress}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUtxoManagerOpen(false)}
+                  className={cx(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition',
+                    isDark
+                      ? 'border-white/15 bg-white/5 text-white/80 hover:bg-white/10'
+                      : 'border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100',
+                  )}
+                  aria-label="Close"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </header>
+
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6">
+                <p className={cx('text-[12px] leading-relaxed', isDark ? 'text-white/50' : 'text-zinc-600')}>
+                  Wallet total can look higher than Spendable. Inscription carriers (0.001 Ð), Ðune-bearing outs
+                  (often change/pointer with real DOGE), locked coins, and recent broadcast holds stay unavailable
+                  for plain sends until unlocked, moved, or confirmed.
+                </p>
+                {spendableBreak && spendableBreak.localHoldCount > 0 ? (
+                  <button
+                    type="button"
+                    className={cx(SECONDARY_BUTTON, 'w-full text-xs sm:w-auto')}
+                    onClick={() => {
+                      clearMempoolOverlayForAddress(activeAddress);
+                      setSpendableBreak(null);
+                      toast.success('Cleared local spend holds — refresh if coins reappear as spendable');
+                      void getSpendableBalanceBreakdown(activeAddress, balance).then(setSpendableBreak);
+                    }}
+                  >
+                    Release local holds ({spendableBreak.localHoldCount} UTXO
+                    {spendableBreak.localHoldCount === 1 ? '' : 's'}
+                    {spendableBreak.localHoldDoge > 0
+                      ? ` · ${spendableBreak.localHoldDoge.toLocaleString(undefined, { maximumFractionDigits: 4 })} Ð`
+                      : ''}
+                    )
+                  </button>
+                ) : null}
+                <UtxoManagement walletAddress={activeAddress} showAddressBanner={false} />
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
