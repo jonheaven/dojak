@@ -832,6 +832,10 @@ export interface SendDuneParams {
   feeRate?: number;
   signer: DuneTxSigner;
   broadcast?: boolean;
+  /** Optional display name for wallet activity (e.g. THE•WHITE•DOGE). */
+  duneName?: string;
+  spacedName?: string;
+  symbol?: string;
 }
 
 export interface SendResult {
@@ -855,6 +859,7 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
     duneId, amount, divisibility,
     recipientAddress, postage = POSTAGE_KOINU,
     feeRate = 1_000_000, signer, broadcast = true,
+    duneName, spacedName, symbol,
   } = params;
 
   const amountBig = humanToSmallestUnits(amount, divisibility);
@@ -897,15 +902,26 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
         change: built.change,
       });
       if (txid) {
+        const displayName = (spacedName || duneName || duneId).trim();
+        const postageDoge = postage / 1e8;
         upsertWalletTxJournalEntry({
           txid,
           address: signer.fromAddress,
           protocol: 'dunes',
           action: 'send',
-          title: 'Ðune edict send',
-          summary: `${amount} → ${recipientAddress.slice(0, 12)}… (${duneId})`,
+          title: `Send ${displayName}`,
+          summary: `${amount}${symbol ? ` ${symbol}` : ''} → ${recipientAddress.slice(0, 12)}… · postage ${postageDoge} Ð (${duneId})`,
           status: 'broadcasted',
-          metadata: { duneId, amount, recipientAddress },
+          metadata: {
+            duneId,
+            amount,
+            recipientAddress,
+            duneName: duneName || displayName,
+            spacedName: spacedName || displayName,
+            symbol: symbol || undefined,
+            postageDoge,
+            // Do not set amountDoge — activity DOGE figure stays net postage+fee from chain history.
+          },
         });
       }
       return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis };

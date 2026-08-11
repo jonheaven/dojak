@@ -166,11 +166,14 @@ export const DuneSendModal: React.FC<Props> = ({
         postage: Number(postage),
         feeRate: feeRateKoinuPerKb,
         signer: resolved.signer,
+        duneName: duneInfo!.name || holding?.dune || holding?.ticker,
+        spacedName: duneInfo!.name || holding?.dune,
+        symbol: duneInfo!.symbol || holding?.symbol,
       });
 
       setTxid(result.txid ?? null);
       setStep('done');
-      toast.success('Send transaction broadcast!');
+      toast.success('Ðune send broadcast!');
       onSuccess?.(result.txid ?? '');
     } catch (e: any) {
       const raw = e?.message ?? 'Transaction failed';

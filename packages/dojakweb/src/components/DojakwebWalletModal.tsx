@@ -5242,7 +5242,34 @@ export function DojakwebWalletModal({
                                         'my-4 text-4xl font-bold',
                                         isDark ? 'text-white' : 'text-zinc-900',
                                       )}>
-                                        Ð{selectedTx.amount % 1 === 0 ? selectedTx.amount.toLocaleString() : selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                                        {selectedTx.protocol === 'dunes' && selectedTx.summary ? (
+                                          <div className="space-y-2">
+                                            <div className="text-lg font-semibold leading-snug sm:text-xl">
+                                              {selectedTx.title || 'Ðune transfer'}
+                                            </div>
+                                            <div className={cx(
+                                              'text-sm font-normal leading-relaxed',
+                                              isDark ? 'text-white/55' : 'text-zinc-500',
+                                            )}>
+                                              {selectedTx.summary}
+                                            </div>
+                                            {selectedTx.amount > 0 ? (
+                                              <div className="text-base font-semibold text-[#FCD34D]">
+                                                Ð{selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                                                <span className={cx(
+                                                  'ml-2 text-xs font-medium',
+                                                  isDark ? 'text-white/40' : 'text-zinc-400',
+                                                )}>
+                                                  DOGE postage / fee
+                                                </span>
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        ) : (
+                                          <>
+                                            Ð{selectedTx.amount % 1 === 0 ? selectedTx.amount.toLocaleString() : selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                                          </>
+                                        )}
                                       </div>
                                       <div className={cx(
                                         'mt-2 divide-y rounded-xl border text-left text-sm',
@@ -5371,7 +5398,10 @@ export function DojakwebWalletModal({
                                             : tx.txid
                                               ? `${tx.txid.slice(0, 10)}…${tx.txid.slice(-6)}`
                                               : '—');
-                                        const initials = (tx.protocolLabel || tx.address || 'TX').slice(0, 2).toUpperCase();
+                                        const initials =
+                                          tx.protocol === 'dunes'
+                                            ? 'ÐU'
+                                            : (tx.protocolLabel || tx.address || 'TX').slice(0, 2).toUpperCase();
                                         return (
                                           <button
                                             key={`${tx.txid}-${i}`}
@@ -5448,7 +5478,9 @@ export function DojakwebWalletModal({
                                                 ? (isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700')
                                                 : (isDark ? 'bg-zinc-700/60 text-zinc-300' : 'bg-zinc-100 text-zinc-700'),
                                             )}>
-                                              {tx.type === 'received' ? '+' : '-'}{tx.amount % 1 === 0 ? tx.amount : tx.amount.toFixed(tx.amount < 0.01 ? 8 : 3)}
+                                              {tx.protocol === 'dunes'
+                                                ? 'Ðune'
+                                                : `${tx.type === 'received' ? '+' : '-'}${tx.amount % 1 === 0 ? tx.amount : tx.amount.toFixed(tx.amount < 0.01 ? 8 : 3)}`}
                                             </div>
                                           </button>
                                         );
@@ -7471,8 +7503,27 @@ export function DojakwebWalletModal({
           setDuneSendOpen(false);
           setDuneSendHolding(undefined);
         }}
-        onSuccess={() => {
+        onSuccess={(txid) => {
           if (activeAddress) void fetchAssets(activeAddress);
+          const id = String(txid || '').trim().toLowerCase();
+          if (/^[0-9a-f]{64}$/.test(id)) {
+            setWalletTxJournal(loadWalletTxJournal());
+            pushLocalTransaction({
+              txid: id,
+              type: 'sent',
+              amount: 0,
+              address: '',
+              confirmations: 0,
+              timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+              pending: true,
+              localOnly: true,
+              protocol: 'dunes',
+              protocolLabel: 'Ðunes',
+              title: 'Ðune send',
+              summary: 'Broadcast — refresh Activity if the protocol chip is missing.',
+            });
+            setTab('transactions');
+          }
         }}
       />
 

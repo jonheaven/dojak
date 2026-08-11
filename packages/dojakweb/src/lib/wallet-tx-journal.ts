@@ -364,6 +364,9 @@ export function mergeWalletTxJournalIntoList<T extends {
   timestamp: string;
   pending: boolean;
   localOnly?: boolean;
+  protocolHint?: DojakwebWalletTxProtocol | string;
+  title?: string;
+  summary?: string;
 }>(
   chainTxs: T[],
   journal: DojakwebWalletTxEntry[],
@@ -375,11 +378,15 @@ export function mergeWalletTxJournalIntoList<T extends {
   for (const tx of chainTxs) {
     const txid = tx.txid.trim().toLowerCase();
     if (!/^[0-9a-f]{64}$/.test(txid)) continue;
+    const hint =
+      tx.protocolHint && isProtocol(tx.protocolHint) ? tx.protocolHint : 'dogecoin';
     byTxid.set(txid, {
       ...tx,
       txid,
-      protocol: 'dogecoin',
-      protocolLabel: WALLET_TX_PROTOCOL_LABELS.dogecoin,
+      protocol: hint,
+      protocolLabel: WALLET_TX_PROTOCOL_LABELS[hint],
+      title: tx.title,
+      summary: tx.summary,
     });
   }
 
@@ -387,6 +394,20 @@ export function mergeWalletTxJournalIntoList<T extends {
     if (!entry.txid) continue;
     if (addr && entry.address && entry.address.toLowerCase() !== addr) continue;
     const existing = byTxid.get(entry.txid);
+    const metaRecipient =
+      typeof entry.metadata?.recipientAddress === 'string'
+        ? entry.metadata.recipientAddress.trim()
+        : '';
+    const metaDuneName =
+      typeof entry.metadata?.duneName === 'string'
+        ? entry.metadata.duneName.trim()
+        : typeof entry.metadata?.spacedName === 'string'
+          ? entry.metadata.spacedName.trim()
+          : '';
+    const metaAmount =
+      typeof entry.metadata?.amount === 'string' || typeof entry.metadata?.amount === 'number'
+        ? String(entry.metadata.amount)
+        : '';
     if (existing) {
       const protocol = richerProtocol(existing.protocol, entry.protocol);
       const actionLabel = walletTxActionLabel(entry) || existing.actionLabel;
@@ -402,8 +423,19 @@ export function mergeWalletTxJournalIntoList<T extends {
         protocolLabel: walletTxProtocolLabel(protocol),
         actionLabel,
         originLabel: entry.originLabel || existing.originLabel,
-        title: entry.title || existing.title,
-        summary: entry.summary || existing.summary,
+        title:
+          entry.title ||
+          existing.title ||
+          (protocol === 'dunes' && metaDuneName
+            ? `${type === 'sent' ? 'Send' : 'Receive'} ${metaDuneName}`
+            : undefined),
+        summary:
+          entry.summary ||
+          existing.summary ||
+          (protocol === 'dunes' && metaAmount
+            ? `${metaAmount}${metaDuneName ? ` ${metaDuneName}` : ''}${metaRecipient ? ` → ${metaRecipient.slice(0, 10)}…` : ''}`
+            : undefined),
+        address: metaRecipient || existing.address,
         amount:
           typeof entry.metadata?.amountDoge === 'number' && entry.metadata.amountDoge > 0
             ? entry.metadata.amountDoge
@@ -417,7 +449,7 @@ export function mergeWalletTxJournalIntoList<T extends {
         txid: entry.txid,
         type: entry.action === 'payout' || entry.action === 'win' ? 'received' : 'sent',
         amount: typeof entry.metadata?.amountDoge === 'number' ? entry.metadata.amountDoge : 0,
-        address: entry.address || '',
+        address: metaRecipient || entry.address || '',
         confirmations: entry.status === 'confirmed' || entry.status === 'indexed' ? 1 : 0,
         timestamp: created.includes('T') ? created.replace('T', ' ').slice(0, 19) : created,
         pending: entry.status !== 'confirmed' && entry.status !== 'indexed' && entry.status !== 'failed',
@@ -427,7 +459,9 @@ export function mergeWalletTxJournalIntoList<T extends {
         protocolLabel: walletTxProtocolLabel(entry.protocol),
         actionLabel: walletTxActionLabel(entry),
         originLabel: entry.originLabel,
-        title: entry.title,
+        title:
+          entry.title ||
+          (entry.protocol === 'dunes' && metaDuneName ? `Send ${metaDuneName}` : undefined),
         summary: entry.summary,
       });
     }

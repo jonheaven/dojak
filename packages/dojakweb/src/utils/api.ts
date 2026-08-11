@@ -611,6 +611,13 @@ export interface DogeTransaction {
   confirmations: number;
   timestamp: string; // e.g. "2026-04-10 14:35:45"
   pending: boolean;
+  /**
+   * Best-effort protocol from provider tx shape (e.g. OP_RETURN 0xD0).
+   * Journal merge can still upgrade this further.
+   */
+  protocolHint?: 'dogecoin' | 'dunes' | 'doginals';
+  title?: string;
+  summary?: string;
 }
 
 export interface DogeTransactionsPage {
@@ -1375,6 +1382,22 @@ export const walletDataApi = {
       return typeof first === 'string' ? first : '';
     };
 
+    /** Ðunes v2 OP_RETURN: `OP_RETURN <0xD0> <version> …` (explorer / dogex magic). */
+    const voutLooksLikeDuneOpReturn = (output: any): boolean => {
+      const spk = output?.scriptPubKey ?? output?.scriptpubkey ?? output;
+      const asm = String(spk?.asm ?? output?.asm ?? '');
+      const hex = String(spk?.hex ?? output?.hex ?? output?.script ?? output?.script_hex ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/^0x/, '');
+      if (/OP_RETURN/i.test(asm) && (/(\s|^)d0(\s|$)/i.test(asm) || /OP_PUSHBYTES_1\s+d0/i.test(asm))) {
+        return true;
+      }
+      // Wire forms: 6a01d0… or 6a02d002… (push magic then version)
+      if (hex.includes('6a01d0') || hex.includes('6a02d002') || /^6a01d0/.test(hex)) return true;
+      return false;
+    };
+
     const transactions: DogeTransaction[] = rawTxs.map((tx: any) => {
       const vin = Array.isArray(tx.vin) ? tx.vin : [];
       const vout = Array.isArray(tx.vout) ? tx.vout : [];
@@ -1397,11 +1420,19 @@ export const walletDataApi = {
         rawAmount < 0;
 
       const amount = Math.abs(netDoge || rawAmount);
+      const hasDuneOpReturn = vout.some(voutLooksLikeDuneOpReturn);
 
-      // Counterparty address
+      // Counterparty address — skip nulldata / OP_RETURN outs
       const counterparty = tx.address ??
         (isSent
-          ? (tx.to ?? tx.toAddress ?? firstAddress(vout, (output) => !outputBelongsToWallet(output) && output?.isAddress !== false))
+          ? (tx.to ?? tx.toAddress ?? firstAddress(
+              vout,
+              (output) =>
+                !outputBelongsToWallet(output) &&
+                output?.isAddress !== false &&
+                !voutLooksLikeDuneOpReturn(output) &&
+                Number(output?.value ?? 0) > 0,
+            ))
           : (tx.from ?? tx.fromAddress ?? firstAddress(vin, (input) => !inputBelongsToWallet(input))));
       const counterpartyAddress = String(counterparty ?? '');
 
@@ -1431,8 +1462,66 @@ export const walletDataApi = {
         confirmations,
         timestamp,
         pending,
+        ...(hasDuneOpReturn
+          ? {
+              protocolHint: 'dunes' as const,
+              title: isSent ? 'Ðune send' : 'Ðune receive',
+              summary: 'OP_RETURN Ðune · magic 0xD0 — DOGE amount is postage/fee, not the token.',
+            }
+          : {}),
       };
     });
+
+    // MyDoge often omits script hex — peek dogex raw for recent rows so Activity matches Ðexplorer.
+    if (page === 1) {
+      const bases = [
+        getIndexerApiBase().replace(/\/+$/, ''),
+        DOGEX_PUBLIC_INDEXER_URL,
+      ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+      const candidates = transactions.filter((t) => t.txid && !t.protocolHint).slice(0, 8);
+      await Promise.all(
+        candidates.map(async (t) => {
+          const tid = t.txid.trim().toLowerCase();
+          if (!/^[0-9a-f]{64}$/.test(tid)) return;
+          for (const base of bases) {
+            try {
+              const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+              const timer =
+                ctrl && typeof window !== 'undefined'
+                  ? window.setTimeout(() => ctrl.abort(), 6_000)
+                  : null;
+              const res = await fetch(`${base}/api/tx/${encodeURIComponent(tid)}/raw`, {
+                cache: 'no-store',
+                headers: { Accept: 'application/json,text/plain' },
+                signal: ctrl?.signal,
+              });
+              if (timer != null) window.clearTimeout(timer);
+              if (!res.ok) continue;
+              const body = await res.text();
+              let hex = body.trim().toLowerCase().replace(/^0x/, '');
+              try {
+                const json = JSON.parse(body) as { hex?: string; raw?: string; result?: string };
+                hex = String(json.hex ?? json.raw ?? json.result ?? hex)
+                  .trim()
+                  .toLowerCase()
+                  .replace(/^0x/, '');
+              } catch {
+                /* plain hex body */
+              }
+              if (hex.includes('6a01d0') || hex.includes('6a02d002')) {
+                t.protocolHint = 'dunes';
+                t.title = t.type === 'sent' ? 'Ðune send' : 'Ðune receive';
+                t.summary =
+                  'OP_RETURN Ðune · magic 0xD0 — DOGE amount is postage/fee, not the token.';
+              }
+              return;
+            } catch {
+              /* try next base */
+            }
+          }
+        }),
+      );
+    }
 
     return { transactions, total };
   },
