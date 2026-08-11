@@ -6,6 +6,12 @@
 const ALLOWED_DOMAINS = [
   'dogex.store',
   'www.dogex.store',
+  'dogex.dog',
+  'www.dogex.dog',
+  'dogenals.com',
+  'www.dogenals.com',
+  'market.command.dog',
+  'command.dog',
   'dojakweb.com',
   'www.dojakweb.com',
   'localhost',
