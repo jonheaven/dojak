@@ -44,12 +44,7 @@ function normalizeUtxos(response: unknown): Array<{ txid?: string; vout?: number
 async function fetchCharmsForAddress(address: string): Promise<Map<string, CharmsToken>> {
   const utxoResponse = await walletDataApi.fetchUtxos(address);
   const walletUtxos = normalizeUtxos(utxoResponse);
-  const charmResults = await Promise.allSettled(
-    walletUtxos
-      .filter((utxo) => typeof utxo.txid === 'string' && Number.isFinite(Number(utxo.vout)))
-      .map((utxo) => charmsService.getCharmsByUtxo(String(utxo.txid), Number(utxo.vout))),
-  );
-  const indexed = charmResults.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+  const indexed = await charmsService.scanCharmsForUtxos(walletUtxos, { limit: 24 });
   const nextTokens = new Map<string, CharmsToken>();
   for (const charm of indexed) {
     if (charm.spent_by_txid) continue;

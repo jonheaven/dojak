@@ -56,6 +56,41 @@ interface RequestOptions extends RequestInit {
   signal?: AbortSignal;
 }
 
+/** Soft-fail Charms UTXO probes when indexer / command.dog charms are down. */
+const CHARMS_CIRCUIT_MS = 5 * 60_000;
+const CHARMS_FAIL_OPEN_AFTER = 3;
+const CHARMS_UTXO_TIMEOUT_MS = 4_000;
+let charmsFailStreak = 0;
+let charmsCircuitOpenUntil = 0;
+/** command.dog `/v1/charms/utxos` is often unwired — skip after first 404/501 this session. */
+let skipCommandDogCharmsUtxos = false;
+
+export function charmsLookupsPaused(): boolean {
+  return Date.now() < charmsCircuitOpenUntil;
+}
+
+export function charmsLookupsResumeInMs(): number {
+  return Math.max(0, charmsCircuitOpenUntil - Date.now());
+}
+
+function recordCharmsSuccess(): void {
+  charmsFailStreak = 0;
+  charmsCircuitOpenUntil = 0;
+}
+
+function recordCharmsFailure(): void {
+  charmsFailStreak += 1;
+  if (charmsFailStreak >= CHARMS_FAIL_OPEN_AFTER) {
+    charmsCircuitOpenUntil = Date.now() + CHARMS_CIRCUIT_MS;
+    charmsFailStreak = 0;
+    if (typeof console !== 'undefined' && console.info) {
+      console.info(
+        '[charms] UTXO lookups paused ~5m — indexer/command.dog charms unavailable (wallet assets continue without Charms)',
+      );
+    }
+  }
+}
+
 /**
  * Normalize a spell (JSON) and compute its hash
  */
@@ -327,39 +362,113 @@ export class CharmsService {
 
   /**
    * Indexer lookup per UTXO.
-   * Prefer dogex `/api/charms/utxos/{txid}/{vout}` (`{ charms: [...] }`), then fall back to
-   * command.dog `/v1/charms/utxos/...` (often 404/501 until wired).
+   * Prefer dogex `/api/charms/utxos/{txid}/{vout}` (`{ charms: [...] }`).
+   * command.dog `/v1/charms/utxos/...` is optional and skipped after a session 404/501
+   * (most hosts never wired it — avoids console spam). Soft-fails with a circuit breaker
+   * when the indexer is down so wallet asset loads stay fast.
    */
   async getCharmsByUtxo(txid: string, vout: number): Promise<IndexedCharmUtxo[]> {
+    if (charmsLookupsPaused()) return [];
+
     const paths: string[] = [];
     try {
-      const { getIndexerApiBase } = await import('../utils/api');
-      const indexer = getIndexerApiBase().replace(/\/$/, '');
-      if (indexer) {
+      const { getIndexerApiBase, DOGEX_PUBLIC_INDEXER_URL } = await import('../utils/api');
+      const bases = [
+        getIndexerApiBase().replace(/\/$/, ''),
+        String(DOGEX_PUBLIC_INDEXER_URL || '').replace(/\/$/, ''),
+      ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+      for (const indexer of bases) {
         paths.push(`${indexer}/api/charms/utxos/${encodeURIComponent(txid)}/${Number(vout)}`);
       }
     } catch {
       // indexer helper unavailable in this bundle
     }
-    paths.push(`${CHARMS_API_BASE.replace(/\/$/, '')}/utxos/${encodeURIComponent(txid)}/${Number(vout)}`);
+    if (!skipCommandDogCharmsUtxos) {
+      paths.push(
+        `${CHARMS_API_BASE.replace(/\/$/, '')}/utxos/${encodeURIComponent(txid)}/${Number(vout)}`,
+      );
+    }
 
+    let sawTransportFail = false;
     for (const url of paths) {
+      const isCmdDog = url.includes('/v1/charms/utxos/') || url.includes('/commanddog/');
       try {
-        const response = await fetch(url, { headers: { Accept: 'application/json' } });
-        if (response.status === 404 || response.status === 501 || response.status === 502) {
+        const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timer =
+          ctrl && typeof window !== 'undefined'
+            ? window.setTimeout(() => ctrl.abort(), CHARMS_UTXO_TIMEOUT_MS)
+            : null;
+        const response = await fetch(url, {
+          headers: { Accept: 'application/json' },
+          signal: ctrl?.signal,
+          cache: 'no-store',
+        });
+        if (timer != null) window.clearTimeout(timer);
+
+        if (response.status === 404 || response.status === 501) {
+          if (isCmdDog) skipCommandDogCharmsUtxos = true;
+          continue;
+        }
+        if (response.status === 502 || response.status === 503 || response.status === 504 || response.status === 524) {
+          sawTransportFail = true;
           continue;
         }
         const data = await response.json().catch(() => null);
-        if (!response.ok) continue;
-        if (Array.isArray(data)) return data as IndexedCharmUtxo[];
-        if (data && typeof data === 'object' && Array.isArray((data as { charms?: unknown }).charms)) {
-          return (data as { charms: IndexedCharmUtxo[] }).charms;
+        if (!response.ok) {
+          sawTransportFail = true;
+          continue;
+        }
+        let rows: IndexedCharmUtxo[] | null = null;
+        if (Array.isArray(data)) rows = data as IndexedCharmUtxo[];
+        else if (data && typeof data === 'object' && Array.isArray((data as { charms?: unknown }).charms)) {
+          rows = (data as { charms: IndexedCharmUtxo[] }).charms;
+        }
+        if (rows) {
+          recordCharmsSuccess();
+          return rows;
         }
       } catch {
-        // try next path
+        sawTransportFail = true;
       }
     }
+    if (sawTransportFail || paths.length > 0) recordCharmsFailure();
     return [];
+  }
+
+  /**
+   * Best-effort scan — caps UTXOs, short-circuits when the charms circuit is open,
+   * and never throws (wallet assets must not depend on charms being up).
+   */
+  async scanCharmsForUtxos(
+    utxos: Array<{ txid?: string; vout?: number }>,
+    opts?: { limit?: number },
+  ): Promise<IndexedCharmUtxo[]> {
+    if (charmsLookupsPaused()) return [];
+    const limit = Math.max(1, Math.min(opts?.limit ?? 24, 80));
+    const targets = utxos
+      .filter((u) => typeof u.txid === 'string' && Number.isFinite(Number(u.vout)))
+      .slice(0, limit);
+    if (!targets.length) return [];
+
+    // Probe one UTXO first — if both indexer + command.dog are dead, open circuit without N×2 requests.
+    const probe = await this.getCharmsByUtxo(String(targets[0].txid), Number(targets[0].vout));
+    if (charmsLookupsPaused()) return probe;
+    if (targets.length === 1) return probe;
+
+    const rest = targets.slice(1);
+    const concurrency = 4;
+    const out: IndexedCharmUtxo[] = [...probe];
+    for (let i = 0; i < rest.length; i += concurrency) {
+      if (charmsLookupsPaused()) break;
+      const chunk = rest.slice(i, i + concurrency);
+      const settled = await Promise.allSettled(
+        chunk.map((u) => this.getCharmsByUtxo(String(u.txid), Number(u.vout))),
+      );
+      for (const r of settled) {
+        if (r.status === 'fulfilled' && r.value.length) out.push(...r.value);
+      }
+    }
+    return out;
   }
 
   async getCharmsByApp(appId: string): Promise<IndexedCharmUtxo[]> {

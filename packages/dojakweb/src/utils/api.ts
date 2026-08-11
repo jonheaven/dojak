@@ -200,20 +200,20 @@ function mapWonkyDuneHoldings(payload: unknown): DuneHolding[] {
   }));
 }
 
-async function fetchDunesFromIndexer(address: string): Promise<DuneHolding[]> {
+async function fetchDunesFromIndexer(address: string): Promise<{ rows: DuneHolding[]; reached: boolean }> {
   const bases = [
     getIndexerApiBase().replace(/\/+$/, ''),
     DOGEX_PUBLIC_INDEXER_URL,
   ].filter((b, i, arr) => b && arr.indexOf(b) === i);
 
-  let lastErr: unknown;
+  let reached = false;
   for (const base of bases) {
     const url = `${base}/api/doginals/dunes/balance/${encodeURIComponent(address)}?list_dunes=true`;
     try {
       const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
       const timer =
         ctrl && typeof window !== 'undefined'
-          ? window.setTimeout(() => ctrl.abort(), 20_000)
+          ? window.setTimeout(() => ctrl.abort(), 12_000)
           : null;
       const res = await fetch(url, {
         cache: 'no-store',
@@ -223,9 +223,9 @@ async function fetchDunesFromIndexer(address: string): Promise<DuneHolding[]> {
       if (timer != null) window.clearTimeout(timer);
       if (!res.ok) {
         console.warn('[dojak:dunes] balance lookup failed', { status: res.status, url });
-        lastErr = new Error(`HTTP ${res.status}`);
         continue;
       }
+      reached = true;
       const data = await res.json();
       const rows = mapWonkyDuneHoldings(data);
       if (rows.length > 0) {
@@ -236,16 +236,12 @@ async function fetchDunesFromIndexer(address: string): Promise<DuneHolding[]> {
           bal: rows[0]?.balance,
         });
       }
-      return rows;
+      return { rows, reached };
     } catch (e) {
-      lastErr = e;
       console.warn('[dojak:dunes] balance fetch error', { url, error: e instanceof Error ? e.message : e });
     }
   }
-  if (lastErr) {
-    console.warn('[dojak:dunes] all indexer bases failed', lastErr);
-  }
-  return [];
+  return { rows: [], reached };
 }
 
 async function fetchDunesFromWonky(address: string): Promise<DuneHolding[]> {
@@ -925,6 +921,81 @@ async function fetchInubitsWalletInscriptions(address: string): Promise<MyDogeIn
   return out;
 }
 
+async function fetchInscriptionsFromIndexer(address: string): Promise<MyDogeInscription[]> {
+  const bases = [
+    getIndexerApiBase().replace(/\/+$/, ''),
+    DOGEX_PUBLIC_INDEXER_URL,
+  ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+
+  for (const indexerBase of bases) {
+    try {
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer =
+        ctrl && typeof window !== 'undefined'
+          ? window.setTimeout(() => ctrl.abort(), 15_000)
+          : null;
+      const res = await fetch(
+        `${indexerBase}/api/doginals/address/${encodeURIComponent(address)}/inscriptions?limit=100`,
+        { headers: { Accept: 'application/json' }, cache: 'no-store', signal: ctrl?.signal },
+      );
+      if (timer != null) window.clearTimeout(timer);
+      if (!res.ok) continue;
+      const payload = (await res.json()) as any;
+      const rows: any[] = Array.isArray(payload?.inscriptions)
+        ? payload.inscriptions
+        : Array.isArray(payload?.items)
+          ? payload.items
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(payload)
+              ? payload
+              : [];
+      return rows.map((row: any) => {
+        const inscriptionId = row.inscriptionId ?? row.id ?? row.inscription_id ?? '';
+        const content = inscriptionId ? dogexCdnContentUrl(inscriptionId) : '';
+        const mapped: MyDogeInscription & Record<string, unknown> = {
+          address: row.address ?? row.ownerAddress ?? row.owner ?? address,
+          content,
+          contentBody: row.contentBody ?? '',
+          contentLength: Number(row.contentLength ?? row.content_length ?? 0),
+          contentType: row.contentType ?? row.content_type ?? 'image/png',
+          genesisTransaction: row.genesisTransaction ?? row.genesis_transaction ?? row.txid ?? '',
+          inscriptionId,
+          inscriptionNumber: Number(row.inscriptionNumber ?? row.number ?? row.inscription_number ?? 0),
+          output: row.output ?? row.outpoint ?? '',
+          outputValue: String(row.outputValue ?? row.output_value ?? row.value ?? '0'),
+          preview: row.preview ?? content,
+          timestamp: Number(row.timestamp ?? row.time ?? 0),
+          height: Number(row.height ?? row.blockHeight ?? row.block_height ?? 0),
+          location: row.location ?? '',
+          ownerAddress: row.ownerAddress ?? row.owner ?? row.address ?? address,
+          collectionSymbol: row.collectionId ?? row.collectionSlug ?? '',
+          collectionName: row.collectionName ?? '',
+          itemName: row.itemName ?? row.name ?? '',
+          listed: Boolean(row.listed),
+          price: row.price ?? null,
+          status: row.status ?? '',
+        };
+        return mapped;
+      });
+    } catch {
+      continue;
+    }
+  }
+  return [];
+}
+
+async function fetchInscriptionsFromMyDoge(address: string): Promise<MyDogeInscription[]> {
+  try {
+    const data = await fetchJson(
+      `${DEFAULT_MYDOGE_PROVIDER_URL}/inscriptions/${encodeURIComponent(address)}`,
+    );
+    return extractArray(data) as MyDogeInscription[];
+  } catch {
+    return [];
+  }
+}
+
 export const walletDataApi = {
   fetchWalletInfo: async (address: string): Promise<WalletInfo> => {
     if (isCommandDogWalletDataProvider()) {
@@ -957,54 +1028,14 @@ export const walletDataApi = {
 
   fetchInscriptions: async (address: string): Promise<MyDogeInscription[]> => {
     if (isCommandDogWalletDataProvider()) {
-      // dogex chain truth: GET /api/doginals/address/:addr/inscriptions
-      try {
-        const indexerBase = getIndexerApiBase().replace(/\/+$/, '');
-        const res = await fetch(
-          `${indexerBase}/api/doginals/address/${encodeURIComponent(address)}/inscriptions?limit=100`,
-        );
-        if (!res.ok) return [];
-        const payload = await res.json() as any;
-        const rows: any[] = Array.isArray(payload?.inscriptions)
-          ? payload.inscriptions
-          : Array.isArray(payload?.items)
-            ? payload.items
-            : Array.isArray(payload?.data)
-              ? payload.data
-              : Array.isArray(payload)
-                ? payload
-                : [];
-        return rows.map((row: any) => {
-          const inscriptionId = row.inscriptionId ?? row.id ?? row.inscription_id ?? '';
-          const content = inscriptionId ? dogexCdnContentUrl(inscriptionId) : '';
-          const mapped: MyDogeInscription & Record<string, unknown> = {
-            address: row.address ?? row.ownerAddress ?? row.owner ?? address,
-            content,
-            contentBody: row.contentBody ?? '',
-            contentLength: Number(row.contentLength ?? row.content_length ?? 0),
-            contentType: row.contentType ?? row.content_type ?? 'image/png',
-            genesisTransaction: row.genesisTransaction ?? row.genesis_transaction ?? row.txid ?? '',
-            inscriptionId,
-            inscriptionNumber: Number(row.inscriptionNumber ?? row.number ?? row.inscription_number ?? 0),
-            output: row.output ?? row.outpoint ?? '',
-            outputValue: String(row.outputValue ?? row.output_value ?? row.value ?? '0'),
-            preview: row.preview ?? content,
-            timestamp: Number(row.timestamp ?? row.time ?? 0),
-            height: Number(row.height ?? row.blockHeight ?? row.block_height ?? 0),
-            location: row.location ?? '',
-            ownerAddress: row.ownerAddress ?? row.owner ?? row.address ?? address,
-            collectionSymbol: row.collectionId ?? row.collectionSlug ?? '',
-            collectionName: row.collectionName ?? '',
-            itemName: row.itemName ?? row.name ?? '',
-            listed: Boolean(row.listed),
-            price: row.price ?? null,
-            status: row.status ?? '',
-          };
-          return mapped;
-        });
-      } catch {
-        return [];
+      // Prefer dogex; when tunnel/proxy is 502/524, fall back to MyDoge so the wallet isn't empty.
+      const fromIndexer = await fetchInscriptionsFromIndexer(address);
+      if (fromIndexer.length > 0) return fromIndexer;
+      const fromMyDoge = await fetchInscriptionsFromMyDoge(address);
+      if (fromMyDoge.length > 0) {
+        console.info('[wallet] inscriptions via MyDoge fallback (indexer unavailable)');
       }
+      return fromMyDoge;
     }
     const data = await fetchJson(getWalletEndpoint('/inscriptions/', address));
     const primary = extractArray(data) as MyDogeInscription[];
@@ -1084,17 +1115,18 @@ export const walletDataApi = {
    */
   fetchDunes: async (address: string): Promise<DuneHolding[]> => {
     if (!address?.trim()) return [];
-    const fromDogex = await fetchDunesFromIndexer(address);
-    if (fromDogex.length > 0) return fromDogex;
+    const { rows: fromDogex, reached } = await fetchDunesFromIndexer(address);
+    if (fromDogex.length > 0 || reached) return fromDogex;
 
+    // dogex tunnel/proxy down — try wonky so Ðunes tab isn't blank (opt-out with wonkyOrdFallback=false).
     const cfg = getWalletDataProviderConfig();
-    const allowWonky =
-      cfg.wonkyOrdFallback === true ||
-      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WONKY_ORD_FALLBACK === '1');
-    if (!allowWonky) return fromDogex;
-
+    if (cfg.wonkyOrdFallback === false) return fromDogex;
     try {
-      return await fetchDunesFromWonky(address);
+      const fromWonky = await fetchDunesFromWonky(address);
+      if (fromWonky.length > 0) {
+        console.info('[dojak:dunes] wonky fallback (dogex unreachable)');
+      }
+      return fromWonky;
     } catch {
       return fromDogex;
     }

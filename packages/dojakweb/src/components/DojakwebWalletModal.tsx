@@ -2496,22 +2496,18 @@ export function DojakwebWalletModal({
         console.warn('[dojak:dunes] fetchAssets dunes rejected', dunesR.reason);
       }
 
-      // Charms: UTXO scan (best-effort)
+      // Charms: UTXO scan (best-effort — never blocks inscriptions/Ðunes)
       try {
-        const { charmsService } = await import('../services/charmsService');
-        const utxoResponse = await walletDataApi.fetchUtxos(address);
-        const raw = utxoResponse as { utxos?: Array<{ txid?: string; vout?: number }> };
-        const utxos = Array.isArray(raw?.utxos) ? raw.utxos : [];
-        const charmResults = await Promise.allSettled(
-          utxos
-            .filter((u) => typeof u.txid === 'string' && Number.isFinite(Number(u.vout)))
-            .slice(0, 80)
-            .map((u) => charmsService.getCharmsByUtxo(String(u.txid), Number(u.vout))),
-        );
-        const nextCharms: Array<{ id: string; ticker: string; balance: string }> = [];
-        for (const r of charmResults) {
-          if (r.status !== 'fulfilled') continue;
-          for (const charm of r.value) {
+        const { charmsService, charmsLookupsPaused } = await import('../services/charmsService');
+        if (charmsLookupsPaused()) {
+          setCharmsAssets([]);
+        } else {
+          const utxoResponse = await walletDataApi.fetchUtxos(address);
+          const raw = utxoResponse as { utxos?: Array<{ txid?: string; vout?: number }> };
+          const utxos = Array.isArray(raw?.utxos) ? raw.utxos : [];
+          const indexed = await charmsService.scanCharmsForUtxos(utxos, { limit: 24 });
+          const nextCharms: Array<{ id: string; ticker: string; balance: string }> = [];
+          for (const charm of indexed) {
             if (charm.spent_by_txid) continue;
             const bal = String(
               charm.charm_data?.balance ?? charm.charm_data?.amount ?? charm.charm_data?.value ?? '1',
@@ -2522,8 +2518,8 @@ export function DojakwebWalletModal({
               balance: bal,
             });
           }
+          setCharmsAssets(nextCharms);
         }
-        setCharmsAssets(nextCharms);
       } catch {
         setCharmsAssets([]);
       }

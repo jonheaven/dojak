@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useMemo, React
 import { walletDataApi, DRC20Token, DuneHolding, MyDogeInscription, WalletInfo } from '../utils/api';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { toast } from 'sonner';
-import { charmsService } from '../services/charmsService';
+import { charmsService, charmsLookupsPaused } from '../services/charmsService';
 import type { CharmsToken } from '../lib/charms/types';
 
 interface CacheEntry<T> {
@@ -358,19 +358,13 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     setIsLoadingCharms(true);
     setCharmsError(null);
     try {
+      if (charmsLookupsPaused()) {
+        setCharmsTokens(new Map());
+        return;
+      }
       const utxoResponse = await walletDataApi.fetchUtxos(walletAddress);
       const walletUtxos = normalizeUtxos(utxoResponse);
-      const charmResults = await Promise.allSettled(
-        walletUtxos
-          .filter((utxo) => typeof utxo.txid === 'string' && Number.isFinite(Number(utxo.vout)))
-          .map((utxo) => charmsService.getCharmsByUtxo(utxo.txid, Number(utxo.vout))),
-      );
-      const indexed = charmResults.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
-      charmResults.forEach((r, i) => {
-        if (r.status === 'rejected') {
-          console.debug('[charms] UTXO lookup failed', i, r.reason);
-        }
-      });
+      const indexed = await charmsService.scanCharmsForUtxos(walletUtxos, { limit: 24 });
       const nextTokens = new Map<string, CharmsToken>();
       for (const charm of indexed) {
         if (charm.spent_by_txid) continue;
@@ -396,8 +390,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       }
       setCharmsTokens(nextTokens);
     } catch (error) {
-      console.error('Failed to refresh Charms:', error);
-      setCharmsError('Unable to retrieve Charms tokens');
+      console.debug('[charms] refresh soft-failed', error);
+      setCharmsTokens(new Map());
+      setCharmsError(null);
     } finally {
       setIsLoadingCharms(false);
     }

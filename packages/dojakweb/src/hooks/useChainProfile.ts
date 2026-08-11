@@ -3,7 +3,7 @@
  * Complements local-only useDogePFP / useDogePFA (connected user prefs).
  */
 import { useCallback, useEffect, useState } from 'react';
-import { getIndexerApiBase } from '../utils/api';
+import { DOGEX_PUBLIC_INDEXER_URL, getIndexerApiBase } from '../utils/api';
 import {
   chainContentUrl,
   fetchChainProfile,
@@ -24,8 +24,15 @@ export function useChainProfile(address: string | null | undefined) {
     setLoading(true);
     setError(null);
     try {
-      const base = getIndexerApiBase();
-      const p = await fetchChainProfile(base, a);
+      const bases = [
+        getIndexerApiBase(),
+        DOGEX_PUBLIC_INDEXER_URL,
+      ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+      let p: ChainProfile | null = null;
+      for (const base of bases) {
+        p = await fetchChainProfile(base, a);
+        if (p) break;
+      }
       setProfile(p);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'profile fetch failed');

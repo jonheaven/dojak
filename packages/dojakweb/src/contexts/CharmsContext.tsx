@@ -64,18 +64,18 @@ export function CharmsProvider({ children }: CharmsProviderProps) {
     try {
       setIsLoadingCharms(true);
       setCharmsError(null);
+      const { charmsLookupsPaused } = await import('../services/charmsService');
+      if (charmsLookupsPaused()) {
+        setCharmsTokens(new Map());
+        return;
+      }
       const response = await walletDataApi.fetchUtxos(address);
       const utxos = Array.isArray(response)
         ? response
         : Array.isArray((response as any)?.utxos)
           ? (response as any).utxos
           : [];
-      const charmResults = await Promise.allSettled(
-        utxos
-          .filter((utxo: any) => typeof utxo.txid === 'string' && Number.isFinite(Number(utxo.vout)))
-          .map((utxo: any) => charmsService.getCharmsByUtxo(utxo.txid, Number(utxo.vout))),
-      );
-      const indexed = charmResults.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+      const indexed = await charmsService.scanCharmsForUtxos(utxos, { limit: 24 });
       const nextTokens = new Map<string, CharmsToken>();
       for (const charm of indexed) {
         if (charm.spent_by_txid) continue;
@@ -102,9 +102,9 @@ export function CharmsProvider({ children }: CharmsProviderProps) {
       }
       setCharmsTokens(nextTokens);
     } catch (error) {
-      console.error('Failed to refresh Charms balances:', error);
-      setCharmsError('Unable to retrieve Charms tokens');
-      toast.error('Failed to load Charms tokens');
+      console.debug('[charms] balances soft-failed', error);
+      setCharmsTokens(new Map());
+      setCharmsError(null);
     } finally {
       setIsLoadingCharms(false);
     }
