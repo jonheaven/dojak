@@ -210,7 +210,7 @@ async function fetchDunesFromIndexer(address: string): Promise<{ rows: DuneHoldi
       ? [primary]
       : [primary, pub].filter((b, i, arr) => b && arr.indexOf(b) === i);
 
-  const TIMEOUT_MS = 8_000;
+  const TIMEOUT_MS = 4_000;
   for (const base of bases) {
     const url = `${base}/api/doginals/dunes/balance/${encodeURIComponent(address)}?list_dunes=true`;
     try {
@@ -702,25 +702,56 @@ export interface DRC20ApiResponse {
 
 const fetchJson = async (
   url: string,
-  opts?: { networkErrorMessage?: string },
+  opts?: { networkErrorMessage?: string; timeoutMs?: number },
 ): Promise<any> => {
+  const timeoutMs = opts?.timeoutMs ?? 8_000;
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer =
+    ctrl && typeof window !== 'undefined'
+      ? window.setTimeout(() => ctrl.abort(), timeoutMs)
+      : null;
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: ctrl?.signal, cache: 'no-store' });
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
       throw new Error(`Request failed (${response.status}): ${errorText || response.statusText}`);
     }
     return response.json();
   } catch (error: any) {
-    if (error instanceof TypeError) {
+    if (error instanceof TypeError || error?.name === 'AbortError') {
       throw new Error(
         opts?.networkErrorMessage ??
           'Balance service is unavailable. Please retry in a moment.',
       );
     }
     throw error;
+  } finally {
+    if (timer != null) window.clearTimeout(timer);
   }
 };
+
+/** Soft deadline — never let a hung upstream freeze wallet UI. */
+export async function withTimeout<T>(
+  p: Promise<T>,
+  ms: number,
+  fallback: T,
+  label?: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      p,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => {
+          if (label) console.warn(`[dojak] timeout ${ms}ms: ${label}`);
+          resolve(fallback);
+        }, ms);
+      }),
+    ]);
+  } finally {
+    if (timer != null) clearTimeout(timer);
+  }
+}
 
 const resolveAddress = async (walletOrAddress: any): Promise<string> => {
   if (typeof walletOrAddress === 'string' && walletOrAddress.trim()) {
@@ -1071,10 +1102,16 @@ export const walletDataApi = {
     if (!address?.trim()) return [];
     try {
       const base = getIndexerApiBase();
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer =
+        ctrl && typeof window !== 'undefined'
+          ? window.setTimeout(() => ctrl.abort(), 4_000)
+          : null;
       const res = await fetch(
         `${base.replace(/\/+$/, '')}/api/doginals/treats/balance/${encodeURIComponent(address)}`,
-        { cache: 'no-store', headers: { Accept: 'application/json' } },
+        { cache: 'no-store', headers: { Accept: 'application/json' }, signal: ctrl?.signal },
       );
+      if (timer != null) window.clearTimeout(timer);
       if (!res.ok) return [];
       const payload = (await res.json()) as { balances?: Array<{ tick: string; balance: string }> };
       return Array.isArray(payload.balances) ? payload.balances : [];

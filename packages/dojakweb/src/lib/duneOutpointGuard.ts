@@ -23,12 +23,43 @@ export type DogexOutpointDune = {
   divisibility?: number;
 };
 
+const OUTPOINT_TIMEOUT_MS = 2_500;
+const CIRCUIT_OPEN_MS = 2 * 60_000;
+const FAIL_OPEN_AFTER = 2;
+let failStreak = 0;
+let circuitOpenUntil = 0;
+
+function dogexPaused(): boolean {
+  return Date.now() < circuitOpenUntil;
+}
+
+function recordOk(): void {
+  failStreak = 0;
+  circuitOpenUntil = 0;
+}
+
+function recordFail(): void {
+  failStreak += 1;
+  if (failStreak >= FAIL_OPEN_AFTER) {
+    circuitOpenUntil = Date.now() + CIRCUIT_OPEN_MS;
+    failStreak = 0;
+    console.warn(
+      '[dojakweb:dunes] outpoint probes paused ~2m — dogex unreachable (spendable fails open)',
+    );
+  }
+}
+
 function outpointKey(u: { tx_hash: string; tx_output_n: number }): string {
   return `${String(u.tx_hash).trim().toLowerCase()}:${u.tx_output_n}`;
 }
 
 function dogexBases(): string[] {
-  return [getIndexerApiBase().replace(/\/+$/, ''), DOGEX_PUBLIC_INDEXER_URL].filter(
+  const primary = getIndexerApiBase().replace(/\/+$/, '');
+  // `/api/indexer` already rewrites to dogex.command.dog — never double-wait.
+  if (primary.includes('/api/indexer') || primary.includes('dogex.command.dog')) {
+    return [primary];
+  }
+  return [primary, DOGEX_PUBLIC_INDEXER_URL.replace(/\/+$/, '')].filter(
     (b, i, arr) => b && arr.indexOf(b) === i,
   );
 }
@@ -41,16 +72,18 @@ export async function fetchDogexDuneBalancesForOutpoint(
   txid: string,
   vout: number,
 ): Promise<DogexOutpointDune[] | null> {
+  if (dogexPaused()) return null;
   const tid = String(txid).trim().toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(tid) || !Number.isFinite(vout) || vout < 0) return null;
 
+  let sawFail = false;
   for (const base of dogexBases()) {
     const url = `${base}/api/dunes/outpoint/${encodeURIComponent(tid)}/${vout}`;
     try {
       const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
       const timer =
         ctrl && typeof window !== 'undefined'
-          ? window.setTimeout(() => ctrl.abort(), 8_000)
+          ? window.setTimeout(() => ctrl.abort(), OUTPOINT_TIMEOUT_MS)
           : null;
       const res = await fetch(url, {
         cache: 'no-store',
@@ -58,8 +91,14 @@ export async function fetchDogexDuneBalancesForOutpoint(
         signal: ctrl?.signal,
       });
       if (timer != null) window.clearTimeout(timer);
-      if (res.status === 404) return [];
-      if (!res.ok) continue;
+      if (res.status === 404) {
+        recordOk();
+        return [];
+      }
+      if (!res.ok) {
+        sawFail = true;
+        continue;
+      }
       const data = (await res.json()) as {
         dunes?: Array<{
           dune_id?: string;
@@ -97,11 +136,13 @@ export async function fetchDogexDuneBalancesForOutpoint(
           divisibility: div,
         });
       }
+      recordOk();
       return out;
     } catch {
-      /* try next base */
+      sawFail = true;
     }
   }
+  if (sawFail) recordFail();
   return null;
 }
 
@@ -123,9 +164,11 @@ export async function enrichUtxosWithDogexDunes<
   T extends { txid: string; vout: number; dunes?: DogexOutpointDune[] },
 >(utxos: T[], opts?: { concurrency?: number }): Promise<T[]> {
   if (!utxos.length) return utxos;
+  if (dogexPaused()) return utxos;
   const concurrency = Math.max(1, Math.min(opts?.concurrency ?? 6, 12));
   const out = utxos.slice();
   for (let i = 0; i < out.length; i += concurrency) {
+    if (dogexPaused()) break;
     const batch = out.slice(i, i + concurrency);
     const tags = await Promise.all(
       batch.map((u) => fetchDogexDuneBalancesForOutpoint(u.txid, u.vout)),
@@ -146,7 +189,7 @@ export async function enrichUtxosWithDogexDunes<
  */
 export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
   utxos: T[],
-  opts?: { keepKeys?: Set<string>; concurrency?: number },
+  opts?: { keepKeys?: Set<string>; concurrency?: number; maxProbe?: number },
 ): Promise<{
   safe: T[];
   skippedDuneCount: number;
@@ -157,19 +200,45 @@ export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
     return { safe: [], skippedDuneCount: 0, skippedDuneKoinu: 0, unknownCount: 0 };
   }
 
+  // Tunnel down → don't N×probe; treat all as unknown/safe for dashboard speed.
+  if (dogexPaused()) {
+    return {
+      safe: utxos.slice(),
+      skippedDuneCount: 0,
+      skippedDuneKoinu: 0,
+      unknownCount: utxos.length,
+    };
+  }
+
   const keep = opts?.keepKeys ?? new Set<string>();
   const concurrency = Math.max(1, Math.min(opts?.concurrency ?? 6, 12));
+  const maxProbe = Math.max(1, opts?.maxProbe ?? 40);
   const safe: T[] = [];
   let skippedDuneCount = 0;
   let skippedDuneKoinu = 0;
   let unknownCount = 0;
+  let probed = 0;
 
   for (let i = 0; i < utxos.length; i += concurrency) {
+    if (dogexPaused() || probed >= maxProbe) {
+      // Remainder fail-open (not probed).
+      for (let k = i; k < utxos.length; k++) {
+        const u = utxos[k];
+        if (keep.has(outpointKey(u))) {
+          safe.push(u);
+          continue;
+        }
+        unknownCount++;
+        safe.push(u);
+      }
+      break;
+    }
     const batch = utxos.slice(i, i + concurrency);
     const flags = await Promise.all(
       batch.map(async (u) => {
         const k = outpointKey(u);
         if (keep.has(k)) return 'keep' as const;
+        probed += 1;
         const has = await outpointHasDogexDunes(u.tx_hash, u.tx_output_n);
         if (has === true) return 'dune' as const;
         if (has === null) return 'unknown' as const;

@@ -125,6 +125,7 @@ import {
   getDefaultWalletDataProviderUrl,
   isDefaultWalletDataProviderUrl,
   dogexCdnContentUrl,
+  withTimeout,
 } from '../utils/api';
 import { fetchDogexIndexerHealth } from '../lib/dogex-indexer-health';
 import {
@@ -2478,12 +2479,12 @@ export function DojakwebWalletModal({
     setAssetsLoading(true);
     setAssetsError(null);
     try {
-      // allSettled so a MyDoge/DRC-20 failure cannot wipe a successful Ðunes (dogex) load
+      // Hard per-call ceilings — hung dogex/MyDoge must not freeze Assets on "Loading…".
       const settled = await Promise.allSettled([
-        walletDataApi.fetchInscriptions(address),
-        walletDataApi.fetchDRC20Tokens(address),
-        walletDataApi.fetchTreatsBalances(address),
-        walletDataApi.fetchDunes(address),
+        withTimeout(walletDataApi.fetchInscriptions(address), 5_000, [], 'inscriptions'),
+        withTimeout(walletDataApi.fetchDRC20Tokens(address), 4_000, [], 'drc20'),
+        withTimeout(walletDataApi.fetchTreatsBalances(address), 4_000, [], 'treats'),
+        withTimeout(walletDataApi.fetchDunes(address), 4_500, [], 'dunes'),
       ]);
       const [nftsR, tokensR, treatsR, dunesR] = settled;
       setInscriptions(nftsR.status === 'fulfilled' ? nftsR.value : []);
@@ -2498,7 +2499,6 @@ export function DojakwebWalletModal({
     } catch (err) {
       setAssetsError(t('modal.errors.assetsLoad'));
     } finally {
-      // Unblock Assets UI before slow Charms/Ðalkanes probes (those must never freeze "Loading…").
       setAssetsLoading(false);
     }
 
@@ -2510,10 +2510,15 @@ export function DojakwebWalletModal({
           setCharmsAssets([]);
           return;
         }
-        const utxoResponse = await walletDataApi.fetchUtxos(address);
+        const utxoResponse = await withTimeout(
+          walletDataApi.fetchUtxos(address),
+          5_000,
+          { utxos: [] } as Awaited<ReturnType<typeof walletDataApi.fetchUtxos>>,
+          'utxos-charms',
+        );
         const raw = utxoResponse as { utxos?: Array<{ txid?: string; vout?: number }> };
         const utxos = Array.isArray(raw?.utxos) ? raw.utxos : [];
-        const indexed = await charmsService.scanCharmsForUtxos(utxos, { limit: 24 });
+        const indexed = await charmsService.scanCharmsForUtxos(utxos, { limit: 16 });
         const nextCharms: Array<{ id: string; ticker: string; balance: string }> = [];
         for (const charm of indexed) {
           if (charm.spent_by_txid) continue;
@@ -2536,7 +2541,7 @@ export function DojakwebWalletModal({
       try {
         const { fetchAlkanesList } = await import('../lib/alkanes');
         const base = getIndexerApiBase().replace(/\/+$/, '');
-        const list = await fetchAlkanesList(base, 40);
+        const list = await withTimeout(fetchAlkanesList(base, 40), 4_000, [], 'alkanes');
         setAlkanesAssets(
           list.map((m) => ({ id: m.id, code_hash: m.code_hash, code_len: m.code_len })),
         );
@@ -4599,7 +4604,11 @@ export function DojakwebWalletModal({
 
                                 {assetsError ? (
                                   <div className="px-4 py-6 text-center text-sm text-red-300">{assetsError}</div>
-                                ) : assetsLoading ? (
+                                ) : assetsLoading &&
+                                  inscriptions.length === 0 &&
+                                  dunesHoldings.length === 0 &&
+                                  drc20Tokens.length === 0 &&
+                                  treatsTokens.length === 0 ? (
                                   <div className="px-4 py-8 text-center text-sm text-white/50">{t('modal.assets.loading')}</div>
                                 ) : assetType === 'treats' ? (
                                   treatsTokens.length === 0 ? (
@@ -4630,7 +4639,11 @@ export function DojakwebWalletModal({
                                     <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
                                       <CircleStackIcon className="h-8 w-8 text-white/30" />
                                       <div className="text-sm font-semibold text-white">{t('modal.assets.noDunesTitle')}</div>
-                                      <div className="text-xs text-white/45">{t('modal.assets.noDunesHint')}</div>
+                                      <div className="text-xs text-white/45">
+                                        {spendableBreak && spendableBreak.duneBearingDoge > 0.05
+                                          ? `Indexer lists ~${spendableBreak.duneBearingDoge.toLocaleString(undefined, { maximumFractionDigits: 2 })} Ð on Ðune outs, but the Ðune balance API timed out or is down. Restart dogex.command.dog tunnel, then refresh.`
+                                          : t('modal.assets.noDunesHint')}
+                                      </div>
                                     </div>
                                   ) : (
                                     <div className="divide-y divide-white/5 px-1 py-1">
