@@ -346,7 +346,23 @@ export interface UnifiedWalletContextValue {
   ) => Promise<string>;
   signMessage: (message: string) => Promise<string>;
   signPSBT: (psbtHex: string) => Promise<string>;
-  signPSBTOnly: (psbtHex: string) => Promise<string>;
+  /**
+   * Sign a PSBT/PSDT without broadcasting.
+   * Local Browser Wallet: optional `approval` fills the Shiba-paw sheet (amounts / purpose)
+   * so host dApps aren’t stuck with the generic “richer details” placeholder.
+   */
+  signPSBTOnly: (
+    psbtHex: string,
+    opts?: {
+      skipApprovalUi?: boolean;
+      approval?: {
+        title?: string;
+        description?: string;
+        details?: Array<{ label: string; value: string }>;
+        approveLabel?: string;
+      };
+    },
+  ) => Promise<string>;
   signDMPIntent: DmpIntentSigner;
   sendInscription: (recipientAddress: string, location: string) => Promise<string>;
   getTransactionStatus: (txId: string) => Promise<{ status: string; confirmations: number }>;

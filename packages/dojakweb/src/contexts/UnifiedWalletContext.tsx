@@ -1460,12 +1460,24 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   );
 
   const signPSBTOnly = useCallback(
-    async (psbtInput: string, opts?: { skipApprovalUi?: boolean }): Promise<string> => {
+    async (
+      psbtInput: string,
+      opts?: {
+        skipApprovalUi?: boolean;
+        approval?: {
+          title?: string;
+          description?: string;
+          details?: Array<{ label: string; value: string }>;
+          approveLabel?: string;
+        };
+      },
+    ): Promise<string> => {
       console.log('[UnifiedWallet] signPSBTOnly:start', {
         walletType,
         length: psbtInput.length,
         prefix: psbtInput.slice(0, 32),
         skipApprovalUi: Boolean(opts?.skipApprovalUi),
+        approvalTitle: opts?.approval?.title,
       });
 
       if (walletType === 'mydoge') {
@@ -1559,15 +1571,18 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           });
           return signed;
         }
+        const approvalDetails = [
+          ...(opts?.approval?.details ?? []),
+          { label: 'Type', value: 'On-chain protocol PSBT (not a website DB write)' },
+          { label: 'Wallet', value: address ?? '—' },
+        ];
         const signed = (await requestWalletApproval({
-          title: 'Sign PSBT',
+          title: opts?.approval?.title ?? 'Sign PSBT',
           description:
+            opts?.approval?.description ??
             'Approve to partially sign this PSBT/PSDT with your Local Browser Wallet. Host apps should pass richer details when possible.',
-          details: [
-            { label: 'Type', value: 'On-chain protocol PSBT (not a website DB write)' },
-            { label: 'Wallet', value: address ?? '—' },
-          ],
-          approveLabel: 'Approve sign',
+          details: approvalDetails,
+          approveLabel: opts?.approval?.approveLabel ?? 'Approve sign',
           onApprove: async (s) => runSign(s.privateKeyWif),
         })) as string;
         console.log('[UnifiedWallet] signPSBTOnly:browser:result', {
