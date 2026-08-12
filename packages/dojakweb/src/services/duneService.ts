@@ -43,7 +43,7 @@ import {
   friendlyPaymentSendError,
   listLocallySpentOutpointKeys,
 } from '../lib/mempoolSpendOverlay';
-import { upsertWalletTxJournalEntry } from '../lib/wallet-tx-journal';
+import { upsertWalletTxJournalEntry, type DojakwebWalletTxProtocol } from '../lib/wallet-tx-journal';
 import { filterUtxosByRpcGetTxOutIfConfigured } from '../lib/utxo-tools';
 import { DOGEX_PUBLIC_INDEXER_URL, getIndexerApiBase } from '../utils/api';
 
@@ -835,7 +835,13 @@ export interface SendDuneParams {
   /** Optional display name for wallet activity (e.g. THE•WHITE•DOGE). */
   duneName?: string;
   spacedName?: string;
-  symbol?: string;
+  /** Optional wallet-activity overlay (e.g. ÐLocker dune lock instead of a plain send). */
+  activity?: {
+    protocol?: DojakwebWalletTxProtocol;
+    action?: string;
+    title?: string;
+    summary?: string;
+  };
 }
 
 export interface SendResult {
@@ -859,7 +865,7 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
     duneId, amount, divisibility,
     recipientAddress, postage = POSTAGE_KOINU,
     feeRate = 1_000_000, signer, broadcast = true,
-    duneName, spacedName, symbol,
+    duneName, spacedName, symbol, activity,
   } = params;
 
   const amountBig = humanToSmallestUnits(amount, divisibility);
@@ -907,10 +913,12 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
         upsertWalletTxJournalEntry({
           txid,
           address: signer.fromAddress,
-          protocol: 'dunes',
-          action: 'send',
-          title: `Send ${displayName}`,
-          summary: `${amount}${symbol ? ` ${symbol}` : ''} → ${recipientAddress.slice(0, 12)}… · postage ${postageDoge} Ð (${duneId})`,
+          protocol: activity?.protocol || 'dunes',
+          action: activity?.action || 'send',
+          title: activity?.title || `Send ${displayName}`,
+          summary:
+            activity?.summary ||
+            `${amount}${symbol ? ` ${symbol}` : ''} → ${recipientAddress.slice(0, 12)}… · postage ${postageDoge} Ð (${duneId})`,
           status: 'broadcasted',
           metadata: {
             duneId,
@@ -920,6 +928,8 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
             spacedName: spacedName || displayName,
             symbol: symbol || undefined,
             postageDoge,
+            amountDisplay: amount,
+            actionLabel: activity?.action === 'lock' ? 'Lock' : undefined,
             // Do not set amountDoge — activity DOGE figure stays net postage+fee from chain history.
           },
         });

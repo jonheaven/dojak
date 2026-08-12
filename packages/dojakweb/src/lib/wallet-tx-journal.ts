@@ -21,6 +21,7 @@ export type DojakwebWalletTxProtocol =
   | 'dxd'
   | 'dlotto'
   | 'dgames'
+  | 'dlocker'
   | 'dogepark'
   | 'dogetag'
   | 'unknown';
@@ -56,6 +57,7 @@ export const WALLET_TX_PROTOCOL_LABELS: Record<DojakwebWalletTxProtocol, string>
   dxd: 'DXD',
   dlotto: 'ÐLotto',
   dgames: 'ÐGames',
+  dlocker: 'ÐLocker',
   dogepark: 'DogePark',
   dogetag: 'ÐogeTag',
   unknown: 'Unknown',
@@ -74,6 +76,7 @@ const PROTOCOL_RANK: Record<DojakwebWalletTxProtocol, number> = {
   alkanes: 5,
   dlotto: 5,
   dgames: 5,
+  dlocker: 6,
   dogepark: 5,
 };
 
@@ -107,6 +110,7 @@ export function guessWalletTxOriginLabel(host: string, path: string): string {
     return 'dogecoin.games';
   }
   if (h.includes('dogenals')) {
+    if (p.includes('/lock')) return 'dogenals · ÐLocker';
     if (p.includes('alkane')) return 'dogenals · Ðalkanes';
     if (p.includes('dogepark')) return 'dogenals · DogePark';
     // Protocol (Ðunes / Treats) already has its own chip — don't restamp "dogenals · Ðunes".
@@ -287,6 +291,61 @@ export function upsertWalletTxJournalEntry(
   return next;
 }
 
+export function journalDlockerTx(opts: {
+  txid: string;
+  address: string;
+  action: 'lock' | 'unlock';
+  lockType?: 'doge' | 'dune' | 'inscription';
+  title?: string;
+  summary?: string;
+  amountDoge?: number;
+  duneName?: string;
+  duneAmount?: string;
+  locktimeUnix?: number;
+  vout?: number;
+}): DojakwebWalletTxEntry | null {
+  const lockType = opts.lockType || 'doge';
+  const asset =
+    lockType === 'dune'
+      ? opts.duneName || 'Ðune'
+      : lockType === 'inscription'
+        ? 'inscription'
+        : 'DOGE';
+  const title =
+    opts.title ||
+    (opts.action === 'unlock' ? `Unlock ${asset}` : `Lock ${asset}`);
+  const summary =
+    opts.summary ||
+    [
+      opts.duneAmount && opts.duneName ? `${opts.duneAmount} ${opts.duneName}` : null,
+      opts.locktimeUnix
+        ? `until ${new Date(opts.locktimeUnix * 1000).toISOString().slice(0, 10)}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(' · ') || undefined;
+  return upsertWalletTxJournalEntry({
+    txid: opts.txid,
+    address: opts.address,
+    protocol: 'dlocker',
+    action: opts.action,
+    title,
+    summary,
+    status: 'broadcasted',
+    originLabel: 'dogenals · ÐLocker',
+    metadata: {
+      actionLabel: opts.action === 'unlock' ? 'Unlock' : 'Lock',
+      lockType,
+      amountDoge: opts.amountDoge,
+      duneName: opts.duneName,
+      duneAmount: opts.duneAmount,
+      amountDisplay: opts.duneAmount,
+      locktimeUnix: opts.locktimeUnix,
+      vout: opts.vout,
+    },
+  });
+}
+
 export function removeWalletTxJournalEntry(idOrTxid: string): void {
   const key = idOrTxid.trim().toLowerCase();
   saveWalletTxJournal(loadWalletTxJournal().filter((row) => row.id !== idOrTxid && row.txid !== key));
@@ -415,6 +474,8 @@ export function walletTxActionLabel(entry?: DojakwebWalletTxEntry | null): strin
   if (a === 'ticket') return 'Ticket';
   if (a === 'win') return 'Win';
   if (a === 'call') return 'Call';
+  if (a === 'lock') return 'Lock';
+  if (a === 'unlock') return 'Unlock';
   if (a === 'send') return 'Send';
   if (a === 'mint') return 'Mint';
   if (a === 'etch' || a === 'dune-etch') return 'Etch';
@@ -470,6 +531,7 @@ export function mergeWalletTxJournalIntoList<T extends {
   for (const tx of chainTxs) {
     const txid = tx.txid.trim().toLowerCase();
     if (!/^[0-9a-f]{64}$/.test(txid)) continue;
+    if (byTxid.has(txid)) continue;
     const hint =
       tx.protocolHint && isProtocol(tx.protocolHint) ? tx.protocolHint : 'dogecoin';
     byTxid.set(txid, {
@@ -513,7 +575,7 @@ export function mergeWalletTxJournalIntoList<T extends {
           ? String(entry.metadata.amountDisplay)
           : metaAmount;
       const tokenAmountLabel =
-        protocol === 'dunes' && metaToken
+        (protocol === 'dunes' || protocol === 'dlocker') && metaToken
           ? `${type === 'received' ? '+' : '-'}${metaToken}${metaDuneName ? ` ${metaDuneName.replace(/•/g, '').slice(0, 12)}` : ''}`
           : existing.tokenAmountLabel;
       byTxid.set(entry.txid, {
@@ -527,9 +589,13 @@ export function mergeWalletTxJournalIntoList<T extends {
         title:
           entry.title ||
           existing.title ||
-          (protocol === 'dunes' && metaDuneName
-            ? `${type === 'sent' ? 'Send' : 'Receive'} ${metaDuneName}`
-            : undefined),
+          (protocol === 'dlocker'
+            ? entry.action === 'unlock'
+              ? 'Unlock ÐLocker'
+              : 'Lock ÐLocker'
+            : protocol === 'dunes' && metaDuneName
+              ? `${type === 'sent' ? 'Send' : 'Receive'} ${metaDuneName}`
+              : undefined),
         summary:
           entry.summary ||
           existing.summary ||
@@ -572,7 +638,7 @@ export function mergeWalletTxJournalIntoList<T extends {
           (entry.protocol === 'dunes' && metaDuneName ? `Send ${metaDuneName}` : undefined),
         summary: entry.summary,
         tokenAmountLabel:
-          entry.protocol === 'dunes' && metaToken
+          (entry.protocol === 'dunes' || entry.protocol === 'dlocker') && metaToken
             ? `${type === 'received' ? '+' : '-'}${metaToken}${metaDuneName ? ` ${metaDuneName.replace(/•/g, '').slice(0, 12)}` : ''}`
             : undefined,
       });

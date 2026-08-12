@@ -1414,10 +1414,20 @@ export function DojakwebWalletModal({
     (wallet) => wallet.type === 'ledger' || wallet.type === 'dogewatch'
   );
   const mergedTransactions: DisplayDogeTransaction[] = useMemo(() => {
-    const localFirst = [
-      ...localRecentTransactions,
-      ...transactions.filter((tx) => !localRecentTransactions.some((localTx) => localTx.txid === tx.txid)),
-    ];
+    const seen = new Set<string>();
+    const localFirst: typeof localRecentTransactions = [];
+    for (const tx of localRecentTransactions) {
+      const id = tx.txid?.trim().toLowerCase();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      localFirst.push(tx);
+    }
+    for (const tx of transactions) {
+      const id = tx.txid?.trim().toLowerCase();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      localFirst.push(tx);
+    }
     return mergeWalletTxJournalIntoList(localFirst, walletTxJournal, { address: activeAddress });
   }, [localRecentTransactions, transactions, walletTxJournal, activeAddress]);
 

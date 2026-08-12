@@ -261,6 +261,7 @@ export {
   saveWalletTxJournal,
   subscribeWalletTxJournal,
   upsertWalletTxJournalEntry,
+  journalDlockerTx,
   walletTxActionLabel,
   walletTxDisplayChips,
   walletTxProtocolLabel,

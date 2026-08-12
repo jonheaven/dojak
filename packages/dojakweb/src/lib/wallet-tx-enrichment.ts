@@ -203,7 +203,54 @@ function enrichmentFromAlkaneReceipt(
   };
 }
 
-/** Address-scoped dogex pull: ÐGames plays + ÐLotto tickets. */
+function enrichmentFromDlockerLock(row: Record<string, unknown>): WalletTxEnrichment | null {
+  const txid = normalizeTxid(row.txid);
+  if (!txid) return null;
+  const status = String(row.status ?? 'active').toLowerCase();
+  const lockType = String(row.lockType ?? row.lock_type ?? 'doge').toLowerCase();
+  const duneName = String(row.duneName ?? row.dune_name ?? '').trim();
+  const duneAmount = String(row.duneAmount ?? row.dune_amount ?? '').trim();
+  const amountDoge =
+    typeof row.amountDoge === 'number'
+      ? row.amountDoge
+      : typeof row.amountKoinu === 'number'
+        ? (row.amountKoinu as number) / 1e8
+        : undefined;
+  const asset =
+    lockType === 'dune' && duneName
+      ? duneName
+      : lockType === 'inscription'
+        ? 'inscription'
+        : 'DOGE';
+  const action = 'lock';
+  return {
+    txid,
+    protocol: 'dlocker',
+    action,
+    actionLabel: 'Lock',
+    title: `Lock ${asset}`,
+    summary: [
+      duneAmount && duneName ? `${duneAmount} ${duneName}` : amountDoge != null ? `${amountDoge} Ð` : null,
+      status,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    originLabel: 'dogenals · ÐLocker',
+    indexed: true,
+    metadata: {
+      lockType,
+      status,
+      amountDoge,
+      duneName: duneName || undefined,
+      duneAmount: duneAmount || undefined,
+      amountDisplay: duneAmount || undefined,
+      locktimeUnix: row.locktimeUnix ?? row.locktime_unix,
+      vout: row.vout,
+      unlockTxid: row.unlockTxid,
+    },
+  };
+}
+
 export async function fetchAddressProtocolEnrichments(
   address: string,
 ): Promise<Map<string, WalletTxEnrichment>> {
@@ -211,12 +258,15 @@ export async function fetchAddressProtocolEnrichments(
   const addr = address.trim();
   if (!addr) return out;
 
-  const [playsBody, ticketsBody] = await Promise.all([
+  const [playsBody, ticketsBody, locksBody] = await Promise.all([
     fetchFirstJson([
       `/api/dgames/plays?player=${encodeURIComponent(addr)}&op=all&limit=100`,
     ]),
     fetchFirstJson([
       `/api/dogelotto/tickets?address=${encodeURIComponent(addr)}&limit=100`,
+    ]),
+    fetchFirstJson([
+      `/api/dlocker/address/${encodeURIComponent(addr)}?status=all&limit=100`,
     ]),
   ]);
 
@@ -241,6 +291,30 @@ export async function fetchAddressProtocolEnrichments(
     // Prefer dgames if somehow same txid (unlikely); otherwise set.
     if (!out.has(e.txid) || out.get(e.txid)!.protocol === 'dogecoin') {
       out.set(e.txid, e);
+    }
+  }
+
+  const locks =
+    locksBody && typeof locksBody === 'object' && Array.isArray((locksBody as any).locks)
+      ? ((locksBody as any).locks as unknown[])
+      : [];
+  for (const raw of locks) {
+    if (!raw || typeof raw !== 'object') continue;
+    const e = enrichmentFromDlockerLock(raw as Record<string, unknown>);
+    if (!e) continue;
+    const existing = out.get(e.txid);
+    if (!existing || existing.protocol === 'dogecoin' || existing.protocol === 'dunes') {
+      out.set(e.txid, e);
+    }
+    const unlockTxid = normalizeTxid((raw as Record<string, unknown>).unlockTxid);
+    if (unlockTxid && unlockTxid !== e.txid) {
+      out.set(unlockTxid, {
+        ...e,
+        txid: unlockTxid,
+        action: 'unlock',
+        actionLabel: 'Unlock',
+        title: e.title.replace(/^Lock /, 'Unlock '),
+      });
     }
   }
 
@@ -282,6 +356,14 @@ export async function probeTxProtocolEnrichments(
             enrichmentFromAlkaneReceipt(txid, (alk as any).receipt as Record<string, unknown>),
           );
           return;
+        }
+        const dlock = await fetchFirstJson([`/api/dlocker/tx/${txid}`]);
+        if (dlock && typeof dlock === 'object' && Array.isArray((dlock as any).locks) && (dlock as any).locks.length) {
+          const e = enrichmentFromDlockerLock((dlock as any).locks[0] as Record<string, unknown>);
+          if (e) {
+            out.set(txid, e);
+            return;
+          }
         }
         const dune = await enrichmentFromDuneOutpoints(txid);
         if (dune) out.set(txid, dune);
@@ -371,6 +453,8 @@ export function enrichmentActionLabel(entry?: DojakwebWalletTxEntry | null): str
   if (a === 'ticket') return 'Ticket';
   if (a === 'win') return 'Win';
   if (a === 'call') return 'Call';
+  if (a === 'lock') return 'Lock';
+  if (a === 'unlock') return 'Unlock';
   if (a === 'send') return 'Send';
   if (a === 'mint') return 'Mint';
   return a.charAt(0).toUpperCase() + a.slice(1);
