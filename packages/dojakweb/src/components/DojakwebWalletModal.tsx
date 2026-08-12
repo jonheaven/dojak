@@ -682,6 +682,11 @@ export function DojakwebWalletModal({
   const [isBusy, setIsBusy] = useState(false);
   const [activePassword, setActivePassword] = useState<string | undefined>();
   const lockAfterSetPasswordRef = React.useRef(false);
+  /** Resume HD switch/add after unlock when tab session secret is missing. */
+  const pendingHdActionRef = React.useRef<
+    { type: 'switch'; address: string } | { type: 'add' } | null
+  >(null);
+  const [hdResumeNonce, setHdResumeNonce] = useState(0);
   const stepRef = React.useRef<WalletStep>(step);
   stepRef.current = step;
   const [savedLocalWallets, setSavedLocalWallets] = useState<WalletData[]>([]);
@@ -2009,6 +2014,9 @@ export function DojakwebWalletModal({
           }
         }
         setStep('dashboard');
+        if (pendingHdActionRef.current) {
+          setHdResumeNonce((n) => n + 1);
+        }
         toast.success(t('modal.toast.walletUnlocked'));
         return;
       }
@@ -2051,6 +2059,9 @@ export function DojakwebWalletModal({
         }
       }
       setStep('dashboard');
+      if (pendingHdActionRef.current) {
+        setHdResumeNonce((n) => n + 1);
+      }
       toast.success(t('modal.toast.walletUnlocked'));
     } catch (nextError) {
       const msg = nextError instanceof Error ? nextError.message : '';
@@ -2144,6 +2155,34 @@ export function DojakwebWalletModal({
     return undefined;
   }, [activePassword]);
 
+  /** Keep React unlock state in sync with tab session (refresh / remount). */
+  useEffect(() => {
+    if (!isOpen || !isBrowserWallet || activePassword) return;
+    void resolveBrowserSessionPassword();
+  }, [isOpen, isBrowserWallet, activePassword, resolveBrowserSessionPassword]);
+
+  const beginUnlockForHdAction = useCallback(
+    async (action: { type: 'switch'; address: string } | { type: 'add' }) => {
+      pendingHdActionRef.current = action;
+      const focusAddress =
+        action.type === 'switch'
+          ? action.address
+          : (browser.wallet?.address ?? activeAddress ?? selectedLocalWalletAddress);
+      if (focusAddress) {
+        setSelectedLocalWalletAddress(focusAddress);
+        try {
+          const storage = new BrowserWallet();
+          setIsEncryptedWallet(await storage.isEncrypted(focusAddress));
+        } catch {
+          setIsEncryptedWallet(true);
+        }
+      }
+      setStep('unlock');
+      toast.error(t('modal.toast.reunlockForAccountSwitch'));
+    },
+    [activeAddress, browser.wallet?.address, selectedLocalWalletAddress, t],
+  );
+
   /**
    * Listing / send / cancel must not call `loadWallet(undefined)` on an encrypted vault.
    * UI can look "unlocked" via in-memory `browser.wallet` or tab session secret while
@@ -2169,16 +2208,22 @@ export function DojakwebWalletModal({
 
     if (encrypted) {
       if (!sessionPassword) {
-        setStep('unlock');
+        await beginUnlockForHdAction({ type: 'switch', address: targetAddress });
         return false;
       }
       const loaded = await browser.loadWallet(sessionPassword, targetAddress);
       if (!loaded) {
-        setStep('unlock');
+        await beginUnlockForHdAction({ type: 'switch', address: targetAddress });
         return false;
       }
       await browser.connect(loaded);
       setWalletNameDraft(loaded.nickname?.trim() || '');
+      setActivePassword(sessionPassword);
+      try {
+        await createDojakwebSessionSecretStore().saveSecret(sessionPassword);
+      } catch {
+        // best-effort
+      }
     } else {
       const loaded = await browser.loadWallet(undefined, targetAddress);
       if (!loaded) {
@@ -2234,7 +2279,7 @@ export function DojakwebWalletModal({
   const handleAddBrowserAccount = async () => {
     const sessionPassword = await resolveBrowserSessionPassword();
     if (!isBrowserWallet || !sessionPassword) {
-      toast.error(t('modal.toast.reunlockForAccountSwitch'));
+      await beginUnlockForHdAction({ type: 'add' });
       return;
     }
     const groups = localSeedWalletGroups;
@@ -2262,6 +2307,28 @@ export function DojakwebWalletModal({
       setIsBusy(false);
     }
   };
+
+  // After unlock prompted by HD switch/add, finish the action with the fresh session password.
+  useEffect(() => {
+    if (!hdResumeNonce) return;
+    const pending = pendingHdActionRef.current;
+    if (!pending) return;
+    pendingHdActionRef.current = null;
+    void (async () => {
+      try {
+        if (pending.type === 'switch') {
+          const pw = await resolveBrowserSessionPassword();
+          await connectSavedLocalWallet(pending.address, pw);
+        } else if (pending.type === 'add') {
+          await handleAddBrowserAccount();
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : t('modal.errors.connectWallet'));
+      }
+    })();
+    // Intentionally only when nonce bumps after unlock — handlers close over latest password.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hdResumeNonce]);
 
   const handleLedgerAccountDelta = async (delta: -1 | 1) => {
     if (walletType !== 'ledger') return;
@@ -3318,11 +3385,11 @@ export function DojakwebWalletModal({
       activeAddress={activeAddress}
       walletType={walletType}
       isBusy={isBusy}
-      canAddHdAccount={isBrowserWallet && Boolean(activePassword && browser.wallet?.seedFingerprint)}
+      canAddHdAccount={isBrowserWallet && Boolean(browser.wallet?.seedFingerprint)}
       ledgerAccountIndex={walletType === 'ledger' ? unifiedAccountIndex : null}
       onSelectLocalAddress={async (targetAddress) => {
+        // Do not force dashboard — connect may open unlock when session expired.
         await handleConnectSavedLocalWallet(targetAddress);
-        setStep('dashboard');
       }}
       onAddHdAccount={handleAddBrowserAccount}
       onSelectWalletType={(type) => {

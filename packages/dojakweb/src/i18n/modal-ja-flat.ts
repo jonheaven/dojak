@@ -588,7 +588,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.toast.biometricEnabled': 'このブラウザで生体認証クイック解除を有効にしました。',
   'modal.toast.biometricSkipped': '生体認証の登録をスキップしたか、利用できませんでした。',
   'modal.toast.reunlockForAccountSwitch':
-    'HD アカウントを切り替えるには、まずウォレットのロックを解除してください。',
+    'HD アカウント切替のためパスワードを再入力してください（このタブの解除セッションが切れています）。',
   'modal.toast.accountAdded': 'アカウント #{index} の準備ができました。',
   'modal.toast.wrongPassword': 'パスワードが正しくありません。もう一度お試しください。',
   'modal.toast.unlockFailed': 'ウォレットのロックを解除できませんでした。',

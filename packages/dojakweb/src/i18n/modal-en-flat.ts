@@ -592,7 +592,8 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.toast.walletUnlocked': 'Wallet unlocked successfully.',
   'modal.toast.biometricEnabled': 'Biometric quick unlock enabled for this browser.',
   'modal.toast.biometricSkipped': 'Biometric enrollment was skipped or unavailable.',
-  'modal.toast.reunlockForAccountSwitch': 'Unlock your wallet first to switch HD accounts.',
+  'modal.toast.reunlockForAccountSwitch':
+    'Re-enter your wallet password to switch HD accounts — this tab’s unlock session expired.',
   'modal.toast.accountAdded': 'Account #{index} is ready.',
   'modal.toast.wrongPassword': 'Incorrect password — please try again.',
   'modal.toast.unlockFailed': 'Unable to unlock wallet.',
