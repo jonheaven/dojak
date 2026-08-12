@@ -1,4 +1,4 @@
-import { getEnv } from './env';
+import { getEnv, isViteDev } from './env';
 
 const normalizeBaseUrl = (value?: string | null): string => (value || '').trim().replace(/\/$/, '');
 
@@ -12,7 +12,7 @@ export const COMMAND_DOG_NOSTR_DEV_PROXY_PATH = '/__nostrrelay';
 export function getCommandDogNostrHttpBaseUrl(): string {
   const fromEnv = normalizeBaseUrl(getEnv('VITE_COMMAND_DOG_NOSTR_URL', ''));
   if (fromEnv) return fromEnv;
-  if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+  if (typeof window !== 'undefined' && isViteDev()) {
     return normalizeBaseUrl(new URL(COMMAND_DOG_NOSTR_DEV_PROXY_PATH, window.location.origin).href);
   }
   return '';

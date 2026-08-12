@@ -9,7 +9,7 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/wallet-web/seedDerivation.ts'),
       formats: ['es'],
-      fileName: 'wallet-web',
+      fileName: () => 'wallet-web.js',
     },
     rollupOptions: {
       external: ['@scure/bip32', '@scure/bip39'],

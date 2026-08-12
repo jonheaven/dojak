@@ -1,6 +1,6 @@
 // API utilities for wallet-agnostic data providers (indexer / RPC gateway)
 import axios from 'axios';
-import { getEnv } from './env';
+import { getEnv, isViteDev } from './env';
 
 export type WalletDataProviderType = 'mydoge' | 'dogex' | 'commanddog';
 
@@ -138,7 +138,7 @@ export function getCommandDogApiBaseUrl(): string {
     getEnv('VITE_COMMAND_DOG_API_URL', '') || getEnv('NEXT_PUBLIC_COMMAND_DOG_API_URL', '')
   );
   if (fromEnv) return fromEnv;
-  if (typeof window !== 'undefined' && import.meta.env.DEV) {
+  if (typeof window !== 'undefined' && isViteDev()) {
     return normalizeBaseUrl(new URL(COMMAND_DOG_DEV_PROXY_PATH, window.location.origin).href);
   }
   return 'https://api.command.dog';
@@ -1592,7 +1592,7 @@ export async function broadcastHexViaCommandDog(rawTxHex: string): Promise<strin
       body: JSON.stringify({ hex: rawTxHex }),
     });
   } catch (e) {
-    const isDevProxy = import.meta.env.DEV && base.includes(COMMAND_DOG_DEV_PROXY_PATH);
+    const isDevProxy = isViteDev() && base.includes(COMMAND_DOG_DEV_PROXY_PATH);
     const hint = isDevProxy
       ? ' Dev uses same-origin /__commanddog — confirm `npm run dev` and vite.config proxy.'
       : ' Check network, VPN, and that https://api.command.dog is reachable from the browser.';

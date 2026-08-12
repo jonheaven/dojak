@@ -10,6 +10,7 @@
  * **`docs/chain-rpc-and-command-dog.md`**
  */
 import { getCommandDogApiBaseUrl } from '../utils/api';
+import { getEnv } from '../utils/env';
 
 function proxyPathFromEnv(): string {
   if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DOGE_RPC_PROXY) {
@@ -61,8 +62,8 @@ export type RpcProxyResult<T> =
   | { ok: false; error: string };
 
 function dogexHttpBaseFromEnv(): string {
-  const v = import.meta.env.VITE_DOGEX_HTTP_BASE;
-  if (typeof v === 'string' && v.trim()) return v.trim().replace(/\/+$/, '');
+  const v = getEnv('VITE_DOGEX_HTTP_BASE', '') || getEnv('NEXT_PUBLIC_DOGEX_HTTP_BASE', '');
+  if (v.trim()) return v.trim().replace(/\/+$/, '');
   return 'http://127.0.0.1:8080';
 }
 

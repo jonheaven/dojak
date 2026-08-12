@@ -6,8 +6,10 @@
  */
 import { getCommandDogApiBaseUrl } from '../../utils/api';
 
+import { getEnv } from '../../utils/env';
+
 function inscribeJobsApiKey(): string {
-  const k = import.meta.env.VITE_INSCRIBE_JOBS_API_KEY?.trim();
+  const k = getEnv('VITE_INSCRIBE_JOBS_API_KEY', '').trim();
   return k || '';
 }
 

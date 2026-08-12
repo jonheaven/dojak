@@ -8,11 +8,14 @@ import {
   dxBadgeInscriptionIdFromEnv,
   normalizeDxInscriptionIdForUrl,
 } from './displayHtml';
+import { getEnv } from '../../utils/env';
 
 function apiRoot(): string {
-  const raw = import.meta.env.VITE_COMMAND_DOG_API_URL?.trim();
+  const raw = (
+    getEnv('VITE_COMMAND_DOG_API_URL', '') || getEnv('NEXT_PUBLIC_COMMAND_DOG_API_URL', '')
+  ).trim();
   if (!raw) {
-    throw new Error('VITE_COMMAND_DOG_API_URL is not set');
+    throw new Error('VITE_COMMAND_DOG_API_URL (or NEXT_PUBLIC_COMMAND_DOG_API_URL) is not set');
   }
   return raw.replace(/\/+$/, '');
 }
@@ -167,9 +170,11 @@ export type DxPromptPreviewResponse = {
   x_handle: string;
 };
 
-/** Safe to call only when `VITE_COMMAND_DOG_API_URL` is configured. */
+/** Safe to call only when Command.dog API URL is configured. */
 export function isCommandDogDxConfigured(): boolean {
-  return Boolean(import.meta.env.VITE_COMMAND_DOG_API_URL?.trim());
+  return Boolean(
+    (getEnv('VITE_COMMAND_DOG_API_URL', '') || getEnv('NEXT_PUBLIC_COMMAND_DOG_API_URL', '')).trim(),
+  );
 }
 
 export async function dxPromptPreview(params: {

@@ -3,6 +3,8 @@
  * and overlays Ð𝕏 identity text — keeps per-user on-chain payload small vs re-inscribing the image.
  */
 
+import { getEnv } from '../../utils/env';
+
 export function escapeHtmlForDxCard(raw: string): string {
   return raw
     .replace(/&/g, '&amp;')
@@ -24,13 +26,13 @@ export function normalizeDxInscriptionIdForUrl(id: string): string {
 }
 
 export function defaultDxContentApiBase(): string {
-  const fromEnv = import.meta.env.VITE_DX_CONTENT_API_BASE?.trim();
+  const fromEnv = getEnv('VITE_DX_CONTENT_API_BASE', '').trim();
   return (fromEnv && fromEnv.replace(/\/+$/, '')) || 'https://api.mydoge.com';
 }
 
 /** Once the team inscribes `dogexcheck-400.webp`, set this in `.env` for wallet-card mode. */
 export function dxBadgeInscriptionIdFromEnv(): string | null {
-  const id = import.meta.env.VITE_DX_BADGE_INSCRIPTION_ID?.trim();
+  const id = getEnv('VITE_DX_BADGE_INSCRIPTION_ID', '').trim();
   return id ? normalizeDxInscriptionIdForUrl(id) : null;
 }
 
