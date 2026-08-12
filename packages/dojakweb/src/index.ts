@@ -411,6 +411,7 @@ export {
   type InscriptionHint,
   getAddressUtxos,
   getTxHex,
+  buildDummyUtxoPSDT,
   preparePsdtForMyDogeSign,
   sighashTypeForMyDogePsdtSign,
   tryParsePsdt,
