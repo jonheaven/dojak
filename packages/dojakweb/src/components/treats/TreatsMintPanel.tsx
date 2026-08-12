@@ -16,6 +16,8 @@ import {
   estimatePowSeconds,
   tickRequiresPow,
   type TreatsOpKind,
+  NOIZ_FLAGSHIP,
+  isNoizTick,
 } from '../../lib/treats';
 
 export type TreatsUiOp = 'deploy' | 'mint' | 'transfer';
@@ -61,23 +63,15 @@ export function TreatsMintPanel({
   const firstOp = ops.includes(initialOp) ? initialOp : ops[0] ?? 'mint';
   const [op, setOp] = useState<TreatsUiOp>(firstOp);
   const [tick, setTick] = useState(initialTick);
-  /** Meme-default 1B open mint (pump.fun-style); not ORDI 21M. */
-  const [max, setMax] = useState(
-    initialTick.toUpperCase() === 'NOIZ' ? '1000000000' : '1000000000',
-  );
-  /** Empty = open mint (omit wire key `l`). */
+  const flagship = isNoizTick(initialTick);
+  const [max, setMax] = useState(flagship ? NOIZ_FLAGSHIP.max : '1000000000');
+  /** Empty = omit wire key `l`. */
   const [lim, setLim] = useState('');
-  /** v1.0 premine → paired dust recipient (treasury). Empty = no premine. */
-  const [premine, setPremine] = useState(
-    initialTick.toUpperCase() === 'NOIZ' ? '50000000' : '',
-  );
-  /** Deployer-only mint window (blocks). Empty = public mint immediately. */
-  const [deployerWindow, setDeployerWindow] = useState('');
-  /** Decimals 0–18 (wire `dec`). Default 0. */
-  const [decimals, setDecimals] = useState('0');
-  const [amt, setAmt] = useState(
-    initialTick.toUpperCase() === 'NOIZ' ? '1000000' : '1000',
-  );
+  const [premine, setPremine] = useState(flagship ? NOIZ_FLAGSHIP.premine : '');
+  const [deployerWindow, setDeployerWindow] = useState(flagship ? NOIZ_FLAGSHIP.deployerWindow : '');
+  /** Empty = omit `dec` (on-chain default 0). */
+  const [decimals, setDecimals] = useState(flagship ? '' : '0');
+  const [amt, setAmt] = useState(flagship ? '1000' : '1000');
   const [transferTo, setTransferTo] = useState('');
   const [busy, setBusy] = useState(false);
   const [mining, setMining] = useState(false);
@@ -90,6 +84,19 @@ export function TreatsMintPanel({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [txid, setTxid] = useState<string | null>(null);
+  const [confirmPermanent, setConfirmPermanent] = useState(false);
+
+  const lockEconomics = isNoizTick(tick);
+
+  useEffect(() => {
+    if (isNoizTick(tick)) {
+      setMax(NOIZ_FLAGSHIP.max);
+      setPremine(NOIZ_FLAGSHIP.premine);
+      setDeployerWindow(NOIZ_FLAGSHIP.deployerWindow);
+      setLim('');
+      setDecimals('');
+    }
+  }, [tick]);
 
   useEffect(() => {
     if (!requireMintPow) return;
@@ -208,14 +215,28 @@ export function TreatsMintPanel({
     setError(null);
     setTxid(null);
     try {
+      if (op === 'deploy' && lockEconomics && !confirmPermanent) {
+        setError('Confirm that this $NOIZ JSON is permanent before broadcasting.');
+        setBusy(false);
+        return;
+      }
+      if (!json) {
+        setError('Fix form fields before broadcasting.');
+        setBusy(false);
+        return;
+      }
       const id = await signAndBroadcastTreats({
         op: op as TreatsOpKind,
         tick,
         fromAddress: address,
         privateKeyWIF: browser.wallet.privateKey,
         recipientAddress: dustRecipient,
+        payloadJson: json,
         max: op === 'deploy' ? max : undefined,
         lim: op === 'deploy' && lim.trim() ? lim : undefined,
+        premine: op === 'deploy' && premine.trim() ? premine : undefined,
+        deployerWindow: op === 'deploy' && deployerWindow.trim() ? deployerWindow : undefined,
+        decimals: op === 'deploy' && decimals.trim() ? decimals : undefined,
         amt: op === 'mint' || op === 'transfer' ? amt : undefined,
         powChallengeId: op === 'mint' ? powSolution?.challengeId : undefined,
         powNonce: op === 'mint' ? powSolution?.nonce : undefined,
@@ -306,6 +327,22 @@ export function TreatsMintPanel({
             </p>
           )}
 
+          {lockEconomics && op === 'deploy' ? (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
+              <p className="font-semibold">$NOIZ flagship — economics locked</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-100/80">
+                6,904,200 max · 345,210 premine (5%) to this wallet · deployer-only mint for ~4 years (
+                {NOIZ_FLAGSHIP.deployerWindow} blocks). Remaining supply is treasury-dripped for doge.cam /
+                dogecoin.games / Come Home — not a public free-mint. This JSON is permanent.
+              </p>
+            </div>
+          ) : op === 'deploy' ? (
+            <p className="text-xs text-zinc-500">
+              Trench default is 1B with no deployer window (community mint). For a treasury-gated coin, set premine +{' '}
+              <code className="text-zinc-300">dw</code> and omit per-tx lim — same pattern as $NOIZ.
+            </p>
+          ) : null}
+
           {op === 'deploy' && (
             <>
               <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
@@ -315,11 +352,13 @@ export function TreatsMintPanel({
                 type="text"
                 inputMode="numeric"
                 value={max}
+                readOnly={lockEconomics}
                 onChange={(e) => {
+                  if (lockEconomics) return;
                   setMax(e.target.value);
                   reset();
                 }}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-white"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-white read-only:opacity-70"
               />
               <label className="block text-xs font-medium uppercase tracking-wider text-amber-500/90">
                 Premine (optional) — credits your dust address now
@@ -328,20 +367,23 @@ export function TreatsMintPanel({
                 type="text"
                 inputMode="numeric"
                 value={premine}
+                readOnly={lockEconomics}
                 onChange={(e) => {
+                  if (lockEconomics) return;
                   setPremine(e.target.value);
                   reset();
                 }}
-                placeholder="e.g. 50000000 for 5% of 1B"
-                className="w-full rounded-xl border border-amber-500/30 bg-zinc-900 px-3 py-2 font-mono text-white placeholder:text-zinc-600"
+                placeholder="e.g. 5% of max for LP seed"
+                className="w-full rounded-xl border border-amber-500/30 bg-zinc-900 px-3 py-2 font-mono text-white placeholder:text-zinc-600 read-only:opacity-70"
               />
               <p className="text-[11px] text-zinc-500">
                 Treats v1.0: treasury gets <code className="text-zinc-400">pm</code> on the paired output (you below).
                 {remainingAfterPremine != null ? (
                   <>
                     {' '}
-                    Remaining for public mint:{' '}
+                    Remaining unminted:{' '}
                     <span className="font-mono text-zinc-300">{remainingAfterPremine}</span>
+                    {lockEconomics ? ' (treasury drips, not public mint)' : ''}
                   </>
                 ) : premine.trim() ? (
                   <span className="text-red-400"> · premine must be ≤ max</span>
@@ -354,12 +396,14 @@ export function TreatsMintPanel({
                 type="text"
                 inputMode="numeric"
                 value={lim}
+                readOnly={lockEconomics}
                 onChange={(e) => {
+                  if (lockEconomics) return;
                   setLim(e.target.value);
                   reset();
                 }}
-                placeholder="omit for open mint size"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-white placeholder:text-zinc-600"
+                placeholder={lockEconomics ? 'omitted — treasury gated' : 'omit for open mint size'}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-white placeholder:text-zinc-600 read-only:opacity-70"
               />
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -370,12 +414,14 @@ export function TreatsMintPanel({
                     type="text"
                     inputMode="numeric"
                     value={deployerWindow}
+                    readOnly={lockEconomics}
                     onChange={(e) => {
+                      if (lockEconomics) return;
                       setDeployerWindow(e.target.value);
                       reset();
                     }}
-                    placeholder="empty = open"
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-sm text-white placeholder:text-zinc-600"
+                    placeholder="empty = public mint immediately"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-sm text-white placeholder:text-zinc-600 read-only:opacity-70"
                   />
                 </div>
                 <div>
@@ -386,18 +432,20 @@ export function TreatsMintPanel({
                     type="text"
                     inputMode="numeric"
                     value={decimals}
+                    readOnly={lockEconomics}
                     onChange={(e) => {
+                      if (lockEconomics) return;
                       setDecimals(e.target.value);
                       reset();
                     }}
                     placeholder="0"
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-sm text-white"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-sm text-white read-only:opacity-70"
                   />
                 </div>
               </div>
               <p className="text-[11px] text-zinc-500">
-                `dw` = only deployer may mint for N blocks. `dec` is display scale (default 0). Stay under ~72 JSON
-                bytes for OP_RETURN.
+                `dw` = only deployer may mint for N blocks. Omit `dec` for default 0. Stay under ~76 JSON bytes for
+                OP_RETURN.
               </p>
             </>
           )}
@@ -487,6 +535,21 @@ export function TreatsMintPanel({
             </div>
           )}
 
+          {op === 'deploy' && lockEconomics ? (
+            <label className="flex items-start gap-2 text-xs text-amber-100">
+              <input
+                type="checkbox"
+                checked={confirmPermanent}
+                onChange={(e) => setConfirmPermanent(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                I understand this $NOIZ deploy JSON is permanent on Dogecoin L1 and matches the flagship spec
+                (6,904,200 / 5% premine / deployer window).
+              </span>
+            </label>
+          ) : null}
+
           <button
             type="button"
             disabled={
@@ -494,7 +557,8 @@ export function TreatsMintPanel({
               !address ||
               busy ||
               mining ||
-              (op === 'mint' && Boolean(powDifficulty) && !powSolution)
+              (op === 'mint' && Boolean(powDifficulty) && !powSolution) ||
+              (op === 'deploy' && lockEconomics && !confirmPermanent)
             }
             onClick={() => void handleBroadcast()}
             className="w-full rounded-xl bg-[#FCD34D] px-4 py-3 text-sm font-bold text-black transition hover:bg-[#fde68a] disabled:opacity-50"
@@ -504,10 +568,15 @@ export function TreatsMintPanel({
         </div>
 
         <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/40 p-4">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Compact treat JSON</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            Compact treat JSON{json ? ` · ${json.length} chars` : ''}
+          </p>
           <pre className="overflow-x-auto rounded-xl bg-zinc-900 px-3 py-2 font-mono text-xs text-zinc-200">
-            {json ? JSON.stringify(JSON.parse(json), null, 2) : '—'}
+            {json ?? '—'}
           </pre>
+          <p className="mt-2 text-[11px] text-zinc-500">
+            This exact string is the OP_RETURN. Pretty-print is not broadcast.
+          </p>
         </div>
       </div>
     </div>

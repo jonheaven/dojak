@@ -12,6 +12,29 @@ import { TREATS_DUST_KOINU, type TreatsOpKind } from './constants';
 import { treatsPayloadBytes } from './buildJson';
 import { planTreatsOperationOutputs, TREATS_PAIRED_DUST_OUTPUT_WEIGHT } from './outputPlan';
 
+function payloadBytesFromParams(params: SignTreatsParams): Uint8Array | null {
+  const override = params.payloadJson?.trim();
+  if (override) {
+    if (!override.includes('"p":"dt"') || override.includes(' ') || override.includes('\n')) {
+      throw new Error('ÐogeTreats payloadJson must be compact p:"dt" JSON (no whitespace)');
+    }
+    return new TextEncoder().encode(override);
+  }
+  return treatsPayloadBytes(params.op, {
+    tick: params.tick,
+    max: params.max ?? '',
+    lim: params.lim ?? '',
+    amt: params.amt ?? '',
+    premine: params.premine ?? '',
+    deployerWindow: params.deployerWindow ?? '',
+    decimals: params.decimals ?? '',
+    powChallengeId: params.powChallengeId,
+    powNonce: params.powNonce,
+    powDifficulty:
+      params.powDifficulty !== undefined ? String(params.powDifficulty) : undefined,
+  } as Record<string, string>);
+}
+
 function normalizeOutpointKey(txid: string, vout: number): string {
   return `${txid.toLowerCase()}:${vout}`;
 }
@@ -52,6 +75,17 @@ export interface SignTreatsParams {
   max?: string;
   lim?: string;
   amt?: string;
+  /** v1.0 deploy `pm` — credits paired dust recipient. */
+  premine?: string;
+  /** v1.0 deploy `dw` — deployer-only mint window (blocks). */
+  deployerWindow?: string;
+  /** v1.0 deploy `dec`. */
+  decimals?: string;
+  /**
+   * If set, this exact UTF-8 JSON is the OP_RETURN payload (preview === chain).
+   * Must be compact `p:"dt"` JSON.
+   */
+  payloadJson?: string;
   feeRate?: number;
   excludedOutpoints?: string[];
   /** Mint PoW solution (required when indexer enforces PoW for this tick). */
@@ -91,12 +125,8 @@ type PlannedTreatsTx = {
 async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> {
   const {
     op,
-    tick,
     fromAddress,
     recipientAddress,
-    max,
-    lim,
-    amt,
     feeRate: rawFeeRate = 1000,
     excludedOutpoints,
   } = params;
@@ -112,16 +142,7 @@ async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> 
     throw new Error('ÐogeTreats require privateKeyWIF or signPsbt');
   }
 
-  const payload = treatsPayloadBytes(op, {
-    tick,
-    max: max ?? '',
-    lim: lim ?? '',
-    amt: amt ?? '',
-    powChallengeId: params.powChallengeId,
-    powNonce: params.powNonce,
-    powDifficulty:
-      params.powDifficulty !== undefined ? String(params.powDifficulty) : undefined,
-  } as Record<string, string>);
+  const payload = payloadBytesFromParams(params);
   if (!payload?.length) {
     throw new Error('Invalid ÐogeTreats parameters — check ticker length (1–8) and amounts');
   }

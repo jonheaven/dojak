@@ -69,7 +69,7 @@ export function buildTreatsDeployJson(
 
   const json = JSON.stringify(obj);
   // Soft 80-byte guard for OP_RETURN script payload headroom
-  if (json.length > 72) {
+  if (json.length > 76) {
     console.warn('[treats] deploy JSON is long (%d chars) — may approach 80-byte OP_RETURN limit', json.length);
   }
   return json;
