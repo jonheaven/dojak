@@ -29,7 +29,7 @@ import { DUST_LIMIT, FEE_RATE_KOINU_PER_BYTE } from './utxo-tools';
 
 export interface CltvLockRecord {
   id: string;
-  type: 'doge' | 'inscription';
+  type: 'doge' | 'inscription' | 'dune';
   txid: string;
   vout: number;
   lockAddress: string;
@@ -39,6 +39,9 @@ export interface CltvLockRecord {
   createdAt: number;
   inscriptionId?: string;
   inscriptionOutput?: string;
+  duneId?: string;
+  duneAmount?: string;
+  duneName?: string;
 }
 
 const CLTV_LOCKS_KEY_PREFIX = 'dojakweb-cltv-locks-';
@@ -402,6 +405,10 @@ export function buildProofUrl(record: CltvLockRecord, baseUrl = ''): string {
     locktime: String(record.locktimeUnix),
     address: record.lockAddress,
     ...(record.inscriptionId ? { ins: record.inscriptionId } : {}),
+    ...(record.duneId ? { dune: record.duneId } : {}),
+    ...(record.duneAmount ? { duneAmt: record.duneAmount } : {}),
+    ...(record.duneName ? { duneName: record.duneName } : {}),
+    ...(record.createdAt ? { lockedAt: String(record.createdAt) } : {}),
   });
   return `${baseUrl}/lock/proof?${params.toString()}`;
 }
