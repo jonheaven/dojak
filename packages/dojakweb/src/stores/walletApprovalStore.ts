@@ -6,6 +6,7 @@
  * unlocked session key; Reject / dismiss rejects the promise.
  */
 import { useDxHostStore, type WalletOpenFocus } from './dxHostStore';
+import type { PsbtAuditResult, PsbtHostClaims } from '../lib/psbt-approval-audit';
 
 export type WalletApprovalDetail = {
   label: string;
@@ -23,10 +24,17 @@ export type WalletApprovalRequest = {
   title: string;
   /** Optional longer explanation */
   description?: string;
-  /** Key/value rows (amount, recipient, picks, etc.) */
+  /** Key/value rows (amount, recipient, picks, etc.) — host narrative, not trusted alone */
   details?: WalletApprovalDetail[];
   approveLabel?: string;
   rejectLabel?: string;
+  /**
+   * Wallet-decoded PSBT summary + optional host-claim mismatch audit.
+   * When present, the approval sheet shows on-chain ground truth from the PSBT itself.
+   */
+  psbtAudit?: PsbtAuditResult;
+  /** Optional structured claims (also used if caller pre-audited into psbtAudit). */
+  psbtClaims?: PsbtHostClaims;
   /**
    * Runs only after the user taps Approve with an unlocked browser session.
    * Throw an Error to show the message and keep the sheet open for retry.

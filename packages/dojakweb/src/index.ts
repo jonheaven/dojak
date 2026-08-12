@@ -436,6 +436,13 @@ export {
   DOGE_NETWORK,
 } from './lib/doginal-psdt';
 export type { SendInscriptionPsbtDraft } from './lib/doginal-psdt';
+export {
+  auditPsbtForWalletApproval,
+  type PsbtHostClaims,
+  type PsbtHostClaimOutput,
+  type PsbtAuditResult,
+  type PsbtDecodedOutput,
+} from './lib/psbt-approval-audit';
 
 export {
   MIN_RELAY_KOINU_PER_KB,

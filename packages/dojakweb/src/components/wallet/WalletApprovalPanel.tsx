@@ -154,15 +154,66 @@ export function WalletApprovalPanel() {
       </div>
 
       <div className="ds-wallet-approval__body">
-        {pending.details && pending.details.length > 0 ? (
-          <dl className="ds-wallet-approval__details">
-            {pending.details.map((row) => (
-              <div key={`${row.label}:${row.value}`} className="ds-wallet-approval__detail-row">
-                <dt className="ds-wallet-approval__detail-label">{row.label}</dt>
-                <dd className="ds-wallet-approval__detail-value">{row.value}</dd>
+        {pending.psbtAudit ? (
+          <div
+            className={
+              pending.psbtAudit.risk === 'ok'
+                ? 'ds-wallet-approval__psbt-audit'
+                : pending.psbtAudit.risk === 'warn'
+                  ? 'ds-wallet-approval__psbt-audit ds-wallet-approval__psbt-audit--warn'
+                  : 'ds-wallet-approval__psbt-audit ds-wallet-approval__psbt-audit--critical'
+            }
+          >
+            {pending.psbtAudit.risk !== 'ok' ? (
+              <div className="ds-wallet-approval__redflag" role="alert">
+                <p className="ds-wallet-approval__redflag-title">
+                  {pending.psbtAudit.risk === 'critical'
+                    ? 'Red flag — PSBT does not match site copy'
+                    : 'Warning — PSBT check found differences'}
+                </p>
+                <p className="ds-wallet-approval__redflag-body">
+                  Trust the decoded transaction below, not the site description. Approve at your own
+                  risk.
+                </p>
+                {pending.psbtAudit.mismatches.length > 0 ? (
+                  <ul className="ds-wallet-approval__redflag-list">
+                    {pending.psbtAudit.mismatches.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
-            ))}
-          </dl>
+            ) : (
+              <p className="ds-wallet-approval__psbt-ok">
+                Wallet decoded this PSBT — amounts below are from the transaction bytes, not the site.
+              </p>
+            )}
+            <p className="ds-wallet-approval__section-label">Transaction (from PSBT)</p>
+            <dl className="ds-wallet-approval__details ds-wallet-approval__details--psbt">
+              {pending.psbtAudit.summaryRows.map((row) => (
+                <div key={`psbt:${row.label}:${row.value}`} className="ds-wallet-approval__detail-row">
+                  <dt className="ds-wallet-approval__detail-label">{row.label}</dt>
+                  <dd className="ds-wallet-approval__detail-value">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : null}
+
+        {pending.details && pending.details.length > 0 ? (
+          <>
+            <p className="ds-wallet-approval__section-label">
+              {pending.psbtAudit ? 'Site says' : 'Details'}
+            </p>
+            <dl className="ds-wallet-approval__details">
+              {pending.details.map((row) => (
+                <div key={`${row.label}:${row.value}`} className="ds-wallet-approval__detail-row">
+                  <dt className="ds-wallet-approval__detail-label">{row.label}</dt>
+                  <dd className="ds-wallet-approval__detail-value">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </>
         ) : null}
 
         {!sessionReady ? (

@@ -14,6 +14,7 @@ import {
   signPartialPsdtWithWifToHex,
   signPsdtWithWifToTxHex,
 } from '../lib/doginal-psdt';
+import { auditPsbtForWalletApproval, type PsbtHostClaims } from '../lib/psbt-approval-audit';
 import { getPaymentUtxosForSend } from '../lib/paymentUtxos';
 import { assertValidDogecoinAddress } from '../lib/dogecoinAddressValidate';
 import {
@@ -1470,6 +1471,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           details?: Array<{ label: string; value: string }>;
           approveLabel?: string;
         };
+        claims?: PsbtHostClaims;
       },
     ): Promise<string> => {
       console.log('[UnifiedWallet] signPSBTOnly:start', {
@@ -1478,6 +1480,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         prefix: psbtInput.slice(0, 32),
         skipApprovalUi: Boolean(opts?.skipApprovalUi),
         approvalTitle: opts?.approval?.title,
+        hasClaims: Boolean(opts?.claims),
       });
 
       if (walletType === 'mydoge') {
@@ -1576,13 +1579,22 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           { label: 'Type', value: 'On-chain protocol PSBT (not a website DB write)' },
           { label: 'Wallet', value: address ?? '—' },
         ];
+        // Always decode the PSBT — host copy is advisory; mismatches raise a red flag.
+        const psbtAudit = auditPsbtForWalletApproval(psbtInput, opts?.claims);
         const signed = (await requestWalletApproval({
           title: opts?.approval?.title ?? 'Sign PSBT',
           description:
             opts?.approval?.description ??
             'Approve to partially sign this PSBT/PSDT with your Local Browser Wallet. Host apps should pass richer details when possible.',
           details: approvalDetails,
-          approveLabel: opts?.approval?.approveLabel ?? 'Approve sign',
+          approveLabel:
+            psbtAudit.risk === 'critical'
+              ? opts?.approval?.approveLabel
+                ? `${opts.approval.approveLabel} (at your own risk)`
+                : 'Approve at your own risk'
+              : (opts?.approval?.approveLabel ?? 'Approve sign'),
+          psbtAudit,
+          psbtClaims: opts?.claims,
           onApprove: async (s) => runSign(s.privateKeyWif),
         })) as string;
         console.log('[UnifiedWallet] signPSBTOnly:browser:result', {

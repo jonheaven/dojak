@@ -1,3 +1,5 @@
+import type { PsbtHostClaims } from '../lib/psbt-approval-audit';
+
 declare global {
   interface Window {
     doge?: {
@@ -350,6 +352,8 @@ export interface UnifiedWalletContextValue {
    * Sign a PSBT/PSDT without broadcasting.
    * Local Browser Wallet: optional `approval` fills the Shiba-paw sheet (amounts / purpose)
    * so host dApps aren’t stuck with the generic “richer details” placeholder.
+   * When signing a PSBT, the wallet always decodes outputs from the bytes; pass `claims`
+   * so mismatches vs host copy can raise a red-flag banner.
    */
   signPSBTOnly: (
     psbtHex: string,
@@ -361,6 +365,8 @@ export interface UnifiedWalletContextValue {
         details?: Array<{ label: string; value: string }>;
         approveLabel?: string;
       };
+      /** Structured expectations — compared to decoded PSBT (Local Browser Wallet). */
+      claims?: PsbtHostClaims;
     },
   ) => Promise<string>;
   signDMPIntent: DmpIntentSigner;

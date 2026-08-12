@@ -1458,6 +1458,76 @@ html[data-theme="light"] .wallet-input::placeholder,
   gap: 0.5rem;
 }
 
+.ds-wallet-approval__section-label {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.ds-wallet-approval__psbt-audit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ds-wallet-approval__psbt-ok {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: rgba(134, 239, 172, 0.9);
+}
+
+.ds-wallet-approval__details--psbt {
+  border-color: rgba(212, 160, 23, 0.35);
+  background: rgba(212, 160, 23, 0.06);
+}
+
+.ds-wallet-approval__redflag {
+  margin: 0;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  background: rgba(127, 29, 29, 0.45);
+}
+
+.ds-wallet-approval__psbt-audit--warn .ds-wallet-approval__redflag {
+  border-color: rgba(251, 191, 36, 0.55);
+  background: rgba(120, 53, 15, 0.45);
+}
+
+.ds-wallet-approval__redflag-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fecaca;
+}
+
+.ds-wallet-approval__psbt-audit--warn .ds-wallet-approval__redflag-title {
+  color: #fde68a;
+}
+
+.ds-wallet-approval__redflag-body {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: rgba(254, 226, 226, 0.9);
+}
+
+.ds-wallet-approval__psbt-audit--warn .ds-wallet-approval__redflag-body {
+  color: rgba(254, 243, 199, 0.9);
+}
+
+.ds-wallet-approval__redflag-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: rgba(254, 226, 226, 0.95);
+}
+
 .ds-wallet-approval__detail-row {
   display: flex;
   align-items: flex-start;
