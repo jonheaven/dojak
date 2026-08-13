@@ -29,6 +29,13 @@ const REQUIRED_EXPORTS = [
   'runInscribeJob',
   'getInscribeJob',
   'AlkanesToolsPanel',
+  'buildDummyUtxoPSDT',
+  'DUMMY_UTXO_VALUE',
+  'getAddressUtxos',
+  'selectUtxos',
+  'broadcastTx',
+  'coerceSignedPsdtToRawTxHex',
+  'preparePsdtForMyDogeSign',
 ];
 
 if (!fs.existsSync(distIndex)) {
