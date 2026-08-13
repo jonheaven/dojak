@@ -738,6 +738,10 @@ export function MyDogeWalletProvider({ children }: { children: React.ReactNode }
         normalizeMyDogePsbtInput(psbtHex);
       console.log('📄 [WALLET] Input format:', isPSBT ? 'PSBT' : 'Raw Transaction');
       console.log('📄 [WALLET] Sign input indexes:', signIndexes.join(','));
+      if (isPSBT && signIndexes.length === 0) {
+        // Seller-only / already-signed buy PSDT — do not ask MyDoge to sign input 0.
+        return canonicalBase64 ?? normalizedHex;
+      }
       console.log('[MyDoge] signPSBTOnly:requestPsbt params', {
         rawTxLength: normalizedHex.length,
         rawTxPrefix: normalizedHex.slice(0, 32),

@@ -425,6 +425,7 @@ export {
   signPsdtWithWifToTxHex,
   signPartialPsdtWithWifToHex,
   coerceSignedPsdtToRawTxHex,
+  extractDogePsbtTxHex,
   broadcastTx,
   sochainDogeTxUrl,
   waitForTxOnBlockcypher,

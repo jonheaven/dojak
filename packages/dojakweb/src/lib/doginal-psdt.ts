@@ -39,11 +39,49 @@ export const DOGE_NETWORK: bitcoin.Network = {
   wif: 0x9e,
 };
 
+/**
+ * bitcoinjs-lib defaults `maximumFeeRate` to 5000 sat/vB (Bitcoin). Dogecoin
+ * inclusion is 1_000–50_000 koinu/byte, so extractTransaction() throws a
+ * misleading "missing signatures" / setMaximumFeeRate warning on valid dummy splits.
+ */
+export const DOGE_PSBT_MAX_FEE_RATE = 1_000_000;
+
+export const DOGE_PSBT_OPTS: { network: bitcoin.Network; maximumFeeRate: number } = {
+  network: DOGE_NETWORK,
+  maximumFeeRate: DOGE_PSBT_MAX_FEE_RATE,
+};
+
+function isBitcoinjsFeeRateError(msg: string): boolean {
+  return /setMaximumFeeRate|satoshi per byte|pass true to the first arg of extractTransaction/i.test(
+    msg,
+  );
+}
+
+/** Finalize inputs and extract raw tx hex, ignoring Bitcoin-oriented fee caps. */
+export function extractDogePsbtTxHex(psbt: bitcoin.Psbt): string {
+  for (let i = 0; i < psbt.inputCount; i++) {
+    try {
+      psbt.finalizeInput(i);
+    } catch {
+      /* already finalized or incomplete */
+    }
+  }
+  try {
+    return psbt.extractTransaction().toHex();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (isBitcoinjsFeeRateError(msg)) {
+      return psbt.extractTransaction(true).toHex();
+    }
+    throw e;
+  }
+}
+
 function tryPsbtFromBase64Variants(trimmed: string): bitcoin.Psbt | null {
   const candidates = [trimmed, trimmed.replace(/-/g, '+').replace(/_/g, '/')];
   for (const c of candidates) {
     try {
-      return bitcoin.Psbt.fromBase64(c, { network: DOGE_NETWORK });
+      return bitcoin.Psbt.fromBase64(c, DOGE_PSBT_OPTS);
     } catch {
       /* try next */
     }
@@ -60,7 +98,7 @@ export function tryParsePsdt(psbtInput: string): bitcoin.Psbt | null {
       trimmed.length >= 10 &&
       trimmed.toLowerCase().startsWith('70736274')
     ) {
-      return bitcoin.Psbt.fromBuffer(Buffer.from(trimmed, 'hex'), { network: DOGE_NETWORK });
+      return bitcoin.Psbt.fromBuffer(Buffer.from(trimmed, 'hex'), DOGE_PSBT_OPTS);
     }
     if (!/^[0-9a-fA-F]+$/i.test(trimmed)) {
       return tryPsbtFromBase64Variants(trimmed);
@@ -74,14 +112,29 @@ export function tryParsePsdt(psbtInput: string): bitcoin.Psbt | null {
   }
 }
 
-/** Input indexes that still need signatures (no partialSig yet). */
+const SIGHASH_ANYONECANPAY = bitcoin.Transaction.SIGHASH_ANYONECANPAY;
+
+/**
+ * Input 0 on OpenOrdex / doggy.market buy PSDTs is the seller's inscription
+ * (SIGHASH_SINGLE|ANYONECANPAY). The buyer must not sign it — even when doggy
+ * omits the seller partialSig and only sets sighashType.
+ */
+function isSellerListingInput(psbt: bitcoin.Psbt, index: number): boolean {
+  if (index !== 0 || psbt.inputCount < 2) return false;
+  const inp = psbt.data.inputs[0];
+  if (inp?.partialSig?.length) return true;
+  const sh = inp?.sighashType;
+  return typeof sh === 'number' && (sh & SIGHASH_ANYONECANPAY) !== 0;
+}
+
+/** Input indexes that still need the buyer's signature. */
 export function getUnsignedPsdtInputIndexes(psbt: bitcoin.Psbt): number[] {
   const indexes: number[] = [];
   for (let i = 0; i < psbt.inputCount; i++) {
+    if (isSellerListingInput(psbt, i)) continue;
     const partial = psbt.data.inputs[i]?.partialSig;
     if (!partial?.length) indexes.push(i);
   }
-  if (indexes.length === 0) indexes.push(0);
   return indexes;
 }
 
@@ -105,7 +158,7 @@ export function sighashTypeForMyDogePsdtSign(
  * Skip that input here; sign all others.
  */
 function getLocalWifSignerInputIndexes(psbt: bitcoin.Psbt): number[] {
-  if (psbt.inputCount >= 1 && psbt.data.inputs[0]?.partialSig?.length) {
+  if (psbt.inputCount >= 1 && (psbt.data.inputs[0]?.partialSig?.length || isSellerListingInput(psbt, 0))) {
     return Array.from({ length: psbt.inputCount }, (_, i) => i).filter((i) => i !== 0);
   }
   return getUnsignedPsdtInputIndexes(psbt);
@@ -139,15 +192,8 @@ export function coerceSignedPsdtToRawTxHex(walletOutput: string): string {
       throw new Error('Wallet returned neither a valid PSDT nor parseable raw transaction hex.');
     }
   }
-  for (let i = 0; i < psbt.inputCount; i++) {
-    try {
-      psbt.finalizeInput(i);
-    } catch {
-      /* already finalized or incomplete */
-    }
-  }
   try {
-    return psbt.extractTransaction().toHex();
+    return extractDogePsbtTxHex(psbt);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     throw new Error(
@@ -664,15 +710,7 @@ export async function signPsdtWithWifToTxHex(
     await psbt.signInputAsync(i, signer);
   }
 
-  for (let i = 0; i < psbt.inputCount; i++) {
-    try {
-      psbt.finalizeInput(i);
-    } catch {
-      /* already finalized or not ready */
-    }
-  }
-
-  return psbt.extractTransaction().toHex();
+  return extractDogePsbtTxHex(psbt);
 }
 
 /**
@@ -712,7 +750,7 @@ export async function buildListingPSDT(
 ): Promise<string> {
   const [txId, voutStr] = inscriptionOutput.split(':');
   const txHex = await getTxHex(txId);
-  const psbt  = new bitcoin.Psbt({ network: DOGE_NETWORK });
+  const psbt  = new bitcoin.Psbt(DOGE_PSBT_OPTS);
 
   psbt.addInput({
     hash: txId,
@@ -734,7 +772,7 @@ export async function signListingPSDT(
   psbtBase64: string,
   privateKeyWif: string,
 ): Promise<string> {
-  const psbt   = bitcoin.Psbt.fromBase64(psbtBase64, { network: DOGE_NETWORK });
+  const psbt   = bitcoin.Psbt.fromBase64(psbtBase64, DOGE_PSBT_OPTS);
   const signer = await makeAsyncSigner(privateKeyWif);
 
   await psbt.signInputAsync(0, signer, [
@@ -755,7 +793,7 @@ export function validateSellerPSDT(
   expectedInscriptionUtxo?: string,
 ): number | null {
   try {
-    const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network: DOGE_NETWORK });
+    const psbt = bitcoin.Psbt.fromBase64(psbtBase64, DOGE_PSBT_OPTS);
 
     if (psbt.txInputs.length !== 1 || psbt.txOutputs.length !== 1) return null;
 
@@ -797,9 +835,10 @@ export async function buildDummyUtxoPSDT(
   paymentUtxos: OrdUtxo[],
   opts?: { feeRateKoinuPerByte?: number },
 ): Promise<string> {
-  const feeRate =
-    opts?.feeRateKoinuPerByte ?? (await resolveBuyFeeRateKoinuPerByte());
-  const psbt  = new bitcoin.Psbt({ network: DOGE_NETWORK });
+  // Dummy splits are ~226 vB. Do not use live buy-priority estimates (up to 50k koinu/byte):
+  // that yields ~0.1 Ð fees and trips bitcoinjs-lib / MyDoge `maximumFeeRate` (5000 sat/vB).
+  const feeRate = opts?.feeRateKoinuPerByte ?? DEFAULT_FEE_RATE;
+  const psbt  = new bitcoin.Psbt(DOGE_PSBT_OPTS);
   let total   = 0;
 
   for (const u of paymentUtxos) {
@@ -855,9 +894,7 @@ export interface BuildBuyPSDTParams {
 export async function buildBuyPSDT(p: BuildBuyPSDTParams): Promise<string> {
   const feeRate =
     p.feeRateKoinuPerByte ?? (await resolveBuyFeeRateKoinuPerByte());
-  const sellerPsbt = bitcoin.Psbt.fromBase64(p.sellerSignedPsbtBase64, {
-    network: DOGE_NETWORK,
-  });
+  const sellerPsbt = bitcoin.Psbt.fromBase64(p.sellerSignedPsbtBase64, DOGE_PSBT_OPTS);
 
   const sellerPay0 = sellerPsbt.txOutputs[0];
   if (!sellerPay0) {
@@ -885,7 +922,7 @@ export async function buildBuyPSDT(p: BuildBuyPSDTParams): Promise<string> {
     throw new Error('Seller PSDT is missing input 0 (inscription). Cannot build buy transaction.');
   }
 
-  const psbt  = new bitcoin.Psbt({ network: DOGE_NETWORK });
+  const psbt  = new bitcoin.Psbt(DOGE_PSBT_OPTS);
   // Preserve the seller's transaction version and locktime — both are part of the
   // SIGHASH_SINGLE|ANYONECANPAY preimage. If the buyer assembles a transaction with a
   // different version (e.g. 1 vs 2) or locktime than what the seller signed, the
@@ -1017,7 +1054,7 @@ export async function signAndFinalizeBuyPSDT(
   psbtBase64: string,
   privateKeyWif: string,
 ): Promise<string> {
-  const psbt   = bitcoin.Psbt.fromBase64(psbtBase64, { network: DOGE_NETWORK });
+  const psbt   = bitcoin.Psbt.fromBase64(psbtBase64, DOGE_PSBT_OPTS);
   const signer = await makeAsyncSigner(privateKeyWif);
 
   for (let i = 0; i < psbt.inputCount; i++) {
@@ -1029,7 +1066,7 @@ export async function signAndFinalizeBuyPSDT(
     try { psbt.finalizeInput(i); } catch { /* input 0 may already be finalized */ }
   }
 
-  return psbt.extractTransaction().toHex();
+  return extractDogePsbtTxHex(psbt);
 }
 
 /**
@@ -1039,12 +1076,11 @@ export async function signAndFinalizeSimplePSDT(
   psbtBase64: string,
   privateKeyWif: string,
 ): Promise<string> {
-  const psbt   = bitcoin.Psbt.fromBase64(psbtBase64, { network: DOGE_NETWORK });
+  const psbt   = bitcoin.Psbt.fromBase64(psbtBase64, DOGE_PSBT_OPTS);
   const signer = await makeAsyncSigner(privateKeyWif);
 
   await psbt.signAllInputsAsync(signer);
-  psbt.finalizeAllInputs();
-  return psbt.extractTransaction().toHex();
+  return extractDogePsbtTxHex(psbt);
 }
 
 // ── Send inscription (transfer to another address) ───────────────────────────
@@ -1080,7 +1116,7 @@ export async function buildSendInscriptionPsbtUnsigned(
   const insVout = parseInt(insVoutStr, 10);
   const insTxHex = await getTxHex(insTxid);
 
-  const psbt = new bitcoin.Psbt({ network: DOGE_NETWORK });
+  const psbt = new bitcoin.Psbt(DOGE_PSBT_OPTS);
 
   psbt.addInput({
     hash: insTxid,
@@ -1180,7 +1216,7 @@ export async function buildAndSignSendInscription(p: SendInscriptionParams): Pro
  */
 export function getInscriptionValueFromPsdt(psbtBase64: string): number {
   try {
-    const psbt  = bitcoin.Psbt.fromBase64(psbtBase64, { network: DOGE_NETWORK });
+    const psbt  = bitcoin.Psbt.fromBase64(psbtBase64, DOGE_PSBT_OPTS);
     const input = psbt.data.inputs[0];
     const txIn  = psbt.txInputs[0];
     if (input.nonWitnessUtxo) {
@@ -1221,7 +1257,7 @@ export async function buildBuyPSDTSimple(params: {
   }
 
   // Extract inscription output value from seller PSBT (embedded parent tx, else chain)
-  const sellerPsbt  = bitcoin.Psbt.fromBase64(sellerSignedPsbtBase64, { network: DOGE_NETWORK });
+  const sellerPsbt  = bitcoin.Psbt.fromBase64(sellerSignedPsbtBase64, DOGE_PSBT_OPTS);
   const sellerInput = sellerPsbt.data.inputs[0];
   const sellerTxIn  = sellerPsbt.txInputs[0];
   const readInscriptionValue = (txBuf: Buffer, vout: number): number | null => {
