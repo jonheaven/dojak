@@ -264,6 +264,7 @@ export {
   journalDlockerTx,
   walletTxActionLabel,
   walletTxDisplayChips,
+  walletTxJournalBelongsToAddress,
   walletTxProtocolLabel,
   type DojakwebWalletTxEntry,
   type DojakwebWalletTxProtocol,

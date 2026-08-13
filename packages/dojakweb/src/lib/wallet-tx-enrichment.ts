@@ -9,6 +9,7 @@ import {
   getIndexerApiBase,
 } from '../utils/api';
 import {
+  loadWalletTxJournal,
   upsertWalletTxJournalEntry,
   walletTxProtocolLabel,
   type DojakwebWalletTxProtocol,
@@ -418,7 +419,11 @@ export function applyEnrichmentsToJournal(
   address: string,
   enrichments: Iterable<WalletTxEnrichment>,
 ): void {
+  const owner = address.trim();
+  const journal = loadWalletTxJournal();
   for (const e of enrichments) {
+    const existing = journal.find((row) => row.txid === e.txid);
+    if (existing?.address && existing.address !== owner) continue;
     upsertWalletTxJournalEntry({
       txid: e.txid,
       address,

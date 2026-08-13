@@ -1312,6 +1312,10 @@
 }
 
 /* Opacity / black overlay utilities (Tailwind /90 /80 variants miss exact-class overrides) */
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-black\/25 {
+  background-color: #eeebe4 !important;
+}
+
 :is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-black\/30,
 :is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-black\/35,
 :is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .bg-black\/40,

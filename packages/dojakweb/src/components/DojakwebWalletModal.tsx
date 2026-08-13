@@ -1416,7 +1416,9 @@ export function DojakwebWalletModal({
   const mergedTransactions: DisplayDogeTransaction[] = useMemo(() => {
     const seen = new Set<string>();
     const localFirst: typeof localRecentTransactions = [];
+    const owner = activeAddress?.trim() || '';
     for (const tx of localRecentTransactions) {
+      if (owner && tx.walletAddress && tx.walletAddress !== owner) continue;
       const id = tx.txid?.trim().toLowerCase();
       if (!id || seen.has(id)) continue;
       seen.add(id);
@@ -1430,6 +1432,11 @@ export function DojakwebWalletModal({
     }
     return mergeWalletTxJournalIntoList(localFirst, walletTxJournal, { address: activeAddress });
   }, [localRecentTransactions, transactions, walletTxJournal, activeAddress]);
+
+  useEffect(() => {
+    setLocalRecentTransactions([]);
+    setSelectedTx(null);
+  }, [activeAddress]);
 
   useEffect(() => {
     setWalletTxJournal(loadWalletTxJournal());
@@ -3013,7 +3020,9 @@ export function DojakwebWalletModal({
   useEffect(() => {
     if (step !== 'dashboard' || tab !== 'transactions' || !activeAddress) return;
     const visible = [
-      ...localRecentTransactions.map((t) => t.txid),
+      ...localRecentTransactions
+        .filter((t) => !activeAddress || !t.walletAddress || t.walletAddress === activeAddress)
+        .map((t) => t.txid),
       ...transactions.map((t) => t.txid),
     ].filter(Boolean);
     let cancelled = false;
@@ -4555,7 +4564,14 @@ export function DojakwebWalletModal({
                         ) : null}
 
                         <div>
-                          <div className="flex gap-1 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-1">
+                          <div
+                            className={cx(
+                              'flex gap-1 rounded-2xl border p-1',
+                              isDark
+                                ? 'border-white/[0.08] bg-white/[0.03]'
+                                : 'border-zinc-200 bg-zinc-100',
+                            )}
+                          >
                             {(['assets', 'transactions', 'listings'] as DashboardTab[]).map((item) => (
                               <button
                                 key={item}
@@ -4564,8 +4580,12 @@ export function DojakwebWalletModal({
                                 className={cx(
                                   'flex-1 rounded-xl px-3 py-2 text-xs font-semibold capitalize tracking-wide transition',
                                   tab === item
-                                    ? 'bg-[#FCD34D]/15 text-[#FCD34D] shadow-[inset_0_0_0_1px_rgba(252,211,77,0.35)]'
-                                    : 'text-white/45 hover:bg-white/[0.04] hover:text-white/75'
+                                    ? isDark
+                                      ? 'bg-[#FCD34D]/15 text-[#FCD34D] shadow-[inset_0_0_0_1px_rgba(252,211,77,0.35)]'
+                                      : 'bg-[#C9A84C]/25 text-[#7A5410] shadow-[inset_0_0_0_1px_rgba(154,114,9,0.55)]'
+                                    : isDark
+                                      ? 'text-white/45 hover:bg-white/[0.04] hover:text-white/75'
+                                      : 'text-zinc-500 hover:bg-white hover:text-zinc-800',
                                 )}
                               >
                                 {item === 'assets' ? t('modal.tabs.assets') : item === 'transactions' ? t('modal.tabs.transactions') : t('modal.tabs.listings')}
@@ -4573,7 +4593,14 @@ export function DojakwebWalletModal({
                             ))}
                           </div>
 
-                          <div className="mt-2 overflow-visible rounded-2xl border border-white/[0.08] bg-black/25">
+                          <div
+                            className={cx(
+                              'mt-2 overflow-visible rounded-2xl border',
+                              isDark
+                                ? 'border-white/[0.08] bg-black/25'
+                                : 'border-zinc-200 bg-zinc-100',
+                            )}
+                          >
                             {tab === 'assets' ? (
                               <div className="overflow-visible">
                                 {/* NFT / DRC-20 sub-selector */}
@@ -5510,7 +5537,9 @@ export function DojakwebWalletModal({
                                             onClick={() => setSelectedTx(tx)}
                                             className={cx(
                                               'flex w-full items-center gap-3 px-4 py-2.5 text-left transition',
-                                              isDark ? 'hover:bg-white/5' : 'hover:bg-black/[0.04]',
+                                              isDark
+                                                ? 'hover:bg-white/5'
+                                                : 'bg-zinc-50 hover:bg-white',
                                             )}
                                           >
                                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-white">
@@ -6781,6 +6810,7 @@ export function DojakwebWalletModal({
                             timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
                             pending: true,
                             localOnly: true,
+                            walletAddress: activeAddress || undefined,
                           });
                           return txid;
                         }}
@@ -7615,6 +7645,7 @@ export function DojakwebWalletModal({
               protocolLabel: 'Ðunes',
               title: 'Send',
               summary: 'Broadcast — refresh Activity if the protocol chip is missing.',
+              walletAddress: activeAddress || undefined,
             });
             setTab('transactions');
           }

@@ -283,6 +283,14 @@ export function upsertWalletTxJournalEntry(
     })(),
     createdAt: existing?.createdAt || entry.createdAt || timestamp,
     updatedAt: timestamp,
+    address: (() => {
+      const incoming =
+        typeof entry.address === 'string' && entry.address.trim() ? entry.address.trim() : null;
+      const prev = existing?.address ?? null;
+      // Never reassign a row from one HD account onto another.
+      if (prev && incoming && prev !== incoming) return prev;
+      return incoming || prev;
+    })(),
     originHost: origin.originHost || existing?.originHost || entry.originHost,
     originPath: origin.originPath || existing?.originPath || entry.originPath,
     originLabel: origin.originLabel || existing?.originLabel || entry.originLabel,
@@ -502,7 +510,26 @@ export type WalletTxListRow = {
   summary?: string;
   /** Token units for Ðune (etc.) — Activity chip; DOGE `amount` stays postage. */
   tokenAmountLabel?: string;
+  /** HD account that created this optimistic/local row (not the counterparty). */
+  walletAddress?: string;
 };
+
+function dogeAddressesEqual(a?: string | null, b?: string | null): boolean {
+  const left = a?.trim();
+  const right = b?.trim();
+  if (!left || !right) return false;
+  return left === right;
+}
+
+/** Journal rows with no address must not appear as local-only history on an HD account. */
+export function walletTxJournalBelongsToAddress(
+  entry: Pick<DojakwebWalletTxEntry, 'address'>,
+  address?: string | null,
+): boolean {
+  const want = address?.trim();
+  if (!want) return true;
+  return dogeAddressesEqual(entry.address, want);
+}
 
 /**
  * Merge MyDoge (or other) wallet history with the local Dojakweb journal so
@@ -525,7 +552,7 @@ export function mergeWalletTxJournalIntoList<T extends {
   journal: DojakwebWalletTxEntry[],
   opts?: { address?: string | null },
 ): WalletTxListRow[] {
-  const addr = opts?.address?.trim().toLowerCase() || null;
+  const addr = opts?.address?.trim() || null;
   const byTxid = new Map<string, WalletTxListRow>();
 
   for (const tx of chainTxs) {
@@ -546,8 +573,17 @@ export function mergeWalletTxJournalIntoList<T extends {
 
   for (const entry of journal) {
     if (!entry.txid) continue;
-    if (addr && entry.address && entry.address.toLowerCase() !== addr) continue;
     const existing = byTxid.get(entry.txid);
+    if (existing) {
+      // Overlay labels only when the journal is unscoped or owned by this account.
+      if (addr && entry.address && !dogeAddressesEqual(entry.address, addr)) continue;
+    } else if (!walletTxJournalBelongsToAddress(entry, addr)) {
+      // Don't invent local-only rows from another HD account (or unscoped broadcasts).
+      continue;
+    } else if (entry.status === 'indexed' || entry.status === 'confirmed') {
+      // Already on-chain: if this address's history didn't return it, it's leftover journal.
+      continue;
+    }
     const metaRecipient =
       typeof entry.metadata?.recipientAddress === 'string'
         ? entry.metadata.recipientAddress.trim()
