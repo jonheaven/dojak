@@ -36,6 +36,7 @@ const REQUIRED_EXPORTS = [
   'broadcastTx',
   'coerceSignedPsdtToRawTxHex',
   'preparePsdtForMyDogeSign',
+  'journalDlockerTx',
 ];
 
 if (!fs.existsSync(distIndex)) {
