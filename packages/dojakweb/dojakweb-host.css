@@ -1203,6 +1203,17 @@
   color: #713f12 !important;
 }
 
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-\[\#FCD34D\],
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-\[\#FCD34D\]\/80,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-\[\#FCD34D\]\/90 {
+  color: #7a5410 !important;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .ds-wallet-title,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard h2 {
+  color: #0f0e0d !important;
+}
+
 :is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-yellow-100,
 :is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-yellow-200 {
   color: #713f12 !important;
@@ -1900,7 +1911,9 @@ body.wallet-drawer-mobile-open [data-headlessui-portal] .ds-wallet-dashboard {
 }
 
 :root[data-theme="light"] body.wallet-drawer-mobile-open .ds-wallet-modal--drawer,
-:root[data-theme="light"] body.wallet-drawer-mobile-open [data-headlessui-portal] .ds-wallet-dashboard {
+:root[data-theme="light"] body.wallet-drawer-mobile-open [data-headlessui-portal] .ds-wallet-dashboard,
+body.wallet-drawer-mobile-open [data-headlessui-portal] .ds-wallet-dashboard.ds-light,
+body.wallet-drawer-mobile-open [data-headlessui-portal] .ds-wallet-dashboard[data-ds-theme="light"] {
   background: #f7f5f0 !important;
 }
 
@@ -1983,7 +1996,9 @@ body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard > .min
 }
 
 :root[data-theme="light"] body.wallet-drawer-paw-open .ds-wallet-modal--drawer,
-:root[data-theme="light"] body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
+:root[data-theme="light"] body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard,
+body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard.ds-light,
+body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard[data-ds-theme="light"] {
   background: #f7f5f0 !important;
   border-color: #c9a84c !important;
   box-shadow:
@@ -2043,8 +2058,8 @@ body.wallet-drawer-paw-open .ds-wallet-modal-backdrop--drawer {
   -webkit-overflow-scrolling: touch;
 }
 
-:root:not([data-theme="light"]) [data-headlessui-portal] .ds-wallet-dashboard,
-:root:not([data-theme="light"]) .ds-wallet-modal-backdrop .ds-wallet-dashboard {
+:root:not([data-theme="light"]) [data-headlessui-portal] .ds-wallet-dashboard:not(.ds-light):not([data-ds-theme="light"]),
+:root:not([data-theme="light"]) .ds-wallet-modal-backdrop .ds-wallet-dashboard:not(.ds-light):not([data-ds-theme="light"]) {
   color-scheme: dark;
 }
 
