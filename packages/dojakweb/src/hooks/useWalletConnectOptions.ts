@@ -47,6 +47,9 @@ export type UseWalletConnectOptionsResult = {
     type: ConnectKind,
     opts?: { onAlreadyActive?: () => void },
   ) => Promise<void>;
+  /** Disconnect one connected session from the picker (does not require it to be active). */
+  handleDisconnect: (type: ConnectKind) => Promise<void>;
+  anyDisconnecting: boolean;
 };
 
 function shortName(type: ConnectKind, t: (key: string) => string): string {
@@ -74,7 +77,7 @@ export function useWalletConnectOptions(options?: {
   onSelectBrowser?: () => void;
   onConnected?: (type: ConnectKind) => void;
 }): UseWalletConnectOptionsResult {
-  const { connect, setActiveWallet, availableWallets, walletType } = useUnifiedWallet();
+  const { connect, setActiveWallet, disconnectWallet, availableWallets, walletType } = useUnifiedWallet();
   const myDogeContext = useMyDogeWallet();
   const { hasWallet } = useBrowserWallet();
   const { t } = useDojakwebI18n();
@@ -307,6 +310,21 @@ export function useWalletConnectOptions(options?: {
     [handleConnect, onConnected, setActiveWallet, tiles],
   );
 
+  const handleDisconnect = useCallback(
+    async (type: ConnectKind) => {
+      try {
+        setConnectionError(null);
+        setConnectingType(type);
+        await disconnectWallet(type);
+      } catch (error: any) {
+        setConnectionError(error?.message || 'Unable to disconnect wallet.');
+      } finally {
+        setConnectingType(null);
+      }
+    },
+    [disconnectWallet],
+  );
+
   return {
     tiles,
     connectingType,
@@ -316,5 +334,7 @@ export function useWalletConnectOptions(options?: {
     anyConnecting: connectingType !== null,
     handleConnect,
     handleSelect,
+    handleDisconnect,
+    anyDisconnecting: connectingType !== null,
   };
 }

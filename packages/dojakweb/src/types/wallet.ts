@@ -359,6 +359,11 @@ export interface UnifiedWalletContextValue {
   balanceError: string | null;
   switchAccount: (accountIndex: number, password?: string) => Promise<void>;
   disconnect: () => Promise<void>;
+  /**
+   * Disconnect one connected session. If it was active, another connected
+   * session is promoted; otherwise the current active wallet is unchanged.
+   */
+  disconnectWallet: (type: WalletType) => Promise<void>;
   /** Tear down every connected session (wipe / hard logout). */
   disconnectAll: () => Promise<void>;
   sendTransaction: (

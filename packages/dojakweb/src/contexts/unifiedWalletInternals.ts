@@ -26,6 +26,7 @@ export const NULL_WALLET: UnifiedWalletContextValue = {
   refreshBalance: noop,
   switchAccount: noop,
   disconnect: noop,
+  disconnectWallet: noop,
   disconnectAll: noop,
   sendTransaction: noop,
   signMessage: noop,

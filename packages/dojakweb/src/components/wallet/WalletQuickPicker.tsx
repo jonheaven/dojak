@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, Watch } from 'lucide-react';
+import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, Watch, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import {
   useWalletConnectOptions,
@@ -90,6 +90,7 @@ export function WalletQuickPicker({
     connectionError,
     anyConnecting,
     handleSelect,
+    handleDisconnect,
   } = useWalletConnectOptions({
     onSelectBrowser: () => {
       onClose();
@@ -187,41 +188,68 @@ export function WalletQuickPicker({
   const tileButtons = tiles.map((tile) => {
     const busy = connectingType === tile.type;
     const disabled = (!tile.available && tile.type !== 'browser') || (anyConnecting && !busy);
+    const statusHint = tile.isActive
+      ? 'Active'
+      : tile.connected
+        ? 'Connected'
+        : null;
     return (
-      <button
-        key={tile.type}
-        type="button"
-        disabled={disabled}
-        title={tile.title}
-        aria-label={tile.ariaLabel}
-        aria-pressed={tile.isActive}
-        onClick={() => onTileClick(tile.type)}
-        className={cx(
-          'ds-wallet-quick-picker__tile',
-          tile.isActive && 'ds-wallet-quick-picker__tile--active',
-          tile.connected && !tile.isActive && 'ds-wallet-quick-picker__tile--connected',
-          !tile.available && tile.type !== 'browser' && 'ds-wallet-quick-picker__tile--muted',
-          variant === 'sheet' && 'ds-wallet-quick-picker__tile--row',
-        )}
-      >
-        <span className="ds-wallet-quick-picker__glyph">
-          <TileGlyph type={tile.type} logo={tile.logo} />
-          {busy ? (
-            <span className="ds-wallet-quick-picker__busy">
-              <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden />
+      <div key={tile.type} className="ds-wallet-quick-picker__cell">
+        <button
+          type="button"
+          disabled={disabled}
+          title={statusHint ? `${tile.title} — ${statusHint}` : tile.title}
+          aria-label={statusHint ? `${tile.ariaLabel}. ${statusHint}` : tile.ariaLabel}
+          aria-pressed={tile.isActive}
+          onClick={() => onTileClick(tile.type)}
+          className={cx(
+            'ds-wallet-quick-picker__tile',
+            tile.isActive && 'ds-wallet-quick-picker__tile--active',
+            tile.connected && !tile.isActive && 'ds-wallet-quick-picker__tile--connected',
+            !tile.available && tile.type !== 'browser' && 'ds-wallet-quick-picker__tile--muted',
+            variant === 'sheet' && 'ds-wallet-quick-picker__tile--row',
+          )}
+        >
+          <span className="ds-wallet-quick-picker__glyph">
+            <TileGlyph type={tile.type} logo={tile.logo} />
+            {busy ? (
+              <span className="ds-wallet-quick-picker__busy">
+                <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden />
+              </span>
+            ) : null}
+            {tile.connected && !busy ? (
+              <span
+                className={cx(
+                  'ds-wallet-quick-picker__dot',
+                  tile.isActive && 'ds-wallet-quick-picker__dot--active',
+                )}
+                aria-hidden
+              />
+            ) : null}
+          </span>
+          {variant === 'sheet' ? (
+            <span className="ds-wallet-quick-picker__row-text">
+              <span className="ds-wallet-quick-picker__row-title">{tile.shortTitle}</span>
+              <span className="ds-wallet-quick-picker__row-sub">{tile.subtitle}</span>
             </span>
           ) : null}
-          {tile.connected && !busy ? (
-            <span className="ds-wallet-quick-picker__dot" aria-hidden />
-          ) : null}
-        </span>
-        {variant === 'sheet' ? (
-          <span className="ds-wallet-quick-picker__row-text">
-            <span className="ds-wallet-quick-picker__row-title">{tile.shortTitle}</span>
-            <span className="ds-wallet-quick-picker__row-sub">{tile.subtitle}</span>
-          </span>
+        </button>
+        {tile.connected && !busy ? (
+          <button
+            type="button"
+            className="ds-wallet-quick-picker__disconnect"
+            aria-label={t('wallet.quickPicker.disconnectAria', { name: tile.shortTitle })}
+            title={t('wallet.quickPicker.disconnectAria', { name: tile.shortTitle })}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void handleDisconnect(tile.type);
+            }}
+          >
+            <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+          </button>
         ) : null}
-      </button>
+      </div>
     );
   });
 

@@ -39,7 +39,8 @@ const en: MsgTree = {
       title: 'Wallets',
       openAria: 'Choose a wallet',
       openWallet: 'Open wallet',
-      hint: 'One active wallet at a time. Other sessions stay ready to switch.',
+      hint: 'Gold ring is the active wallet. Green is connected — tap to switch, × to disconnect.',
+      disconnectAria: 'Disconnect {name}',
       short: {
         browser: 'Local',
         mydoge: 'MyDoge',
@@ -135,7 +136,8 @@ const ja: MsgTree = {
       title: 'ウォレット',
       openAria: 'ウォレットを選択',
       openWallet: 'ウォレットを開く',
-      hint: 'アクティブは常に1つ。他のセッションはそのまま切り替え可能です。',
+      hint: '金色の枠がアクティブ。緑は接続済み — タップで切替、× で切断。',
+      disconnectAria: '{name} を切断',
       short: {
         browser: 'ローカル',
         mydoge: 'MyDoge',
