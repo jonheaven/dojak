@@ -1011,20 +1011,25 @@ export const walletDataApi = {
     } catch {
       // doggy helper unavailable
     }
+    let best: InscriptionLookupResult | null = null;
     for (const url of candidates) {
       try {
         const res = await fetch(url, { headers: { Accept: 'application/json' } });
         if (!res.ok) continue;
         const data = (await res.json()) as InscriptionLookupResult;
-        if (!data?.inscriptionId && id) {
-          return { ...data, inscriptionId: id };
-        }
-        return data;
+        const row = !data?.inscriptionId && id ? { ...data, inscriptionId: id } : data;
+        const loc = String(
+          row.output || row.location || (row as { satpoint?: string }).satpoint || '',
+        ).trim();
+        // Prefer a row that actually has a spendable outpoint — by-id JSON often
+        // is content-only; keep scanning MyDoge then doggy for `output`.
+        if (loc.includes(':')) return row;
+        if (!best) best = row;
       } catch {
         continue;
       }
     }
-    return null;
+    return best;
   },
 
   fetchInscriptions: async (address: string): Promise<MyDogeInscription[]> => {
