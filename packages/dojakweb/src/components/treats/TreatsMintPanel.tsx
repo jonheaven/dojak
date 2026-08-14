@@ -6,7 +6,6 @@ import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
 import {
   buildTreatsDeployJson,
   buildTreatsMintJson,
-  buildTreatsMintPowJson,
   treatsPostPremineRemaining,
   buildTreatsTransferJson,
   signAndBroadcastTreats,
@@ -71,7 +70,7 @@ export function TreatsMintPanel({
   const [deployerWindow, setDeployerWindow] = useState(flagship ? NOIZ_FLAGSHIP.deployerWindow : '');
   /** Empty = omit `dec` (on-chain default 0). */
   const [decimals, setDecimals] = useState(flagship ? '' : '0');
-  const [amt, setAmt] = useState(flagship ? '1000' : '1000');
+  const [assetId, setAssetId] = useState('');
   const [transferTo, setTransferTo] = useState('');
   const [busy, setBusy] = useState(false);
   const [mining, setMining] = useState(false);
@@ -132,17 +131,15 @@ export function TreatsMintPanel({
       });
     }
     if (op === 'mint') {
-      if (powSolution) {
-        return buildTreatsMintPowJson(tick, amt, powSolution);
-      }
-      return buildTreatsMintJson(tick, amt);
+      return buildTreatsMintJson(tick, amt, assetId);
     }
-    return buildTreatsTransferJson(tick, amt);
-  }, [op, tick, max, lim, premine, deployerWindow, decimals, amt, powSolution]);
+    return buildTreatsTransferJson(tick, amt, assetId);
+  }, [op, tick, max, lim, premine, deployerWindow, decimals, amt, assetId]);
 
   const isValid =
     Boolean(json) &&
     tick.trim().length > 0 &&
+    (op === 'deploy' || assetId.trim().length > 0) &&
     (op !== 'transfer' || transferTo.trim().length > 4);
 
   const dustRecipient =
@@ -238,9 +235,7 @@ export function TreatsMintPanel({
         deployerWindow: op === 'deploy' && deployerWindow.trim() ? deployerWindow : undefined,
         decimals: op === 'deploy' && decimals.trim() ? decimals : undefined,
         amt: op === 'mint' || op === 'transfer' ? amt : undefined,
-        powChallengeId: op === 'mint' ? powSolution?.challengeId : undefined,
-        powNonce: op === 'mint' ? powSolution?.nonce : undefined,
-        powDifficulty: op === 'mint' ? powSolution?.difficulty : undefined,
+        assetId: op !== 'deploy' ? assetId.trim() : undefined,
       });
       setTxid(id);
     } catch (e) {
@@ -257,8 +252,9 @@ export function TreatsMintPanel({
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#FCD34D]">ÐogeTreats</p>
           <h2 className="mt-2 text-2xl font-bold text-white">Drop a treat on-chain</h2>
           <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-            OP_RETURN fungibles with wire <code className="text-zinc-200">p:&quot;dt&quot;</code>. vout&nbsp;0 is the treat;
-            vout&nbsp;1 is ≥0.01&nbsp;DOGE paired dust to the token recipient. Atomic balances — no inscription two-step.
+            OP_RETURN fungibles with wire <code className="text-zinc-200">p:&quot;dt&quot;</code>.
+            Tickers collide; the token is the ÐA (<code className="text-zinc-200">block:tx</code>).
+            Pair d/m/t with ≥0.01&nbsp;DOGE dust. Atomic balances — no inscription two-step.
           </p>
         </div>
       )}
@@ -315,7 +311,7 @@ export function TreatsMintPanel({
                   reset();
                 }}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono uppercase text-white"
-                maxLength={4}
+                maxLength={8}
                 placeholder="WOW"
               />
             </>
@@ -325,6 +321,23 @@ export function TreatsMintPanel({
             <p className="text-sm text-zinc-400">
               Ticker: <span className="font-mono font-bold text-[#FCD34D]">{tick.toUpperCase()}</span>
             </p>
+          )}
+
+          {op !== 'deploy' && (
+            <>
+              <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                ÐA (deploy block:tx)
+              </label>
+              <input
+                value={assetId}
+                onChange={(e) => {
+                  setAssetId(e.target.value.trim());
+                  reset();
+                }}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-white"
+                placeholder="6142100:12"
+              />
+            </>
           )}
 
           {lockEconomics && op === 'deploy' ? (

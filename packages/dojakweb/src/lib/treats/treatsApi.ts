@@ -16,6 +16,7 @@ export type TreatsTokenRow = {
 export type TreatsBalanceRow = {
   tick: string;
   balance: string;
+  asset_id?: string;
 };
 
 export async function fetchTreatsTokens(offset = 0, pageSize = 100): Promise<{

@@ -28,10 +28,7 @@ function payloadBytesFromParams(params: SignTreatsParams): Uint8Array | null {
     premine: params.premine ?? '',
     deployerWindow: params.deployerWindow ?? '',
     decimals: params.decimals ?? '',
-    powChallengeId: params.powChallengeId,
-    powNonce: params.powNonce,
-    powDifficulty:
-      params.powDifficulty !== undefined ? String(params.powDifficulty) : undefined,
+    assetId: params.assetId ?? '',
   } as Record<string, string>);
 }
 
@@ -81,6 +78,8 @@ export interface SignTreatsParams {
   deployerWindow?: string;
   /** v1.0 deploy `dec`. */
   decimals?: string;
+  /** Treats ÐA (`block:tx`) — required for mint, transfer, and burn. */
+  assetId?: string;
   /**
    * If set, this exact UTF-8 JSON is the OP_RETURN payload (preview === chain).
    * Must be compact `p:"dt"` JSON.
@@ -88,10 +87,6 @@ export interface SignTreatsParams {
   payloadJson?: string;
   feeRate?: number;
   excludedOutpoints?: string[];
-  /** Mint PoW solution (required when indexer enforces PoW for this tick). */
-  powChallengeId?: string;
-  powNonce?: string;
-  powDifficulty?: number;
 }
 
 export interface SignedTreatsTx {
@@ -144,7 +139,9 @@ async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> 
 
   const payload = payloadBytesFromParams(params);
   if (!payload?.length) {
-    throw new Error('Invalid ÐogeTreats parameters — check ticker length (1–8) and amounts');
+    throw new Error(
+      'Invalid ÐogeTreats parameters — ticker 1–8, amounts, ÐA (block:tx) on mint/transfer/burn, and ≤83-byte script',
+    );
   }
 
   const payloadJson = new TextDecoder().decode(payload);

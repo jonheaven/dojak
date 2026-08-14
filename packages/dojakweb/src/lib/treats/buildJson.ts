@@ -1,4 +1,4 @@
-import { TREATS_TICKER_MAX, type TreatsOpKind } from './constants';
+import { TREATS_MAX_OPRETURN_SCRIPT_BYTES, TREATS_TICKER_MAX, type TreatsOpKind } from './constants';
 
 function normalizeTicker(raw: string): string | null {
   const t = raw.trim();
@@ -15,6 +15,29 @@ function positiveIntString(v: string): string | null {
   return s;
 }
 
+/** Treats ÐA: `{height}:{tx_index}` (no leading zeros except tx `0`). */
+export function normalizeTreatsDa(raw: string): string | null {
+  const s = raw.trim();
+  const m = /^(\d+):(\d+)$/.exec(s);
+  if (!m) return null;
+  const block = m[1]!;
+  const tx = m[2]!;
+  if (block.length > 1 && block.startsWith('0')) return null;
+  if (tx.length > 1 && tx.startsWith('0')) return null;
+  return `${block}:${tx}`;
+}
+
+function treatsOpReturnScriptLen(json: string): number {
+  const n = Buffer.byteLength(json, 'utf8');
+  const push = n <= 75 ? 1 : n <= 255 ? 2 : 3;
+  return 1 + push + n;
+}
+
+function failClosedScript(json: string): string | null {
+  if (treatsOpReturnScriptLen(json) > TREATS_MAX_OPRETURN_SCRIPT_BYTES) return null;
+  return json;
+}
+
 export type TreatsDeployOptions = {
   lim?: string;
   /** Premine base units → paired dust recipient (v1.0 `pm`) */
@@ -25,7 +48,7 @@ export type TreatsDeployOptions = {
   decimals?: string;
 };
 
-/** Treats v1.0 compact deploy JSON. */
+/** Treats v1 compact deploy JSON. Fail-closed at 83-byte script. */
 export function buildTreatsDeployJson(
   tick: string,
   max: string,
@@ -63,16 +86,10 @@ export function buildTreatsDeployJson(
   if (opts.decimals !== undefined && opts.decimals !== '') {
     const d = opts.decimals.trim();
     if (!/^(1[0-8]|[0-9])$/.test(d)) return null;
-    // Always emit when set (including "0") so UIs are explicit
     obj.dec = d;
   }
 
-  const json = JSON.stringify(obj);
-  // Soft 80-byte guard for OP_RETURN script payload headroom
-  if (json.length > 76) {
-    console.warn('[treats] deploy JSON is long (%d chars) — may approach 80-byte OP_RETURN limit', json.length);
-  }
-  return json;
+  return failClosedScript(JSON.stringify(obj));
 }
 
 /** Estimate max supply remaining after premine for UI. */
@@ -90,72 +107,37 @@ export function treatsPostPremineRemaining(max: string, premine?: string): strin
   }
 }
 
-export function buildTreatsMintJson(tick: string, amt: string, idPrefix?: string): string | null {
+export function buildTreatsMintJson(tick: string, amt: string, assetId: string): string | null {
   const t = normalizeTicker(tick);
   const a = positiveIntString(amt);
-  if (!t || !a) return null;
-  const obj: Record<string, string> = { p: 'dt', op: 'm', t, a };
-  if (idPrefix?.trim()) {
-    const i = idPrefix.trim().toLowerCase().slice(0, 16);
-    if (!/^[0-9a-f]{16}$/.test(i)) return null;
-    obj.i = i;
-  }
-  return JSON.stringify(obj);
+  const i = normalizeTreatsDa(assetId);
+  if (!t || !a || !i) return null;
+  return failClosedScript(JSON.stringify({ p: 'dt', op: 'm', t, a, i }));
 }
 
-export type TreatsMintPowFields = {
-  challengeId: string;
-  nonce: string;
-  difficulty: number;
-};
-
-export function buildTreatsMintPowJson(
-  tick: string,
-  amt: string,
-  pow: TreatsMintPowFields,
-): string | null {
+export function buildTreatsTransferJson(tick: string, amt: string, assetId: string): string | null {
   const t = normalizeTicker(tick);
   const a = positiveIntString(amt);
-  if (!t || !a) return null;
-  const c = pow.challengeId.trim().toLowerCase();
-  const n = pow.nonce.trim();
-  const d = pow.difficulty;
-  if (!/^[0-9a-f]{16}$/.test(c)) return null;
-  if (!/^[0-9]{1,12}$/.test(n) || (n.length > 1 && n.startsWith('0'))) return null;
-  if (!Number.isInteger(d) || d < 1 || d > 7) return null;
-  return JSON.stringify({ p: 'dt', op: 'm', t, a, d: String(d), c, n });
+  const i = normalizeTreatsDa(assetId);
+  if (!t || !a || !i) return null;
+  return failClosedScript(JSON.stringify({ p: 'dt', op: 't', t, a, i }));
 }
 
-export function buildTreatsTransferJson(tick: string, amt: string, idPrefix?: string): string | null {
+export function buildTreatsBurnJson(tick: string, amt: string, assetId: string): string | null {
   const t = normalizeTicker(tick);
   const a = positiveIntString(amt);
-  if (!t || !a) return null;
-  const obj: Record<string, string> = { p: 'dt', op: 't', t, a };
-  if (idPrefix?.trim()) {
-    const i = idPrefix.trim().toLowerCase().slice(0, 16);
-    if (!/^[0-9a-f]{16}$/.test(i)) return null;
-    obj.i = i;
-  }
-  return JSON.stringify(obj);
+  const i = normalizeTreatsDa(assetId);
+  if (!t || !a || !i) return null;
+  return failClosedScript(JSON.stringify({ p: 'dt', op: 'b', t, a, i }));
 }
 
-export function treatsIdPrefixFromAssetId(assetId: string): string {
-  const base = assetId.split('i', 1)[0].toLowerCase();
-  return base.slice(0, 16);
+/** Wire `i` is the full ÐA (`block:tx`), not a 16-hex prefix. */
+export function treatsDaFromAssetId(assetId: string): string {
+  return normalizeTreatsDa(assetId) ?? assetId.trim();
 }
 
-export function buildTreatsBurnJson(tick: string, amt: string, idPrefix?: string): string | null {
-  const t = normalizeTicker(tick);
-  const a = positiveIntString(amt);
-  if (!t || !a) return null;
-  const obj: Record<string, string> = { p: 'dt', op: 'b', t, a };
-  if (idPrefix?.trim()) {
-    const i = idPrefix.trim().toLowerCase().slice(0, 16);
-    if (!/^[0-9a-f]{16}$/.test(i)) return null;
-    obj.i = i;
-  }
-  return JSON.stringify(obj);
-}
+/** @deprecated Use {@link treatsDaFromAssetId} */
+export const treatsIdPrefixFromAssetId = treatsDaFromAssetId;
 
 export function treatsPayloadBytes(op: TreatsOpKind, fields: Record<string, string>): Buffer | null {
   let json: string | null = null;
@@ -169,21 +151,13 @@ export function treatsPayloadBytes(op: TreatsOpKind, fields: Record<string, stri
       });
       break;
     case 'mint':
-      if (fields.powChallengeId && fields.powNonce && fields.powDifficulty) {
-        json = buildTreatsMintPowJson(fields.tick ?? '', fields.amt ?? '', {
-          challengeId: fields.powChallengeId,
-          nonce: fields.powNonce,
-          difficulty: Number(fields.powDifficulty),
-        });
-      } else {
-        json = buildTreatsMintJson(fields.tick ?? '', fields.amt ?? '');
-      }
+      json = buildTreatsMintJson(fields.tick ?? '', fields.amt ?? '', fields.assetId ?? fields.i ?? '');
       break;
     case 'transfer':
-      json = buildTreatsTransferJson(fields.tick ?? '', fields.amt ?? '');
+      json = buildTreatsTransferJson(fields.tick ?? '', fields.amt ?? '', fields.assetId ?? fields.i ?? '');
       break;
     case 'burn':
-      json = buildTreatsBurnJson(fields.tick ?? '', fields.amt ?? '');
+      json = buildTreatsBurnJson(fields.tick ?? '', fields.amt ?? '', fields.assetId ?? fields.i ?? '');
       break;
   }
   return json ? Buffer.from(json, 'utf8') : null;

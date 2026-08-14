@@ -1,10 +1,10 @@
-import { buildOpReturnLockingScript, OP_RETURN_DATA_SOFT_CAP_BYTES } from '../tx/opReturn';
+import { buildOpReturnLockingScript } from '../tx/opReturn';
 import type { DogeSdkLikeOutput } from '../tx/outputPlan';
 import { TREATS_DUST_KOINU } from './constants';
 
 /**
- * ÐogeTreats output order: vout0 OP_RETURN → vout1 paired dust (d/m/t) → change.
- * Burn omits the paired dust output.
+ * ÐogeTreats output order: OP_RETURN then paired dust (d/m/t) then change.
+ * Indexer scans every Treats OP_RETURN; wallets still put the envelope first.
  */
 export function planTreatsOperationOutputs(params: {
   payload: Buffer;
@@ -12,7 +12,7 @@ export function planTreatsOperationOutputs(params: {
   changeAddress: string;
   changeSats: number;
 }): DogeSdkLikeOutput[] {
-  const script = buildOpReturnLockingScript(params.payload, OP_RETURN_DATA_SOFT_CAP_BYTES);
+  const script = buildOpReturnLockingScript(params.payload, 81);
   const out: DogeSdkLikeOutput[] = [{ value: 0, script: new Uint8Array(script) }];
 
   if (params.recipientAddress) {
