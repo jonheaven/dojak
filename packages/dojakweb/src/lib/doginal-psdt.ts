@@ -28,6 +28,7 @@ import {
 import { mergePaymentUtxos } from './mempoolSpendOverlay';
 import { dogeTxExplorerUrl } from '../utils/dogeTxExplorer';
 import { loadWalletTxJournal, upsertWalletTxJournalEntry } from './wallet-tx-journal';
+import { SOFT_DUST_KOINU, softDustFeePenaltyKoinu } from './dogecoin/softDust';
 
 // ── Dogecoin network params for bitcoinjs-lib ────────────────────────────────
 export const DOGE_NETWORK: bitcoin.Network = {
@@ -853,15 +854,27 @@ export async function buildDummyUtxoPSDT(
 
   psbt.addOutput({ address: payerAddress, value: BigInt(DUMMY_UTXO_VALUE) });
 
-  const fee    = calculateFee(
+  // Size fee for dummy + change. The 0.001 dummy is Dogecoin soft-dust, so Core
+  // requires +0.01 Ð extra fee or the split sits unconfirmed forever.
+  const sizeFee = calculateFee(
     psbt.txInputs.length,
-    psbt.txOutputs.length,
+    2,
     feeRate,
-    true,
+    false,
     BUY_FEE_SIZE_PADDING_BYTES,
   );
+  const dustPenalty = softDustFeePenaltyKoinu([DUMMY_UTXO_VALUE]);
+  const fee = sizeFee + dustPenalty;
   const change = total - DUMMY_UTXO_VALUE - fee;
-  if (change >= DUMMY_UTXO_VALUE) psbt.addOutput({ address: payerAddress, value: BigInt(change) });
+  if (change < 0) {
+    throw new Error(
+      `Not enough spendable DOGE to create a 0.001 dummy coin (need ~${shibesToDoge(DUMMY_UTXO_VALUE + fee).toFixed(4)} Ð including soft-dust fee).`,
+    );
+  }
+  if (change >= SOFT_DUST_KOINU) {
+    psbt.addOutput({ address: payerAddress, value: BigInt(change) });
+  }
+  // Change below 0.01 Ð is absorbed into the miner fee (another soft-dust out would cost +0.01).
 
   return psbt.toBase64();
 }
