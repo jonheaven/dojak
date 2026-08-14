@@ -21,9 +21,11 @@ import { broadcastTx, coerceSignedPsdtToRawTxHex, getTxHex } from '../lib/dogina
 import type { DuneTxSigner } from '../lib/dune-tx-signer';
 import { assertDuneTxSigner } from '../lib/dune-tx-signer';
 import {
+  buildAirdropSendScript,
   buildEtchScript,
   buildMintScript,
   buildSendScript,
+  packDuneAirdropBatches,
   parseSpacedDune,
   uniqueEtchBurnKoinu,
   type DuneTerms,
@@ -1006,4 +1008,148 @@ export function smallestUnitsToHuman(amount: bigint, divisibility: number): stri
   const fracPart = amount % factor;
   const fracStr  = fracPart.toString().padStart(divisibility, '0').replace(/0+$/, '');
   return fracStr ? `${intPart}.${fracStr}` : intPart.toString();
+}
+
+export type DuneAirdropRecipient = {
+  address: string;
+  /** Smallest units. */
+  amount: bigint;
+};
+
+export type DuneAirdropJobFee = {
+  address: string;
+  value: number;
+};
+
+export async function sendDuneAirdropBatch(params: {
+  duneId: string;
+  recipients: DuneAirdropRecipient[];
+  signer: DuneTxSigner;
+  postage?: number;
+  feeRate?: number;
+  jobFee?: DuneAirdropJobFee;
+  /** Previous batch change — remaining Ðunes live here until confirmed. */
+  chainedCarrier?: NormalisedUtxo;
+}): Promise<SendResult & { change: BuiltTx['change']; spent: BuiltTx['spent'] }> {
+  const {
+    duneId,
+    recipients,
+    signer,
+    postage = POSTAGE_KOINU,
+    feeRate = 1_000_000,
+    jobFee,
+    chainedCarrier,
+  } = params;
+  if (!recipients.length) throw new Error('Ðune airdrop batch is empty');
+  if (postage < POSTAGE_KOINU) {
+    assertPlainPaymentKoinu('Postage', postage);
+  }
+
+  const amountBig = recipients.reduce((sum, r) => sum + r.amount, 0n);
+  if (amountBig <= 0n) throw new Error('Send amount must be greater than zero');
+
+  const extraOutputs: Array<{ address: string; value: number }> = recipients.map((r) => ({
+    address: r.address,
+    value: postage,
+  }));
+  if (jobFee && jobFee.value > 0) {
+    extraOutputs.push({ address: jobFee.address, value: jobFee.value });
+  }
+  const pointer = extraOutputs.length + 1;
+  const opReturnScript = buildAirdropSendScript(
+    duneId,
+    recipients.map((r, idx) => ({ amount: r.amount, output: idx + 1 })),
+    pointer,
+  );
+
+  const { mustInclude, utxos } = chainedCarrier
+    ? await getUtxosForDuneSendChained(signer.fromAddress, chainedCarrier)
+    : await getUtxosForDuneSend(signer.fromAddress, duneId, amountBig);
+
+  const built = await signDuneTransaction(signer, opReturnScript, extraOutputs, feeRate, {
+    utxos,
+    mustIncludeUtxos: mustInclude,
+    forceChangeOutput: true,
+  });
+
+  const txid = await broadcastDuneTransaction(built.rawHex, {
+    address: built.fromAddress,
+    spent: built.spent,
+    change: built.change,
+  });
+  return { txHex: built.rawHex, txid, feeSatoshis: built.feeSatoshis, change: built.change, spent: built.spent };
+}
+
+async function getUtxosForDuneSendChained(
+  address: string,
+  carrier: NormalisedUtxo,
+): Promise<{ mustInclude: NormalisedUtxo[]; utxos: NormalisedUtxo[] }> {
+  const all = await fetchSpendableUtxosConservativeForAddress(address);
+  const { safe } = await filterPaymentSpendableUtxos(address, all.length ? all : [carrier]);
+  const payment = [
+    carrier,
+    ...safe.filter((u) => u.tx_hash !== carrier.tx_hash || u.tx_output_n !== carrier.tx_output_n),
+  ];
+  const merged = mergePaymentUtxos(
+    address,
+    payment.map((u) => ({ txid: u.tx_hash, vout: u.tx_output_n, value: u.value })),
+  );
+  const carrierKey = `${carrier.tx_hash.toLowerCase()}:${carrier.tx_output_n}`;
+  const hasCarrier = merged.some((u) => `${u.txid}:${u.vout}` === carrierKey);
+  if (!hasCarrier) {
+    throw new Error(
+      `Chained Ðune change ${carrierKey} is missing from the session overlay. Wait a block and retry the remaining drop.`,
+    );
+  }
+  const utxos: NormalisedUtxo[] = merged.map((u) => ({
+    tx_hash: u.txid,
+    tx_output_n: u.vout,
+    value: u.value,
+  }));
+  return { mustInclude: [carrier], utxos };
+}
+
+export async function sendDuneAirdrop(params: {
+  duneId: string;
+  recipients: DuneAirdropRecipient[];
+  signer: DuneTxSigner;
+  postage?: number;
+  feeRate?: number;
+  jobFee?: DuneAirdropJobFee;
+  onBatch?: (info: {
+    batchIndex: number;
+    batchCount: number;
+    txid: string;
+    recipientCount: number;
+  }) => void | Promise<void>;
+}): Promise<{ txids: string[]; feeSatoshis: number }> {
+  const batches = packDuneAirdropBatches(params.duneId, params.recipients);
+  const txids: string[] = [];
+  let feeSatoshis = 0;
+  let chainedCarrier: NormalisedUtxo | undefined;
+  for (let i = 0; i < batches.length; i++) {
+    const result = await sendDuneAirdropBatch({
+      duneId: params.duneId,
+      recipients: batches[i]!,
+      signer: params.signer,
+      postage: params.postage,
+      feeRate: params.feeRate,
+      jobFee: i === 0 ? params.jobFee : undefined,
+      chainedCarrier,
+    });
+    if (!result.txid) throw new Error('Ðune airdrop batch broadcast returned no txid');
+    txids.push(result.txid);
+    feeSatoshis += result.feeSatoshis;
+    chainedCarrier =
+      result.change != null
+        ? { tx_hash: result.txid, tx_output_n: result.change.vout, value: result.change.value }
+        : undefined;
+    await params.onBatch?.({
+      batchIndex: i,
+      batchCount: batches.length,
+      txid: result.txid,
+      recipientCount: batches[i]!.length,
+    });
+  }
+  return { txids, feeSatoshis };
 }

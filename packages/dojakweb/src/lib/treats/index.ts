@@ -3,5 +3,6 @@ export * from './buildJson';
 export * from './noizFlagship';
 export * from './outputPlan';
 export * from './signTreatsTransaction';
+export * from './airdrop';
 export * from './treatsApi';
 export * from './pow';

@@ -519,6 +519,75 @@ export function buildSendScript(
   });
 }
 
+/** Full `scriptPubKey` cap — same Core `MAX_OP_RETURN_RELAY` as Treats. */
+export const DUNE_MAX_OPRETURN_SCRIPT_BYTES = 83;
+
+/**
+ * Multi-recipient send: edicts to postage outs 1..N, pointer on change (N+1)
+ * so leftover Ðunes do not over-deliver.
+ */
+export function buildAirdropSendScript(
+  duneId: string,
+  transfers: Array<{ amount: bigint; output: number }>,
+  pointer: number,
+): Uint8Array {
+  if (!transfers.length) throw new Error('Ðune airdrop needs at least one edict');
+  if (pointer === undefined) {
+    throw new Error('Pointer is required for Ðune airdrops so remainder parks on change.');
+  }
+  const { block, tx } = parseDuneId(duneId);
+  return encodeDunestone({
+    pointer,
+    edicts: transfers.map((t) => ({
+      id: { block, tx },
+      amount: t.amount,
+      output: t.output,
+    })),
+  });
+}
+
+export type DuneAirdropPackRecipient = {
+  address: string;
+  amount: bigint;
+};
+
+/**
+ * Greedy-pack recipients into 83-byte dunestones. Typical ~8–14 edicts depending
+ * on ÐA varints and amount size.
+ */
+export function packDuneAirdropBatches(
+  duneId: string,
+  recipients: DuneAirdropPackRecipient[],
+): DuneAirdropPackRecipient[][] {
+  const batches: DuneAirdropPackRecipient[][] = [];
+  let i = 0;
+  while (i < recipients.length) {
+    const batch: DuneAirdropPackRecipient[] = [];
+    while (i < recipients.length) {
+      const next = [...batch, recipients[i]!];
+      const pointer = next.length + 1;
+      const script = buildAirdropSendScript(
+        duneId,
+        next.map((r, idx) => ({ amount: r.amount, output: idx + 1 })),
+        pointer,
+      );
+      if (script.length > DUNE_MAX_OPRETURN_SCRIPT_BYTES) {
+        if (!batch.length) {
+          throw new Error(
+            `Ðune airdrop edict does not fit in ${DUNE_MAX_OPRETURN_SCRIPT_BYTES}-byte OP_RETURN ` +
+              `(recipient ${recipients[i]!.address}). Split the amount or use a smaller ÐA.`,
+          );
+        }
+        break;
+      }
+      batch.push(recipients[i]!);
+      i += 1;
+    }
+    if (batch.length) batches.push(batch);
+  }
+  return batches;
+}
+
 export interface LaunchCurveEtchScriptParams {
   name: string;
   maxSupply: bigint;
