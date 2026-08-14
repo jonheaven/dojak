@@ -5,6 +5,7 @@ export * from './WalletManager';
 export * from './MyDogeAdapter';
 export * from './DojakAdapter';
 export * from './SpookyDogeAdapter';
+export * from './DogeSoftAdapter';
 
 
 // Re-export the singleton instance for convenience

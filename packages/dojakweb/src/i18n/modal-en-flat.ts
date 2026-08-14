@@ -563,6 +563,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.walletSource.mydoge': 'MyDoge',
   'modal.walletSource.dojak': 'Dojak',
   'modal.walletSource.spookydoge': 'Spooky Doge',
+  'modal.walletSource.dogesoft': 'Doge Soft',
   'modal.walletSource.ledger': 'Ledger',
   'modal.walletSource.dogewatch': 'Dogewatch',
   'modal.walletSource.generic': 'Wallet',

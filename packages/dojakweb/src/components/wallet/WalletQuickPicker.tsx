@@ -10,6 +10,7 @@ import {
 import { useUnifiedWallet } from '../../contexts/UnifiedWalletContext';
 import { useDojakwebI18n } from '../../contexts/DojakwebLocaleContext';
 import { useDojakwebTheme } from '../../contexts/DojakwebThemeContext';
+import { WalletProviderIcon } from './WalletProviderIcon';
 
 export type WalletDrawerOpenStep = 'chooser' | 'entry' | 'dashboard' | 'unlock';
 
@@ -66,7 +67,7 @@ function TileGlyph({
       </span>
     );
   }
-  return <Monitor className="h-5 w-5 text-white/70" aria-hidden />;
+  return <WalletProviderIcon walletType={type} size="md" />;
 }
 
 export function WalletQuickPicker({

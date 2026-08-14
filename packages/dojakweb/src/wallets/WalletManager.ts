@@ -2,6 +2,7 @@ import { WalletAdapter, WalletConfig, type WalletConnection } from './types';
 import { MyDogeAdapter } from './MyDogeAdapter';
 import { DojakAdapter } from './DojakAdapter';
 import { SpookyDogeAdapter } from './SpookyDogeAdapter';
+import { DogeSoftAdapter } from './DogeSoftAdapter';
 
 
 export class WalletManager {
@@ -10,6 +11,14 @@ export class WalletManager {
   private currentWallet: WalletAdapter | null = null;
 
   constructor() {
+    this.registerWallet({
+      id: 'dogesoft',
+      name: 'Doge Soft',
+      adapter: DogeSoftAdapter,
+      enabled: true,
+      priority: 12
+    });
+
     this.registerWallet({
       id: 'spookydoge',
       name: 'Spooky Doge',
@@ -112,7 +121,7 @@ export class WalletManager {
     return null;
   }
 
-  /** Connect by registered wallet id (e.g. `mydoge`, `dojak`, `spookydoge`). */
+  /** Connect by registered wallet id (e.g. `mydoge`, `dojak`, `spookydoge`, `dogesoft`). */
   async connect(walletId: string): Promise<WalletConnection> {
     const adapter = this.getWallet(walletId);
     if (!adapter) {

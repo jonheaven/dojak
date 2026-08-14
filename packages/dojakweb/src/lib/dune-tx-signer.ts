@@ -12,7 +12,7 @@ export type DuneTxSignerResult =
   | { ok: true; signer: DuneTxSigner }
   | { ok: false; message: string };
 
-const PSBT_WALLET_TYPES: WalletType[] = ['mydoge', 'spookydoge', 'dojak', 'dogewatch', 'browser'];
+const PSBT_WALLET_TYPES: WalletType[] = ['mydoge', 'spookydoge', 'dogesoft', 'dojak', 'dogewatch', 'browser'];
 
 function hasPsbtSigning(type: WalletType | null): type is WalletType {
   return type !== null && PSBT_WALLET_TYPES.includes(type);

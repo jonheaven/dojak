@@ -369,6 +369,8 @@ function getWalletSourceIndicator(
       return { label: t('modal.walletSource.dojak'), dot: 'bg-cyan-400', text: 'text-cyan-300' };
     case 'spookydoge':
       return { label: t('modal.walletSource.spookydoge'), dot: 'bg-indigo-400', text: 'text-indigo-300' };
+    case 'dogesoft':
+      return { label: t('modal.walletSource.dogesoft'), dot: 'bg-amber-300', text: 'text-amber-200' };
     case 'ledger':
       return { label: t('modal.walletSource.ledger'), dot: 'bg-violet-400', text: 'text-violet-300' };
     case 'dogewatch':
@@ -1446,7 +1448,13 @@ export function DojakwebWalletModal({
     !/^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
 
   const localWallets = availableWallets.filter((wallet) => wallet.type === 'browser');
-  const extensionWallets = availableWallets.filter((wallet) => wallet.type === 'mydoge' || wallet.type === 'spookydoge' || wallet.type === 'dojak');
+  const extensionWallets = availableWallets.filter(
+    (wallet) =>
+      wallet.type === 'mydoge' ||
+      wallet.type === 'spookydoge' ||
+      wallet.type === 'dogesoft' ||
+      wallet.type === 'dojak',
+  );
   const hardwareWallets = availableWallets.filter(
     (wallet) => wallet.type === 'ledger' || wallet.type === 'dogewatch'
   );
@@ -3213,7 +3221,12 @@ export function DojakwebWalletModal({
           length: signedPsbt.length,
           prefix: signedPsbt.slice(0, 24),
         });
-      } else if (walletType === 'mydoge' || walletType === 'dojak') {
+      } else if (
+        walletType === 'mydoge' ||
+        walletType === 'dojak' ||
+        walletType === 'spookydoge' ||
+        walletType === 'dogesoft'
+      ) {
         console.log('[Listing] signing with extension wallet', { walletType });
         // Extension wallets sign via their own API.
         // The PSBT already has sighashType=SIGHASH_SINGLE|ANYONECANPAY embedded,

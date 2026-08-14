@@ -225,6 +225,7 @@ export const DogetagPage: React.FC<{
     : walletType === 'ledger' ? 'Ledger'
     : walletType === 'dogewatch' ? 'Dogewatch'
     : walletType === 'spookydoge' ? 'SpookyDoge'
+    : walletType === 'dogesoft' ? 'Doge Soft'
     : null;
 
   const syncDogetagUrl = (mode: 'op_return' | 'witness') => {

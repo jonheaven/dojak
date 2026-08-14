@@ -8,10 +8,11 @@ import { LedgerWallet } from '../lib/ledger-wallet';
 import { DogewatchWallet } from '../lib/dogewatch-wallet';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import type { WalletType } from '../types/wallet';
+import { getInjectedDogeSoftProvider } from '../utils/dogesoft-provider';
 
 export type ConnectKind = Extract<
   WalletType,
-  'spookydoge' | 'mydoge' | 'browser' | 'dojak' | 'ledger' | 'dogewatch'
+  'spookydoge' | 'dogesoft' | 'mydoge' | 'browser' | 'dojak' | 'ledger' | 'dogewatch'
 >;
 
 export type WalletOptionTile = {
@@ -58,6 +59,8 @@ function shortName(type: ConnectKind, t: (key: string) => string): string {
       return t('wallet.quickPicker.short.dojak');
     case 'spookydoge':
       return t('wallet.quickPicker.short.spookydoge');
+    case 'dogesoft':
+      return t('wallet.quickPicker.short.dogesoft');
     case 'ledger':
       return t('wallet.quickPicker.short.ledger');
     case 'dogewatch':
@@ -94,6 +97,10 @@ export function useWalletConnectOptions(options?: {
     typeof window !== 'undefined' &&
     !!((window as any).isSpookyWallet || (window as any).__DOJAKWEB_FLAGS?.isSpookyWallet);
   const dojak = typeof window !== 'undefined' && window.dojak?.isDojak ? window.dojak : null;
+  const [dogeSoftReady, setDogeSoftReady] = useState(
+    () => typeof window !== 'undefined' && !!getInjectedDogeSoftProvider(),
+  );
+  const dogeSoft = dogeSoftReady ? getInjectedDogeSoftProvider() : null;
 
   const connectedTypes = useMemo(() => {
     const set = new Set<WalletType>();
@@ -110,6 +117,17 @@ export function useWalletConnectOptions(options?: {
       setDogewatchSupported(await DogewatchWallet.isSupported());
     })();
   }, [hasWallet]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (getInjectedDogeSoftProvider()) {
+      setDogeSoftReady(true);
+      return;
+    }
+    const onInit = () => setDogeSoftReady(!!getInjectedDogeSoftProvider());
+    window.addEventListener('dogesoft#initialized', onInit);
+    return () => window.removeEventListener('dogesoft#initialized', onInit);
+  }, []);
 
   const tiles: WalletOptionTile[] = useMemo(() => {
     const browserTitle = t('wallet.options.browser.title');
@@ -179,6 +197,22 @@ export function useWalletConnectOptions(options?: {
         isActive: walletType === 'spookydoge',
       },
       {
+        type: 'dogesoft',
+        title: t('wallet.options.dogesoft.title'),
+        shortTitle: shortName('dogesoft', t),
+        subtitle: dogeSoft
+          ? t('wallet.options.dogesoft.subtitleOk')
+          : t('wallet.options.dogesoft.subtitleInstall'),
+        ariaLabel: `${t('wallet.options.dogesoft.title')}. ${
+          dogeSoft
+            ? t('wallet.options.dogesoft.subtitleOk')
+            : t('wallet.options.dogesoft.subtitleInstall')
+        }`,
+        available: !!dogeSoft,
+        connected: connectedTypes.has('dogesoft'),
+        isActive: walletType === 'dogesoft',
+      },
+      {
         type: 'dogewatch',
         title: t('wallet.options.dogewatch.title'),
         shortTitle: shortName('dogewatch', t),
@@ -213,6 +247,7 @@ export function useWalletConnectOptions(options?: {
   }, [
     connectedTypes,
     dojak,
+    dogeSoft,
     dogewatchSupported,
     hasBrowserWallet,
     ledgerSupported,

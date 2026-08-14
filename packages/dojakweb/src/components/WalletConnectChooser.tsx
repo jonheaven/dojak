@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, Watch } from 'lucide-react';
+import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import {
   useWalletConnectOptions,
   type ConnectKind,
@@ -18,7 +19,7 @@ export type WalletConnectChooserProps = {
 };
 
 /**
- * Icon-grid wallet picker: Local Browser, MyDoge, Dojak, SpookyDoge, Dogewatch, Ledger.
+ * Icon-grid wallet picker: Local Browser, MyDoge, Dojak, SpookyDoge, Doge Soft, Dogewatch, Ledger.
  * Shared by WalletSelectionModal and the phone-drawer intro.
  */
 export function WalletConnectChooser({
@@ -80,12 +81,16 @@ export function WalletConnectChooser({
         </span>
       );
     }
-    return null;
+    return <WalletProviderIcon walletType={type} size="lg" />;
   };
 
   const browser = tiles.find((tile) => tile.type === 'browser');
   const extensions = tiles.filter(
-    (tile) => tile.type === 'mydoge' || tile.type === 'dojak' || tile.type === 'spookydoge',
+    (tile) =>
+      tile.type === 'mydoge' ||
+      tile.type === 'dojak' ||
+      tile.type === 'spookydoge' ||
+      tile.type === 'dogesoft',
   );
   const hardware = tiles.filter((tile) => tile.type === 'dogewatch' || tile.type === 'ledger');
 
@@ -123,7 +128,7 @@ export function WalletConnectChooser({
             </div>
           ) : null}
 
-          <div className="flex w-full max-w-[16.5rem] items-center justify-center gap-3">
+          <div className="flex w-full max-w-[20rem] flex-wrap items-center justify-center gap-3">
             {extensions.map((tile) => {
               const busy = connectingType === tile.type;
               return (

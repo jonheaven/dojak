@@ -29,6 +29,15 @@ import {
 } from '../services/dmp';
 import { walletDataApi } from '../utils/api';
 import { getInjectedMyDogeProvider } from '../utils/mydoge-provider';
+import {
+  dogeSoftRequest,
+  getInjectedDogeSoftProvider,
+  normalizeDogeSoftBalance,
+  pickDogeSoftSignature,
+  pickDogeSoftSignedPayload,
+  pickDogeSoftTxid,
+  waitForDogeSoftProvider,
+} from '../utils/dogesoft-provider';
 import type {
   DmpIntentParams,
   DmpIntentType,
@@ -50,6 +59,13 @@ interface DojakState {
 }
 
 interface SpookyState {
+  connected: boolean;
+  address: string | null;
+  balance: number;
+  connecting: boolean;
+}
+
+interface DogeSoftState {
   connected: boolean;
   address: string | null;
   balance: number;
@@ -87,6 +103,13 @@ const DOJAK_INITIAL_STATE: DojakState = {
 };
 
 const SPOOKY_INITIAL_STATE: SpookyState = {
+  connected: false,
+  address: null,
+  balance: 0,
+  connecting: false,
+};
+
+const DOGESOFT_INITIAL_STATE: DogeSoftState = {
   connected: false,
   address: null,
   balance: 0,
@@ -197,6 +220,8 @@ function getWalletTypeLabel(type: WalletType, browserNickname?: string | null): 
       return 'MyDoge';
     case 'spookydoge':
       return 'Spooky Doge';
+    case 'dogesoft':
+      return 'Doge Soft';
     case 'dojak':
       return 'Dojak';
     case 'ledger':
@@ -221,6 +246,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   const [walletType, setWalletType] = useState<WalletType | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [spookyState, setSpookyState] = useState<SpookyState>(SPOOKY_INITIAL_STATE);
+  const [dogeSoftState, setDogeSoftState] = useState<DogeSoftState>(DOGESOFT_INITIAL_STATE);
   const [dojakState, setDojakState] = useState<DojakState>(DOJAK_INITIAL_STATE);
   const [ledgerState, setLedgerState] = useState<LedgerState>(LEDGER_INITIAL_STATE);
   const [dogewatchState, setDogewatchState] = useState<DogewatchState>(DOGEWATCH_INITIAL_STATE);
@@ -229,6 +255,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
   const browser = useBrowserWallet();
   const spookyListenersRef = useRef(false);
+  const dogeSoftListenersRef = useRef(false);
   const dojakListenersRef = useRef(false);
   const ledgerWalletRef = useRef(new LedgerWallet());
   const dogewatchWalletRef = useRef(new DogewatchWallet());
@@ -285,6 +312,57 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
+    const provider = getInjectedDogeSoftProvider();
+    if (!provider || dogeSoftListenersRef.current) {
+      return;
+    }
+
+    dogeSoftListenersRef.current = true;
+    const handleAccountsChanged = (accounts: string[]) => {
+      if (accounts?.length) {
+        setDogeSoftState((prev) => ({ ...prev, connected: true, address: accounts[0] }));
+        return;
+      }
+
+      setDogeSoftState(DOGESOFT_INITIAL_STATE);
+      if (walletType === 'dogesoft') {
+        setWalletType(null);
+        localStorage.removeItem('wallet_type');
+      }
+    };
+    const handleDisconnect = () => {
+      setDogeSoftState(DOGESOFT_INITIAL_STATE);
+      if (walletType === 'dogesoft') {
+        setWalletType(null);
+        localStorage.removeItem('wallet_type');
+      }
+    };
+
+    provider.on?.('accountsChanged', handleAccountsChanged);
+    provider.on?.('disconnect', handleDisconnect);
+    return () => {
+      provider.off?.('accountsChanged', handleAccountsChanged);
+      provider.off?.('disconnect', handleDisconnect);
+      dogeSoftListenersRef.current = false;
+    };
+  }, [walletType]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const onDogeSoftInit = () => {
+      if (getInjectedDogeSoftProvider()) {
+        setDogeSoftState((prev) => ({ ...prev }));
+      }
+    };
+    window.addEventListener('dogesoft#initialized', onDogeSoftInit as EventListener);
+    return () => {
+      window.removeEventListener('dogesoft#initialized', onDogeSoftInit as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === 'undefined' || !window.dojak || dojakListenersRef.current) {
       return;
     }
@@ -317,6 +395,8 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         ? (browser?.connected ?? false)
         : walletType === 'spookydoge'
           ? spookyState.connected
+          : walletType === 'dogesoft'
+            ? dogeSoftState.connected
           : walletType === 'dojak'
           ? dojakState.connected
           : walletType === 'ledger'
@@ -332,6 +412,8 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         ? (browser?.address ?? null)
         : walletType === 'spookydoge'
           ? spookyState.address
+          : walletType === 'dogesoft'
+            ? dogeSoftState.address
           : walletType === 'dojak'
             ? dojakState.address
             : walletType === 'ledger'
@@ -347,6 +429,8 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         ? (browser?.balance ?? 0)
         : walletType === 'spookydoge'
           ? spookyState.balance
+          : walletType === 'dogesoft'
+            ? dogeSoftState.balance
           : walletType === 'dojak'
           ? dojakState.balance
           : walletType === 'ledger'
@@ -374,6 +458,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     ((walletType === 'mydoge' && myDoge?.balance !== undefined) ||
       (walletType === 'browser' && browser?.balanceVerified) ||
       (walletType === 'spookydoge' && spookyState.connected) ||
+      (walletType === 'dogesoft' && dogeSoftState.connected) ||
       (walletType === 'dojak' && dojakState.connected) ||
       (walletType === 'ledger' && ledgerState.balanceVerified) ||
       (walletType === 'dogewatch' && dogewatchState.balanceVerified));
@@ -403,6 +488,8 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         ? (browser?.connecting ?? false)
         : walletType === 'spookydoge'
           ? spookyState.connecting
+          : walletType === 'dogesoft'
+            ? dogeSoftState.connecting
           : walletType === 'dojak'
           ? dojakState.connecting
           : walletType === 'ledger'
@@ -414,6 +501,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   const browserConnected = browser?.connected ?? false;
   const myDogeConnected = myDoge?.connected ?? false;
   const spookyConnected = spookyState.connected;
+  const dogeSoftConnected = dogeSoftState.connected;
   const dojakConnected = dojakState.connected;
   const ledgerConnected = ledgerState.connected;
   const dogewatchConnected = dogewatchState.connected;
@@ -458,6 +546,19 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         accountIndex: null,
         derivationPath: null,
         isActive: walletType === 'spookydoge',
+      },
+      {
+        type: 'dogesoft' as const,
+        label: getWalletTypeLabel('dogesoft'),
+        connected: dogeSoftConnected,
+        address: dogeSoftState.address,
+        balance: dogeSoftState.balance,
+        balanceVerified: dogeSoftState.connected,
+        balanceRefreshing: false,
+        connecting: dogeSoftState.connecting,
+        accountIndex: null,
+        derivationPath: null,
+        isActive: walletType === 'dogesoft',
       },
       {
         type: 'dojak' as const,
@@ -538,6 +639,10 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     spookyState.address,
     spookyState.balance,
     spookyState.connecting,
+    dogeSoftConnected,
+    dogeSoftState.address,
+    dogeSoftState.balance,
+    dogeSoftState.connecting,
     walletType,
   ]);
 
@@ -546,6 +651,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       (type === 'browser' && browserConnected) ||
       (type === 'mydoge' && myDogeConnected) ||
       (type === 'spookydoge' && spookyConnected) ||
+      (type === 'dogesoft' && dogeSoftConnected) ||
       (type === 'dojak' && dojakConnected) ||
       (type === 'ledger' && ledgerConnected) ||
       (type === 'dogewatch' && dogewatchConnected);
@@ -558,7 +664,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     if (typeof window !== 'undefined') {
       localStorage.setItem('wallet_type', type);
     }
-  }, [browserConnected, dojakConnected, dogewatchConnected, ledgerConnected, myDogeConnected, spookyConnected]);
+  }, [browserConnected, dojakConnected, dogeSoftConnected, dogewatchConnected, ledgerConnected, myDogeConnected, spookyConnected]);
 
   const disconnectCurrentWallet = useCallback(
     async () => {
@@ -575,6 +681,14 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           // Ignore disconnect failures from injected providers.
         }
         setSpookyState(SPOOKY_INITIAL_STATE);
+      }
+      if (walletType === 'dogesoft' && dogeSoftState.connected) {
+        try {
+          await getInjectedDogeSoftProvider()?.disconnect?.();
+        } catch {
+          // Ignore disconnect failures from injected providers.
+        }
+        setDogeSoftState(DOGESOFT_INITIAL_STATE);
       }
       if (walletType === 'dojak' && dojakState.connected) {
         try {
@@ -597,6 +711,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       browser.connected,
       browser.disconnect,
       dojakState.connected,
+      dogeSoftState.connected,
       spookyState.connected,
       ledgerState.connected,
       dogewatchState.connected,
@@ -648,6 +763,46 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             connected: true,
             address: accounts[0],
             balance: 0,
+            connecting: false,
+          });
+          setWalletType(type);
+          localStorage.setItem('wallet_type', type);
+          return;
+        }
+
+        if (type === 'dogesoft') {
+          const provider = await waitForDogeSoftProvider();
+          if (!provider) {
+            throw new Error('Doge Soft wallet not found. Install the extension and pair your phone.');
+          }
+
+          setDogeSoftState((prev) => ({ ...prev, connecting: true }));
+          const response =
+            typeof provider.connect === 'function'
+              ? await provider.connect()
+              : await dogeSoftRequest(provider, 'connect');
+
+          const accounts = extractAccounts(response);
+          const nextAddress =
+            accounts[0] ??
+            (typeof provider.getAddress === 'function' ? await provider.getAddress() : null);
+          if (!nextAddress) {
+            throw new Error('No accounts returned from Doge Soft');
+          }
+
+          let bal = 0;
+          try {
+            if (typeof provider.getBalance === 'function') {
+              bal = normalizeDogeSoftBalance(await provider.getBalance());
+            }
+          } catch {
+            // Ignore balance fetch failures for Doge Soft.
+          }
+
+          setDogeSoftState({
+            connected: true,
+            address: nextAddress,
+            balance: bal,
             connecting: false,
           });
           setWalletType(type);
@@ -782,6 +937,9 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         if (type === 'spookydoge') {
           setSpookyState(SPOOKY_INITIAL_STATE);
         }
+        if (type === 'dogesoft') {
+          setDogeSoftState(DOGESOFT_INITIAL_STATE);
+        }
         if (type === 'dojak') {
           setDojakState(DOJAK_INITIAL_STATE);
         }
@@ -835,6 +993,8 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
               ? await waitForMyDogeProvider()
               : stored === 'spookydoge'
                 ? !!getSpookyProvider()
+                : stored === 'dogesoft'
+                  ? !!(await waitForDogeSoftProvider(2500))
                 : stored === 'dojak'
                   ? !!(window.dojak as any)?.isDojak
                 : stored === 'ledger'
@@ -859,6 +1019,57 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             // pop the extension approval UI even when the user just refreshed.
             // MyDogeWalletProvider will adopt the session if the extension can
             // report a verified current address without prompting.
+            return;
+          }
+
+          if (stored === 'dogesoft') {
+            // connect() prompts origin approval — restore only if already approved.
+            const provider = getInjectedDogeSoftProvider();
+            if (!provider) {
+              localStorage.removeItem('wallet_type');
+              setWalletType(null);
+              return;
+            }
+            let already = false;
+            try {
+              already =
+                typeof provider.isConnected === 'function'
+                  ? Boolean(await provider.isConnected())
+                  : false;
+            } catch {
+              already = false;
+            }
+            if (!already) {
+              return;
+            }
+            const accounts = extractAccounts(
+              typeof provider.getAccounts === 'function'
+                ? await provider.getAccounts()
+                : typeof provider.getAddress === 'function'
+                  ? [await provider.getAddress()]
+                  : [],
+            );
+            const nextAddress =
+              accounts[0] ??
+              (typeof provider.getAddress === 'function' ? await provider.getAddress() : null);
+            if (!nextAddress) {
+              return;
+            }
+            let bal = 0;
+            try {
+              if (typeof provider.getBalance === 'function') {
+                bal = normalizeDogeSoftBalance(await provider.getBalance());
+              }
+            } catch {
+              // Ignore.
+            }
+            setDogeSoftState({
+              connected: true,
+              address: nextAddress,
+              balance: bal,
+              connecting: false,
+            });
+            setWalletType('dogesoft');
             return;
           }
 
@@ -1000,6 +1211,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         'browser',
         'mydoge',
         'dojak',
+        'dogesoft',
         'spookydoge',
         'ledger',
         'dogewatch',
@@ -1009,6 +1221,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         if (type === 'browser' && browserConnected) return type;
         if (type === 'mydoge' && myDogeConnected) return type;
         if (type === 'dojak' && dojakConnected) return type;
+        if (type === 'dogesoft' && dogeSoftConnected) return type;
         if (type === 'spookydoge' && spookyConnected) return type;
         if (type === 'ledger' && ledgerConnected) return type;
         if (type === 'dogewatch' && dogewatchConnected) return type;
@@ -1035,6 +1248,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     browserConnected,
     disconnectCurrentWallet,
     dojakConnected,
+    dogeSoftConnected,
     dogewatchConnected,
     ledgerConnected,
     myDogeConnected,
@@ -1065,6 +1279,13 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           /* ignore */
         }
       }
+      if (dogeSoftState.connected) {
+        try {
+          await getInjectedDogeSoftProvider()?.disconnect?.();
+        } catch {
+          /* ignore */
+        }
+      }
       if (dojakState.connected) {
         try {
           await (window.dojak as any)?.disconnect?.();
@@ -1088,6 +1309,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       }
     } finally {
       setSpookyState(SPOOKY_INITIAL_STATE);
+      setDogeSoftState(DOGESOFT_INITIAL_STATE);
       setDojakState(DOJAK_INITIAL_STATE);
       setLedgerState(LEDGER_INITIAL_STATE);
       setDogewatchState(DOGEWATCH_INITIAL_STATE);
@@ -1100,6 +1322,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     browser.connected,
     browser.disconnect,
     dojakState.connected,
+    dogeSoftState.connected,
     dogewatchState.connected,
     ledgerState.connected,
     myDoge.connected,
@@ -1133,6 +1356,11 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           'SpookyDoge cannot attach protocol OP_RETURN yet. Use Local Browser Wallet or Dojak for Ðocial likes.',
         );
       }
+      if ((opReturnMessage || opReturnHex) && walletType === 'dogesoft') {
+        throw new Error(
+          'Doge Soft cannot attach protocol OP_RETURN yet. Use Local Browser Wallet or Dojak for Ðocial likes.',
+        );
+      }
 
       if (walletType === 'mydoge') {
         return myDoge.sendTransaction(recipientAddress, amount);
@@ -1150,6 +1378,18 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
               params: { recipientAddress, dogeAmount: amount },
             });
         return result?.txId || result?.txid || result;
+      }
+
+      if (walletType === 'dogesoft') {
+        const provider = getInjectedDogeSoftProvider();
+        if (!provider) {
+          throw new Error('Doge Soft wallet not available');
+        }
+        const response =
+          typeof provider.sendDoge === 'function'
+            ? await provider.sendDoge({ to: recipientAddress, amount })
+            : await dogeSoftRequest(provider, 'sendDoge', { to: recipientAddress, amount });
+        return pickDogeSoftTxid(response);
       }
 
       if (walletType === 'dojak') {
@@ -1319,6 +1559,18 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         return response?.signature || response?.signedMessage || response;
       }
 
+      if (walletType === 'dogesoft') {
+        const provider = getInjectedDogeSoftProvider();
+        if (!provider) {
+          throw new Error('Doge Soft wallet not available');
+        }
+        const response =
+          typeof provider.signMessage === 'function'
+            ? await provider.signMessage(message, address ?? undefined)
+            : await dogeSoftRequest(provider, 'signMessage', { message, address });
+        return pickDogeSoftSignature(response);
+      }
+
       if (walletType === 'dojak') {
         if (!window.dojak) {
           throw new Error('Dojak wallet not available');
@@ -1381,6 +1633,24 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         return response?.signedTx || response?.signedRawTx || response?.signedPsbt || response?.txHex || response;
       }
 
+      if (walletType === 'dogesoft') {
+        const provider = getInjectedDogeSoftProvider();
+        if (!provider) {
+          throw new Error('Doge Soft wallet not available');
+        }
+        const { psbtHex: preparedHex } = preparePsdtForMyDogeSign(psbtHex);
+        const response =
+          typeof provider.signPsbt === 'function'
+            ? await provider.signPsbt(preparedHex, { finalize: true })
+            : await dogeSoftRequest(provider, 'signPsbt', { psbt: preparedHex, finalize: true });
+        const signed = pickDogeSoftSignedPayload(response);
+        console.log('[UnifiedWallet] signPSBT:dogesoft:response', {
+          length: signed.length,
+          prefix: signed.slice(0, 32),
+        });
+        return signed;
+      }
+
       if (walletType === 'dojak') {
         const dojak = getDojakProvider();
         if (!dojak) {
@@ -1441,7 +1711,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       if (walletType === 'ledger') {
         throw new Error(
           'Ledger’s Dogecoin app uses the legacy Ledger interface: it cannot sign PSBTs from web apps (only older “build transaction” flows). ' +
-            'doggy.market-style buys need PSDT signing. Use MyDoge, Dojak, SpookyDoge, or Dojakweb’s in-browser wallet for this step.',
+            'doggy.market-style buys need PSDT signing. Use MyDoge, Dojak, Doge Soft, SpookyDoge, or Dojakweb’s in-browser wallet for this step.',
         );
       }
 
@@ -1528,6 +1798,28 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         return normalizeSignedPsdtToBase64(typeof signed === 'string' ? signed : String(signed));
       }
 
+      if (walletType === 'dogesoft') {
+        const provider = getInjectedDogeSoftProvider();
+        if (!provider) {
+          throw new Error('Doge Soft wallet not available');
+        }
+        const { psbtHex, indexes } = preparePsdtForMyDogeSign(psbtInput);
+        const response =
+          typeof provider.signPsbt === 'function'
+            ? await provider.signPsbt(psbtHex, { finalize: false })
+            : await dogeSoftRequest(provider, 'signPsbt', {
+                psbt: psbtHex,
+                finalize: false,
+                signInputs: indexes,
+              });
+        const signed = pickDogeSoftSignedPayload(response);
+        console.log('[UnifiedWallet] signPSBTOnly:dogesoft:response', {
+          length: signed.length,
+          prefix: signed.slice(0, 32),
+        });
+        return normalizeSignedPsdtToBase64(signed);
+      }
+
       if (walletType === 'dojak') {
         const dojak = getDojakProvider();
         if (!dojak) {
@@ -1607,7 +1899,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       if (walletType === 'ledger') {
         throw new Error(
           'Ledger’s Dogecoin app uses the legacy Ledger interface: it cannot sign PSBTs from web apps (only older “build transaction” flows). ' +
-            'doggy.market-style buys need PSDT signing. Use MyDoge, Dojak, SpookyDoge, or Dojakweb’s in-browser wallet for this step.',
+            'doggy.market-style buys need PSDT signing. Use MyDoge, Dojak, Doge Soft, SpookyDoge, or Dojakweb’s in-browser wallet for this step.',
         );
       }
 
@@ -1669,6 +1961,24 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         });
       }
 
+      if (walletType === 'dogesoft') {
+        const provider = getInjectedDogeSoftProvider();
+        if (!provider) {
+          throw new Error('Doge Soft wallet not available');
+        }
+        return signDMPIntentService(intentType, {
+          ...params,
+          activeAddress: address,
+          signMessage: async (message) => {
+            const response =
+              typeof provider.signMessage === 'function'
+                ? await provider.signMessage(message, address)
+                : await dogeSoftRequest(provider, 'signMessage', { message, address });
+            return pickDogeSoftSignature(response);
+          },
+        });
+      }
+
       if (walletType === 'dojak') {
         if (!window.dojak) {
           throw new Error('Dojak wallet not available');
@@ -1719,6 +2029,20 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             });
         return response?.txId || response?.txid || response;
       }
+      if (walletType === 'dogesoft') {
+        const provider = getInjectedDogeSoftProvider();
+        if (!provider) {
+          throw new Error('Doge Soft wallet not available');
+        }
+        const response =
+          typeof provider.sendInscription === 'function'
+            ? await provider.sendInscription({ inscriptionId: location, to: recipientAddress })
+            : await dogeSoftRequest(provider, 'sendInscription', {
+                inscriptionId: location,
+                to: recipientAddress,
+              });
+        return pickDogeSoftTxid(response);
+      }
       if (walletType === 'dojak') {
         if (!window.dojak) {
           throw new Error('Dojak wallet not available');
@@ -1746,6 +2070,9 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           : await provider.request?.({ method: 'dogecoin_getTransactionStatus', params: { txId } });
         return { status: response?.status || 'unknown', confirmations: Number(response?.confirmations || 0) };
       }
+      if (walletType === 'dogesoft') {
+        throw new Error('Transaction status is not exposed by Doge Soft; use a chain explorer.');
+      }
       throw new Error('Transaction status is not supported for this wallet type');
     },
     [myDoge, walletType]
@@ -1769,6 +2096,23 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           ? await provider.getBalance()
           : await provider?.request?.({ method: 'doge_getBalance' });
         setSpookyState((prev) => ({ ...prev, balance: normalizeSpookyBalance(result) }));
+      } catch {
+        // Ignore transient extension/API failures.
+      }
+      return;
+    }
+
+    if (walletType === 'dogesoft') {
+      const provider = getInjectedDogeSoftProvider();
+      if (!provider) {
+        return;
+      }
+      try {
+        const result =
+          typeof provider.getBalance === 'function'
+            ? await provider.getBalance()
+            : await dogeSoftRequest(provider, 'getBalance');
+        setDogeSoftState((prev) => ({ ...prev, balance: normalizeDogeSoftBalance(result) }));
       } catch {
         // Ignore transient extension/API failures.
       }

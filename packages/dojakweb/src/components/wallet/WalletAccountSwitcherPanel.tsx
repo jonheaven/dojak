@@ -39,6 +39,8 @@ function walletDotClass(type: WalletType, active: boolean): string {
       return 'bg-sky-400/80';
     case 'spookydoge':
       return 'bg-violet-400/80';
+    case 'dogesoft':
+      return 'bg-amber-300/80';
     case 'dojak':
       return 'bg-[#D4A017]/90';
     case 'ledger':

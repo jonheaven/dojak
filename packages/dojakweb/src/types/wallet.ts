@@ -145,10 +145,43 @@ declare global {
       on: (event: string, callback: (data?: any) => void) => void;
       removeListener: (event: string, callback: (data?: any) => void) => void;
     };
+
+    /** Doge Soft extension — https://docs.dogesoft.io/wallet/quickstart/ */
+    dogesoft?: {
+      version?: string;
+      network?: string;
+      connect: () => Promise<{ accounts?: string[]; address?: string } | string[]>;
+      disconnect?: () => Promise<void>;
+      isConnected?: () => Promise<boolean> | boolean;
+      getAccounts?: () => Promise<string[]>;
+      getAddress?: () => Promise<string>;
+      getPublicKey?: () => Promise<string>;
+      getBalance?: () => Promise<number | { balance?: number | string; confirmed?: number; total?: number }>;
+      signMessage?: (message: string, address?: string) => Promise<string | { signature?: string }>;
+      signPsbt?: (
+        psbt: string,
+        options?: { finalize?: boolean; feeRate?: number },
+      ) => Promise<string | { hex?: string; signedPsbt?: string; txid?: string }>;
+      pushPsbt?: (hex: string) => Promise<{ txid?: string } | string>;
+      sendDoge?: (params: {
+        to: string;
+        amount: number;
+        feeRate?: number;
+        protocol?: string;
+      }) => Promise<{ txid?: string; txId?: string } | string>;
+      sendDrc20?: (params: { tick: string; amount: string; to: string }) => Promise<unknown>;
+      sendInscription?: (params: {
+        inscriptionId: string;
+        to: string;
+      }) => Promise<{ txid?: string; txId?: string } | string>;
+      request?: (args: { method: string; params?: unknown }) => Promise<unknown>;
+      on?: (event: string, handler: (...args: any[]) => void) => void;
+      off?: (event: string, handler: (...args: any[]) => void) => void;
+    };
   }
 }
 
-export type WalletType = 'browser' | 'mydoge' | 'spookydoge' | 'dojak' | 'ledger' | 'dogewatch';
+export type WalletType = 'browser' | 'mydoge' | 'spookydoge' | 'dogesoft' | 'dojak' | 'ledger' | 'dogewatch';
 export type WalletMode = 'dojak' | 'local_browser_wallet';
 export type NetworkType = 'mainnet' | 'testnet' | 'regtest';
 export type WalletSource = 'generated' | 'mnemonic' | 'privateKey' | 'ledger';

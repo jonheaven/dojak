@@ -1,12 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, LoaderCircle, Monitor, ShieldCheck, Wallet2 } from 'lucide-react';
+import { AlertCircle, LoaderCircle, ShieldCheck, Wallet2 } from 'lucide-react';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { LedgerWallet } from '../lib/ledger-wallet';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
+import { getInjectedDogeSoftProvider } from '../utils/dogesoft-provider';
+import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 
 interface SimpleWalletConnectProps {
   onConnect?: () => void;
@@ -14,7 +16,7 @@ interface SimpleWalletConnectProps {
 }
 
 interface WalletIcon {
-  type: 'spookydoge' | 'mydoge' | 'dojak' | 'browser' | 'ledger';
+  type: 'spookydoge' | 'dogesoft' | 'mydoge' | 'dojak' | 'browser' | 'ledger';
   icon: typeof ShieldCheck;
   logo?: string;
   detected: boolean;
@@ -38,6 +40,7 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
       ? (window as any).dogecoin
       : null;
   const dojak = typeof window !== 'undefined' && window.dojak?.isDojak ? window.dojak : null;
+  const dogeSoft = typeof window !== 'undefined' ? getInjectedDogeSoftProvider() : null;
 
   const walletIcons: WalletIcon[] = useMemo(
     () => [
@@ -54,6 +57,12 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
         logo: '/spookydoge.webp',
         detected: !!spooky,
         name: 'SpookyDoge',
+      },
+      {
+        type: 'dogesoft',
+        icon: Wallet2,
+        detected: !!dogeSoft,
+        name: 'Doge Soft',
       },
       {
         type: 'dojak',
@@ -76,7 +85,7 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
         name: 'Ledger',
       },
     ],
-    [myDoge, spooky, dojak, hasBrowserWallet, ledgerSupported]
+    [myDoge, spooky, dogeSoft, dojak, hasBrowserWallet, ledgerSupported]
   );
 
   useEffect(() => {
@@ -141,7 +150,7 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
                     className="w-8 h-8 rounded-lg object-cover"
                   />
                 ) : (
-                  <wallet.icon className="w-8 h-8 text-white" />
+                  <WalletProviderIcon walletType={wallet.type} size="md" />
                 )}
                 {isConnecting && (
                   <LoaderCircle className="w-4 h-4 animate-spin text-white" />
