@@ -526,6 +526,7 @@ export {
   buildMergeFeeEstimate,
   buildSplitFeeEstimate,
   calcEqualSplitOutputs,
+  planSplitOutputs,
   buildAndSignMergeTx,
   buildAndSignSplitTx,
   broadcastUtxoTx,

@@ -45,6 +45,7 @@ import {
   estimateMergeFee,
   estimateSplitFee,
   calcEqualSplitOutputs,
+  planSplitOutputs,
   DUST_LIMIT,
   type UtxoListSource,
   type ManagedUtxoDune,
@@ -66,6 +67,7 @@ interface SplitEstimate {
   feeSatoshis: number;
   outputs: number[];
   totalInputSatoshis: number;
+  changeSatoshis: number;
 }
 
 export interface UtxoManagementProps {
@@ -394,22 +396,27 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
       let outputs: number[];
       if (splitMode === 'equal') {
         outputs = calcEqualSplitOutputs(splitUtxo, splitCount);
+        const fee = estimateSplitFee(outputs.length, outputs);
+        setSplitEst({
+          feeSatoshis: fee,
+          outputs,
+          totalInputSatoshis: splitUtxo.value,
+          changeSatoshis: 0,
+        });
       } else {
         outputs = customAmounts.map(v => Math.round(parseFloat(v || '0') * 1e8));
         if (outputs.some((v: number) => !Number.isFinite(v) || v < DUST_LIMIT)) {
           toast.error(t('utxo.toast.dustMinimum', { doge: (DUST_LIMIT / 1e8).toFixed(3) }));
           return;
         }
-        const fee = estimateSplitFee(outputs.length);
-        const total = outputs.reduce((s, v) => s + v, 0);
-        if (total + fee > splitUtxo.value) {
-          toast.error(
-            t('utxo.toast.outputsOverInput', { total: fmt(total + fee), input: fmt(splitUtxo.value) }),
-          );
-          return;
-        }
+        const plan = planSplitOutputs(splitUtxo.value, outputs);
+        setSplitEst({
+          feeSatoshis: plan.feeSatoshis,
+          outputs: plan.outputs,
+          totalInputSatoshis: splitUtxo.value,
+          changeSatoshis: plan.changeSatoshis,
+        });
       }
-      setSplitEst({ feeSatoshis: estimateSplitFee(outputs.length), outputs, totalInputSatoshis: splitUtxo.value });
     } catch (e: any) {
       toast.error(e?.message ?? t('utxo.toast.splitParams'));
     }
@@ -1190,6 +1197,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                         {t('utxo.split.addOutput')}
                       </button>
                     )}
+                    <p className="mt-1 text-[10px] text-white/30">{t('utxo.split.changeHint')}</p>
                   </div>
                 )}
 
@@ -1213,14 +1221,28 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
                         <DogeAmount sats={splitEst.feeSatoshis} /> <span className="text-white/30 text-[10px]">({(splitEst.feeSatoshis / 1e8).toFixed(4)} DOGE)</span>
                       </span>
                     </div>
+                    {splitEst.changeSatoshis > 0 ? (
+                      <div className="flex justify-between">
+                        <span className="text-white/50">{t('utxo.split.changeBack')}</span>
+                        <span className="text-emerald-300">
+                          <DogeAmount sats={splitEst.changeSatoshis} />
+                        </span>
+                      </div>
+                    ) : null}
                     <div className="flex justify-between"><span className="text-white/50">{t('utxo.outputs')}</span><span className="text-white">{splitEst.outputs.length}</span></div>
                     <div className="max-h-40 overflow-y-auto">
-                      {splitEst.outputs.map((v, i) => (
+                      {splitEst.outputs.map((v, i) => {
+                        const isChange =
+                          splitEst.changeSatoshis > 0 && i === splitEst.outputs.length - 1;
+                        return (
                         <div key={i} className="flex justify-between pl-3 text-[11px]">
-                          <span className="text-white/30">{t('utxo.outputN', { n: String(i + 1) })}</span>
+                          <span className="text-white/30">
+                            {isChange ? t('utxo.split.changeOutput') : t('utxo.outputN', { n: String(i + 1) })}
+                          </span>
                           <span className="font-mono text-white/60"><DogeAmount sats={v} decimals={8} /></span>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <button
                       type="button"

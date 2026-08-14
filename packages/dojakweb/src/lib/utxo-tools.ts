@@ -454,6 +454,70 @@ export function buildSplitFeeEstimate(
   };
 }
 
+/**
+ * Slack (koinu) allowed between policy fee and leftover when no change output is created.
+ * Anything larger must come back as change — never silent miner donation.
+ */
+const SPLIT_FEE_SLACK_KOINU = 10_000;
+
+/**
+ * Custom split: requested dummy/payment outs, plus change when leftover ≥ hard dust.
+ * Refuses to broadcast a split that would leave more than a dust-slack as miner fee.
+ */
+export function planSplitOutputs(
+  inputValue: number,
+  requested: number[],
+): { outputs: number[]; feeSatoshis: number; changeSatoshis: number } {
+  if (requested.length < 2) {
+    throw new Error('Split must produce at least 2 outputs.');
+  }
+  const underDust = requested.filter((v) => v < DUST_LIMIT);
+  if (underDust.length > 0) {
+    throw new Error(
+      `All outputs must be ≥ ${(DUST_LIMIT / 1e8).toFixed(3)} DOGE (dust limit). ` +
+        `Found ${underDust.length} under-limit output(s).`,
+    );
+  }
+  const requestedSum = requested.reduce((s, v) => s + v, 0);
+  if (requestedSum <= 0) {
+    throw new Error('Split outputs must sum to more than 0.');
+  }
+
+  let change = Math.max(0, inputValue - requestedSum - DUST_LIMIT);
+  for (let i = 0; i < 4; i++) {
+    const changeHint = Math.max(change, DUST_LIMIT);
+    const fee = estimateSplitFee(requested.length + 1, [...requested, changeHint]);
+    change = inputValue - requestedSum - fee;
+  }
+
+  if (change >= DUST_LIMIT) {
+    const outputs = [...requested, change];
+    const feeSatoshis = inputValue - outputs.reduce((s, v) => s + v, 0);
+    if (feeSatoshis < 0) {
+      throw new Error(
+        `Outputs (${(requestedSum / 1e8).toFixed(4)} DOGE) + fee exceed input (${(inputValue / 1e8).toFixed(4)} DOGE).`,
+      );
+    }
+    return { outputs, feeSatoshis, changeSatoshis: change };
+  }
+
+  const policyFee = estimateSplitFee(requested.length, requested);
+  const leftover = inputValue - requestedSum;
+  if (leftover < policyFee) {
+    throw new Error(
+      `Outputs (${(requestedSum / 1e8).toFixed(4)} DOGE) + fee (${(policyFee / 1e8).toFixed(4)} DOGE) ` +
+        `exceed input (${(inputValue / 1e8).toFixed(4)} DOGE).`,
+    );
+  }
+  if (leftover > policyFee + SPLIT_FEE_SLACK_KOINU) {
+    throw new Error(
+      `This split would pay ${(leftover / 1e8).toFixed(4)} Ð as miner fee instead of returning change. ` +
+        `Nudge an amount so leftover change is ≥ 0.001 Ð, or use Equal split.`,
+    );
+  }
+  return { outputs: requested, feeSatoshis: leftover, changeSatoshis: 0 };
+}
+
 /** Divide a UTXO value into N equal chunks (minus fee). Returns amounts in satoshis. */
 export function calcEqualSplitOutputs(utxo: ManagedUtxo, count: number): number[] {
   if (count < 2) throw new Error('Need at least 2 outputs for a split');
@@ -1080,6 +1144,14 @@ export async function buildAndSignSplitTx(
     throw new Error(
       `Outputs (${(totalOut / 1e8).toFixed(4)} DOGE) + fee (${(fee / 1e8).toFixed(4)} DOGE) ` +
       `exceed input (${(utxo.value / 1e8).toFixed(4)} DOGE).`,
+    );
+  }
+
+  const impliedFee = utxo.value - totalOut;
+  if (impliedFee > fee + SPLIT_FEE_SLACK_KOINU) {
+    throw new Error(
+      `Refusing split: leftover ${(impliedFee / 1e8).toFixed(4)} Ð would be miner fee, not change. ` +
+        `Custom amounts must leave ≥ 0.001 Ð for a change output (or use Equal split).`,
     );
   }
 
