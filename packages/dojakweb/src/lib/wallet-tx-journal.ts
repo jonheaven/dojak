@@ -681,9 +681,39 @@ export function mergeWalletTxJournalIntoList<T extends {
     }
   }
 
-  return [...byTxid.values()].sort((a, b) => {
-    const ta = Date.parse(a.journal?.updatedAt || a.timestamp) || 0;
-    const tb = Date.parse(b.journal?.updatedAt || b.timestamp) || 0;
-    return tb - ta;
-  });
+  return [...byTxid.values()].sort((a, b) => compareWalletTxNewestFirst(a, b));
+}
+
+/** Chain time first — never journal `updatedAt` (enrichment bumps that and scrambles the list). */
+export function compareWalletTxNewestFirst(
+  a: { timestamp?: string; pending?: boolean; confirmations?: number; journal?: { createdAt?: string } },
+  b: { timestamp?: string; pending?: boolean; confirmations?: number; journal?: { createdAt?: string } },
+): number {
+  const ap = a.pending ? 1 : 0;
+  const bp = b.pending ? 1 : 0;
+  if (ap !== bp) return bp - ap;
+  const ta = walletTxSortTimeMs(a);
+  const tb = walletTxSortTimeMs(b);
+  if (tb !== ta) return tb - ta;
+  return (a.confirmations ?? 0) - (b.confirmations ?? 0);
+}
+
+function walletTxSortTimeMs(tx: {
+  timestamp?: string;
+  journal?: { createdAt?: string };
+}): number {
+  return parseWalletTxTime(tx.timestamp) || parseWalletTxTime(tx.journal?.createdAt) || 0;
+}
+
+function parseWalletTxTime(raw?: string): number {
+  const t = (raw || '').trim();
+  if (!t) return 0;
+  if (/^\d+$/.test(t)) {
+    const n = Number(t);
+    const ms = n > 1e12 ? n : n > 1e10 ? n : n * 1000;
+    return Number.isFinite(ms) ? ms : 0;
+  }
+  const iso = /T/.test(t) ? t : `${t.replace(' ', 'T')}Z`;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : 0;
 }
