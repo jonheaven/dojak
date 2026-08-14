@@ -3,13 +3,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useUnifiedWallet } from '../../contexts/useUnifiedWallet';
 import {
+  alkanesAppPath,
   buildAlkanesCallScriptHex,
   broadcastAlkanesCall,
   deployAlkaneWasm,
   encodeCellpack,
-  fetchAlkanesList,
+  fetchAlkanesMarkets,
   fetchAlkaneTemplate,
-  type AlkaneMeta,
+  type AlkaneMarket,
   type AlkaneTemplate,
 } from '../../lib/alkanes';
 import { upsertWalletTxJournalEntry } from '../../lib/wallet-tx-journal';
@@ -48,6 +49,16 @@ function resolveApiBase(override?: string): string {
   return 'https://dogex.command.dog';
 }
 
+type CallMode =
+  | 'swap'
+  | 'buy-yes'
+  | 'buy-no'
+  | 'resolve'
+  | 'clock-init'
+  | 'clock-in'
+  | 'dice-roll'
+  | 'dice-donate';
+
 export function AlkanesToolsPanel({
   initialOp = 'deploy-amm',
   dogexApiBase,
@@ -57,7 +68,7 @@ export function AlkanesToolsPanel({
   const base = resolveApiBase(dogexApiBase);
   const [op, setOp] = useState<AlkanesUiOp>(initialOp);
   const [templateId, setTemplateId] = useState<AlkanesTemplateId>('amm');
-  const [items, setItems] = useState<AlkaneMeta[]>([]);
+  const [items, setItems] = useState<AlkaneMarket[]>([]);
   const [tmpl, setTmpl] = useState<AlkaneTemplate | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +76,7 @@ export function AlkanesToolsPanel({
   const [target, setTarget] = useState('0:0');
   const [amountIn, setAmountIn] = useState('10000');
   const [attachDoge, setAttachDoge] = useState('0');
-  const [callMode, setCallMode] = useState<'swap' | 'buy-yes' | 'buy-no' | 'resolve'>('swap');
+  const [callMode, setCallMode] = useState<CallMode>('swap');
   const [simOut, setSimOut] = useState<string | null>(null);
   const [scriptHex, setScriptHex] = useState<string | null>(null);
 
@@ -73,7 +84,7 @@ export function AlkanesToolsPanel({
     setError(null);
     try {
       const [list, t] = await Promise.all([
-        fetchAlkanesList(base),
+        fetchAlkanesMarkets(base),
         fetchAlkaneTemplate(base, templateId),
       ]);
       setItems(list);
@@ -122,6 +133,19 @@ export function AlkanesToolsPanel({
           }),
       })) as { inscriptionId: string };
       setStatus(`Deployed ${tmpl.name} · ${r.inscriptionId}`);
+      upsertWalletTxJournalEntry({
+        protocol: 'alkanes',
+        action: 'deploy',
+        title: `Ðalkanes ${tmpl.name}`,
+        summary: `${tmpl.name} · hash ${tmpl.code_hash.slice(0, 12)}…`,
+        status: 'broadcasted',
+        metadata: {
+          templateId,
+          templateName: tmpl.name,
+          codeHash: tmpl.code_hash,
+          inscriptionId: r.inscriptionId,
+        },
+      });
       await refresh();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'deploy failed';
@@ -135,6 +159,10 @@ export function AlkanesToolsPanel({
     if (callMode === 'buy-yes') return [1, 1, amountIn];
     if (callMode === 'buy-no') return [2, 1, amountIn];
     if (callMode === 'resolve') return [3];
+    if (callMode === 'clock-init') return [0];
+    if (callMode === 'clock-in') return [103];
+    if (callMode === 'dice-donate') return [42];
+    if (callMode === 'dice-roll') return [69];
     return [2, amountIn];
   };
 
@@ -274,11 +302,11 @@ export function AlkanesToolsPanel({
           {' · '}
           <a
             className="text-primary-500 underline hover:text-primary-400"
-            href="https://dogenals.com/alkanes"
+            href="https://dogenals.com/alkanes/clock-in"
             target="_blank"
             rel="noreferrer"
           >
-            Deploy UI
+            Clock-in
           </a>
         </p>
       </div>
@@ -352,25 +380,40 @@ export function AlkanesToolsPanel({
             {busy ? 'Inscribing…' : `One-click deploy ${tmpl?.name ?? 'template'}`}
           </button>
           <ul className="mt-3 max-h-40 space-y-1 overflow-auto font-mono text-xs text-text-secondary">
-            {items.map((m) => (
-              <li key={m.id} className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="text-text-primary hover:text-primary-500"
-                  onClick={() => setTarget(m.id)}
-                >
-                  {m.id} · {m.code_len}B
-                </button>
-                <a
-                  className="text-primary-500 underline hover:text-primary-400"
-                  href={`https://dogenals.com/alkanescan/${m.id.replace(':', '/')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  scan
-                </a>
-              </li>
-            ))}
+            {items.map((m) => {
+              const app = alkanesAppPath(m.kind);
+              return (
+                <li key={m.id} className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="text-text-primary hover:text-primary-500"
+                    onClick={() => setTarget(m.id)}
+                  >
+                    <span className="text-primary-500">{m.label || m.kind || 'unknown'}</span>
+                    {' · '}
+                    {m.id} · {m.code_len}B
+                  </button>
+                  <a
+                    className="text-primary-500 underline hover:text-primary-400"
+                    href={`https://dogenals.com/alkanescan/${m.id.replace(':', '/')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    scan
+                  </a>
+                  {app ? (
+                    <a
+                      className="text-primary-500 underline hover:text-primary-400"
+                      href={`https://dogenals.com${app}${app.includes('?') ? '&' : '?'}target=${encodeURIComponent(m.id)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      use
+                    </a>
+                  ) : null}
+                </li>
+              );
+            })}
             {items.length === 0 && <li>No indexed contracts yet</li>}
           </ul>
         </div>
@@ -391,12 +434,16 @@ export function AlkanesToolsPanel({
             <select
               className={fieldClass}
               value={callMode}
-              onChange={(e) => setCallMode(e.target.value as typeof callMode)}
+              onChange={(e) => setCallMode(e.target.value as CallMode)}
             >
               <option value="swap">AMM swap0→1</option>
               <option value="buy-yes">Prediction buy YES</option>
               <option value="buy-no">Prediction buy NO</option>
               <option value="resolve">Prediction resolve</option>
+              <option value="clock-init">Clock-in initialize</option>
+              <option value="clock-in">Clock-in (every 144 blocks)</option>
+              <option value="dice-donate">Dice donate</option>
+              <option value="dice-roll">Dice roll</option>
             </select>
           </label>
           <label className="block text-sm text-text-primary">

@@ -21,6 +21,20 @@ export type AlkaneMeta = {
   code_hash: string;
   code_len: number;
   content_type?: string | null;
+  /** Set when dogex enriches list/markets by matching `code_hash` to a known template. */
+  kind?: string | null;
+  label?: string | null;
+};
+
+export type AlkaneMarket = AlkaneMeta & {
+  kind: string;
+  label: string;
+  reserve0?: number;
+  reserve1?: number;
+  lp?: number;
+  calls_recent?: number;
+  calls_ok_recent?: number;
+  fee_bps?: number | null;
 };
 
 export type AlkaneTemplate = {
@@ -155,6 +169,31 @@ export async function fetchAlkanesList(apiBase: string, limit = 40): Promise<Alk
   const j = (await r.json()) as { ok?: boolean; items?: AlkaneMeta[]; error?: string };
   if (j.error && !j.items) throw new Error(j.error);
   return Array.isArray(j.items) ? j.items : [];
+}
+
+/** Markets feed already includes `kind`/`label` (even on older dogex). Prefer for labeled UIs. */
+export async function fetchAlkanesMarkets(apiBase: string, limit = 80): Promise<AlkaneMarket[]> {
+  const base = apiBase.replace(/\/$/, '');
+  const r = await fetch(`${base}/api/alkanes/markets?limit=${limit}`);
+  const j = (await r.json()) as { ok?: boolean; markets?: AlkaneMarket[]; error?: string };
+  if (j.error && !j.markets) throw new Error(j.error);
+  return Array.isArray(j.markets) ? j.markets : [];
+}
+
+/** App path for known template kinds (dogenals.com). */
+export function alkanesAppPath(kind: string | null | undefined): string | null {
+  switch (kind) {
+    case 'clock-in':
+      return '/alkanes/clock-in';
+    case 'amm':
+    case 'custody-amm':
+    case 'tax-amm':
+      return '/alkanes';
+    case 'dice':
+      return '/alkanes?template=dice';
+    default:
+      return null;
+  }
 }
 
 function sleep(ms: number) {

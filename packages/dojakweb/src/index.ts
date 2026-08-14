@@ -430,9 +430,11 @@ export {
   fetchAmmTemplate,
   fetchAlkanesTemplatesList,
   fetchAlkanesList,
+  fetchAlkanesMarkets,
+  alkanesAppPath,
   ALKANES_MAGIC,
 } from './lib/alkanes';
-export type { AlkaneMeta, AlkaneTemplate, AmmTemplate } from './lib/alkanes';
+export type { AlkaneMeta, AlkaneMarket, AlkaneTemplate, AmmTemplate } from './lib/alkanes';
 export type {
   CommandDogTxMempoolBody,
   CommandDogTxStatusBody,
