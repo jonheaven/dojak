@@ -61,6 +61,7 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
       {
         type: 'dogesoft',
         icon: Wallet2,
+        logo: '/dogesoft.png',
         detected: !!dogeSoft,
         name: 'Doge Soft',
       },

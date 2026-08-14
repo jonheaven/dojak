@@ -208,6 +208,7 @@ export function useWalletConnectOptions(options?: {
             ? t('wallet.options.dogesoft.subtitleOk')
             : t('wallet.options.dogesoft.subtitleInstall')
         }`,
+        logo: '/dogesoft.png',
         available: !!dogeSoft,
         connected: connectedTypes.has('dogesoft'),
         isActive: walletType === 'dogesoft',

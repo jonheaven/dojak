@@ -120,6 +120,9 @@ public
 # Marketing site static assets (Next.js `apps/web/public`) — must be versioned for Vercel.
 !apps/web/public/
 !apps/web/public/**
+# Wallet chooser logos copied into host `public/` by postinstall.
+!packages/dojakweb/public/
+!packages/dojakweb/public/**
 
 # Vuepress build output
 .vuepress/dist

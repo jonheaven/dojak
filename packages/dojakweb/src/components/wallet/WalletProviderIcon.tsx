@@ -9,22 +9,9 @@ const EXTENSION_LOGOS: Partial<Record<WalletType, string>> = {
   mydoge: '/mydoge.webp',
   dojak: '/dojak.png',
   spookydoge: '/spookydoge.webp',
+  dogesoft: '/dogesoft.png',
   ledger: '/ledger.svg',
 };
-
-/** Inline mark so hosts don't need a /dogesoft.webp in public/. */
-function DogeSoftMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 32 32" className={className} aria-hidden>
-      <rect width="32" height="32" rx="8" fill="#1A140F" />
-      <circle cx="16" cy="16" r="11" fill="#F5C542" />
-      <path
-        d="M20.2 9.4a8.6 8.6 0 1 0 2.4 12.4A8.4 8.4 0 0 1 16 24.4 8.4 8.4 0 0 1 16 7.6c1.5 0 2.9.4 4.2 1.8Z"
-        fill="#1A140F"
-      />
-    </svg>
-  );
-}
 
 export type WalletProviderIconSize = 'xs' | 'sm' | 'md' | 'lg';
 
@@ -68,8 +55,6 @@ export function WalletProviderIcon({
       className={cx(box, 'shrink-0 rounded-lg object-cover', className)}
       draggable={false}
     />
-  ) : walletType === 'dogesoft' ? (
-    <DogeSoftMark className={cx(box, 'shrink-0 rounded-lg', className)} />
   ) : walletType === 'browser' || !walletType ? (
     <CpuChipIcon
       className={cx(box, 'shrink-0 text-emerald-300/90', className)}
