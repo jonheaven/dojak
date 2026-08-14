@@ -119,6 +119,37 @@ export {
   rpcViaProxyDetailed,
 } from './lib/rpc-proxy-client';
 
+/** DOTC v1 — Dogecoin OTC Deal Protocol (OP_RETURN receipt). */
+export {
+  generateDealId,
+  buildDotcPayload,
+  parseDotc,
+  validateDotcPayload,
+  compactInscriptionRef,
+  compactAddress,
+  parseInscriptionRef,
+  planDotcPsbtOutputs,
+  buildDotcOpReturnScript,
+  formatDotcConfirmation,
+  dogeToKoinu,
+  buildDotcExamples,
+  DOTC_MARKER,
+  DOTC_VERSION,
+  DOTC_MAX_DATA_BYTES,
+  DOTC_NOTE_MAX_CHARS,
+  DOTC_PSBT_OUTPUT_ORDER,
+  DOTC_CONFIRMATION_COPY,
+  DOTC_EXAMPLE_INPUTS,
+} from './lib/dotc';
+export type {
+  DotcDeal,
+  DotcDealFields,
+  DotcValidation,
+  BuildDotcPayloadInput,
+  DotcPsbtPlan,
+  DotcPsbtOutputRole,
+} from './lib/dotc';
+
 /** Ðclaims — fractional region claims on parent inscriptions. */
 export {
   createDclaim,
