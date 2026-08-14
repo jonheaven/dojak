@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { useIsMobileWallet } from '../hooks/useMediaQuery';
+import { useWalletDrawerLayout } from '../hooks/useWalletDrawerLayout';
 import DojakwebWalletModal from './DojakwebWalletModal';
 /** Bundled Shiba paw — desktop phone-chassis only; never shown on mobile. */
 import bundledPawSrc from '../assets/paw.png';
@@ -21,13 +22,13 @@ export interface WalletDrawerProps {
   initialAssetType?: 'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes';
 }
 
-const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v4';
+const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v5';
 const DEFAULT_RIGHT = 14;
-/** Fallback before the browser has measured the drawer. Runtime default is top-safe. */
+/** SSR / pre-measure fallback only. Runtime default is top-flush. */
 const DEFAULT_BOTTOM = 28;
 const EDGE_PAD = 8;
-/** Never let the chassis top closer than this to the viewport top (header / clip). */
-const TOP_SAFE = 56;
+/** Chassis top may sit this close to the viewport top — not above it. */
+const TOP_SAFE = 8;
 /** Allow sinking until the chassis bottom touches the viewport bottom. */
 const MIN_BOTTOM = 0;
 const CLICK_DRAG_THRESHOLD_PX = 6;
@@ -112,30 +113,34 @@ function applyPosVars(pos: DrawerPos | null) {
   body.style.setProperty('--wallet-drawer-bottom', `${Math.round(pos.bottom)}px`);
 }
 
+function chassisHeight(): number {
+  const vh = window.innerHeight;
+  return Math.min(vh * 0.78, 760, Math.max(120, vh - TOP_SAFE - EDGE_PAD));
+}
+
 function measureDrawerSize(): { w: number; h: number } {
   const drawer =
     document.querySelector<HTMLElement>('.ds-wallet-modal--drawer') ||
     document.querySelector<HTMLElement>('[data-headlessui-portal] .ds-wallet-dashboard');
   const fallbackW = Math.min(390, window.innerWidth * 0.94);
-  const vh = window.innerHeight;
-  // Preferred chassis height matches CSS: min(78vh, 760px), capped by top-safe.
-  const preferredH = Math.min(vh * 0.78, 760, Math.max(120, vh - TOP_SAFE - EDGE_PAD));
   const w = drawer?.offsetWidth || fallbackW;
-  const liveH = drawer?.offsetHeight && drawer.offsetHeight > 40 ? drawer.offsetHeight : 0;
-  // Prefer preferred height for clamp math so early/late measure don't invert the range.
-  const h = liveH > 0 ? Math.min(liveH, preferredH) || preferredH : preferredH;
+  const liveH = drawer?.getBoundingClientRect().height ?? 0;
+  const cssH = chassisHeight();
+  // Prefer the larger height so clamp never lets the real panel leave the top.
+  const h = liveH > 40 ? Math.max(liveH, cssH) : cssH;
   return { w, h };
 }
 
 function defaultBottom(): number {
   const { h: drawerH } = measureDrawerSize();
-  // Highest allowed: chassis top sits at TOP_SAFE.
   return Math.max(MIN_BOTTOM, window.innerHeight - drawerH - TOP_SAFE);
 }
 
 function defaultPos(): DrawerPos {
-  // Rest near the floor (CSS default); user can drag up toward top-safe.
-  return { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
+  if (typeof window === 'undefined') {
+    return { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
+  }
+  return { right: DEFAULT_RIGHT, bottom: defaultBottom() };
 }
 
 function clampPos(right: number, bottom: number): DrawerPos {
@@ -169,6 +174,9 @@ export default function WalletDrawer({
   const { theme } = useDojakwebTheme();
   const isDark = isDarkProp ?? theme === 'dark';
   const isMobile = useIsMobileWallet();
+  const [layout] = useWalletDrawerLayout();
+  const isDock = !isMobile && layout === 'dock';
+  const isPaw = !isMobile && layout === 'paw';
   const [pos, setPos] = useState<DrawerPos | null>(() => readStoredPos() ?? defaultPos());
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{
@@ -195,17 +203,23 @@ export default function WalletDrawer({
 
   useEffect(() => {
     const body = document.body;
-    body.classList.remove('wallet-drawer-paw-open', 'wallet-drawer-mobile-open');
+    const html = document.documentElement;
+    body.classList.remove('wallet-drawer-paw-open', 'wallet-drawer-mobile-open', 'wallet-drawer-dock-open');
+    html.classList.remove('wallet-drawer-dock-open');
     if (!isOpen) return;
     if (isMobile) {
       body.classList.add('wallet-drawer-mobile-open');
+    } else if (isDock) {
+      body.classList.add('wallet-drawer-dock-open');
+      html.classList.add('wallet-drawer-dock-open');
     } else {
       body.classList.add('wallet-drawer-paw-open');
     }
     return () => {
-      body.classList.remove('wallet-drawer-paw-open', 'wallet-drawer-mobile-open');
+      body.classList.remove('wallet-drawer-paw-open', 'wallet-drawer-mobile-open', 'wallet-drawer-dock-open');
+      html.classList.remove('wallet-drawer-dock-open');
     };
-  }, [isOpen, isMobile]);
+  }, [isOpen, isMobile, isDock]);
 
   useEffect(() => {
     if (!isOpen || !isMobile) return;
@@ -222,9 +236,12 @@ export default function WalletDrawer({
   }, [dragging]);
 
   useEffect(() => {
-    if (!isOpen || isMobile) return;
+    if (!isOpen || isMobile || isDock) {
+      if (isDock) applyPosVars(null);
+      return;
+    }
     applyPosVars(pos);
-  }, [isOpen, isMobile, pos]);
+  }, [isOpen, isMobile, isDock, pos]);
 
   useEffect(() => {
     return () => {
@@ -234,7 +251,7 @@ export default function WalletDrawer({
   }, []);
 
   useEffect(() => {
-    if (!isOpen || isMobile) return;
+    if (!isOpen || isMobile || isDock) return;
     // Re-clamp on open so old localStorage positions that lifted the paw get fixed.
     const reclamp = () => {
       setPos((prev) => {
@@ -265,10 +282,10 @@ export default function WalletDrawer({
       window.cancelAnimationFrame(raf);
       ro?.disconnect();
     };
-  }, [isOpen, isMobile]);
+  }, [isOpen, isMobile, isDock]);
 
   useEffect(() => {
-    if (!isOpen || isMobile || !pos) return;
+    if (!isOpen || isMobile || isDock || !pos) return;
     const onResize = () => {
       setPos((prev) => {
         if (!prev) return prev;
@@ -284,7 +301,7 @@ export default function WalletDrawer({
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [isOpen, isMobile, pos]);
+  }, [isOpen, isMobile, isDock, pos]);
 
   const persistPos = useCallback((next: DrawerPos) => {
     setPos(next);
@@ -297,7 +314,7 @@ export default function WalletDrawer({
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (e.button !== 0 || isMobile) return;
+      if (e.button !== 0 || isMobile || isDock) return;
       e.preventDefault();
       e.stopPropagation();
       const origin = pos ?? defaultPos();
@@ -312,7 +329,7 @@ export default function WalletDrawer({
       setDragging(true);
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [pos, isMobile],
+    [pos, isMobile, isDock],
   );
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -359,7 +376,7 @@ export default function WalletDrawer({
     [onClose, persistPos],
   );
 
-  const showPaw = isOpen && !isMobile;
+  const showPaw = isOpen && isPaw;
 
   const paw =
     typeof document !== 'undefined'

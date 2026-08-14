@@ -1,10 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, Watch } from 'lucide-react';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import {
   useWalletConnectOptions,
+  partitionWalletTiles,
   type ConnectKind,
+  type WalletOptionTile,
 } from '../hooks/useWalletConnectOptions';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 
@@ -28,6 +31,7 @@ export function WalletConnectChooser({
   className = '',
 }: WalletConnectChooserProps) {
   const { t } = useDojakwebI18n();
+  const [showOther, setShowOther] = useState(false);
   const {
     tiles,
     connectingType,
@@ -38,6 +42,7 @@ export function WalletConnectChooser({
     onSelectBrowser,
     onConnected: () => onConnected?.(),
   });
+  const { primary, other } = partitionWalletTiles(tiles);
 
   const iconTileBase =
     'relative flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-2xl border text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ds-accent-solid)]/55';
@@ -84,15 +89,49 @@ export function WalletConnectChooser({
     return <WalletProviderIcon walletType={type} size="lg" />;
   };
 
-  const browser = tiles.find((tile) => tile.type === 'browser');
-  const extensions = tiles.filter(
-    (tile) =>
-      tile.type === 'mydoge' ||
-      tile.type === 'dojak' ||
-      tile.type === 'spookydoge' ||
-      tile.type === 'dogesoft',
-  );
-  const hardware = tiles.filter((tile) => tile.type === 'dogewatch' || tile.type === 'ledger');
+  const onTileClick = (tile: WalletOptionTile) => {
+    if (!tile.available && tile.installUrl && tile.type !== 'browser') {
+      window.open(tile.installUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    void handleConnect(tile.type);
+  };
+
+  const renderTileButton = (tile: WalletOptionTile, opts?: { asInstall?: boolean }) => {
+    const busy = connectingType === tile.type;
+    const asInstall = Boolean(opts?.asInstall && !tile.available && tile.installUrl);
+    const canClick = tile.type === 'browser' || tile.available || asInstall;
+    return (
+      <button
+        key={tile.type}
+        type="button"
+        onClick={() => onTileClick(tile)}
+        disabled={!canClick || (anyConnecting && !busy)}
+        aria-label={
+          asInstall
+            ? t('wallet.quickPicker.getWallet', { name: tile.shortTitle })
+            : tile.ariaLabel
+        }
+        title={
+          asInstall
+            ? t('wallet.quickPicker.getWallet', { name: tile.shortTitle })
+            : tile.ariaLabel
+        }
+        className={`${iconTileBase} ${
+          (tile.available || tile.type === 'browser') && connectingType === null
+            ? iconTileReady
+            : iconTileMuted
+        }`}
+      >
+        {renderGlyph(tile.type, tile.logo)}
+        {busy ? (
+          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/55">
+            <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
+          </span>
+        ) : null}
+      </button>
+    );
+  };
 
   return (
     <div className={className}>
@@ -104,81 +143,33 @@ export function WalletConnectChooser({
       ) : null}
 
       <div className="ds-wallet-options ds-wallet-options--icon-grid">
-        <div className="flex flex-col items-center gap-6 py-1">
-          {browser ? (
-            <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-4 py-1">
+          <div className="flex w-full max-w-[20rem] flex-wrap items-center justify-center gap-3">
+            {primary.map((tile) => renderTileButton(tile))}
+          </div>
+
+          {other.length > 0 ? (
+            <div className="flex w-full max-w-[20rem] flex-col items-center gap-2">
               <button
                 type="button"
-                onClick={() => void handleConnect('browser')}
-                disabled={anyConnecting}
-                aria-label={browser.ariaLabel}
-                title={browser.ariaLabel}
-                className={`${iconTileBase} ${iconTileReady} border-[#FCD34D]/45 ${
-                  connectingType === 'browser' ? 'cursor-wait' : ''
-                } ${anyConnecting && connectingType !== 'browser' ? 'opacity-[0.42]' : ''}`}
+                className="rounded-full border border-white/15 px-3 py-1 text-[11px] font-semibold text-white/55 transition hover:border-white/30 hover:text-white"
+                aria-expanded={showOther}
+                onClick={() => setShowOther((v) => !v)}
               >
-                {renderGlyph('browser')}
-                {connectingType === 'browser' ? (
-                  <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/55">
-                    <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
-                  </span>
-                ) : null}
+                {t('wallet.quickPicker.other')}
               </button>
-              <span className="text-[11px] font-semibold text-[#FCD34D]/90">{browser.title}</span>
+              {showOther ? (
+                <>
+                  <p className="px-2 text-center text-[11px] leading-snug text-white/40">
+                    {t('wallet.quickPicker.otherHint')}
+                  </p>
+                  <div className="flex w-full flex-wrap items-center justify-center gap-3">
+                    {other.map((tile) => renderTileButton(tile, { asInstall: true }))}
+                  </div>
+                </>
+              ) : null}
             </div>
           ) : null}
-
-          <div className="flex w-full max-w-[20rem] flex-wrap items-center justify-center gap-3">
-            {extensions.map((tile) => {
-              const busy = connectingType === tile.type;
-              return (
-                <button
-                  key={tile.type}
-                  type="button"
-                  onClick={() => void handleConnect(tile.type)}
-                  disabled={!tile.available || connectingType !== null}
-                  aria-label={tile.ariaLabel}
-                  title={tile.ariaLabel}
-                  className={`${iconTileBase} ${
-                    tile.available && connectingType === null ? iconTileReady : iconTileMuted
-                  }`}
-                >
-                  {renderGlyph(tile.type, tile.logo)}
-                  {busy ? (
-                    <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/55">
-                      <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex w-full max-w-[16.5rem] items-center justify-center gap-3">
-            {hardware.map((tile) => {
-              const busy = connectingType === tile.type;
-              return (
-                <button
-                  key={tile.type}
-                  type="button"
-                  onClick={() => void handleConnect(tile.type)}
-                  disabled={!tile.available || connectingType !== null}
-                  aria-label={tile.ariaLabel}
-                  title={tile.ariaLabel}
-                  className={`${iconTileBase} ${
-                    tile.available && connectingType === null ? iconTileReady : iconTileMuted
-                  }`}
-                >
-                  {renderGlyph(tile.type, tile.logo)}
-                  {busy ? (
-                    <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/55">
-                      <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
 

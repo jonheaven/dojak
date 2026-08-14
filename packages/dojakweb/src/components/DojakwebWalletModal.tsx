@@ -40,6 +40,8 @@ import {
   CircleStackIcon,
   SparklesIcon,
   CpuChipIcon,
+  ViewColumnsIcon,
+  DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
 import { WalletMenuItems } from './wallet/WalletMenuItems';
@@ -220,6 +222,8 @@ import { DogePFPAvatar } from './DogePFPAvatar';
 import { DogePFAHeaderControl } from './DogePFAHeaderControl';
 import { useDogePFP } from '../hooks/useDogePFP';
 import { useDogePFA } from '../hooks/useDogePFA';
+import { useWalletDrawerLayout } from '../hooks/useWalletDrawerLayout';
+import { useIsMobileWallet } from '../hooks/useMediaQuery';
 import { useConnectedWalletAddress } from '../wallet/getConnectedWalletAddress';
 import { TechDetails } from './ui/tech-details';
 import { publishDpfpBindOnChain } from '../lib/dpfpPublish';
@@ -655,6 +659,8 @@ export function DojakwebWalletModal({
 }: DojakwebWalletModalProps) {
   const { theme: walletTheme } = useDojakwebTheme();
   const isDark = isDarkProp ?? walletTheme === 'dark';
+  const isMobileWallet = useIsMobileWallet();
+  const [drawerLayout, setDrawerLayout] = useWalletDrawerLayout();
   const txExplorerPref = useDogeTxExplorerPreference();
   const drawerSurfacePhoneRight = isDark
     ? 'bg-[#0c0c0e] text-text-primary border-l border-white/10 shadow-2xl'
@@ -3545,8 +3551,8 @@ export function DojakwebWalletModal({
                     !isDark && 'ds-light',
                     isDrawerMode
                       ? cx(
-                          'pointer-events-auto fixed top-0 z-[10001] flex h-[100dvh] max-h-[100dvh] min-h-0 w-[min(100dvw,430px)] max-w-[min(100dvw,430px)] flex-col overflow-hidden',
-                          isDrawerLeft ? 'left-0' : 'right-0',
+                          'ds-wallet-modal--drawer pointer-events-auto fixed top-0 z-[10001] flex h-[100dvh] max-h-[100dvh] min-h-0 w-[min(100dvw,430px)] max-w-[min(100dvw,430px)] flex-col overflow-hidden',
+                          isDrawerLeft ? 'left-0 ds-wallet-modal--drawer-left' : 'right-0',
                         )
                       : 'w-full max-h-[92vh] max-w-lg',
                     isDrawerMode
@@ -3562,7 +3568,7 @@ export function DojakwebWalletModal({
                     without entering the scrollable body or pushing dashboard layout.
                   */}
                   <WalletApprovalPanel />
-                  <div className={cx('shrink-0 border-b px-4 pb-3 pt-4', isDark ? 'border-white/[0.08]' : 'border-zinc-200')}>
+                  <div className={cx('shrink-0 border-b px-4 pb-2 pt-3', isDark ? 'border-white/[0.08]' : 'border-zinc-200')}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-2">
                         {step === 'dashboard' && connected ? (
@@ -3580,9 +3586,6 @@ export function DojakwebWalletModal({
                               anchor="bottom start"
                               className="min-w-[13rem] max-w-[16rem]"
                             >
-                              <div className="px-3 py-2 text-[10px] leading-snug text-white/45">
-                                {t('modal.profileDpfp.menuHint')}
-                              </div>
                               {pfpInscriptionId ? (
                                 <Menu.Item>
                                   {({ focus, active }) => (
@@ -3705,6 +3708,32 @@ export function DojakwebWalletModal({
                         </Dialog.Title>
                         {step === 'dashboard' && connected ? (
                           <div className="ml-1 flex items-center gap-1.5">
+                            {isDrawerMode && !isMobileWallet ? (
+                              <button
+                                type="button"
+                                onClick={() => setDrawerLayout(drawerLayout === 'paw' ? 'dock' : 'paw')}
+                                className={cx(
+                                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition',
+                                  chromeBtn,
+                                )}
+                                aria-label={
+                                  drawerLayout === 'paw'
+                                    ? t('modal.aria.layoutDock')
+                                    : t('modal.aria.layoutPaw')
+                                }
+                                title={
+                                  drawerLayout === 'paw'
+                                    ? t('modal.aria.layoutDock')
+                                    : t('modal.aria.layoutPaw')
+                                }
+                              >
+                                {drawerLayout === 'paw' ? (
+                                  <ViewColumnsIcon className="h-3.5 w-3.5" />
+                                ) : (
+                                  <DevicePhoneMobileIcon className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => setStep('address_book')}
@@ -4426,7 +4455,7 @@ export function DojakwebWalletModal({
                             </div>
                           ) : null}
 
-                          <div className="px-1 pb-1 pt-3 text-center">
+                          <div className="px-1 pb-0 pt-1.5 text-center">
                             {balanceRefreshing && !balanceVerified && balance <= 0 ? (
                               <div className="text-2xl font-semibold text-white/50 animate-pulse">
                                 {t('modal.dashboard.refreshingBalance')}
@@ -4440,46 +4469,52 @@ export function DojakwebWalletModal({
                               </div>
                             ) : (
                               <>
-                                <div className={cx('text-4xl font-semibold leading-none tracking-tight', isDark ? 'text-white' : 'text-zinc-950')}>
+                                {(() => {
+                                  const heroDoge = spendableBreak ? spendableBreak.spendableDoge : balance;
+                                  const fiatDoge = spendableBreak ? spendableBreak.spendableDoge : balance;
+                                  return (
+                                    <>
+                                <div className={cx('text-[1.85rem] font-semibold leading-none tracking-tight sm:text-3xl', isDark ? 'text-white' : 'text-zinc-950')}>
                                   {hideBalance ? (
                                     '••••••'
                                   ) : (
                                     <span className="inline-flex items-baseline gap-1.5">
-                                      <span className={cx('text-2xl font-semibold', isDark ? 'text-[#FCD34D]' : 'text-[#7A5410]')} aria-hidden>
+                                      <span className={cx('text-xl font-semibold', isDark ? 'text-[#FCD34D]' : 'text-[#7A5410]')} aria-hidden>
                                         Ð
                                       </span>
                                       <span>
-                                        {balance.toLocaleString(undefined, {
-                                          maximumFractionDigits: balance >= 1000 ? 2 : 8,
+                                        {heroDoge.toLocaleString(undefined, {
+                                          maximumFractionDigits: heroDoge >= 1000 ? 2 : 4,
                                         })}
                                       </span>
                                     </span>
                                   )}
                                 </div>
                                 {fiatPrefs && !hideBalance && balanceVerified ? (
-                                  <div className="mt-2 text-sm font-medium text-white/45">
-                                    {fiatPrefs.formatFiat(fiatPrefs.convert(balance))}
+                                  <div className={cx('mt-1 text-base font-semibold tabular-nums', isDark ? 'text-white/75' : 'text-zinc-700')}>
+                                    {fiatPrefs.formatFiat(fiatPrefs.convert(fiatDoge))}
                                   </div>
                                 ) : !balanceVerified && balance > 0 ? (
-                                  <div className="mt-2 text-[11px] text-amber-200/70">
+                                  <div className="mt-1 text-[11px] text-amber-200/70">
                                     Provisional — confirming with indexer…
                                   </div>
                                 ) : null}
                                 {!hideBalance && balanceVerified ? (
-                                  <div className="mt-3 space-y-1">
+                                  <div className="mt-1 space-y-0.5">
                                     <button
                                       type="button"
                                       onClick={() => setUtxoManagerOpen(true)}
-                                      className="mx-auto block text-center text-[12px] font-medium text-white/70 transition hover:text-[#FCD34D]"
+                                      className={cx(
+                                        'mx-auto block text-center text-[11px] font-medium transition',
+                                        isDark ? 'text-white/50 hover:text-[#FCD34D]' : 'text-zinc-500 hover:text-[#7A5410]',
+                                      )}
                                     >
                                       {spendableBreakBusy && !spendableBreak
                                         ? 'Checking spendable…'
-                                        : spendableBreak
-                                          ? `Spendable ${spendableBreak.spendableDoge.toLocaleString(undefined, { maximumFractionDigits: 4 })} Ð`
-                                          : 'Check spendable coins'}
+                                        : `Total ${balance.toLocaleString(undefined, { maximumFractionDigits: 4 })} Ð`}
                                     </button>
                                     {spendableBreak && spendableBreak.unavailableDoge > 0.05 ? (
-                                      <p className="text-[11px] leading-snug text-white/40">
+                                      <p className={cx('text-[10px] leading-snug', isDark ? 'text-white/40' : 'text-zinc-500')}>
                                         {spendableBreak.unavailableDoge.toLocaleString(undefined, { maximumFractionDigits: 2 })} Ð not sendable
                                         {spendableBreak.duneBearingDoge > 0.05
                                           ? ` · ${spendableBreak.duneBearingDoge.toLocaleString(undefined, { maximumFractionDigits: 2 })} Ð in Ðune outs`
@@ -4493,7 +4528,7 @@ export function DojakwebWalletModal({
                                         {' · '}
                                         <button
                                           type="button"
-                                          className="text-[#FCD34D]/80 underline-offset-2 hover:underline"
+                                          className={cx('underline-offset-2 hover:underline', isDark ? 'text-[#FCD34D]/80' : 'text-[#7A5410]')}
                                           onClick={() => setUtxoManagerOpen(true)}
                                         >
                                           Manage
@@ -4502,51 +4537,54 @@ export function DojakwebWalletModal({
                                     ) : null}
                                   </div>
                                 ) : null}
+                                    </>
+                                  );
+                                })()}
                               </>
                             )}
                           </div>
 
-                          <div className="mt-4 grid grid-cols-4 gap-2">
+                          <div className="mt-2.5 grid grid-cols-4 gap-1.5">
                             <button
                               type="button"
                               onClick={() => {
                                 setSendPrefillAddress(null);
                                 setStep('send');
                               }}
-                              className="flex flex-col items-center gap-1.5"
+                              className="flex flex-col items-center gap-1"
                               aria-label={t('modal.aria.sendDoge')}
                             >
-                              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#FCD34D]/45 bg-[#FCD34D] text-[#161109] shadow-[0_8px_20px_rgba(252,211,77,0.28)] transition hover:bg-[#FDE68A]">
-                                <PaperAirplaneIcon className="h-5 w-5" />
+                              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#FCD34D]/45 bg-[#FCD34D] text-[#161109] shadow-[0_8px_20px_rgba(252,211,77,0.28)] transition hover:bg-[#FDE68A]">
+                                <PaperAirplaneIcon className="h-4 w-4" />
                               </span>
                               <span className={cx('text-[10px] font-medium', isDark ? 'text-white/55' : 'text-zinc-600')}>{t('modal.dashboard.menu.send')}</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => setStep('receive')}
-                              className="flex flex-col items-center gap-1.5"
+                              className="flex flex-col items-center gap-1"
                               aria-label={t('modal.aria.receiveQr')}
                             >
-                              <span className={cx('flex h-12 w-12 items-center justify-center rounded-full border transition', ghostRound)}>
-                                <QrCodeIcon className="h-5 w-5" />
+                              <span className={cx('flex h-10 w-10 items-center justify-center rounded-full border transition', ghostRound)}>
+                                <QrCodeIcon className="h-4 w-4" />
                               </span>
                               <span className={cx('text-[10px] font-medium', isDark ? 'text-white/55' : 'text-zinc-600')}>{t('modal.dashboard.menu.receive')}</span>
                             </button>
                             <button
                               type="button"
                               onClick={handleCopyAddress}
-                              className="flex flex-col items-center gap-1.5"
+                              className="flex flex-col items-center gap-1"
                               aria-label={t('modal.aria.copyAddress')}
                             >
-                              <span className={cx('flex h-12 w-12 items-center justify-center rounded-full border transition', ghostRound)}>
-                                <ClipboardDocumentIcon className="h-5 w-5" />
+                              <span className={cx('flex h-10 w-10 items-center justify-center rounded-full border transition', ghostRound)}>
+                                <ClipboardDocumentIcon className="h-4 w-4" />
                               </span>
                               <span className={cx('text-[10px] font-medium', isDark ? 'text-white/55' : 'text-zinc-600')}>Copy</span>
                             </button>
-                            <Menu as="div" className="relative flex flex-col items-center gap-1.5">
+                            <Menu as="div" className="relative flex flex-col items-center gap-1">
                               <Menu.Button
                                 type="button"
-                                className={cx('flex h-12 w-12 items-center justify-center rounded-full border transition', ghostRound)}
+                                className={cx('flex h-10 w-10 items-center justify-center rounded-full border transition', ghostRound)}
                                 aria-label={t('modal.aria.moreActions')}
                               >
                                 <EllipsisHorizontalIcon className="h-5 w-5" />
@@ -4958,7 +4996,7 @@ export function DojakwebWalletModal({
                                     </div>
                                   ) : (
                                     <div className="space-y-2 p-4 pt-3">
-                                      <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+                                      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-0.5">
                                         <div className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] p-0.5">
                                           {(
                                             [
@@ -5007,18 +5045,25 @@ export function DojakwebWalletModal({
                                                 hideTextJsonInscriptions: next,
                                               });
                                             }}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/20 hover:text-white"
+                                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/20 hover:text-white"
+                                            title={
+                                              hideTextJsonInscriptions
+                                                ? t('modal.assets.showTextJson')
+                                                : t('modal.assets.hideTextJson')
+                                            }
+                                            aria-label={
+                                              hideTextJsonInscriptions
+                                                ? t('modal.assets.showTextJson')
+                                                : t('modal.assets.hideTextJson')
+                                            }
                                           >
                                             {hideTextJsonInscriptions ? (
                                               <EyeIcon className="h-3.5 w-3.5" aria-hidden />
                                             ) : (
                                               <EyeSlashIcon className="h-3.5 w-3.5" aria-hidden />
                                             )}
-                                            {hideTextJsonInscriptions
-                                              ? t('modal.assets.showTextJson')
-                                              : t('modal.assets.hideTextJson')}
                                             <span className="tabular-nums text-white/40">
-                                              ({textJsonInscriptionCount})
+                                              {textJsonInscriptionCount}
                                             </span>
                                           </button>
                                         ) : null}
@@ -5320,6 +5365,22 @@ export function DojakwebWalletModal({
                             ) : tab === 'transactions' ? (
                               /* ── Transactions tab ── */
                               <div>
+                                <div className="flex items-center justify-end border-b border-white/[0.06] px-3 py-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => activeAddress && void fetchTransactions(activeAddress, 1)}
+                                    className={cx(
+                                      'rounded-lg p-1.5 transition',
+                                      isDark
+                                        ? 'text-white/50 hover:bg-white/5 hover:text-white'
+                                        : 'text-zinc-500 hover:bg-black/5 hover:text-zinc-800',
+                                    )}
+                                    aria-label={t('modal.aria.refreshTransactions')}
+                                    title={t('modal.aria.refreshTransactions')}
+                                  >
+                                    <ArrowPathIcon className={cx('h-4 w-4', txLoading && 'animate-spin')} />
+                                  </button>
+                                </div>
                                 {/* Detail overlay */}
                                 {selectedTx &&
                                   typeof document !== 'undefined' &&
@@ -7552,6 +7613,39 @@ export function DojakwebWalletModal({
                               </div>
                               <p className="mt-1 text-[10px] text-white/30">Takes effect on next open</p>
                             </div>
+
+                            {gsWalletInterface === 'drawer' ? (
+                              <div>
+                                <span className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                                  Drawer layout
+                                </span>
+                                <div className="flex gap-2">
+                                  {(['paw', 'dock'] as const).map((layoutKind) => (
+                                    <button
+                                      key={layoutKind}
+                                      type="button"
+                                      onClick={() => setDrawerLayout(layoutKind)}
+                                      className={cx(
+                                        'flex flex-1 items-center justify-center gap-2 border py-2.5 text-xs font-semibold uppercase tracking-wide transition',
+                                        drawerLayout === layoutKind
+                                          ? 'border-[#D4A017] bg-[#D4A017]/10 text-white'
+                                          : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10',
+                                      )}
+                                    >
+                                      {layoutKind === 'paw' ? (
+                                        <DevicePhoneMobileIcon className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <ViewColumnsIcon className="h-3.5 w-3.5" />
+                                      )}
+                                      {layoutKind === 'paw' ? 'Paw' : 'Dock'}
+                                    </button>
+                                  ))}
+                                </div>
+                                <p className="mt-1 text-[10px] text-white/30">
+                                  Paw floats over the page. Dock is a full-height right column that pushes the site over — like browser DevTools. Saved in this browser.
+                                </p>
+                              </div>
+                            ) : null}
 
                             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                               <button

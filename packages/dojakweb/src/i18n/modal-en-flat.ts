@@ -45,6 +45,9 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.aria.moreActions': 'More actions',
   'modal.aria.assetType': 'Asset type',
   'modal.aria.refreshAssets': 'Refresh assets',
+  'modal.aria.refreshTransactions': 'Refresh transactions',
+  'modal.aria.layoutPaw': 'Paw overlay layout',
+  'modal.aria.layoutDock': 'Dock as right column',
   'modal.aria.showListingQr': 'Show QR code',
   'modal.aria.copyShareLink': 'Copy share link',
   'modal.aria.cancelListing': 'Cancel listing',
@@ -176,8 +179,6 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.assets.publishDpfp': 'Publish ÐPFP on-chain',
   'modal.assets.publishDpfa': 'Publish ÐPFA on-chain',
   'modal.profileDpfp.avatarMenuAria': 'Profile picture and audio',
-  'modal.profileDpfp.menuHint':
-    'Local: Assets ··· → Set as ÐPFP/ÐPFA. Eco-wide: Publish on-chain (browser wallet) so dogex / dogenals.com see it.',
   'modal.profileDpfp.clearPfp': 'Clear ÐPFP',
   'modal.profileDpfa.clearPfa': 'Clear ÐPFA',
   'modal.profileDpfa.playAria': 'Play profile audio',

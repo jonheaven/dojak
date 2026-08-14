@@ -1,12 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, LoaderCircle, ShieldCheck, Wallet2 } from 'lucide-react';
+import { AlertCircle, LoaderCircle } from 'lucide-react';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
-import { LedgerWallet } from '../lib/ledger-wallet';
-import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { getInjectedDogeSoftProvider } from '../utils/dogesoft-provider';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 
@@ -16,8 +14,7 @@ interface SimpleWalletConnectProps {
 }
 
 interface WalletIcon {
-  type: 'spookydoge' | 'dogesoft' | 'mydoge' | 'dojak' | 'browser' | 'ledger';
-  icon: typeof ShieldCheck;
+  type: 'spookydoge' | 'dogesoft' | 'mydoge' | 'dojak' | 'browser';
   logo?: string;
   detected: boolean;
   name: string;
@@ -27,12 +24,10 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
   const { connect } = useUnifiedWallet();
   const myDogeContext = useMyDogeWallet();
   const { hasWallet } = useBrowserWallet();
-  const { t } = useDojakwebI18n();
 
   const [connectingType, setConnectingType] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [hasBrowserWallet, setHasBrowserWallet] = useState(false);
-  const [ledgerSupported, setLedgerSupported] = useState(false);
 
   const myDoge = myDogeContext?.myDoge || null;
   const spooky = typeof window !== 'undefined' &&
@@ -46,53 +41,40 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
     () => [
       {
         type: 'mydoge',
-        icon: Wallet2,
         logo: '/mydoge.webp',
         detected: !!myDoge,
         name: 'MyDoge',
       },
       {
         type: 'spookydoge',
-        icon: Wallet2,
         logo: '/spookydoge.webp',
         detected: !!spooky,
         name: 'SpookyDoge',
       },
       {
         type: 'dogesoft',
-        icon: Wallet2,
         logo: '/dogesoft.png',
         detected: !!dogeSoft,
         name: 'Doge Soft',
       },
       {
         type: 'dojak',
-        icon: Wallet2,
         logo: '/dojak.png',
         detected: !!dojak,
         name: 'Dojak',
       },
       {
         type: 'browser',
-        icon: Monitor,
         detected: hasBrowserWallet,
         name: 'Browser Wallet',
       },
-      {
-        type: 'ledger',
-        icon: ShieldCheck,
-        logo: '/ledger.svg',
-        detected: ledgerSupported,
-        name: 'Ledger',
-      },
-    ],
-    [myDoge, spooky, dogeSoft, dojak, hasBrowserWallet, ledgerSupported]
+    ].filter((wallet) => wallet.type === 'browser' || wallet.detected),
+    [myDoge, spooky, dogeSoft, dojak, hasBrowserWallet],
   );
 
   useEffect(() => {
     void (async () => {
       setHasBrowserWallet(await hasWallet());
-      setLedgerSupported(await LedgerWallet.isSupported());
     })();
   }, [hasWallet]);
 
@@ -112,7 +94,7 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
         setConnectingType(null);
       }
     },
-    [connect, onConnect, onError]
+    [connect, onConnect, onError],
   );
 
   return (
@@ -129,19 +111,18 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
       <div className="grid grid-cols-3 gap-4">
         {walletIcons.map((wallet) => {
           const isConnecting = connectingType === wallet.type;
-          const isDisabled = !wallet.detected && wallet.type !== 'browser';
 
           return (
             <button
               key={wallet.type}
               onClick={() => handleConnect(wallet.type)}
-              disabled={isConnecting || isDisabled}
+              disabled={isConnecting}
               className={`relative p-4 rounded-xl border transition-all ${
                 wallet.detected
                   ? 'border-white/40 bg-white/10 hover:bg-white/20'
                   : 'border-white/20 bg-white/5 hover:bg-white/10 opacity-50'
               } ${isConnecting ? 'animate-pulse' : ''}`}
-              title={wallet.detected ? `Connect ${wallet.name}` : `Install ${wallet.name}`}
+              title={`Connect ${wallet.name}`}
             >
               <div className="flex flex-col items-center gap-2">
                 {wallet.logo ? (

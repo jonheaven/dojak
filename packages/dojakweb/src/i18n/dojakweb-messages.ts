@@ -40,6 +40,9 @@ const en: MsgTree = {
       openAria: 'Choose a wallet',
       openWallet: 'Open wallet',
       hint: 'Gold ring is the active wallet. Green is connected — tap to switch, × to disconnect.',
+      other: 'Other',
+      otherHint: 'Install an extension or connect a hardware wallet. USB/serial permission is only requested when you tap one.',
+      getWallet: 'Get {name}',
       disconnectAria: 'Disconnect {name}',
       short: {
         browser: 'Local',
@@ -137,6 +140,9 @@ const ja: MsgTree = {
       openAria: 'ウォレットを選択',
       openWallet: 'ウォレットを開く',
       hint: '金色の枠がアクティブ。緑は接続済み — タップで切替、× で切断。',
+      other: 'その他',
+      otherHint: '拡張機能のインストールやハードウェア接続はここから。USB / シリアル許可はタップしたときだけ聞きます。',
+      getWallet: '{name} を入手',
       disconnectAria: '{name} を切断',
       short: {
         browser: 'ローカル',

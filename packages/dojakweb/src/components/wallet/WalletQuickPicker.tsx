@@ -5,7 +5,9 @@ import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, Watch, X } from 'lucide-r
 import { createPortal } from 'react-dom';
 import {
   useWalletConnectOptions,
+  partitionWalletTiles,
   type ConnectKind,
+  type WalletOptionTile,
 } from '../../hooks/useWalletConnectOptions';
 import { useUnifiedWallet } from '../../contexts/UnifiedWalletContext';
 import { useDojakwebI18n } from '../../contexts/DojakwebLocaleContext';
@@ -83,6 +85,8 @@ export function WalletQuickPicker({
   const isLight = theme === 'light';
   const panelRef = useRef<HTMLDivElement>(null);
   const [flyoutStyle, setFlyoutStyle] = useState<React.CSSProperties | undefined>();
+
+  const [showOther, setShowOther] = useState(false);
 
   const {
     tiles,
@@ -162,8 +166,14 @@ export function WalletQuickPicker({
 
   if (!open || typeof document === 'undefined') return null;
 
-  const onTileClick = (type: ConnectKind) => {
-    void handleSelect(type, {
+  const { primary, other } = partitionWalletTiles(tiles);
+
+  const onTileClick = (tile: WalletOptionTile) => {
+    if (!tile.available && tile.installUrl && tile.type !== 'browser') {
+      window.open(tile.installUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    void handleSelect(tile.type, {
       onAlreadyActive: () => {
         onClose();
         onRequestOpenDrawer('dashboard');
@@ -185,14 +195,19 @@ export function WalletQuickPicker({
       </button>
     ) : null;
 
-  const tileButtons = tiles.map((tile) => {
+  const renderTile = (tile: WalletOptionTile, opts?: { asInstall?: boolean }) => {
     const busy = connectingType === tile.type;
-    const disabled = (!tile.available && tile.type !== 'browser') || (anyConnecting && !busy);
+    const asInstall = Boolean(opts?.asInstall && !tile.available && tile.installUrl);
+    const disabled = asInstall
+      ? anyConnecting && !busy
+      : (!tile.available && tile.type !== 'browser') || (anyConnecting && !busy);
     const statusHint = tile.isActive
       ? 'Active'
       : tile.connected
         ? 'Connected'
-        : null;
+        : asInstall
+          ? t('wallet.quickPicker.getWallet', { name: tile.shortTitle })
+          : null;
     return (
       <div key={tile.type} className="ds-wallet-quick-picker__cell">
         <button
@@ -201,7 +216,7 @@ export function WalletQuickPicker({
           title={statusHint ? `${tile.title} — ${statusHint}` : tile.title}
           aria-label={statusHint ? `${tile.ariaLabel}. ${statusHint}` : tile.ariaLabel}
           aria-pressed={tile.isActive}
-          onClick={() => onTileClick(tile.type)}
+          onClick={() => onTileClick(tile)}
           className={cx(
             'ds-wallet-quick-picker__tile',
             tile.isActive && 'ds-wallet-quick-picker__tile--active',
@@ -230,7 +245,9 @@ export function WalletQuickPicker({
           {variant === 'sheet' ? (
             <span className="ds-wallet-quick-picker__row-text">
               <span className="ds-wallet-quick-picker__row-title">{tile.shortTitle}</span>
-              <span className="ds-wallet-quick-picker__row-sub">{tile.subtitle}</span>
+              <span className="ds-wallet-quick-picker__row-sub">
+                {asInstall ? t('wallet.quickPicker.getWallet', { name: tile.shortTitle }) : tile.subtitle}
+              </span>
             </span>
           ) : null}
         </button>
@@ -251,7 +268,7 @@ export function WalletQuickPicker({
         ) : null}
       </div>
     );
-  });
+  };
 
   const body = (
     <div
@@ -293,8 +310,34 @@ export function WalletQuickPicker({
           variant === 'sheet' && 'ds-wallet-quick-picker__grid--list',
         )}
       >
-        {tileButtons}
+        {primary.map((tile) => renderTile(tile))}
       </div>
+
+      {other.length > 0 ? (
+        <div className="ds-wallet-quick-picker__other-wrap">
+          <button
+            type="button"
+            className="ds-wallet-quick-picker__other"
+            aria-expanded={showOther}
+            onClick={() => setShowOther((v) => !v)}
+          >
+            {t('wallet.quickPicker.other')}
+          </button>
+          {showOther ? (
+            <>
+              <p className="ds-wallet-quick-picker__other-hint">{t('wallet.quickPicker.otherHint')}</p>
+              <div
+                className={cx(
+                  'ds-wallet-quick-picker__grid',
+                  variant === 'sheet' && 'ds-wallet-quick-picker__grid--list',
+                )}
+              >
+                {other.map((tile) => renderTile(tile, { asInstall: true }))}
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="ds-wallet-quick-picker__footer">
         {openWalletFooter}

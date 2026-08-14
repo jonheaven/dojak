@@ -409,6 +409,70 @@
   color: rgba(0, 0, 0, 0.45);
 }
 
+.ds-light .ds-wallet-quick-picker__open,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__open {
+  background: #1a1408;
+  border-color: #1a1408;
+  color: #f8e7a8;
+}
+
+.ds-light .ds-wallet-quick-picker__open:hover,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__open:hover {
+  background: #2a2010;
+  border-color: #2a2010;
+  color: #fff6c8;
+}
+
+.ds-wallet-quick-picker__other-wrap {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.ds-wallet-quick-picker__other {
+  align-self: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.ds-wallet-quick-picker__other:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ds-light .ds-wallet-quick-picker__other,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__other {
+  border-color: rgba(0, 0, 0, 0.16);
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.ds-light .ds-wallet-quick-picker__other:hover,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__other:hover {
+  border-color: rgba(0, 0, 0, 0.35);
+  color: #18181b;
+}
+
+.ds-wallet-quick-picker__other-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.ds-light .ds-wallet-quick-picker__other-hint,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__other-hint {
+  color: rgba(0, 0, 0, 0.45);
+}
+
 .ds-connect-button:hover:not(:disabled),
 .ds-disconnect-button:hover,
 .ds-wallet-option:hover:not(:disabled),
@@ -1877,7 +1941,7 @@ body.wallet-drawer-paw-open {
   --wallet-drawer-width: min(390px, 94vw);
   --wallet-drawer-bottom: 28px;
   --wallet-drawer-right: 14px;
-  --wallet-drawer-top-safe: 56px;
+  --wallet-drawer-top-safe: 8px;
   --wallet-paw-grip-offset: 168px;
   --wallet-phone-radius: 1.85rem;
 }
@@ -2041,7 +2105,7 @@ body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   /* Fixed chassis height — do NOT tie height to bottom (that pinned the top and
      made vertical drag feel inverted / “range on the wrong side”). */
   height: min(78vh, 760px) !important;
-  max-height: calc(100dvh - var(--wallet-drawer-top-safe, 56px)) !important;
+  max-height: calc(100dvh - var(--wallet-drawer-top-safe, 8px)) !important;
   /* Above .wallet-paw-grip (9995) so the paw sits under the panel */
   z-index: 10050 !important;
   border-radius: var(--wallet-phone-radius) !important;
@@ -2114,6 +2178,37 @@ body.wallet-drawer-paw-open .ds-wallet-modal-backdrop--drawer {
   z-index: 9998 !important;
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
+}
+
+/* DevTools-style dock: full-height right column; host content shrinks via padding. */
+html.wallet-drawer-dock-open {
+  --dojakweb-dock-width: min(430px, 100vw);
+}
+
+html.wallet-drawer-dock-open body {
+  padding-right: var(--dojakweb-dock-width) !important;
+  box-sizing: border-box !important;
+}
+
+html.wallet-drawer-dock-open .ds-wallet-modal--drawer,
+html.wallet-drawer-dock-open [data-headlessui-portal] .ds-wallet-dashboard,
+body.wallet-drawer-dock-open .ds-wallet-modal--drawer,
+body.wallet-drawer-dock-open [data-headlessui-portal] .ds-wallet-dashboard {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: auto !important;
+  width: var(--dojakweb-dock-width) !important;
+  max-width: var(--dojakweb-dock-width) !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  border-radius: 0 !important;
+  z-index: 10050 !important;
+}
+
+body.wallet-drawer-dock-open .wallet-paw-grip {
+  display: none !important;
 }
 
 .ds-wallet-dashboard.flex.flex-col {

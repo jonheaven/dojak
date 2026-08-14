@@ -4,11 +4,44 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
-import { LedgerWallet } from '../lib/ledger-wallet';
-import { DogewatchWallet } from '../lib/dogewatch-wallet';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import type { WalletType } from '../types/wallet';
 import { getInjectedDogeSoftProvider } from '../utils/dogesoft-provider';
+
+/** Install / download pages for wallets that are not injected yet. */
+export const WALLET_INSTALL_URLS: Partial<Record<ConnectKind, string>> = {
+  mydoge: 'https://www.mydoge.com/',
+  dojak: 'https://github.com/jonheaven/dojak',
+  spookydoge: 'https://spookydoge.com/',
+  dogesoft: 'https://dogesoft.io/',
+  ledger: 'https://www.ledger.com/',
+  dogewatch: 'https://dogewatch.io/',
+};
+
+function isHardwareKind(type: ConnectKind): boolean {
+  return type === 'ledger' || type === 'dogewatch';
+}
+
+/** Local browser + detected extensions + already-connected sessions. Hardware stays in Other until connected. */
+export function isQuickPathWalletTile(tile: WalletOptionTile): boolean {
+  if (tile.type === 'browser') return true;
+  if (tile.connected || tile.isActive) return true;
+  if (isHardwareKind(tile.type)) return false;
+  return tile.available;
+}
+
+export function partitionWalletTiles(tiles: WalletOptionTile[]): {
+  primary: WalletOptionTile[];
+  other: WalletOptionTile[];
+} {
+  const primary: WalletOptionTile[] = [];
+  const other: WalletOptionTile[] = [];
+  for (const tile of tiles) {
+    if (isQuickPathWalletTile(tile)) primary.push(tile);
+    else other.push(tile);
+  }
+  return { primary, other };
+}
 
 export type ConnectKind = Extract<
   WalletType,
@@ -25,6 +58,7 @@ export type WalletOptionTile = {
   available: boolean;
   connected: boolean;
   isActive: boolean;
+  installUrl?: string;
 };
 
 export type UseWalletConnectOptionsResult = {
@@ -86,8 +120,6 @@ export function useWalletConnectOptions(options?: {
   const onConnected = options?.onConnected;
 
   const [hasBrowserWallet, setHasBrowserWallet] = useState(false);
-  const [ledgerSupported, setLedgerSupported] = useState(false);
-  const [dogewatchSupported, setDogewatchSupported] = useState(false);
   const [connectingType, setConnectingType] = useState<ConnectKind | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -116,10 +148,14 @@ export function useWalletConnectOptions(options?: {
   useEffect(() => {
     void (async () => {
       setHasBrowserWallet(await hasWallet());
-      setLedgerSupported(await LedgerWallet.isSupported());
-      setDogewatchSupported(await DogewatchWallet.isSupported());
     })();
   }, [hasWallet]);
+
+  // Capability flags only — never call WebUSB/Web Serial requestDevice/getPorts here.
+  // Enumerating devices on picker mount is what prompted "allow this site to read USB devices"
+  // on dogenals.com before the user even opened a hardware wallet.
+  const usbPresent = typeof navigator !== 'undefined' && 'usb' in navigator;
+  const serialPresent = typeof navigator !== 'undefined' && 'serial' in navigator;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -163,6 +199,7 @@ export function useWalletConnectOptions(options?: {
         available: !!myDoge,
         connected: connectedTypes.has('mydoge'),
         isActive: walletType === 'mydoge',
+        installUrl: WALLET_INSTALL_URLS.mydoge,
       },
       {
         type: 'dojak',
@@ -178,6 +215,7 @@ export function useWalletConnectOptions(options?: {
         available: !!dojak,
         connected: connectedTypes.has('dojak'),
         isActive: walletType === 'dojak',
+        installUrl: WALLET_INSTALL_URLS.dojak,
       },
       {
         type: 'spookydoge',
@@ -198,6 +236,7 @@ export function useWalletConnectOptions(options?: {
         available: !!spooky,
         connected: connectedTypes.has('spookydoge'),
         isActive: walletType === 'spookydoge',
+        installUrl: WALLET_INSTALL_URLS.spookydoge,
       },
       {
         type: 'dogesoft',
@@ -215,35 +254,38 @@ export function useWalletConnectOptions(options?: {
         available: !!dogeSoft,
         connected: connectedTypes.has('dogesoft'),
         isActive: walletType === 'dogesoft',
+        installUrl: WALLET_INSTALL_URLS.dogesoft,
       },
       {
         type: 'dogewatch',
         title: t('wallet.options.dogewatch.title'),
         shortTitle: shortName('dogewatch', t),
-        subtitle: dogewatchSupported
+        subtitle: serialPresent
           ? t('wallet.options.dogewatch.subtitle')
           : t('wallet.options.dogewatch.serialRequired'),
-        ariaLabel: dogewatchSupported
+        ariaLabel: serialPresent
           ? `${t('wallet.options.dogewatch.title')}. ${t('wallet.options.dogewatch.subtitle')}`
           : `${t('wallet.options.dogewatch.title')}. ${t('wallet.options.dogewatch.serialRequired')}`,
-        available: dogewatchSupported,
+        available: serialPresent,
         connected: connectedTypes.has('dogewatch'),
         isActive: walletType === 'dogewatch',
+        installUrl: WALLET_INSTALL_URLS.dogewatch,
       },
       {
         type: 'ledger',
         title: t('wallet.options.ledger.title'),
         shortTitle: shortName('ledger', t),
-        subtitle: ledgerSupported
+        subtitle: usbPresent
           ? t('wallet.options.ledger.subtitle')
           : t('wallet.options.ledger.webusbRequired'),
-        ariaLabel: ledgerSupported
+        ariaLabel: usbPresent
           ? `${t('wallet.options.ledger.title')}. ${t('wallet.options.ledger.subtitle')}`
           : `${t('wallet.options.ledger.title')}. ${t('wallet.options.ledger.webusbRequired')}`,
         logo: '/ledger.svg',
-        available: ledgerSupported,
+        available: usbPresent,
         connected: connectedTypes.has('ledger'),
         isActive: walletType === 'ledger',
+        installUrl: WALLET_INSTALL_URLS.ledger,
       },
     ];
 
@@ -252,13 +294,13 @@ export function useWalletConnectOptions(options?: {
     connectedTypes,
     dojak,
     dogeSoft,
-    dogewatchSupported,
     hasBrowserWallet,
-    ledgerSupported,
     myDoge,
+    serialPresent,
     spooky,
     spookyHint,
     t,
+    usbPresent,
     walletType,
   ]);
 
