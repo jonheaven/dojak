@@ -1,8 +1,9 @@
 /**
  * Dunestone encoder for Dogecoin Ðunes.
  *
- * **v1:** OP_RETURN + OP_PUSHNUM_13 (0x5d) — wonky / Runes parity
- * **v2:** OP_RETURN + push 0xD0 (Ð) + push version 0x02 — Dogenals-native
+ * **Wonky:** OP_RETURN + push "D" (0x44) — not encoded here.
+ * **OP_13 archive:** OP_RETURN + OP_PUSHNUM_13 (0x5d)
+ * **Ðunes:** OP_RETURN + push 0xD0 + version 0x02 (simple) / 0x03 (compact curve)
  *
  * Tags/varints must match dogex or the tx becomes a cenotaph.
  * Spec: dogenals/spec/protocols/dunes/{spec.md,V2.md}
@@ -24,32 +25,16 @@ const TAG_POINTER      = 22n;
 const TAG_DIVISIBILITY = 1n;
 const TAG_SPACERS      = 3n;
 const TAG_SYMBOL       = 5n;
-/** Dunes v2 / Ðunes tags (even = must-understand when present). */
 const TAG_VERSION      = 24n;
-const TAG_AGENT        = 26n;
-const TAG_POOL         = 28n;
-const TAG_MIN_OUT      = 30n;
-const TAG_BURN_TO_MINT = 32n;
 const TAG_PARENT       = 34n;
-const TAG_SOUL         = 36n;
-const TAG_FAST_MINT    = 38n;
-const TAG_CONTRACT     = 40n;
 const TAG_LAUNCH_CURVE_OP                = 46n;
 const TAG_LAUNCH_CURVE_TARGET            = 48n;
+/** v3 amount (base_price / doge_in / token_amount). v2 max_supply. */
 const TAG_LAUNCH_CURVE_MAX_SUPPLY        = 50n;
+/** v3 aux (slope / min_out). v2 curve_type. */
 const TAG_LAUNCH_CURVE_TYPE              = 52n;
+/** v3 graduation. v2 base_price. */
 const TAG_LAUNCH_CURVE_BASE_PRICE        = 54n;
-const TAG_LAUNCH_CURVE_SLOPE             = 56n;
-const TAG_LAUNCH_CURVE_GRADUATION_SUPPLY = 58n;
-const TAG_LAUNCH_CURVE_CREATOR_FEE_BPS   = 60n;
-const TAG_LAUNCH_CURVE_OUTPUT            = 62n;
-const TAG_LAUNCH_CURVE_MIN_TOKENS_OUT    = 64n;
-const TAG_LAUNCH_CURVE_MIN_DOGE_OUT      = 66n;
-const TAG_LAUNCH_CURVE_METADATA          = 68n;
-const TAG_LAUNCH_CURVE_CREATOR_OUTPUT    = 70n;
-const TAG_LAUNCH_CURVE_TREASURY_OUTPUT   = 72n;
-const TAG_LAUNCH_CURVE_DOGE_IN           = 74n;
-const TAG_LAUNCH_CURVE_TOKEN_AMOUNT      = 76n;
 
 // ── Flag bitmask constants ────────────────────────────────────────────────────
 const FLAG_ETCHING = 1n;  // bit 0
@@ -62,6 +47,15 @@ const OP_PUSHNUM_13  = 0x5d; // v1 magic (Runes parity)
 /** Dunes v2 / Ðunes magic — 0xD0 is fucking cool. */
 export const DUNE_V2_MAGIC = 0xd0;
 export const DUNE_V2_VERSION = 0x02;
+export const DUNE_V3_VERSION = 0x03;
+const KOINU_PER_DOGE = 100_000_000n;
+
+/** Unique FCFS etch burn (koinu). Launch-curve etches skip this. */
+export function uniqueEtchBurnKoinu(letterLen: number): bigint {
+  if (letterLen >= 12) return 0n;
+  const steps = BigInt(12 - letterLen);
+  return steps * steps * 10n * KOINU_PER_DOGE;
+}
 const OP_PUSHDATA1   = 0x4c;
 const OP_PUSHDATA2   = 0x4d;
 
@@ -263,27 +257,13 @@ export interface DunestoneParams {
   pointer?: number;
   /** Transfer edicts (required for send operations). */
   edicts?: DuneEdict[];
-  /** Default **v2** (0xD0) for new etches; use v1 for wonky-era compatibility. */
+  /** Default **v2** (0xD0) for new etches; use v1 only for OP_13 archive experiments. */
   magic?: DunestoneMagic;
-  /** v2 protocol version byte (default 0x02). */
+  /** Header version: 0x02 simple, 0x03 compact launch-curve. */
   protocolVersion?: number;
-  /** v2: agent mode crumb */
-  agent?: bigint;
-  /** v2: pool intent crumb */
-  pool?: bigint;
-  /** v2: min output (slippage) */
-  minOut?: bigint;
-  /** v2: burn-to-mint koinu */
-  burnToMint?: bigint;
-  /** v2: parent dune id */
+  /** Optional parent dune id */
   parent?: { block: bigint; tx: bigint };
-  /** v2: soulbound hint */
-  soul?: boolean;
-  /** v2: fast-mint offset blocks */
-  fastMint?: bigint;
-  /** v2: lightweight contract class */
-  contract?: bigint;
-  /** v2: native Dunes launch-curve operation. */
+  /** Native Ðunes launch-curve operation (encoded compact on 0x03). */
   launchCurve?: DuneLaunchCurve;
 }
 
@@ -310,6 +290,37 @@ function launchCurveOpToWire(op: LaunchCurveOp): bigint {
   }
 }
 
+function packLaunchHeader(lc: DuneLaunchCurve): bigint {
+  const op = launchCurveOpToWire(lc.op);
+  const curveType = lc.curveType ?? (lc.op === 'launch' ? 1n : 0n);
+  const fee = lc.creatorFeeBps ?? (lc.op === 'launch' ? 100n : 0n);
+  const output = BigInt(lc.output ?? 0);
+  const creatorOut = BigInt(lc.creatorOutput ?? (lc.op === 'launch' ? 1 : 0));
+  const treasuryOut = BigInt(lc.treasuryOutput ?? (lc.op === 'launch' ? 2 : 0));
+  return (op & 0xffn)
+    | ((curveType & 0xffn) << 8n)
+    | ((fee & 0xffffn) << 16n)
+    | ((output & 0xffn) << 32n)
+    | ((creatorOut & 0xffn) << 40n)
+    | ((treasuryOut & 0xffn) << 48n);
+}
+
+function encodeLaunchCurveCompact(lc: DuneLaunchCurve, payload: number[]): void {
+  appendTagValue(TAG_LAUNCH_CURVE_OP, packLaunchHeader(lc), payload);
+  if (lc.target) appendDuneIdTag(TAG_LAUNCH_CURVE_TARGET, lc.target, payload);
+  if (lc.op === 'launch') {
+    appendTagValueOpt(TAG_LAUNCH_CURVE_MAX_SUPPLY, lc.basePrice, payload);
+    appendTagValueOpt(TAG_LAUNCH_CURVE_TYPE, lc.slope, payload);
+    appendTagValueOpt(TAG_LAUNCH_CURVE_BASE_PRICE, lc.graduationSupply, payload);
+  } else if (lc.op === 'buy') {
+    appendTagValueOpt(TAG_LAUNCH_CURVE_MAX_SUPPLY, lc.dogeIn, payload);
+    appendTagValueOpt(TAG_LAUNCH_CURVE_TYPE, lc.minTokensOut, payload);
+  } else if (lc.op === 'sell') {
+    appendTagValueOpt(TAG_LAUNCH_CURVE_MAX_SUPPLY, lc.tokenAmount, payload);
+    appendTagValueOpt(TAG_LAUNCH_CURVE_TYPE, lc.minDogeOut, payload);
+  }
+}
+
 // ── Main encoder ──────────────────────────────────────────────────────────────
 
 /**
@@ -321,7 +332,8 @@ function launchCurveOpToWire(op: LaunchCurveOp): bigint {
 export function encodeDunestone(params: DunestoneParams): Uint8Array {
   const payload: number[] = [];
   const magic: DunestoneMagic = params.magic ?? 'v2';
-  const protocolVersion = params.protocolVersion ?? DUNE_V2_VERSION;
+  const protocolVersion = params.protocolVersion
+    ?? (params.launchCurve ? DUNE_V3_VERSION : DUNE_V2_VERSION);
 
   if (magic === 'v2') {
     appendTagValue(TAG_VERSION, BigInt(protocolVersion), payload);
@@ -368,38 +380,15 @@ export function encodeDunestone(params: DunestoneParams): Uint8Array {
     appendTagValue(TAG_POINTER, BigInt(params.pointer), payload);
   }
 
-  // ── v2 extensions (safe optional construction) ────────────────────────────
+  // ── Freeze extensions (parent + compact launch-curve) ─────────────────────
   if (magic === 'v2') {
-    appendTagValueOpt(TAG_AGENT, params.agent, payload);
-    appendTagValueOpt(TAG_POOL, params.pool, payload);
-    appendTagValueOpt(TAG_MIN_OUT, params.minOut, payload);
-    appendTagValueOpt(TAG_BURN_TO_MINT, params.burnToMint, payload);
     if (params.parent) {
       appendTagValue(TAG_PARENT, params.parent.block, payload);
       appendTagValue(TAG_PARENT, params.parent.tx, payload);
     }
-    if (params.soul) appendTagValue(TAG_SOUL, 1n, payload);
-    appendTagValueOpt(TAG_FAST_MINT, params.fastMint, payload);
-    appendTagValueOpt(TAG_CONTRACT, params.contract, payload);
 
     if (params.launchCurve) {
-      const lc = params.launchCurve;
-      appendTagValue(TAG_LAUNCH_CURVE_OP, launchCurveOpToWire(lc.op), payload);
-      if (lc.target) appendDuneIdTag(TAG_LAUNCH_CURVE_TARGET, lc.target, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_MAX_SUPPLY, lc.maxSupply, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_TYPE, lc.curveType, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_BASE_PRICE, lc.basePrice, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_SLOPE, lc.slope, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_GRADUATION_SUPPLY, lc.graduationSupply, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_CREATOR_FEE_BPS, lc.creatorFeeBps, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_OUTPUT, lc.output !== undefined ? BigInt(lc.output) : undefined, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_MIN_TOKENS_OUT, lc.minTokensOut, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_MIN_DOGE_OUT, lc.minDogeOut, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_METADATA, lc.metadata, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_CREATOR_OUTPUT, lc.creatorOutput !== undefined ? BigInt(lc.creatorOutput) : undefined, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_TREASURY_OUTPUT, lc.treasuryOutput !== undefined ? BigInt(lc.treasuryOutput) : undefined, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_DOGE_IN, lc.dogeIn, payload);
-      appendTagValueOpt(TAG_LAUNCH_CURVE_TOKEN_AMOUNT, lc.tokenAmount, payload);
+      encodeLaunchCurveCompact(params.launchCurve, payload);
     }
   }
 
@@ -477,6 +466,7 @@ export function buildEtchScript(
 
   return encodeDunestone({
     magic: 'v2',
+    protocolVersion: DUNE_V2_VERSION,
     etching: {
       dune,
       spacers: spacers > 0n ? spacers : undefined,
@@ -519,9 +509,12 @@ export function buildSendScript(
   output = 1,
   pointer?: number,
 ): Uint8Array {
+  if (pointer === undefined) {
+    throw new Error('Pointer is required for Ðune sends so remainder cannot land on the recipient.');
+  }
   const { block, tx } = parseDuneId(duneId);
   return encodeDunestone({
-    ...(pointer !== undefined ? { pointer } : {}),
+    pointer,
     edicts: [{ id: { block, tx }, amount, output }],
   });
 }
@@ -549,6 +542,7 @@ export function buildLaunchCurveEtchScript(params: LaunchCurveEtchScriptParams):
 
   return encodeDunestone({
     magic: 'v2',
+    protocolVersion: DUNE_V3_VERSION,
     pointer: inventoryOutput,
     etching: {
       dune,
@@ -593,6 +587,7 @@ export function buildLaunchCurveBuyScript(params: LaunchCurveBuyScriptParams): U
 
   return encodeDunestone({
     magic: 'v2',
+    protocolVersion: DUNE_V3_VERSION,
     pointer: treasuryOutput,
     launchCurve: {
       op: 'buy',
@@ -620,6 +615,7 @@ export function buildLaunchCurveSellScript(params: LaunchCurveSellScriptParams):
 
   return encodeDunestone({
     magic: 'v2',
+    protocolVersion: DUNE_V3_VERSION,
     launchCurve: {
       op: 'sell',
       target,
@@ -646,6 +642,7 @@ export function buildLaunchCurveGraduateScript(params: LaunchCurveGraduateScript
 
   return encodeDunestone({
     magic: 'v2',
+    protocolVersion: DUNE_V3_VERSION,
     launchCurve: {
       op: 'graduate',
       target,

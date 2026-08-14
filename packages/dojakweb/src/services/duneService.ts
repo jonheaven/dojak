@@ -25,6 +25,7 @@ import {
   buildMintScript,
   buildSendScript,
   parseSpacedDune,
+  uniqueEtchBurnKoinu,
   type DuneTerms,
 } from '../lib/dunestone';
 import {
@@ -213,6 +214,7 @@ interface SignTxParams {
   feeRate: number;
   mustIncludeUtxos?: NormalisedUtxo[];
   forceChangeOutput?: boolean;
+  opReturnValue?: number;
 }
 
 interface BuiltTx {
@@ -248,6 +250,8 @@ interface BuildDuneTxParams {
    * DOGE into it. Used by sends so a pointer can park unallocated Ðunes.
    */
   forceChangeOutput?: boolean;
+  /** Value on the Dunestone OP_RETURN (burn-to-etch). Default 0. */
+  opReturnValue?: number;
 }
 
 function planDuneTx(params: BuildDuneTxParams) {
@@ -259,12 +263,13 @@ function planDuneTx(params: BuildDuneTxParams) {
     feeRate,
     mustIncludeUtxos = [],
     forceChangeOutput = false,
+    opReturnValue = 0,
   } = params;
 
   if (forceChangeOutput) {
     // Recipient + min change postage; leftover DOGE folds into the change output.
     const requiredOutputSats =
-      extraOutputs.reduce((s, o) => s + o.value, 0) + SOFT_DUST_KOINU;
+      extraOutputs.reduce((s, o) => s + o.value, 0) + SOFT_DUST_KOINU + opReturnValue;
     const estOutputCount = 1 + extraOutputs.length + 1; // OP_RETURN + extras + change
     const fixedOutputValues = [...extraOutputs.map((o) => o.value), SOFT_DUST_KOINU];
     const { selected, feeSatoshis, changeSatoshis } = selectCoins(
@@ -279,7 +284,7 @@ function planDuneTx(params: BuildDuneTxParams) {
     // changeSatoshis is DOGE above the reserved soft-dust change floor.
     const finalChange = SOFT_DUST_KOINU + changeSatoshis;
     const outputs: Array<{ value: number; script?: Uint8Array; address?: string }> = [
-      { value: 0, script: opReturnScript },
+      { value: opReturnValue, script: opReturnScript },
       ...extraOutputs,
       { address: fromAddress, value: finalChange },
     ];
@@ -291,7 +296,7 @@ function planDuneTx(params: BuildDuneTxParams) {
     };
   }
 
-  const requiredOutputSats = extraOutputs.reduce((s, o) => s + o.value, 0);
+  const requiredOutputSats = extraOutputs.reduce((s, o) => s + o.value, 0) + opReturnValue;
   const estOutputCount = 1 + extraOutputs.length + 1;
 
   const { selected, feeSatoshis, changeSatoshis } = selectCoins(
@@ -305,7 +310,7 @@ function planDuneTx(params: BuildDuneTxParams) {
   );
 
   const outputs: Array<{ value: number; script?: Uint8Array; address?: string }> = [
-    { value: 0, script: opReturnScript },
+    { value: opReturnValue, script: opReturnScript },
     ...extraOutputs,
   ];
 
@@ -395,6 +400,7 @@ async function buildAndSign(params: SignTxParams): Promise<BuiltTx> {
     feeRate,
     mustIncludeUtxos,
     forceChangeOutput,
+    opReturnValue,
   } = params;
   const { selected, feeSatoshis, changeSatoshis, outputs } = planDuneTx({
     fromAddress,
@@ -404,6 +410,7 @@ async function buildAndSign(params: SignTxParams): Promise<BuiltTx> {
     feeRate,
     mustIncludeUtxos,
     forceChangeOutput,
+    opReturnValue,
   });
 
   const signer = DogeMemoryWallet.fromWIF(privateKeyWIF, 'doge');
@@ -429,6 +436,7 @@ async function signDuneTransaction(
     utxos?: NormalisedUtxo[];
     mustIncludeUtxos?: NormalisedUtxo[];
     forceChangeOutput?: boolean;
+    opReturnValue?: number;
   },
 ): Promise<BuiltTx> {
   assertDuneTxSigner(signer);
@@ -441,6 +449,7 @@ async function signDuneTransaction(
     feeRate,
     mustIncludeUtxos: opts?.mustIncludeUtxos,
     forceChangeOutput: opts?.forceChangeOutput,
+    opReturnValue: opts?.opReturnValue,
   };
 
   if (signer.privateKeyWIF) {
@@ -453,6 +462,7 @@ async function signDuneTransaction(
       feeRate,
       mustIncludeUtxos: opts?.mustIncludeUtxos,
       forceChangeOutput: opts?.forceChangeOutput,
+      opReturnValue: opts?.opReturnValue,
     });
   }
 
@@ -734,12 +744,17 @@ export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
     throw new Error(`Dunestone is ${opReturnScript.length} bytes — exceeds the 83-byte OP_RETURN limit. Shorten the name or reduce parameters.`);
   }
 
+  const letterLen = name.replace(/[.•]/g, '').length;
+  const burnKoinu = Number(uniqueEtchBurnKoinu(letterLen));
+
   // Postage dust for premine-bearing output (edict → output 1)
   const extraOutputs = premineBig > 0n
     ? [{ address: signer.fromAddress, value: POSTAGE_KOINU }]
     : [];
 
-  const built = await signDuneTransaction(signer, opReturnScript, extraOutputs, feeRate);
+  const built = await signDuneTransaction(signer, opReturnScript, extraOutputs, feeRate, {
+    opReturnValue: burnKoinu,
+  });
 
   let txid: string | undefined;
   if (broadcast) {
