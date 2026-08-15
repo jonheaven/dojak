@@ -10,6 +10,9 @@ import { buildTreatsDeployJson } from './buildJson';
 
 export const NOIZ_FLAGSHIP = {
   tick: 'NOIZ',
+  /** Canonical ÐA (deploy `block:tx`) — ticker MAY collide; this id does not. */
+  assetId: '6332410:9',
+  deployTxid: '8ccfa6d81f082b2f858ab382f8eead25f7578e7ee70d490b31b1a8fb13a2f48b',
   max: '6904200',
   premine: '345210',
   /** ~4 years at ~1 min/block — only deployer may mint until then. */

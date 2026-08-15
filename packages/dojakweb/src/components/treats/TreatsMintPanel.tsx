@@ -44,6 +44,40 @@ export interface TreatsMintPanelProps {
 
 const DEFAULT_OPS: TreatsUiOp[] = ['deploy', 'mint'];
 
+/** Tokenomics chips — never fill ticker (collisions are a different ÐA). */
+const ECON_PRESETS = [
+  {
+    id: 'trench',
+    label: 'Open mint',
+    hint: '1B · public',
+    max: '1000000000',
+    premine: '',
+    deployerWindow: '',
+    lim: '',
+    decimals: '0',
+  },
+  {
+    id: 'treasury',
+    label: 'Treasury scarce',
+    hint: '6.9M-style · your ticker',
+    max: '6904200',
+    premine: '345210',
+    deployerWindow: '2100000',
+    lim: '',
+    decimals: '',
+  },
+  {
+    id: 'fair',
+    label: 'Fair lim',
+    hint: '21M · per-tx cap',
+    max: '21000000',
+    premine: '',
+    deployerWindow: '',
+    lim: '1000',
+    decimals: '0',
+  },
+] as const;
+
 export function TreatsMintPanel({
   initialOp = 'mint',
   initialTick = '',
@@ -65,14 +99,14 @@ export function TreatsMintPanel({
   const firstOp = ops.includes(initialOp) ? initialOp : ops[0] ?? 'mint';
   const [op, setOp] = useState<TreatsUiOp>(firstOp);
   const [tick, setTick] = useState(initialTick);
-  const flagship = isNoizTick(initialTick);
-  const [max, setMax] = useState(flagship ? NOIZ_FLAGSHIP.max : '1000000000');
+  const lockEconomics = lockTick && isNoizTick(initialTick);
+  const [max, setMax] = useState(lockEconomics ? NOIZ_FLAGSHIP.max : '1000000000');
   /** Empty = omit wire key `l`. */
   const [lim, setLim] = useState('');
-  const [premine, setPremine] = useState(flagship ? NOIZ_FLAGSHIP.premine : '');
-  const [deployerWindow, setDeployerWindow] = useState(flagship ? NOIZ_FLAGSHIP.deployerWindow : '');
+  const [premine, setPremine] = useState(lockEconomics ? NOIZ_FLAGSHIP.premine : '');
+  const [deployerWindow, setDeployerWindow] = useState(lockEconomics ? NOIZ_FLAGSHIP.deployerWindow : '');
   /** Empty = omit `dec` (on-chain default 0). */
-  const [decimals, setDecimals] = useState(flagship ? '' : '0');
+  const [decimals, setDecimals] = useState(lockEconomics ? '' : '0');
   const [amt, setAmt] = useState('1');
   const [assetId, setAssetId] = useState(initialAssetId);
   const [transferTo, setTransferTo] = useState('');
@@ -89,21 +123,9 @@ export function TreatsMintPanel({
   const [txid, setTxid] = useState<string | null>(null);
   const [confirmPermanent, setConfirmPermanent] = useState(false);
 
-  const lockEconomics = isNoizTick(tick);
-
   useEffect(() => {
     if (initialAssetId) setAssetId(initialAssetId);
   }, [initialAssetId]);
-
-  useEffect(() => {
-    if (isNoizTick(tick)) {
-      setMax(NOIZ_FLAGSHIP.max);
-      setPremine(NOIZ_FLAGSHIP.premine);
-      setDeployerWindow(NOIZ_FLAGSHIP.deployerWindow);
-      setLim('');
-      setDecimals('');
-    }
-  }, [tick]);
 
   useEffect(() => {
     if (!requireMintPow) return;
@@ -320,7 +342,7 @@ export function TreatsMintPanel({
                 }}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono uppercase text-white"
                 maxLength={8}
-                placeholder="WOW"
+                placeholder="YOURTICK"
               />
             </>
           )}
@@ -328,8 +350,19 @@ export function TreatsMintPanel({
           {lockTick && tick && (
             <p className="text-sm text-zinc-400">
               Ticker: <span className="font-mono font-bold text-[#FCD34D]">{tick.toUpperCase()}</span>
+              {lockEconomics ? (
+                <span className="ml-2 font-mono text-xs text-zinc-500">ÐA {NOIZ_FLAGSHIP.assetId}</span>
+              ) : null}
             </p>
           )}
+
+          {!lockEconomics && isNoizTick(tick) && op === 'deploy' ? (
+            <p className="rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-100">
+              $NOIZ already exists as ÐA <span className="font-mono">{NOIZ_FLAGSHIP.assetId}</span>. A new deploy
+              with the same sticker is a <strong>different</strong> asset (like a Solana CA clone). Pick your own
+              ticker unless you mean to compete on a copy.
+            </p>
+          ) : null}
 
           {op !== 'deploy' && (
             <>
@@ -358,10 +391,32 @@ export function TreatsMintPanel({
               </p>
             </div>
           ) : op === 'deploy' ? (
-            <p className="text-xs text-zinc-500">
-              Trench default is 1B with no deployer window (community mint). For a treasury-gated coin, set premine +{' '}
-              <code className="text-zinc-300">dw</code> and omit per-tx lim — same pattern as $NOIZ.
-            </p>
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-500">
+                Tickers are 1–8 alphanumeric (not 4). They collide on purpose — identity is the ÐA (
+                <code className="text-zinc-300">block:tx</code>), like a Solana CA. Presets never fill a ticker.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {ECON_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setMax(p.max);
+                      setPremine(p.premine);
+                      setDeployerWindow(p.deployerWindow);
+                      setLim(p.lim);
+                      setDecimals(p.decimals);
+                      reset();
+                    }}
+                    className="rounded-lg border border-zinc-700 px-2.5 py-1.5 text-left hover:border-[#FCD34D]/40"
+                  >
+                    <span className="block text-xs font-semibold text-zinc-200">{p.label}</span>
+                    <span className="block text-[10px] text-zinc-500">{p.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : null}
 
           {op === 'deploy' && (
