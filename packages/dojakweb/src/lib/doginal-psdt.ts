@@ -829,16 +829,22 @@ export function validateSellerPSDT(
 // ── Buyer PSBTs ───────────────────────────────────────────────────────────────
 
 /**
- * Build a PSBT that creates a dummy UTXO (100 000 shibes) needed before buying.
+ * Build a PSBT that creates dummy UTXO(s) needed before buying.
+ *
+ * OpenOrdex / dojak default: one 100_000 koinu (0.001 Ð) output.
+ * doggy.market: two **100_001** koinu outputs — they skip 100_000 as inscription postage
+ * (`no dummy utxos`). Pass `{ dummyValueKoinu: 100_001, dummyCount: 2 }`.
  */
 export async function buildDummyUtxoPSDT(
   payerAddress: string,
   paymentUtxos: OrdUtxo[],
-  opts?: { feeRateKoinuPerByte?: number },
+  opts?: { feeRateKoinuPerByte?: number; dummyValueKoinu?: number; dummyCount?: number },
 ): Promise<string> {
   // Dummy splits are ~226 vB. Do not use live buy-priority estimates (up to 50k koinu/byte):
   // that yields ~0.1 Ð fees and trips bitcoinjs-lib / MyDoge `maximumFeeRate` (5000 sat/vB).
   const feeRate = opts?.feeRateKoinuPerByte ?? DEFAULT_FEE_RATE;
+  const dummyValue = opts?.dummyValueKoinu ?? DUMMY_UTXO_VALUE;
+  const dummyCount = Math.max(1, Math.floor(opts?.dummyCount ?? 1));
   const psbt  = new bitcoin.Psbt(DOGE_PSBT_OPTS);
   let total   = 0;
 
@@ -852,23 +858,27 @@ export async function buildDummyUtxoPSDT(
     total += u.value;
   }
 
-  psbt.addOutput({ address: payerAddress, value: BigInt(DUMMY_UTXO_VALUE) });
+  for (let i = 0; i < dummyCount; i++) {
+    psbt.addOutput({ address: payerAddress, value: BigInt(dummyValue) });
+  }
 
-  // Size fee for dummy + change. The 0.001 dummy is Dogecoin soft-dust, so Core
-  // requires +0.01 Ð extra fee or the split sits unconfirmed forever.
+  // Size fee for dummies + change. Sub-0.01 Ð outs are Dogecoin soft-dust, so Core
+  // requires +0.01 Ð extra fee per such output or the split sits unconfirmed forever.
   const sizeFee = calculateFee(
     psbt.txInputs.length,
-    2,
+    dummyCount + 1,
     feeRate,
     false,
     BUY_FEE_SIZE_PADDING_BYTES,
   );
-  const dustPenalty = softDustFeePenaltyKoinu([DUMMY_UTXO_VALUE]);
+  const dummyValues = Array.from({ length: dummyCount }, () => dummyValue);
+  const dustPenalty = softDustFeePenaltyKoinu(dummyValues);
   const fee = sizeFee + dustPenalty;
-  const change = total - DUMMY_UTXO_VALUE - fee;
+  const dummyTotal = dummyValue * dummyCount;
+  const change = total - dummyTotal - fee;
   if (change < 0) {
     throw new Error(
-      `Not enough spendable DOGE to create a 0.001 dummy coin (need ~${shibesToDoge(DUMMY_UTXO_VALUE + fee).toFixed(4)} Ð including soft-dust fee).`,
+      `Not enough spendable DOGE to create dummy coin(s) (need ~${shibesToDoge(dummyTotal + fee).toFixed(4)} Ð including soft-dust fee).`,
     );
   }
   if (change >= SOFT_DUST_KOINU) {
