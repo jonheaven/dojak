@@ -32,6 +32,8 @@ export interface TreatsMintPanelProps {
   compact?: boolean;
   /** When true, fetch indexer PoW policy and require mining before public mints. */
   requireMintPow?: boolean;
+  /** Prefill ÐA (`block:tx`) for mint/transfer. */
+  initialAssetId?: string;
   /** On-chain deployer address — skips PoW during treasury phase only. */
   tokenDeployerAddress?: string;
   deployerMinted?: string;
@@ -49,6 +51,7 @@ export function TreatsMintPanel({
   ops = DEFAULT_OPS,
   compact = false,
   requireMintPow = false,
+  initialAssetId = '',
   tokenDeployerAddress,
   deployerMinted,
   deployerMintCap,
@@ -70,7 +73,8 @@ export function TreatsMintPanel({
   const [deployerWindow, setDeployerWindow] = useState(flagship ? NOIZ_FLAGSHIP.deployerWindow : '');
   /** Empty = omit `dec` (on-chain default 0). */
   const [decimals, setDecimals] = useState(flagship ? '' : '0');
-  const [assetId, setAssetId] = useState('');
+  const [amt, setAmt] = useState('1');
+  const [assetId, setAssetId] = useState(initialAssetId);
   const [transferTo, setTransferTo] = useState('');
   const [busy, setBusy] = useState(false);
   const [mining, setMining] = useState(false);
@@ -86,6 +90,10 @@ export function TreatsMintPanel({
   const [confirmPermanent, setConfirmPermanent] = useState(false);
 
   const lockEconomics = isNoizTick(tick);
+
+  useEffect(() => {
+    if (initialAssetId) setAssetId(initialAssetId);
+  }, [initialAssetId]);
 
   useEffect(() => {
     if (isNoizTick(tick)) {
