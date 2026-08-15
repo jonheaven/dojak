@@ -3,6 +3,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUnifiedWallet } from '../../contexts/useUnifiedWallet';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
+import { DogeTxLink } from '../DogeTxLink';
+import { useBroadcastReceipt } from '../../lib/broadcast-receipt';
+import { upsertWalletTxJournalEntry } from '../../lib/wallet-tx-journal';
 import {
   buildTreatsDeployJson,
   buildTreatsMintJson,
@@ -122,6 +125,12 @@ export function TreatsMintPanel({
   const [error, setError] = useState<string | null>(null);
   const [txid, setTxid] = useState<string | null>(null);
   const [confirmPermanent, setConfirmPermanent] = useState(false);
+  const receiptKey =
+    address && tick.trim()
+      ? `treats:${op}:${tick.trim().toUpperCase()}:${address}`
+      : null;
+  const { receipt, remember } = useBroadcastReceipt(receiptKey);
+  const shownTxid = txid || receipt?.txid || null;
 
   useEffect(() => {
     if (initialAssetId) setAssetId(initialAssetId);
@@ -268,6 +277,15 @@ export function TreatsMintPanel({
         assetId: op !== 'deploy' ? assetId.trim() : undefined,
       });
       setTxid(id);
+      remember({ txid: id, label: `${op} ${tick.trim().toUpperCase()}` });
+      upsertWalletTxJournalEntry({
+        txid: id,
+        address,
+        protocol: 'treats',
+        action: `treats-${op}`,
+        title: `ÐogeTreats ${op}: ${tick.trim().toUpperCase()}`,
+        status: 'broadcasted',
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'ÐogeTreats broadcast failed.');
     } finally {
@@ -597,17 +615,13 @@ export function TreatsMintPanel({
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
           )}
 
-          {txid && (
+          {shownTxid && (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
               Broadcast:{' '}
-              <a
-                href={`https://dogechain.info/tx/${txid}`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-mono underline"
-              >
-                {txid.slice(0, 20)}…
-              </a>
+              <DogeTxLink
+                txid={shownTxid}
+                className="font-mono underline decoration-emerald-400/60 hover:decoration-emerald-200"
+              />
             </div>
           )}
 

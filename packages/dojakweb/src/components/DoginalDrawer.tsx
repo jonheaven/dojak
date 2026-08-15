@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { XMarkIcon, ArrowTopRightOnSquareIcon, EyeIcon, InformationCircleIcon, ClockIcon, MapPinIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useDoginalDrawer } from '../contexts/DoginalDrawerContext';
 import { useConnectedWalletAddress } from '../wallet/getConnectedWalletAddress';
+import { dogeTxExplorerDisplayName, dogeTxExplorerUrl, useDogeTxExplorerPreference } from '../utils/dogeTxExplorer';
 import { OwnershipFlow } from './OwnershipFlow';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -14,6 +15,7 @@ const DoginalDrawer: React.FC = () => {
   const [activePanel, setActivePanel] = useState<'preview' | 'metadata' | 'activity'>('preview');
   const [isPinned, setIsPinned] = useState(false);
   const connectedAddress = useConnectedWalletAddress();
+  const explorerPref = useDogeTxExplorerPreference();
 
   if (!drawerData) return null;
 
@@ -510,13 +512,13 @@ const DoginalDrawer: React.FC = () => {
           <div className="p-4 border-t border-border-primary space-y-3">
             {drawerData.txid && (
               <a
-                href={`https://dogechain.info/tx/${drawerData.txid}`}
+                href={dogeTxExplorerUrl(drawerData.txid, explorerPref)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center space-x-2 w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200"
               >
                 <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                <span>View on DogeChain</span>
+                <span>View on {dogeTxExplorerDisplayName(explorerPref)}</span>
               </a>
             )}
 

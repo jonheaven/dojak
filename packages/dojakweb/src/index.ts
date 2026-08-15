@@ -293,6 +293,27 @@ export {
 } from './lib/mydoge/httpGate';
 
 export {
+  dogeTxExplorerUrl,
+  dogeAddressExplorerUrl,
+  dogeTxExplorerDisplayName,
+  ensureDefaultChainExplorer,
+  loadDogeTxExplorerPreference,
+  saveDogeTxExplorerPreference,
+  useDogeTxExplorerPreference,
+  DOGENALS_EXPLORER_ORIGIN,
+  type DogeTxExplorerId,
+} from './utils/dogeTxExplorer';
+
+export { DogeTxLink, shortDogeTxid } from './components/DogeTxLink';
+export {
+  useBroadcastReceipt,
+  loadBroadcastReceipt,
+  saveBroadcastReceipt,
+  clearBroadcastReceipt,
+  type BroadcastReceipt,
+} from './lib/broadcast-receipt';
+
+export {
   DOJAKWEB_WALLET_TX_JOURNAL_CHANGED_EVENT,
   DOJAKWEB_WALLET_TX_JOURNAL_KEY,
   WALLET_TX_PROTOCOL_LABELS,

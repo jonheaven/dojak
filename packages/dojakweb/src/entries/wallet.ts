@@ -125,6 +125,7 @@ export {
 export {
   dogeTxExplorerUrl,
   dogeAddressExplorerUrl,
+  dogeTxExplorerDisplayName,
   ensureDefaultChainExplorer,
   loadDogeTxExplorerPreference,
   saveDogeTxExplorerPreference,
@@ -132,6 +133,15 @@ export {
   DOGENALS_EXPLORER_ORIGIN,
   type DogeTxExplorerId,
 } from '../utils/dogeTxExplorer';
+
+export { DogeTxLink, shortDogeTxid } from '../components/DogeTxLink';
+export {
+  useBroadcastReceipt,
+  loadBroadcastReceipt,
+  saveBroadcastReceipt,
+  clearBroadcastReceipt,
+  type BroadcastReceipt,
+} from '../lib/broadcast-receipt';
 
 export {
   useDojakwebTheme,

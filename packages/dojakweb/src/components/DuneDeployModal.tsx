@@ -8,6 +8,11 @@ import { useDuneTxSigner } from '../hooks/useDuneTxSigner';
 import { useDuneWalletConnection } from '../hooks/useDuneWalletConnection';
 import { upsertWalletTxJournalEntry } from '../lib/wallet-tx-journal';
 import {
+  dogeTxExplorerDisplayName,
+  dogeTxExplorerUrl,
+  loadDogeTxExplorerPreference,
+} from '../utils/dogeTxExplorer';
+import {
   duneApprovalUserError,
   runDuneTxWithWalletApproval,
 } from '../lib/dune-wallet-approval';
@@ -91,14 +96,11 @@ type Step = 'form' | 'confirm' | 'broadcasting' | 'done';
 
 function duneTxExplorerLinks(txid: string) {
   const id = txid.trim();
+  const pref = loadDogeTxExplorerPreference();
   return [
     {
-      label: 'Dogenals Explorer',
-      href: `https://explorer.dogenals.com/tx/${encodeURIComponent(id)}`,
-    },
-    {
-      label: 'SoChain',
-      href: `https://sochain.com/tx/DOGE/${encodeURIComponent(id)}`,
+      label: dogeTxExplorerDisplayName(pref),
+      href: dogeTxExplorerUrl(id, pref),
     },
   ];
 }

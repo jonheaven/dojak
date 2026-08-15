@@ -40,6 +40,8 @@ const REQUIRED_EXPORTS = [
   'gatedMydogeGetJson',
   'invalidateMydogeUtxoCaches',
   'MydogeHttpError',
+  'DogeTxLink',
+  'dogeTxExplorerUrl',
 ];
 
 if (!fs.existsSync(distIndex)) {

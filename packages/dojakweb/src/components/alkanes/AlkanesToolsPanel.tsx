@@ -14,6 +14,7 @@ import {
   type AlkaneTemplate,
 } from '../../lib/alkanes';
 import { upsertWalletTxJournalEntry } from '../../lib/wallet-tx-journal';
+import { dogeTxExplorerUrl } from '../../utils/dogeTxExplorer';
 import { requestWalletApproval } from '../../stores/walletApprovalStore';
 
 export type AlkanesUiOp = 'deploy-amm' | 'simulate' | 'build-call' | 'broadcast-call';
@@ -263,7 +264,7 @@ export function AlkanesToolsPanel({
         summary: `target ${target} · ${callMode} · amount ${amountIn}`,
         status: 'broadcasted',
         txid: r.txid,
-        metadata: { scriptHex: r.scriptHex, explorer: `https://explorer.dogenals.com/tx/${r.txid}` },
+        metadata: { scriptHex: r.scriptHex, explorer: dogeTxExplorerUrl(r.txid) },
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'broadcast failed';

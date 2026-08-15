@@ -6004,7 +6004,7 @@ export function DojakwebWalletModal({
                             <div className="text-sm font-semibold text-green-300">{t('modal.sendInscription.sentTitle')}</div>
                             <div className="text-xs text-white/70 font-mono break-all">{inscriptionSendTxid}</div>
                             <a
-                              href={`https://dogechain.info/tx/${inscriptionSendTxid}`}
+                              href={dogeTxExplorerUrl(inscriptionSendTxid)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs text-yellow-400 underline"

@@ -21,6 +21,9 @@ const REQUIRED = [
   'hideInscription',
   'unhideInscription',
   'filterVisibleInscriptions',
+  'dogeTxExplorerUrl',
+  'DogeTxLink',
+  'useBroadcastReceipt',
 ];
 
 if (!fs.existsSync(distWallet)) {
