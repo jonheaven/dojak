@@ -1048,7 +1048,9 @@ export async function broadcastUtxoTx(rawHex: string): Promise<string> {
       continue;
     }
     try {
-      return await tryRelay(provider);
+      const txid = await tryRelay(provider);
+      walletDataApi.invalidateUtxos();
+      return txid;
     } catch (e) {
       if (provider === 'rpc' && isRpcMempoolConflictError(e)) {
         rpcRejectedWithMempoolConflict = true;

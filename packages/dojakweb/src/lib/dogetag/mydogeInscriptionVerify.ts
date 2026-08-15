@@ -3,6 +3,8 @@
  * API shape matches https://api.mydoge.com/inscription/{inscriptionId}
  */
 
+import { gatedMydogeGetJson, MydogeHttpError } from '../mydoge/httpGate';
+
 const MYDOGE_INSCRIPTION_BASE = 'https://api.mydoge.com/inscription/';
 
 export interface MydogeInscriptionMeta {
@@ -40,15 +42,16 @@ export async function fetchMydogeInscriptionMeta(
   inscriptionId: string,
   signal?: AbortSignal,
 ): Promise<MydogeInscriptionMeta | null | 'not_found'> {
-  const r = await fetch(mydogeInscriptionApiUrl(inscriptionId), {
-    signal,
-    headers: { Accept: 'application/json' },
-  });
-  if (r.status === 404) return 'not_found';
-  if (!r.ok) throw new Error(`MyDoge inscription API returned HTTP ${r.status}`);
-  const j = (await r.json()) as MydogeInscriptionMeta;
-  if (!j || typeof j.inscriptionId !== 'string') return null;
-  return j;
+  try {
+    const j = (await gatedMydogeGetJson(mydogeInscriptionApiUrl(inscriptionId), {
+      signal,
+    })) as MydogeInscriptionMeta;
+    if (!j || typeof j.inscriptionId !== 'string') return null;
+    return j;
+  } catch (e) {
+    if (e instanceof MydogeHttpError && e.status === 404) return 'not_found';
+    throw e;
+  }
 }
 
 export function mydogeMetaHasIndexedContent(meta: MydogeInscriptionMeta): boolean {

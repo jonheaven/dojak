@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { walletDataApi, DRC20Token, DuneHolding, MyDogeInscription, WalletInfo } from '../utils/api';
+import { invalidateMydogeCache } from '../lib/mydoge/httpGate';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { toast } from 'sonner';
 import { charmsService, charmsLookupsPaused } from '../services/charmsService';
@@ -455,6 +456,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         return;
       }
       setLastWalletForceRefresh(now);
+      invalidateMydogeCache();
     }
 
     await Promise.all([
@@ -463,7 +465,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       refreshInscriptions(force),
       refreshDunes(),
       refreshCharms(),
-      refreshUtxos(),
     ]);
 
     if (force) {
@@ -477,7 +478,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     refreshInscriptions,
     refreshDunes,
     refreshCharms,
-    refreshUtxos,
     refreshWalletInfo,
   ]);
 

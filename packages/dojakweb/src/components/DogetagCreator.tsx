@@ -43,7 +43,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Switch } from '@/components/ui/switch';
+import { fetchMydogeInscriptionMeta } from '../lib/dogetag/mydogeInscriptionVerify';
 
 /** Public read API — JSON for this id means the inscription is visible to MyDoge-style indexers. */
 function myDogeInscriptionApiUrl(inscriptionId: string): string {
@@ -832,20 +832,18 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
     setMydogeIndexerCheck('checking');
     setMydogeIndexerDetail(null);
     try {
-      const url = myDogeInscriptionApiUrl(id);
-      const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json' } });
-      if (res.ok) {
-        await res.json().catch(() => ({}));
-        setMydogeIndexerCheck('found');
-        return;
-      }
-      if (res.status === 404) {
+      const meta = await fetchMydogeInscriptionMeta(id);
+      if (meta === 'not_found') {
         setMydogeIndexerCheck('not_yet');
         setMydogeIndexerDetail('Not indexed yet — allow confirmations, then try again.');
         return;
       }
+      if (meta) {
+        setMydogeIndexerCheck('found');
+        return;
+      }
       setMydogeIndexerCheck('error');
-      setMydogeIndexerDetail(`HTTP ${res.status}`);
+      setMydogeIndexerDetail('Empty indexer response');
     } catch (e) {
       setMydogeIndexerCheck('error');
       const msg = e instanceof Error ? e.message : String(e);

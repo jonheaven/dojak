@@ -781,7 +781,9 @@ async function broadcastTransaction(rawTxHex: string): Promise<string> {
       continue;
     }
     try {
-      return await tryRelay(provider);
+      const txid = await tryRelay(provider);
+      walletDataApi.invalidateUtxos();
+      return txid;
     } catch (error) {
       lastError = error;
       console.warn(`[dojakweb:doge-tx] ${provider} failed, trying next provider:`, error);

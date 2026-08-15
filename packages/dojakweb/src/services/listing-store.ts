@@ -8,6 +8,7 @@
  */
 
 import { encodeBase64PsdtToDogePsdtUri } from '../lib/psdt/codec';
+import { gatedMydogeGetJson } from '../lib/mydoge/httpGate';
 
 const STORE_KEY = 'dojakweb_active_listings';
 
@@ -139,9 +140,9 @@ export async function pollListingStatuses(
 
   // Fetch the seller's current inscription list — this returns output/location data
   try {
-    const res = await fetch(`https://api.mydoge.com/inscriptions/${sellerAddress}`);
-    if (!res.ok) return;
-    const data = await res.json();
+    const data = await gatedMydogeGetJson(
+      `https://api.mydoge.com/inscriptions/${encodeURIComponent(sellerAddress)}`,
+    );
     const list: any[] = data?.list ?? data?.items ?? (Array.isArray(data) ? data : []);
 
     // Build a map of inscriptionId → current output

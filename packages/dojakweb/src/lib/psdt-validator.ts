@@ -19,6 +19,7 @@
  */
 
 import * as bitcoin from 'bitcoinjs-lib';
+import { gatedMydogeGetJson, MydogeHttpError } from './mydoge/httpGate';
 import { normalizeDoginalInscriptionId } from '../utils/api';
 import { DOGE_NETWORK, BLOCKCHAIR_URL, DUMMY_UTXO_VALUE } from './doginal-psdt';
 
@@ -315,20 +316,7 @@ async function checkInscription(
   const claimed = normalizeDoginalInscriptionId(claimedId);
 
   try {
-    const res = await fetch(`${MYDOGE_API}/inscription/${encodeURIComponent(claimed)}`);
-    if (res.status === 404) {
-      r.inscriptionExists = false;
-      r.errors.push(
-        `Inscription ${claimedId} not found on-chain. This may be a fake listing.`,
-      );
-      return;
-    }
-    if (!res.ok) {
-      r.warnings.push('Could not verify inscription via MyDoge API — check manually before buying.');
-      return;
-    }
-
-    const data = await res.json();
+    const data = await gatedMydogeGetJson(`${MYDOGE_API}/inscription/${encodeURIComponent(claimed)}`);
     r.inscriptionExists      = true;
     r.inscriptionNumber      = data.inscriptionNumber ?? data.number ?? data.inscription_number ?? null;
     r.inscriptionContentType = data.contentType ?? data.content_type ?? data.mime_type ?? null;
@@ -350,7 +338,14 @@ async function checkInscription(
     if (!ct && r.inscriptionExists) {
       r.warnings.push('Unknown content type — inspect the inscription before buying.');
     }
-  } catch {
+  } catch (e) {
+    if (e instanceof MydogeHttpError && e.status === 404) {
+      r.inscriptionExists = false;
+      r.errors.push(
+        `Inscription ${claimedId} not found on-chain. This may be a fake listing.`,
+      );
+      return;
+    }
     r.warnings.push('Could not verify inscription (network error) — check manually before buying.');
   }
 }

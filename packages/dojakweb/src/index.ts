@@ -284,6 +284,15 @@ export {
 } from './utils/api';
 
 export {
+  gatedMydogeGetJson,
+  invalidateMydogeCache,
+  invalidateMydogeUtxoCaches,
+  isMydogeApiUrl,
+  memoizeMydogeWork,
+  MydogeHttpError,
+} from './lib/mydoge/httpGate';
+
+export {
   DOJAKWEB_WALLET_TX_JOURNAL_CHANGED_EVENT,
   DOJAKWEB_WALLET_TX_JOURNAL_KEY,
   WALLET_TX_PROTOCOL_LABELS,

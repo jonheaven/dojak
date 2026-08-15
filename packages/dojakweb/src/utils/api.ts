@@ -1,5 +1,12 @@
 // API utilities for wallet-agnostic data providers (indexer / RPC gateway)
 import axios from 'axios';
+import {
+  gatedMydogeGetJson,
+  invalidateMydogeCache,
+  invalidateMydogeUtxoCaches,
+  isMydogeApiUrl,
+  memoizeMydogeWork,
+} from '../lib/mydoge/httpGate';
 import { getEnv, isViteDev } from './env';
 
 export type WalletDataProviderType = 'mydoge' | 'dogex' | 'commanddog';
@@ -704,12 +711,12 @@ const fetchJson = async (
   url: string,
   opts?: { networkErrorMessage?: string; timeoutMs?: number },
 ): Promise<any> => {
+  if (isMydogeApiUrl(url)) {
+    return gatedMydogeGetJson(url, opts);
+  }
   const timeoutMs = opts?.timeoutMs ?? 8_000;
   const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timer =
-    ctrl && typeof window !== 'undefined'
-      ? window.setTimeout(() => ctrl.abort(), timeoutMs)
-      : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
   try {
     const response = await fetch(url, { signal: ctrl?.signal, cache: 'no-store' });
     if (!response.ok) {
@@ -726,7 +733,7 @@ const fetchJson = async (
     }
     throw error;
   } finally {
-    if (timer != null) window.clearTimeout(timer);
+    if (timer != null) clearTimeout(timer);
   }
 };
 
@@ -1259,6 +1266,7 @@ export const walletDataApi = {
    * Confirmed UTXOs from the configured wallet data provider (MyDoge-compatible `/utxos/:address`).
    * Paginates via `next_cursor`. Never hits Blockchair/BlockCypher.
    * When the active provider is command.dog (no wallet UTXO list), uses the MyDoge public API.
+   * Address-level memo (~20s) + in-flight coalesce so wallet info / charms / coin-select share one walk.
    */
   fetchUtxosPaginated: async (
     address: string,
@@ -1280,88 +1288,96 @@ export const walletDataApi = {
       cfg.walletDataProvider === 'commanddog'
         ? DEFAULT_MYDOGE_PROVIDER_URL
         : getWalletProviderBaseUrl();
-    const collected: Array<{
-      txid: string;
-      vout: number;
-      value: number;
-      confirmations?: number;
-      scriptPubKey?: string;
-      inscriptions?: unknown[];
-      dunes?: unknown[];
-      dune_balances?: unknown[];
-    }> = [];
-    let cursor: string | null | undefined = undefined;
-    const maxPages = 25;
+    const addr = address.trim();
+    const memoKey = `utxos:${base}:${addr.toLowerCase()}`;
+    return memoizeMydogeWork(memoKey, async () => {
+      const collected: Array<{
+        txid: string;
+        vout: number;
+        value: number;
+        confirmations?: number;
+        scriptPubKey?: string;
+        inscriptions?: unknown[];
+        dunes?: unknown[];
+        dune_balances?: unknown[];
+      }> = [];
+      let cursor: string | null | undefined = undefined;
+      const maxPages = 25;
 
-    for (let page = 0; page < maxPages; page++) {
-      const path = `${base.replace(/\/+$/, '')}/utxos/${encodeURIComponent(address)}`;
-      const url =
-        cursor == null || cursor === ''
-          ? path
-          : `${path}?cursor=${encodeURIComponent(String(cursor))}`;
-      const data = await fetchJson(url, {
-        networkErrorMessage: 'Wallet UTXO provider is unavailable. Please retry in a moment.',
-      });
-      const rows: any[] = Array.isArray(data?.utxos)
-        ? data.utxos
-        : Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data)
-            ? data
-            : [];
-
-      for (const row of rows) {
-        const conf = Number(row.confirmations ?? row.conf ?? 1);
-        // Treat missing confirmations as confirmed (some providers omit the field).
-        if (Number.isFinite(conf) && conf < 1) continue;
-        const satRaw = row.satoshis ?? row.value ?? row.amount ?? row.sats;
-        // MyDoge sends satoshis as decimal strings ("20346208569"). Never treat those as DOGE.
-        let sat = 0;
-        if (typeof satRaw === 'string' && satRaw.trim()) {
-          const n = Number(satRaw);
-          sat = Number.isFinite(n)
-            ? satRaw.includes('.')
-              ? Math.round(n * 1e8)
-              : Math.round(n)
-            : 0;
-        } else if (typeof satRaw === 'number' && Number.isFinite(satRaw)) {
-          sat =
-            Number.isInteger(satRaw) || satRaw >= 1e6
-              ? Math.round(satRaw)
-              : Math.round(satRaw * 1e8);
-        }
-        if (!Number.isFinite(sat) || sat <= 0) continue;
-        const txid = String(row.txid ?? row.tx_hash ?? row.transaction_hash ?? '').trim();
-        const vout = Number(row.vout ?? row.tx_output_n ?? row.index ?? row.n);
-        if (!txid || !Number.isInteger(vout) || vout < 0) continue;
-        const inscriptions = Array.isArray(row.inscriptions) ? row.inscriptions : undefined;
-        const dunes = Array.isArray(row.dunes) ? row.dunes : undefined;
-        const dune_balances = Array.isArray(row.dune_balances) ? row.dune_balances : undefined;
-        collected.push({
-          txid,
-          vout,
-          value: sat,
-          confirmations: Number.isFinite(conf) ? conf : undefined,
-          scriptPubKey: String(row.scriptPubKey ?? row.script ?? row.script_hex ?? '') || undefined,
-          ...(inscriptions ? { inscriptions } : {}),
-          ...(dunes ? { dunes } : {}),
-          ...(dune_balances ? { dune_balances } : {}),
+      for (let page = 0; page < maxPages; page++) {
+        const path = `${base.replace(/\/+$/, '')}/utxos/${encodeURIComponent(addr)}`;
+        const url =
+          cursor == null || cursor === ''
+            ? path
+            : `${path}?cursor=${encodeURIComponent(String(cursor))}`;
+        const data = await fetchJson(url, {
+          networkErrorMessage: 'Wallet UTXO provider is unavailable. Please retry in a moment.',
         });
+        const rows: any[] = Array.isArray(data?.utxos)
+          ? data.utxos
+          : Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+              ? data
+              : [];
+
+        for (const row of rows) {
+          const conf = Number(row.confirmations ?? row.conf ?? 1);
+          // Treat missing confirmations as confirmed (some providers omit the field).
+          if (Number.isFinite(conf) && conf < 1) continue;
+          const satRaw = row.satoshis ?? row.value ?? row.amount ?? row.sats;
+          // MyDoge sends satoshis as decimal strings ("20346208569"). Never treat those as DOGE.
+          let sat = 0;
+          if (typeof satRaw === 'string' && satRaw.trim()) {
+            const n = Number(satRaw);
+            sat = Number.isFinite(n)
+              ? satRaw.includes('.')
+                ? Math.round(n * 1e8)
+                : Math.round(n)
+              : 0;
+          } else if (typeof satRaw === 'number' && Number.isFinite(satRaw)) {
+            sat =
+              Number.isInteger(satRaw) || satRaw >= 1e6
+                ? Math.round(satRaw)
+                : Math.round(satRaw * 1e8);
+          }
+          if (!Number.isFinite(sat) || sat <= 0) continue;
+          const txid = String(row.txid ?? row.tx_hash ?? row.transaction_hash ?? '').trim();
+          const vout = Number(row.vout ?? row.tx_output_n ?? row.index ?? row.n);
+          if (!txid || !Number.isInteger(vout) || vout < 0) continue;
+          const inscriptions = Array.isArray(row.inscriptions) ? row.inscriptions : undefined;
+          const dunes = Array.isArray(row.dunes) ? row.dunes : undefined;
+          const dune_balances = Array.isArray(row.dune_balances) ? row.dune_balances : undefined;
+          collected.push({
+            txid,
+            vout,
+            value: sat,
+            confirmations: Number.isFinite(conf) ? conf : undefined,
+            scriptPubKey: String(row.scriptPubKey ?? row.script ?? row.script_hex ?? '') || undefined,
+            ...(inscriptions ? { inscriptions } : {}),
+            ...(dunes ? { dunes } : {}),
+            ...(dune_balances ? { dune_balances } : {}),
+          });
+        }
+
+        const next = data?.next_cursor ?? data?.nextCursor ?? null;
+        if (next == null || next === '') break;
+        cursor = String(next);
       }
 
-      const next = data?.next_cursor ?? data?.nextCursor ?? null;
-      if (next == null || next === '') break;
-      cursor = String(next);
-    }
-
-    console.log('[walletDataApi] provider UTXOs', {
-      provider: cfg.walletDataProvider,
-      base,
-      address: address.slice(0, 10) + '…',
-      count: collected.length,
+      console.log('[walletDataApi] provider UTXOs', {
+        provider: cfg.walletDataProvider,
+        base,
+        address: addr.slice(0, 10) + '…',
+        count: collected.length,
+      });
+      return collected;
     });
-    return collected;
   },
+
+  /** Drop cached UTXOs after a spend, or the whole MyDoge JSON cache on force-refresh. */
+  invalidateUtxos: (address?: string) => invalidateMydogeUtxoCaches(address),
+  invalidateMydogeCache,
 
   fetchUtxos: async (address: string): Promise<any> => {
     const utxos = await walletDataApi.fetchUtxosPaginated(address);

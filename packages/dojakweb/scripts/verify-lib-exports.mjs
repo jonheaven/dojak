@@ -37,6 +37,9 @@ const REQUIRED_EXPORTS = [
   'coerceSignedPsdtToRawTxHex',
   'preparePsdtForMyDogeSign',
   'journalDlockerTx',
+  'gatedMydogeGetJson',
+  'invalidateMydogeUtxoCaches',
+  'MydogeHttpError',
 ];
 
 if (!fs.existsSync(distIndex)) {
