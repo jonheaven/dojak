@@ -197,7 +197,11 @@ function enrichmentFromAlkaneReceipt(
     action: 'call',
     actionLabel: 'Call',
     title: target ? `Ðalkane call · ${target}` : 'Ðalkane call',
-    summary: ok ? 'Indexed call receipt' : String(receipt.error ?? 'call failed'),
+    summary: ok
+      ? 'Indexed call receipt'
+      : /status\s+8/i.test(String(receipt.error ?? ''))
+        ? `${receipt.error} · off-window`
+        : String(receipt.error ?? 'call failed'),
     originLabel: 'dogenals · Ðalkanes',
     indexed: true,
     metadata: { receipt },

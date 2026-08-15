@@ -9,6 +9,7 @@ import {
   signOpReturnTransaction,
 } from '../broadcast/dogecoinTxBroadcast';
 import { upsertWalletTxJournalEntry } from '../wallet-tx-journal';
+import { dogeTxExplorerUrl } from '../../utils/dogeTxExplorer';
 
 export const ALKANES_MAGIC = 0xd1;
 export const ALKANES_VERSION = 0x01;
@@ -244,17 +245,29 @@ export async function broadcastAlkanesCall(params: {
         : undefined,
   });
   const txid = await broadcastSignedTransaction(signed.rawHex);
+  const op = params.inputs[0];
+  const opLabel =
+    op === 0 || op === '0'
+      ? 'initialize'
+      : op === 103 || op === '103'
+        ? 'clock-in'
+        : `op ${String(op)}`;
   upsertWalletTxJournalEntry({
     txid,
     address: params.fromAddress,
     protocol: 'alkanes',
     action: 'call',
-    title: 'Ðalkanes call',
-    summary: `target ${params.targetBlock}:${params.targetTx}${
+    title: `Ðalkanes ${opLabel}`,
+    summary: `target ${params.targetBlock}:${params.targetTx} · ${opLabel}${
       attach ? ` · attach ${attach} koinu` : ''
     }`,
     status: 'broadcasted',
-    metadata: { scriptHex, inputs: params.inputs.map(String), attachSatoshis: attach || undefined },
+    metadata: {
+      scriptHex,
+      inputs: params.inputs.map(String),
+      attachSatoshis: attach || undefined,
+      explorer: dogeTxExplorerUrl(txid),
+    },
   });
   return { txid, rawHex: signed.rawHex, scriptHex };
 }
