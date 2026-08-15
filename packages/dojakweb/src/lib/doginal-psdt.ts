@@ -7,8 +7,8 @@
  *   Buyer:  validateSellerPSBT → buildBuyPSDTSimple / buildBuyPSDT → wallet signs buyer inputs
  *           → raw tx hex → broadcastTx
  *
- * Wallets: in-browser Dojakweb (`signPsdtWithWifToTxHex` / UnifiedWallet.signPSBT) signs every
- * buyer input (skips input 0 — the seller’s pre-signed inscription). Extensions (e.g. MyDoge)
+ * Wallets: in-browser Dojakweb (`signPsdtWithWifToTxHex` / UnifiedWallet.signPSBT) signs
+ * buyer-owned inputs only (skips the seller inscription, which is not always vin 0).
  * may return either raw tx hex or an encoded PSBT; use `coerceSignedPsdtToRawTxHex` before broadcast.
  *
  * Seller flow  : buildListingPSDT → signListingPSDT → publishToNostr (or show QR)
@@ -115,20 +115,48 @@ export function tryParsePsdt(psbtInput: string): bitcoin.Psbt | null {
 
 const SIGHASH_ANYONECANPAY = bitcoin.Transaction.SIGHASH_ANYONECANPAY;
 
-/**
- * Input 0 on OpenOrdex / doggy.market buy PSDTs is the seller's inscription
- * (SIGHASH_SINGLE|ANYONECANPAY). The buyer must not sign it — even when doggy
- * omits the seller partialSig and only sets sighashType.
- */
-function isSellerListingInput(psbt: bitcoin.Psbt, index: number): boolean {
-  if (index !== 0 || psbt.inputCount < 2) return false;
-  const inp = psbt.data.inputs[0];
-  if (inp?.partialSig?.length) return true;
-  const sh = inp?.sighashType;
-  return typeof sh === 'number' && (sh & SIGHASH_ANYONECANPAY) !== 0;
+function prevOutScriptForInput(psbt: bitcoin.Psbt, index: number): Buffer | null {
+  const data = psbt.data.inputs[index];
+  if (data?.witnessUtxo?.script) return Buffer.from(data.witnessUtxo.script);
+  if (data?.nonWitnessUtxo) {
+    try {
+      const prev = bitcoin.Transaction.fromBuffer(Buffer.from(data.nonWitnessUtxo));
+      const vout = psbt.txInputs[index]?.index;
+      if (typeof vout !== 'number' || !prev.outs[vout]) return null;
+      return Buffer.from(prev.outs[vout].script);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
-/** Input indexes that still need the buyer's signature. */
+function inputScriptMatchesPubkey(script: Buffer, publicKey: Buffer): boolean {
+  try {
+    const out = bitcoin.payments.p2pkh({ pubkey: publicKey, network: DOGE_NETWORK }).output;
+    if (out && Buffer.from(out).equals(script)) return true;
+  } catch {
+    /* not p2pkh compressed */
+  }
+  return false;
+}
+
+/**
+ * Seller listing input: ANYONECANPAY (often SIGHASH_SINGLE|ACP) at any vin.
+ * doggy.market buy PSDTs do **not** always put the inscription at index 0
+ * (dummy pair can sit first; seller payment is then a later output).
+ */
+function isSellerListingInput(psbt: bitcoin.Psbt, index: number): boolean {
+  if (psbt.inputCount < 2) return false;
+  const inp = psbt.data.inputs[index];
+  if (!inp) return false;
+  const sh = inp.sighashType;
+  if (typeof sh === 'number' && (sh & SIGHASH_ANYONECANPAY) !== 0) return true;
+  if (index === 0 && inp.partialSig?.length) return true;
+  return false;
+}
+
+/** Input indexes that still need the buyer's signature (no pubkey — skip ACP / existing sigs). */
 export function getUnsignedPsdtInputIndexes(psbt: bitcoin.Psbt): number[] {
   const indexes: number[] = [];
   for (let i = 0; i < psbt.inputCount; i++) {
@@ -154,15 +182,62 @@ export function sighashTypeForMyDogePsdtSign(
 }
 
 /**
- * Indexes for local WIF signing. OpenOrdex-style buy PSDTs keep the seller inscription on **input 0**
- * (same index as their listing signature — SIGHASH_SINGLE|ANYONECANPAY binds input index to output 0).
- * Skip that input here; sign all others.
+ * Indexes the local WIF key can actually sign. Skip seller listing (ACP / vin0 sig)
+ * and any prevout that is not this wallet's P2PKH — doggy.market often places the
+ * inscription input after dummy coins, so "skip index 0" is not enough.
  */
-function getLocalWifSignerInputIndexes(psbt: bitcoin.Psbt): number[] {
-  if (psbt.inputCount >= 1 && (psbt.data.inputs[0]?.partialSig?.length || isSellerListingInput(psbt, 0))) {
-    return Array.from({ length: psbt.inputCount }, (_, i) => i).filter((i) => i !== 0);
+function getLocalWifSignerInputIndexes(psbt: bitcoin.Psbt, publicKey: Buffer): number[] {
+  const pub = Buffer.from(publicKey);
+  const indexes: number[] = [];
+  for (let i = 0; i < psbt.inputCount; i++) {
+    if (isSellerListingInput(psbt, i)) continue;
+    if (psbt.data.inputs[i]?.partialSig?.length) continue;
+    const script = prevOutScriptForInput(psbt, i);
+    if (!script || !inputScriptMatchesPubkey(script, pub)) continue;
+    indexes.push(i);
   }
-  return getUnsignedPsdtInputIndexes(psbt);
+  return indexes;
+}
+
+function isUnownedInputSignError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /can not sign for this input with the key/i.test(msg);
+}
+
+async function signPsbtInputsWithWif(
+  psbt: bitcoin.Psbt,
+  signer: bitcoin.SignerAsync,
+  explicitIndexes?: number[],
+): Promise<number[]> {
+  const pub = Buffer.from(signer.publicKey);
+  const owned = getLocalWifSignerInputIndexes(psbt, pub);
+  const indexes = explicitIndexes?.length
+    ? [...new Set(explicitIndexes)].filter((i) => owned.includes(i))
+    : owned;
+  const signed: number[] = [];
+  for (const i of indexes) {
+    try {
+      const sh = psbt.data.inputs[i]?.sighashType;
+      if (typeof sh === 'number') {
+        await psbt.signInputAsync(i, signer, [sh]);
+      } else {
+        await psbt.signInputAsync(i, signer);
+      }
+      signed.push(i);
+    } catch (err) {
+      if (isUnownedInputSignError(err)) {
+        console.warn(`[doginal-psdt] skip input ${i}: not this wallet's key`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  if (!signed.length) {
+    throw new Error(
+      'This wallet could not sign any input on the PSDT (seller inscription / other-party inputs only). Reconnect the buyer address used for dummy coins and try again.',
+    );
+  }
+  return signed;
 }
 
 /**
@@ -702,20 +777,13 @@ export async function signPsdtWithWifToTxHex(
 ): Promise<string> {
   const psbt   = parsePsdtForLocalSign(psbtInput);
   const signer = await makeAsyncSigner(privateKeyWif);
-  const indexes =
-    explicitIndexes?.length ?
-      [...new Set(explicitIndexes)].filter((i) => i >= 0 && i < psbt.inputCount) :
-      getLocalWifSignerInputIndexes(psbt);
-
-  for (const i of indexes) {
-    await psbt.signInputAsync(i, signer);
-  }
-
+  await signPsbtInputsWithWif(psbt, signer, explicitIndexes);
   return extractDogePsbtTxHex(psbt);
 }
 
 /**
- * Partially sign PSDT (same index rules as preparePsdtForMyDogeSign); return PSBT as hex (not finalized).
+ * Partially sign PSDT (buyer inputs only); return PSBT as hex (not finalized).
+ * Seller inscription inputs are skipped so doggy.market `buyListing` can keep their sig.
  */
 export async function signPartialPsdtWithWifToHex(
   psbtInput: string,
@@ -724,15 +792,7 @@ export async function signPartialPsdtWithWifToHex(
 ): Promise<string> {
   const psbt   = parsePsdtForLocalSign(psbtInput);
   const signer = await makeAsyncSigner(privateKeyWif);
-  const indexes =
-    explicitIndexes?.length ?
-      [...new Set(explicitIndexes)].filter((i) => i >= 0 && i < psbt.inputCount) :
-      getLocalWifSignerInputIndexes(psbt);
-
-  for (const i of indexes) {
-    await psbt.signInputAsync(i, signer);
-  }
-
+  await signPsbtInputsWithWif(psbt, signer, explicitIndexes);
   // In browsers, psbt.toBuffer() may be a Uint8Array; normalize to Buffer before hex encoding.
   return Buffer.from(psbt.toBuffer()).toString('hex');
 }
