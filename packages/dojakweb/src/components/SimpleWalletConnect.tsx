@@ -74,7 +74,11 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
 
   useEffect(() => {
     void (async () => {
-      setHasBrowserWallet(await hasWallet());
+      try {
+        setHasBrowserWallet(await hasWallet());
+      } catch {
+        setHasBrowserWallet(false);
+      }
     })();
   }, [hasWallet]);
 

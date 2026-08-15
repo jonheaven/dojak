@@ -147,7 +147,11 @@ export function useWalletConnectOptions(options?: {
 
   useEffect(() => {
     void (async () => {
-      setHasBrowserWallet(await hasWallet());
+      try {
+        setHasBrowserWallet(await hasWallet());
+      } catch {
+        setHasBrowserWallet(false);
+      }
     })();
   }, [hasWallet]);
 

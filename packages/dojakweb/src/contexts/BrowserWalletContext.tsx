@@ -513,7 +513,9 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
   );
 }
 
-const noop = async () => { throw new Error('Wallet not connected'); };
+const notConnected = async () => {
+  throw new Error('Wallet not connected');
+};
 const NULL_BROWSER_WALLET: UseBrowserWalletReturn = {
   connected: false,
   address: null,
@@ -523,23 +525,23 @@ const NULL_BROWSER_WALLET: UseBrowserWalletReturn = {
   balanceError: null,
   balanceRefreshing: false,
   balanceVerified: false,
-  connect: noop,
-  disconnect: noop,
-  createWallet: noop as any,
-  importWallet: noop as any,
-  importWalletFromMnemonic: noop as any,
-  saveWallet: noop,
-  loadWallet: noop as any,
-  loadSeedMaterial: noop as any,
-  hasSeedMaterial: noop as any,
-  hasWallet: noop as any,
-  removeWallet: noop,
-  refreshBalance: noop,
+  connect: notConnected,
+  disconnect: async () => {},
+  createWallet: notConnected as UseBrowserWalletReturn['createWallet'],
+  importWallet: notConnected as UseBrowserWalletReturn['importWallet'],
+  importWalletFromMnemonic: notConnected as UseBrowserWalletReturn['importWalletFromMnemonic'],
+  saveWallet: notConnected,
+  loadWallet: async () => null,
+  loadSeedMaterial: async () => null,
+  hasSeedMaterial: async () => false,
+  hasWallet: async () => false,
+  removeWallet: async () => {},
+  refreshBalance: async () => {},
   debitLocalBalance: () => {},
   listWallets: async () => [],
   selectWallet: async () => null,
-  switchAccount: noop as any,
-  updateNickname: noop,
+  switchAccount: notConnected as UseBrowserWalletReturn['switchAccount'],
+  updateNickname: async () => {},
 };
 
 export function useBrowserWallet(): UseBrowserWalletReturn {
