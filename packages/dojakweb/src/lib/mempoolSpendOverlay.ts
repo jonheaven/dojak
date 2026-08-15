@@ -282,7 +282,7 @@ export function friendlyPaymentSendError(err: unknown): string {
   const m = err instanceof Error ? err.message : String(err ?? 'Unknown error');
   if (isInputsSpentBroadcastError(err)) {
     return (
-      'Those coins were already spent (often from a recent Ðune send, DXD LP commit, or casino bet). ' +
+      'Those coins were already spent (often from a recent Ðune send, Ð𝕏Ð LP commit, or casino bet). ' +
       'We refreshed spendable UTXOs — wait a few seconds and try again. ' +
       'If it keeps failing, wait for pending txs to confirm before retrying.'
     );

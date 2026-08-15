@@ -54,7 +54,7 @@ export const WALLET_TX_PROTOCOL_LABELS: Record<DojakwebWalletTxProtocol, string>
   charms: 'Charms',
   alkanes: 'Ðalkanes',
   marketplace: 'Marketplace',
-  dxd: 'DXD',
+  dxd: 'Ð𝕏Ð',
   dlotto: 'ÐLotto',
   dgames: 'ÐGames',
   dlocker: 'ÐLocker',

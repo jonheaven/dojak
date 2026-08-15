@@ -626,7 +626,7 @@ async function getUtxosForDuneSend(
   if (!carriers.length) {
     throw new Error(
       `No live UTXOs holding Ðune ${duneId} were found. ` +
-        `If you just tried DXD LP / another send, wait for confirmation (or for failed commits to clear), then refresh.`,
+        `If you just tried Ð𝕏Ð LP / another send, wait for confirmation (or for failed commits to clear), then refresh.`,
     );
   }
 
