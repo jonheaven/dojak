@@ -66,6 +66,9 @@ export const WALLET_UI_EN_FLAT: Record<string, string> = {
   'providerModal.commanddogLabel': 'Command.dog API',
   'providerModal.commanddogDesc':
     'Gateway at api.command.dog (or your tunnel URL). Balances/inscriptions are not MyDoge-parity yet — use for chain health + broadcast relay; set VITE_COMMAND_DOG_API_URL for dev.',
+  'providerModal.electrsLabel': 'Electrs (Esplora)',
+  'providerModal.electrsDesc':
+    'Local electrs-doge via electrs.command.dog. Use only after it is at Core tip — factory default stays MyDoge so the wallet keeps working during first index.',
   'providerModal.selected': 'Selected',
   'providerModal.activeUrl': 'Active wallet data URL',
   'providerModal.gearHint': 'Use the gear icon from the wallet page to switch between providers at any time.',

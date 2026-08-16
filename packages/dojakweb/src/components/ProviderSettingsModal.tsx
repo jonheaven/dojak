@@ -153,6 +153,12 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
                       url: getDefaultWalletDataProviderUrl('commanddog'),
                       description: t('providerModal.commanddogDesc'),
                     },
+                    {
+                      key: 'electrs' as const,
+                      label: t('providerModal.electrsLabel'),
+                      url: getDefaultWalletDataProviderUrl('electrs'),
+                      description: t('providerModal.electrsDesc'),
+                    },
                   ] as const).map((provider) => (
                     <button
                       key={provider.key}

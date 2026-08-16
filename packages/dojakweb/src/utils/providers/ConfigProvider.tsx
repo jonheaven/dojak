@@ -233,7 +233,9 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           testUrl =
             activeConfig.walletDataProvider === 'commanddog'
               ? `${base.replace(/\/$/, '')}/health`
-              : `${base}/wallet/info?route=/address/DPkK4rNL8S7bxdh1fNkvd1GVYqenVKCdfX`;
+              : activeConfig.walletDataProvider === 'electrs'
+                ? `${base.replace(/\/$/, '')}/blocks/tip/height`
+                : `${base}/wallet/info?route=/address/DPkK4rNL8S7bxdh1fNkvd1GVYqenVKCdfX`;
           break;
         }
         case 'custom':

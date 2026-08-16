@@ -352,6 +352,7 @@ function getDataProviderInfo(t: DojakwebTranslate): { label: string } {
   const cfg = getWalletDataProviderConfig();
   if (cfg.walletDataProvider === 'dogex') return { label: t('modal.dataProvider.dogex') };
   if (cfg.walletDataProvider === 'commanddog') return { label: t('modal.dataProvider.commanddog') };
+  if (cfg.walletDataProvider === 'electrs') return { label: t('modal.dataProvider.electrs') };
   return { label: t('modal.dataProvider.mydoge') };
 }
 
@@ -7136,7 +7137,7 @@ export function DojakwebWalletModal({
                             {/* Data provider */}
                             <div>
                               <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/35">Wallet Data</div>
-                              <div className="flex gap-2">
+                              <div className="grid grid-cols-2 gap-2">
                                 {([
                                   { id: 'mydoge' as const, label: 'MyDoge', hint: 'api.mydoge.com' },
                                   { id: 'dogex' as const, label: 'Dogex', hint: t('modal.dataProvider.dogexHint') },
@@ -7144,6 +7145,11 @@ export function DojakwebWalletModal({
                                     id: 'commanddog' as const,
                                     label: 'Command.dog',
                                     hint: 'api.command.dog',
+                                  },
+                                  {
+                                    id: 'electrs' as const,
+                                    label: 'Electrs',
+                                    hint: 'electrs.command.dog (when at tip)',
                                   },
                                 ] as { id: WalletDataProviderType; label: string; hint: string }[]).map(opt => (
                                   <button

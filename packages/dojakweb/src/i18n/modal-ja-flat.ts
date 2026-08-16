@@ -565,6 +565,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.dataProvider.dogexHint': 'dogex（MyDoge 互換 + CDN）',
   'modal.dataProvider.mydoge': 'MyDoge',
   'modal.dataProvider.commanddog': 'Command.dog',
+  'modal.dataProvider.electrs': 'Electrs',
   'modal.priceSources.aster.label': 'Aster',
   'modal.priceSources.aster.desc': 'Aster DEX 永続（DOGEUSDT）の最終価格',
   'modal.priceSources.coingecko.label': 'CoinGecko',

@@ -9,12 +9,13 @@ import {
 } from '../lib/mydoge/httpGate';
 import { getEnv, isViteDev } from './env';
 
-export type WalletDataProviderType = 'mydoge' | 'dogex' | 'commanddog';
+export type WalletDataProviderType = 'mydoge' | 'dogex' | 'commanddog' | 'electrs';
 
 function normalizeWalletDataProvider(value: unknown): WalletDataProviderType {
   // Legacy: wzrd.dog alias → dogex indexer (MyDoge-compat routes on dogex host)
   if (value === 'wzrd' || value === 'dogex') return 'dogex';
   if (value === 'commanddog') return 'commanddog';
+  if (value === 'electrs' || value === 'esplora') return 'electrs';
   return 'mydoge';
 }
 
@@ -50,6 +51,7 @@ const WALLET_PROVIDER_DEFAULTS_MIGRATION_KEY = 'dojakweb-wallet-data-provider-de
 /** Fired on `window` after `setWalletDataProviderConfig` (same-tab; `storage` only fires in other tabs). */
 export const WALLET_DATA_PROVIDER_CHANGED_EVENT = 'dojakweb-wallet-data-provider-changed';
 const DEFAULT_MYDOGE_PROVIDER_URL = 'https://api.mydoge.com';
+const DEFAULT_ELECTRS_PROVIDER_URL = 'https://electrs.command.dog';
 const INUBITS_WALLET_INSCRIPTIONS_PATH = '/api/wallet/inscriptions';
 
 /** Canonical factory defaults — MyDoge public API, no custom URL override. */
@@ -357,6 +359,7 @@ export async function fetchCommandDogTxMempoolEntry(txid: string): Promise<Comma
 export const getDefaultWalletDataProviderUrl = (provider: WalletDataProviderType): string => {
   if (provider === 'dogex') return getIndexerApiBase();
   if (provider === 'commanddog') return getCommandDogApiBaseUrl();
+  if (provider === 'electrs') return DEFAULT_ELECTRS_PROVIDER_URL;
   return DEFAULT_MYDOGE_PROVIDER_URL;
 };
 
@@ -960,6 +963,54 @@ function mergeInscriptionListsById(primary: MyDogeInscription[], secondary: MyDo
 const isCommandDogWalletDataProvider = (): boolean =>
   getWalletDataProviderConfig().walletDataProvider === 'commanddog';
 
+const isElectrsWalletDataProvider = (): boolean =>
+  getWalletDataProviderConfig().walletDataProvider === 'electrs';
+
+/** Inscriptions / DRC-20 are not on electrs — keep MyDoge for those lists. */
+const usesMyDogeInscriptions = (): boolean =>
+  isCommandDogWalletDataProvider() || isElectrsWalletDataProvider();
+
+type ProviderUtxoRow = {
+  txid: string;
+  vout: number;
+  value: number;
+  confirmations?: number;
+  scriptPubKey?: string;
+  inscriptions?: unknown[];
+  dunes?: unknown[];
+  dune_balances?: unknown[];
+};
+
+/** Esplora `GET /address/{addr}/utxo` — value already in koinu. */
+async function fetchElectrsUtxos(base: string, addr: string): Promise<ProviderUtxoRow[]> {
+  const url = `${base.replace(/\/+$/, '')}/address/${encodeURIComponent(addr)}/utxo`;
+  const data = await fetchJson(url, {
+    networkErrorMessage: 'Electrs UTXO API is unavailable. Wait until electrs is at tip, or switch back to MyDoge.',
+  });
+  const rows: unknown[] = Array.isArray(data) ? data : [];
+  const collected: ProviderUtxoRow[] = [];
+  for (const row of rows as Array<Record<string, unknown>>) {
+    const status = row.status as { confirmed?: boolean } | undefined;
+    if (status && status.confirmed === false) continue;
+    const txid = String(row.txid ?? '').trim();
+    const vout = Number(row.vout);
+    const value = Number(row.value);
+    if (!txid || !Number.isInteger(vout) || vout < 0 || !Number.isFinite(value) || value <= 0) continue;
+    collected.push({
+      txid,
+      vout,
+      value: Math.round(value),
+      confirmations: status?.confirmed === false ? 0 : 1,
+    });
+  }
+  console.log('[walletDataApi] electrs UTXOs', {
+    base,
+    address: addr.slice(0, 10) + '…',
+    count: collected.length,
+  });
+  return collected;
+}
+
 async function fetchInubitsWalletInscriptions(address: string): Promise<MyDogeInscription[]> {
   const base = getInubitsWalletInscriptionsBase();
   const url = `${base}${INUBITS_WALLET_INSCRIPTIONS_PATH}?address=${encodeURIComponent(address)}`;
@@ -993,6 +1044,21 @@ async function fetchInscriptionsFromMyDoge(address: string): Promise<MyDogeInscr
 
 export const walletDataApi = {
   fetchWalletInfo: async (address: string): Promise<WalletInfo> => {
+    if (isElectrsWalletDataProvider()) {
+      const base = getWalletProviderBaseUrl();
+      const data = await fetchJson(`${base.replace(/\/+$/, '')}/address/${encodeURIComponent(address)}`);
+      const chain = data?.chain_stats ?? data?.chainStats ?? {};
+      const funded = Number(chain.funded_txo_sum ?? 0);
+      const spent = Number(chain.spent_txo_sum ?? 0);
+      const koinu = Number.isFinite(funded) && Number.isFinite(spent) ? Math.max(0, funded - spent) : 0;
+      const utxoCount = Number(chain.funded_txo_count ?? 0) - Number(chain.spent_txo_count ?? 0);
+      return {
+        address,
+        balanceSatoshis: koinu,
+        balance: koinu / 100000000,
+        totalUtxos: Number.isFinite(utxoCount) && utxoCount > 0 ? utxoCount : undefined,
+      };
+    }
     if (isCommandDogWalletDataProvider()) {
       const base = getWalletProviderBaseUrl();
       const data = await fetchJson(`${base}/v1/address/${encodeURIComponent(address)}`);
@@ -1006,7 +1072,7 @@ export const walletDataApi = {
   fetchInscriptionById: async (inscriptionId: string): Promise<InscriptionLookupResult | null> => {
     const id = normalizeDoginalInscriptionId(inscriptionId);
     const candidates: string[] = [];
-    if (isCommandDogWalletDataProvider()) {
+    if (usesMyDogeInscriptions()) {
       candidates.push(`${DEFAULT_MYDOGE_PROVIDER_URL}/inscription/${encodeURIComponent(id)}`);
     } else {
       const base = getWalletProviderBaseUrl();
@@ -1042,7 +1108,7 @@ export const walletDataApi = {
   fetchInscriptions: async (address: string): Promise<MyDogeInscription[]> => {
     // Era-1 Doginals live on MyDoge (and optional InuBits merge) — dogex is not
     // configured to scan classic Doginals, so never prefer the indexer for this list.
-    if (isCommandDogWalletDataProvider()) {
+    if (usesMyDogeInscriptions()) {
       const fromMyDoge = await fetchInscriptionsFromMyDoge(address);
       const { mergeInuBitsInscriptions } = getWalletDataProviderConfig();
       if (mergeInuBitsInscriptions === false) return fromMyDoge;
@@ -1096,7 +1162,10 @@ export const walletDataApi = {
       }
     }
     const address = await resolveAddress(walletOrAddress);
-    const data = await fetchJson(getWalletEndpoint('/DRC20/', address)) as DRC20ApiResponse | any;
+    const drc20Url = isElectrsWalletDataProvider()
+      ? `${DEFAULT_MYDOGE_PROVIDER_URL}/DRC20/${encodeURIComponent(address)}`
+      : getWalletEndpoint('/DRC20/', address);
+    const data = await fetchJson(drc20Url) as DRC20ApiResponse | any;
     const balances = extractArray(data);
 
     return balances.map((balance: any) => ({
@@ -1263,9 +1332,9 @@ export const walletDataApi = {
   },
 
   /**
-   * Confirmed UTXOs from the configured wallet data provider (MyDoge-compatible `/utxos/:address`).
-   * Paginates via `next_cursor`. Never hits Blockchair/BlockCypher.
-   * When the active provider is command.dog (no wallet UTXO list), uses the MyDoge public API.
+   * Confirmed UTXOs from the configured wallet data provider.
+   * MyDoge-compatible `/utxos/:address` by default. Opt-in `electrs` uses Esplora `/address/:addr/utxo`.
+   * command.dog (no wallet UTXO list) still uses the MyDoge public API.
    * Address-level memo (~20s) + in-flight coalesce so wallet info / charms / coin-select share one walk.
    */
   fetchUtxosPaginated: async (
@@ -1283,12 +1352,17 @@ export const walletDataApi = {
     }>
   > => {
     const cfg = getWalletDataProviderConfig();
+    const addr = address.trim();
+    if (cfg.walletDataProvider === 'electrs') {
+      const base = getWalletProviderBaseUrl();
+      const memoKey = `utxos:electrs:${base}:${addr.toLowerCase()}`;
+      return memoizeMydogeWork(memoKey, async () => fetchElectrsUtxos(base, addr));
+    }
     // command.dog product API does not expose MyDoge-style /utxos — use MyDoge for coin selection.
     const base =
       cfg.walletDataProvider === 'commanddog'
         ? DEFAULT_MYDOGE_PROVIDER_URL
         : getWalletProviderBaseUrl();
-    const addr = address.trim();
     const memoKey = `utxos:${base}:${addr.toLowerCase()}`;
     return memoizeMydogeWork(memoKey, async () => {
       const collected: Array<{
@@ -1396,7 +1470,7 @@ export const walletDataApi = {
   },
 
   fetchTransactions: async (address: string, page = 1, pageSize = 10): Promise<DogeTransactionsPage> => {
-    if (isCommandDogWalletDataProvider()) {
+    if (isCommandDogWalletDataProvider() || isElectrsWalletDataProvider()) {
       return { transactions: [], total: 0 };
     }
     const base = getWalletProviderBaseUrl();

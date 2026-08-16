@@ -572,6 +572,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.dataProvider.dogexHint': 'Local or federated dogex (MyDoge-compat + CDN)',
   'modal.dataProvider.mydoge': 'MyDoge',
   'modal.dataProvider.commanddog': 'Command.dog',
+  'modal.dataProvider.electrs': 'Electrs',
   'modal.priceSources.aster.label': 'Aster',
   'modal.priceSources.aster.desc': 'Aster DEX perpetual last price (DOGEUSDT)',
   'modal.priceSources.coingecko.label': 'CoinGecko',

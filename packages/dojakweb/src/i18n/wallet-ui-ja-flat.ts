@@ -65,6 +65,9 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
   'providerModal.commanddogLabel': 'Command.dog API',
   'providerModal.commanddogDesc':
     'api.command.dog（またはトンネル URL）のゲートウェイ。残高・インスクリプションは MyDoge 互換未実装 — チェーン健全性とブロードキャスト用。開発は VITE_COMMAND_DOG_API_URL。',
+  'providerModal.electrsLabel': 'Electrs (Esplora)',
+  'providerModal.electrsDesc':
+    'electrs.command.dog 経由のローカル electrs-doge。Core tip 到達後のみ。初期インデックス中は MyDoge 既定のまま。',
   'providerModal.selected': '選択中',
   'providerModal.activeUrl': 'アクティブなウォレットデータ URL',
   'providerModal.gearHint': 'ウォレットページの歯車からいつでもプロバイダーを切り替えられます。',
