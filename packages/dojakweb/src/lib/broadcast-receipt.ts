@@ -20,11 +20,13 @@ function canStore(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
-function loadAll(): Record<string, BroadcastReceipt> {
-  if (!canStore()) return {};
+/** Same raw localStorage string → same map object (React 19 getSnapshot must be referentially stable). */
+let cachedRaw: string | null | undefined;
+let cachedMap: Record<string, BroadcastReceipt> = {};
+
+function parseAll(raw: string | null): Record<string, BroadcastReceipt> {
+  if (!raw) return {};
   try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return {};
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     const out: Record<string, BroadcastReceipt> = {};
@@ -39,11 +41,32 @@ function loadAll(): Record<string, BroadcastReceipt> {
   }
 }
 
+function loadAll(): Record<string, BroadcastReceipt> {
+  if (!canStore()) {
+    cachedRaw = undefined;
+    cachedMap = {};
+    return cachedMap;
+  }
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(KEY);
+  } catch {
+    return cachedMap;
+  }
+  if (cachedMap && cachedRaw === raw) return cachedMap;
+  cachedRaw = raw;
+  cachedMap = parseAll(raw);
+  return cachedMap;
+}
+
 function writeAll(map: Record<string, BroadcastReceipt>): void {
   if (!canStore()) return;
   const entries = Object.entries(map).sort((a, b) => (b[1].at ?? 0) - (a[1].at ?? 0));
   const trimmed = Object.fromEntries(entries.slice(0, MAX_ENTRIES));
-  window.localStorage.setItem(KEY, JSON.stringify(trimmed));
+  const serialized = JSON.stringify(trimmed);
+  window.localStorage.setItem(KEY, serialized);
+  cachedRaw = serialized;
+  cachedMap = trimmed;
   window.dispatchEvent(new Event(CHANGED));
 }
 
@@ -82,7 +105,10 @@ export function clearBroadcastReceipt(flowKey: string): void {
 function subscribe(cb: () => void): () => void {
   if (!canStore()) return () => {};
   const onStorage = (e: StorageEvent) => {
-    if (e.key === KEY || e.key === null) cb();
+    if (e.key === KEY || e.key === null) {
+      cachedRaw = undefined;
+      cb();
+    }
   };
   window.addEventListener('storage', onStorage);
   window.addEventListener(CHANGED, cb);
@@ -90,6 +116,10 @@ function subscribe(cb: () => void): () => void {
     window.removeEventListener('storage', onStorage);
     window.removeEventListener(CHANGED, cb);
   };
+}
+
+function getServerSnapshot(): BroadcastReceipt | null {
+  return null;
 }
 
 /** Last broadcast for this flow, restored from localStorage after refresh. */
@@ -102,7 +132,7 @@ export function useBroadcastReceipt(flowKey: string | null): {
   const receipt = useSyncExternalStore(
     subscribe,
     () => (key ? loadBroadcastReceipt(key) : null),
-    () => null,
+    getServerSnapshot,
   );
   const remember = useCallback(
     (next: Omit<BroadcastReceipt, 'at'> & { at?: number }) => {

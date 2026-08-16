@@ -17,10 +17,24 @@ const ALLOWED_SIGNING_HOSTNAMES = new Set([
   'www.dogex.store',
   'dogecoin.games',
   'www.dogecoin.games',
+  'dogenals.com',
+  'www.dogenals.com',
+  'dogenals.net',
+  'www.dogenals.net',
   'dogenals.org',
   'www.dogenals.org',
+  'command.dog',
+  'www.command.dog',
 ]);
-const ALLOWED_SIGNING_HOSTNAME_SUFFIXES = ['.dogeco.sh', '.jonheaven.com'];
+const ALLOWED_SIGNING_HOSTNAME_SUFFIXES = [
+  '.dogeco.sh',
+  '.jonheaven.com',
+  '.dogenals.com',
+  '.dogenals.net',
+  '.dogenals.org',
+  '.command.dog',
+  '.dogecoin.games',
+];
 const warnedUnexpectedSigningHostnames = new Set<string>();
 
 type SignMessageFn = (message: string) => Promise<string>;
