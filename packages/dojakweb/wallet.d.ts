@@ -46,7 +46,9 @@ export {
   broadcastSignedTransaction,
   ensureDefaultBroadcastConfig,
   loadBroadcastConfig,
+  filterPaymentSpendableUtxos,
 } from './src/lib/broadcast/dogecoinTxBroadcast';
+export { invalidateMydogeUtxoCaches } from './src/lib/mydoge/httpGate';
 export {
   dogeTxExplorerUrl,
   dogeAddressExplorerUrl,

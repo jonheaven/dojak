@@ -24,6 +24,8 @@ const REQUIRED = [
   'dogeTxExplorerUrl',
   'DogeTxLink',
   'useBroadcastReceipt',
+  'filterPaymentSpendableUtxos',
+  'invalidateMydogeUtxoCaches',
 ];
 
 if (!fs.existsSync(distWallet)) {

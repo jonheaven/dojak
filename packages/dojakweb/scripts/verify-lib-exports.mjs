@@ -39,6 +39,7 @@ const REQUIRED_EXPORTS = [
   'journalDlockerTx',
   'gatedMydogeGetJson',
   'invalidateMydogeUtxoCaches',
+  'filterPaymentSpendableUtxos',
   'MydogeHttpError',
   'DogeTxLink',
   'dogeTxExplorerUrl',

@@ -120,7 +120,11 @@ export {
   broadcastSignedTransaction,
   ensureDefaultBroadcastConfig,
   loadBroadcastConfig,
+  filterPaymentSpendableUtxos,
 } from '../lib/broadcast/dogecoinTxBroadcast';
+
+/** Drop stale MyDoge UTXO cache after a broadcast (casino rapid re-bets). */
+export { invalidateMydogeUtxoCaches } from '../lib/mydoge/httpGate';
 
 export {
   dogeTxExplorerUrl,
