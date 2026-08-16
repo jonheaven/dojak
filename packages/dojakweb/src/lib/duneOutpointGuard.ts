@@ -2,8 +2,9 @@
  * Guard plain DOGE / fee coin-select against spending Ðune-bearing outpoints.
  *
  * MyDoge does not index our v2 Ðune magic. dogex `/api/dunes/outpoint/:txid/:vout`
- * is protocol truth. Ðunes park on 0.01 Ð postage and on change (pointer) — not
- * only on 0.001 Ð inscription dust — so the 0.001 sentinel alone is not enough.
+ * is protocol truth. New sends park Ðunes on 0.001 Ð carriers (inscription
+ * sentinel). Older bags still sit on 0.01 postage / large DOGE change — the
+ * 0.001 skip alone is not enough for those.
  */
 import { DOGEX_PUBLIC_INDEXER_URL, getIndexerApiBase } from '../utils/api';
 
@@ -189,7 +190,13 @@ export async function enrichUtxosWithDogexDunes<
  */
 export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
   utxos: T[],
-  opts?: { keepKeys?: Set<string>; concurrency?: number; maxProbe?: number },
+  opts?: {
+    keepKeys?: Set<string>;
+    concurrency?: number;
+    maxProbe?: number;
+    /** Casino / house: drop unknown outpoints instead of spending them as plain DOGE. */
+    failClosed?: boolean;
+  },
 ): Promise<{
   safe: T[];
   skippedDuneCount: number;
@@ -200,8 +207,20 @@ export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
     return { safe: [], skippedDuneCount: 0, skippedDuneKoinu: 0, unknownCount: 0 };
   }
 
-  // Tunnel down → don't N×probe; treat all as unknown/safe for dashboard speed.
+  const keep = opts?.keepKeys ?? new Set<string>();
+  const failClosed = Boolean(opts?.failClosed);
+  const keepOnly = (): T[] => utxos.filter((u) => keep.has(outpointKey(u)));
+
+  // Tunnel down → don't N×probe. Wallet payments fail-open; bets/payouts must not.
   if (dogexPaused()) {
+    if (failClosed) {
+      return {
+        safe: keepOnly(),
+        skippedDuneCount: 0,
+        skippedDuneKoinu: 0,
+        unknownCount: utxos.length - keepOnly().length,
+      };
+    }
     return {
       safe: utxos.slice(),
       skippedDuneCount: 0,
@@ -210,7 +229,6 @@ export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
     };
   }
 
-  const keep = opts?.keepKeys ?? new Set<string>();
   const concurrency = Math.max(1, Math.min(opts?.concurrency ?? 6, 12));
   const maxProbe = Math.max(1, opts?.maxProbe ?? 40);
   const safe: T[] = [];
@@ -221,7 +239,6 @@ export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
 
   for (let i = 0; i < utxos.length; i += concurrency) {
     if (dogexPaused() || probed >= maxProbe) {
-      // Remainder fail-open (not probed).
       for (let k = i; k < utxos.length; k++) {
         const u = utxos[k];
         if (keep.has(outpointKey(u))) {
@@ -229,7 +246,7 @@ export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
           continue;
         }
         unknownCount++;
-        safe.push(u);
+        if (!failClosed) safe.push(u);
       }
       break;
     }
@@ -252,7 +269,10 @@ export async function excludeDogexDuneBearingUtxos<T extends DuneGuardUtxo>(
         skippedDuneKoinu += Number(batch[j].value) || 0;
         continue;
       }
-      if (flag === 'unknown') unknownCount++;
+      if (flag === 'unknown') {
+        unknownCount++;
+        if (failClosed) continue;
+      }
       safe.push(batch[j]);
     }
   }

@@ -7,9 +7,9 @@
  * - Soft dust: outputs < 0.01 Ð require +0.01 Ð added to the tx fee each,
  *   or peers/miners treat the tx as underpaid (stuck unconfirmed forever).
  *
- * Inscription carriers intentionally use hard-dust (0.001 Ð). Those txs MUST
- * pay the soft-dust fee add-on. Plain payments (tips, Ðune postage, social likes)
- * should use ≥ soft dust so the add-on is unnecessary.
+ * Inscription carriers (and Ðune remainder/postage carriers) use hard-dust
+ * (0.001 Ð). Those txs MUST pay the soft-dust fee add-on. Plain DOGE payments
+ * (tips, social likes) should use ≥ soft dust so the add-on is unnecessary.
  */
 
 /** 0.001 DOGE — hard dust / Doginals carrier sentinel. */

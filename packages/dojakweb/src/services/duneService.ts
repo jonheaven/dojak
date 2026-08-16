@@ -3,8 +3,9 @@
  *
  * Layout matches wonky-ord `wallet send` dunes (edict + postage outs), with our
  * v2 magic (`0xD0` / ver `0x02`) and an explicit pointer so partial sends park
- * remainder on change instead of over-delivering to the recipient:
- *   OP_RETURN (0) → recipient postage (1) → change (2, pointer)
+ * remainder on a dedicated 0.001 Ð carrier (same sentinel as inscriptions) so
+ * inscription-aware wallets will not spend leftover Ðunes as fee:
+ *   OP_RETURN (0) → recipient postage (1) → remainder postage (2, pointer) → DOGE change (3)
  *
  * Chain truth: wallet-provider UTXOs filtered by command.dog Core `gettxout`
  * (`POST /v1/utxos/live`). Broadcast / confirm via command.dog — not BlockCypher.
@@ -32,11 +33,10 @@ import {
 } from '../lib/dunestone';
 import {
   HARD_DUST_KOINU,
-  MIN_PLAIN_PAYMENT_KOINU,
   SOFT_DUST_KOINU,
   discardSoftDustChangeKoinu,
   mineableFeeKoinu,
-  assertPlainPaymentKoinu,
+  assertHardDustKoinu,
 } from '../lib/dogecoin/softDust';
 import {
   mergePaymentUtxos,
@@ -55,8 +55,8 @@ import { DOGEX_PUBLIC_INDEXER_URL, getIndexerApiBase } from '../utils/api';
 /** Minimum relay fee floor (koinu). */
 const MIN_FEE_KOINU = HARD_DUST_KOINU;
 
-/** Postage for a dune-bearing output — soft-dust safe (0.01 DOGE). */
-const POSTAGE_KOINU = MIN_PLAIN_PAYMENT_KOINU;
+/** Postage for a dune-bearing output — 0.001 Ð (inscription carrier). Soft-dust fee add-on is paid in `mineableFeeKoinu`. */
+const POSTAGE_KOINU = HARD_DUST_KOINU;
 
 /** Byte size estimates for fee calculation. */
 const TX_OVERHEAD      = 10;
@@ -249,7 +249,8 @@ interface BuildDuneTxParams {
   mustIncludeUtxos?: NormalisedUtxo[];
   /**
    * Always create a soft-dust-safe change output to `fromAddress` and fold leftover
-   * DOGE into it. Used by sends so a pointer can park unallocated Ðunes.
+   * DOGE into it. Ðune remainder now uses a dedicated 0.001 extra (pointer) — do
+   * **not** force-change for ordinary sends or leftover tokens ride the large DOGE out.
    */
   forceChangeOutput?: boolean;
   /** Value on the Dunestone OP_RETURN (burn-to-etch). Default 0. */
@@ -780,7 +781,7 @@ export interface MintDuneParams {
    * Defaults to fromAddress.
    */
   destination?: string;
-  /** Postage (koinu) on the dune-bearing output. Default: 1_000_000 (0.01 DOGE, soft-dust safe). */
+  /** Postage (koinu) on the dune-bearing output. Default: 100_000 (0.001 Ð, inscription lock). */
   postage?: number;
   /** Fee rate in koinu/kB (default: inclusion floor 1_000_000). */
   feeRate?: number;
@@ -807,8 +808,8 @@ export async function mintDune(params: MintDuneParams): Promise<MintResult> {
   } = params;
   const destination = params.destination?.trim() || signer.fromAddress;
 
-  if (postage < POSTAGE_KOINU) {
-    assertPlainPaymentKoinu('Postage', postage);
+  if (postage < HARD_DUST_KOINU) {
+    assertHardDustKoinu('Postage', postage);
   }
 
   const opReturnScript = buildMintScript(duneId);
@@ -843,7 +844,7 @@ export interface SendDuneParams {
   divisibility: number;
   /** Recipient Dogecoin address. */
   recipientAddress: string;
-  /** Postage on the recipient output (koinu). Default: 1_000_000 (0.01 DOGE, soft-dust safe). */
+  /** Postage on the recipient output (koinu). Default: 100_000 (0.001 Ð). Remainder parks on a second 0.001 Ð carrier to the sender. */
   postage?: number;
   /** Fee rate in koinu/kB (default: inclusion floor 1_000_000). */
   feeRate?: number;
@@ -871,8 +872,8 @@ export interface SendResult {
  * Build, sign, and optionally broadcast a send (transfer) transaction.
  *
  * Creates an edict that moves `amount` dune tokens to `recipientAddress`.
- * Layout: OP_RETURN (0) → recipient postage (1) → change to sender (2).
- * Pointer parks unallocated Ðunes on change so partial sends do not over-deliver.
+ * Layout: OP_RETURN (0) → recipient 0.001 (1) → remainder 0.001 (2, pointer) → DOGE change (3).
+ * Pointer parks unallocated Ðunes on the remainder carrier (inscription sentinel).
  *
  * On `bad-txns-inputs-spent`, marks those inputs spent locally and retries once
  * (same pattern as plain DOGE sends) — common after DXD LP commits when MyDoge lags.
@@ -887,13 +888,13 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
 
   const amountBig = humanToSmallestUnits(amount, divisibility);
   if (amountBig <= 0n) throw new Error('Send amount must be greater than zero');
-  if (postage < POSTAGE_KOINU) {
-    assertPlainPaymentKoinu('Postage', postage);
+  if (postage < HARD_DUST_KOINU) {
+    assertHardDustKoinu('Postage', postage);
   }
 
   const recipientOutput = 1;
-  const changePointer = 2;
-  const opReturnScript = buildSendScript(duneId, amountBig, recipientOutput, changePointer);
+  const remainderPointer = 2;
+  const opReturnScript = buildSendScript(duneId, amountBig, recipientOutput, remainderPointer);
 
   const attempt = async (): Promise<SendResult> => {
     const { mustInclude, utxos } = await getUtxosForDuneSend(
@@ -905,12 +906,15 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
     const built = await signDuneTransaction(
       signer,
       opReturnScript,
-      [{ address: recipientAddress, value: postage }],
+      [
+        { address: recipientAddress, value: postage },
+        { address: signer.fromAddress, value: POSTAGE_KOINU },
+      ],
       feeRate,
       {
         utxos,
         mustIncludeUtxos: mustInclude,
-        forceChangeOutput: true,
+        forceChangeOutput: false,
       },
     );
 
@@ -1041,8 +1045,8 @@ export async function sendDuneAirdropBatch(params: {
     chainedCarrier,
   } = params;
   if (!recipients.length) throw new Error('Ðune airdrop batch is empty');
-  if (postage < POSTAGE_KOINU) {
-    assertPlainPaymentKoinu('Postage', postage);
+  if (postage < HARD_DUST_KOINU) {
+    assertHardDustKoinu('Postage', postage);
   }
 
   const amountBig = recipients.reduce((sum, r) => sum + r.amount, 0n);
@@ -1055,7 +1059,8 @@ export async function sendDuneAirdropBatch(params: {
   if (jobFee && jobFee.value > 0) {
     extraOutputs.push({ address: jobFee.address, value: jobFee.value });
   }
-  const pointer = extraOutputs.length + 1;
+  extraOutputs.push({ address: signer.fromAddress, value: POSTAGE_KOINU });
+  const pointer = extraOutputs.length;
   const opReturnScript = buildAirdropSendScript(
     duneId,
     recipients.map((r, idx) => ({ amount: r.amount, output: idx + 1 })),
@@ -1069,7 +1074,7 @@ export async function sendDuneAirdropBatch(params: {
   const built = await signDuneTransaction(signer, opReturnScript, extraOutputs, feeRate, {
     utxos,
     mustIncludeUtxos: mustInclude,
-    forceChangeOutput: true,
+    forceChangeOutput: false,
   });
 
   const txid = await broadcastDuneTransaction(built.rawHex, {

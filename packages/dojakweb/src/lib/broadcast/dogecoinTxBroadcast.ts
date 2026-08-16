@@ -130,6 +130,7 @@ export function filterSafeSpendableUtxos(
 export async function filterPaymentSpendableUtxos(
   address: string,
   utxos: NormalisedUtxo[],
+  opts?: { failClosed?: boolean },
 ): Promise<{
   safe: NormalisedUtxo[];
   skippedCount: number;
@@ -137,7 +138,9 @@ export async function filterPaymentSpendableUtxos(
   skippedDuneKoinu: number;
 }> {
   const { safe: base, skippedCount } = filterSafeSpendableUtxos(address, utxos);
-  const { safe, skippedDuneCount, skippedDuneKoinu } = await excludeDogexDuneBearingUtxos(base);
+  const { safe, skippedDuneCount, skippedDuneKoinu } = await excludeDogexDuneBearingUtxos(base, {
+    failClosed: opts?.failClosed,
+  });
   return {
     safe,
     skippedCount: skippedCount + skippedDuneCount,

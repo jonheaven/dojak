@@ -293,6 +293,12 @@ export {
 } from './lib/mydoge/httpGate';
 
 export {
+  filterPaymentSpendableUtxos,
+  filterSafeSpendableUtxos,
+} from './lib/broadcast/dogecoinTxBroadcast';
+export { excludeDogexDuneBearingUtxos } from './lib/duneOutpointGuard';
+
+export {
   dogeTxExplorerUrl,
   dogeAddressExplorerUrl,
   dogeTxExplorerDisplayName,

@@ -3568,6 +3568,45 @@ export function DojakwebWalletModal({
                     without entering the scrollable body or pushing dashboard layout.
                   */}
                   <WalletApprovalPanel />
+                  <DuneSendModal
+                    embedded
+                    isOpen={duneSendOpen}
+                    holding={duneSendHolding}
+                    siblingAccounts={
+                      activeBrowserSeedGroup?.accounts.map((acc) => ({
+                        address: acc.address,
+                        accountIndex: acc.accountIndex ?? 0,
+                        nickname: acc.nickname,
+                      })) ?? []
+                    }
+                    onClose={() => {
+                      setDuneSendOpen(false);
+                      setDuneSendHolding(undefined);
+                    }}
+                    onSuccess={(txid) => {
+                      if (activeAddress) void fetchAssets(activeAddress);
+                      const id = String(txid || '').trim().toLowerCase();
+                      if (/^[0-9a-f]{64}$/.test(id)) {
+                        setWalletTxJournal(loadWalletTxJournal());
+                        pushLocalTransaction({
+                          txid: id,
+                          type: 'sent',
+                          amount: 0,
+                          address: '',
+                          confirmations: 0,
+                          timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+                          pending: true,
+                          localOnly: true,
+                          protocol: 'dunes',
+                          protocolLabel: 'Ðunes',
+                          title: 'Send',
+                          summary: 'Broadcast — refresh Activity if the protocol chip is missing.',
+                          walletAddress: activeAddress || undefined,
+                        });
+                        setTab('transactions');
+                      }
+                    }}
+                  />
                   <div className={cx('shrink-0 border-b px-4 pb-2 pt-3', isDark ? 'border-white/[0.08]' : 'border-zinc-200')}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -7770,45 +7809,6 @@ export function DojakwebWalletModal({
         item={textInspectItem}
         open={Boolean(textInspectItem)}
         onClose={() => setTextInspectItem(null)}
-      />
-
-      <DuneSendModal
-        isOpen={duneSendOpen}
-        holding={duneSendHolding}
-        siblingAccounts={
-          activeBrowserSeedGroup?.accounts.map((acc) => ({
-            address: acc.address,
-            accountIndex: acc.accountIndex ?? 0,
-            nickname: acc.nickname,
-          })) ?? []
-        }
-        onClose={() => {
-          setDuneSendOpen(false);
-          setDuneSendHolding(undefined);
-        }}
-        onSuccess={(txid) => {
-          if (activeAddress) void fetchAssets(activeAddress);
-          const id = String(txid || '').trim().toLowerCase();
-          if (/^[0-9a-f]{64}$/.test(id)) {
-            setWalletTxJournal(loadWalletTxJournal());
-            pushLocalTransaction({
-              txid: id,
-              type: 'sent',
-              amount: 0,
-              address: '',
-              confirmations: 0,
-              timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-              pending: true,
-              localOnly: true,
-              protocol: 'dunes',
-              protocolLabel: 'Ðunes',
-              title: 'Send',
-              summary: 'Broadcast — refresh Activity if the protocol chip is missing.',
-              walletAddress: activeAddress || undefined,
-            });
-            setTab('transactions');
-          }
-        }}
       />
 
       {utxoManagerOpen &&
