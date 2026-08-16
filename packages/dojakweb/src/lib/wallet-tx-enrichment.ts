@@ -370,12 +370,58 @@ export async function probeTxProtocolEnrichments(
             return;
           }
         }
+        const market = await fetchFirstJson([`/api/marketplace/tx/${txid}`]);
+        if (market && typeof market === 'object' && !(market as any).error) {
+          const e = enrichmentFromMarketplace(txid, market as Record<string, unknown>);
+          if (e) {
+            out.set(txid, e);
+            return;
+          }
+        }
         const dune = await enrichmentFromDuneOutpoints(txid);
         if (dune) out.set(txid, dune);
       }),
     );
   }
   return out;
+}
+
+function enrichmentFromMarketplace(txid: string, row: Record<string, unknown>): WalletTxEnrichment | null {
+  const kind = String(row.kind ?? '');
+  if (kind !== 'marketplace_sale' && kind !== 'otc_sale') return null;
+  const venue = String(row.venue ?? 'openordex').trim() || 'openordex';
+  const seller = typeof row.seller === 'string' ? row.seller : '';
+  const buyer = typeof row.buyer === 'string' ? row.buyer : '';
+  const price =
+    typeof row.grossPriceDoge === 'number'
+      ? row.grossPriceDoge
+      : typeof row.sellerProceedsDoge === 'number'
+        ? row.sellerProceedsDoge
+        : undefined;
+  const nfts = Array.isArray(row.nfts) ? (row.nfts as Array<{ inscriptionId?: string }>) : [];
+  const inscriptionId = nfts.map((n) => n.inscriptionId).find(Boolean);
+  const summary =
+    typeof row.summary === 'string' && row.summary.trim()
+      ? row.summary.trim()
+      : `${venue} sale${price != null ? ` · ${price} Ð` : ''}`;
+  return {
+    txid,
+    protocol: 'marketplace',
+    action: 'buy',
+    actionLabel: 'Buy',
+    title: venue === 'openordex' ? 'NFT sale' : venue,
+    summary,
+    originLabel: venue === 'openordex' ? 'OpenOrdex' : venue,
+    indexed: true,
+    metadata: {
+      venue,
+      seller: seller || undefined,
+      buyer: buyer || undefined,
+      grossPriceDoge: price,
+      inscriptionId,
+      amountDisplay: price != null ? `${price} Ð` : undefined,
+    },
+  };
 }
 
 /** dogex `/api/dunes/outpoint/:txid/:vout` — Ðune amount lives here, not in MyDoge DOGE history. */

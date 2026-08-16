@@ -611,8 +611,14 @@ export function mergeWalletTxJournalIntoList<T extends {
           ? String(entry.metadata.amountDisplay)
           : metaAmount;
       const tokenAmountLabel =
-        (protocol === 'dunes' || protocol === 'dlocker') && metaToken
-          ? `${type === 'received' ? '+' : '-'}${metaToken}${metaDuneName ? ` ${metaDuneName.replace(/•/g, '').slice(0, 12)}` : ''}`
+        (protocol === 'dunes' || protocol === 'dlocker' || protocol === 'marketplace') && metaToken
+          ? `${type === 'received' ? '+' : '-'}${metaToken}${
+              protocol === 'marketplace'
+                ? ''
+                : metaDuneName
+                  ? ` ${metaDuneName.replace(/•/g, '').slice(0, 12)}`
+                  : ''
+            }`
           : existing.tokenAmountLabel;
       byTxid.set(entry.txid, {
         ...existing,
@@ -631,7 +637,9 @@ export function mergeWalletTxJournalIntoList<T extends {
               : 'Lock ÐLocker'
             : protocol === 'dunes' && metaDuneName
               ? `${type === 'sent' ? 'Send' : 'Receive'} ${metaDuneName}`
-              : undefined),
+              : protocol === 'marketplace'
+                ? entry.title || 'NFT sale'
+                : undefined),
         summary:
           entry.summary ||
           existing.summary ||

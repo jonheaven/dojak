@@ -5507,7 +5507,7 @@ export function DojakwebWalletModal({
                                                 : 'Seen'}
                                         </span>
                                       </div>
-                                      {selectedTx.summary && selectedTx.protocol !== 'dunes' && (
+                                      {selectedTx.summary && selectedTx.protocol !== 'dunes' && selectedTx.protocol !== 'marketplace' && (
                                         <div className={cx(
                                           'mb-3 text-xs leading-relaxed',
                                           isDark ? 'text-white/55' : 'text-zinc-500',
@@ -5515,6 +5515,30 @@ export function DojakwebWalletModal({
                                           {selectedTx.summary}
                                         </div>
                                       )}
+                                      {selectedTx.protocol === 'marketplace' &&
+                                      (typeof selectedTx.journal?.metadata?.seller === 'string' ||
+                                        typeof selectedTx.journal?.metadata?.buyer === 'string') ? (
+                                      <div className="mb-1 space-y-1 text-xs">
+                                        {typeof selectedTx.journal?.metadata?.seller === 'string' ? (
+                                          <div className="flex items-center justify-center gap-2">
+                                            <span className={isDark ? 'text-white/40' : 'text-zinc-500'}>Seller</span>
+                                            <span className="font-mono font-semibold">
+                                              {String(selectedTx.journal.metadata.seller).slice(0, 10)}…
+                                              {String(selectedTx.journal.metadata.seller).slice(-4)}
+                                            </span>
+                                          </div>
+                                        ) : null}
+                                        {typeof selectedTx.journal?.metadata?.buyer === 'string' ? (
+                                          <div className="flex items-center justify-center gap-2">
+                                            <span className={isDark ? 'text-white/40' : 'text-zinc-500'}>Buyer</span>
+                                            <span className="font-mono font-semibold">
+                                              {String(selectedTx.journal.metadata.buyer).slice(0, 10)}…
+                                              {String(selectedTx.journal.metadata.buyer).slice(-4)}
+                                            </span>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                      ) : (
                                       <div className="mb-1 flex items-center justify-center gap-2">
                                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-white">
                                           {(selectedTx.address || selectedTx.protocolLabel || 'TX').slice(0, 2).toUpperCase()}
@@ -5543,6 +5567,7 @@ export function DojakwebWalletModal({
                                           </button>
                                         )}
                                       </div>
+                                      )}
                                       <div className={cx(
                                         'my-4 text-4xl font-bold',
                                         isDark ? 'text-white' : 'text-zinc-900',
@@ -5566,6 +5591,23 @@ export function DojakwebWalletModal({
                                                   isDark ? 'text-white/40' : 'text-zinc-400',
                                                 )}>
                                                   DOGE postage / fee
+                                                </span>
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        ) : selectedTx.protocol === 'marketplace' ? (
+                                          <div className="space-y-2">
+                                            <div className="text-lg font-semibold leading-snug sm:text-xl">
+                                              {selectedTx.summary || selectedTx.title || 'NFT sale'}
+                                            </div>
+                                            {selectedTx.amount > 0 ? (
+                                              <div className="text-base font-semibold text-[#FCD34D]">
+                                                Ð{selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                                                <span className={cx(
+                                                  'ml-2 text-xs font-medium',
+                                                  isDark ? 'text-white/40' : 'text-zinc-400',
+                                                )}>
+                                                  DOGE in this tx
                                                 </span>
                                               </div>
                                             ) : null}
