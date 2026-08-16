@@ -48,7 +48,8 @@ export {
   loadBroadcastConfig,
   filterPaymentSpendableUtxos,
 } from './src/lib/broadcast/dogecoinTxBroadcast';
-export { invalidateMydogeUtxoCaches } from './src/lib/mydoge/httpGate';
+export { invalidateMydogeUtxoCaches, gatedMydogeGetJson } from './src/lib/mydoge/httpGate';
+export { excludeDogexDuneBearingUtxos } from './src/lib/duneOutpointGuard';
 export {
   dogeTxExplorerUrl,
   dogeAddressExplorerUrl,

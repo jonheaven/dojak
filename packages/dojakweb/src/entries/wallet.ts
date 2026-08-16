@@ -124,7 +124,10 @@ export {
 } from '../lib/broadcast/dogecoinTxBroadcast';
 
 /** Drop stale MyDoge UTXO cache after a broadcast (casino rapid re-bets). */
-export { invalidateMydogeUtxoCaches } from '../lib/mydoge/httpGate';
+export { invalidateMydogeUtxoCaches, gatedMydogeGetJson } from '../lib/mydoge/httpGate';
+
+/** Skip Ðune-bearing outpoints when picking payment coins (ÐLotto / house bankroll). */
+export { excludeDogexDuneBearingUtxos } from '../lib/duneOutpointGuard';
 
 export {
   dogeTxExplorerUrl,

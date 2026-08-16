@@ -26,6 +26,8 @@ const REQUIRED = [
   'useBroadcastReceipt',
   'filterPaymentSpendableUtxos',
   'invalidateMydogeUtxoCaches',
+  'gatedMydogeGetJson',
+  'excludeDogexDuneBearingUtxos',
 ];
 
 if (!fs.existsSync(distWallet)) {
