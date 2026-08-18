@@ -738,9 +738,7 @@ export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
   // Convert human-readable premine to smallest units (0 allowed when open-mint only)
   const premineBig = humanToSmallestUnits(supply || '0', divisibility);
   if (premineBig < 0n) throw new Error('Premine must be non-negative');
-  if (premineBig === 0n && !terms) {
-    throw new Error('Set a premine amount and/or open-mint terms — supply cannot be empty');
-  }
+  // 0 premine + no terms is valid: name claim only (Ðunes-native DMT / $BITS).
 
   const opReturnScript = buildEtchScript(name, premineBig, divisibility, symbol, terms, turbo);
   if (opReturnScript.length > 83) {

@@ -267,6 +267,17 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     setTxid(null);
     if (plain === 'THEWHITEDOGE') applyPreset('white');
     else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
+    else if (plain === 'BITS') {
+      setPremine('0');
+      setMintAmount('');
+      setMintCap('');
+      setDivisibility('0');
+      setSymbol('₿');
+      setEnablePremine(false);
+      setEnableMint(false);
+      setMarketProfile('classic');
+      setTurbo(true);
+    }
     else {
       setPremine('1000000000');
       setMintAmount('');
@@ -292,6 +303,17 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
       const plain = n.replace(/[•.\s]/g, '');
       if (plain === 'THEWHITEDOGE') applyPreset('white');
       else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
+      else if (plain === 'BITS') {
+        setPremine('0');
+        setMintAmount('');
+        setMintCap('');
+        setDivisibility('0');
+        setSymbol('₿');
+        setEnablePremine(false);
+        setEnableMint(false);
+        setMarketProfile('classic');
+        setTurbo(true);
+      }
       else applyMarketProfile('instant', plain);
     }
   }, [isOpen, initialName]);
@@ -332,7 +354,8 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     setError(null);
     if (!name.trim()) return setError('Ðune name is required');
     if (nameError) return setError(nameError);
-    if (!enablePremine && !enableMint) {
+    const isDmtIssuance = name.trim().replace(/[•.\s]/g, '').toUpperCase() === 'BITS';
+    if (!enablePremine && !enableMint && !isDmtIssuance) {
       return setError('Enable premine and/or open mint — both can be on together');
     }
     if (enablePremine && (!premine.trim() || isNaN(Number(premine.replace(/,/g, ''))))) {

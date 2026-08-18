@@ -5,6 +5,7 @@ import type { DuneHolding } from '../utils/api';
 import { DuneDeployModal } from './DuneDeployModal';
 import { DuneMintModal } from './DuneMintModal';
 import { DuneSendModal } from './DuneSendModal';
+import { DuneDmtClaimModal } from './DuneDmtClaimModal';
 
 interface Props {
   dunes: DuneHolding[] | null;
@@ -19,6 +20,7 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
   const [deployOpen, setDeployOpen]     = useState(false);
   const [mintOpen, setMintOpen]         = useState(false);
   const [sendOpen, setSendOpen]         = useState(false);
+  const [dmtClaimOpen, setDmtClaimOpen] = useState(false);
   const [activeDune, setActiveDune]     = useState<DuneHolding | undefined>(undefined);
   const [mintDuneName, setMintDuneName] = useState<string | undefined>(undefined);
 
@@ -126,6 +128,15 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
           <SparklesIcon className="w-3.5 h-3.5" />
           Mint
         </button>
+        <button
+          type="button"
+          onClick={() => setDmtClaimOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary text-xs hover:border-primary-500 transition-colors"
+          title="Claim a Dogecoin block for a DMT Ðune (BITS). Does not use open-mint."
+        >
+          <SparklesIcon className="w-3.5 h-3.5" />
+          Claim $BITS
+        </button>
       </div>
 
       {/* Holdings list */}
@@ -200,6 +211,11 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
         isOpen={sendOpen}
         onClose={() => { setSendOpen(false); setActiveDune(undefined); }}
         holding={activeDune}
+        onSuccess={handleSuccess}
+      />
+      <DuneDmtClaimModal
+        isOpen={dmtClaimOpen}
+        onClose={() => setDmtClaimOpen(false)}
         onSuccess={handleSuccess}
       />
     </div>
