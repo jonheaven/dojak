@@ -267,7 +267,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     setTxid(null);
     if (plain === 'THEWHITEDOGE') applyPreset('white');
     else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
-    else if (plain === 'BITS') {
+    else if (plain === 'DOGECOINBITS' || plain === 'BITS') {
       setPremine('0');
       setMintAmount('');
       setMintCap('');
@@ -303,7 +303,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
       const plain = n.replace(/[•.\s]/g, '');
       if (plain === 'THEWHITEDOGE') applyPreset('white');
       else if (plain === 'DOGENALSOVERDOGINALS') applyPreset('manifesto');
-      else if (plain === 'BITS') {
+      else if (plain === 'DOGECOINBITS' || plain === 'BITS') {
         setPremine('0');
         setMintAmount('');
         setMintCap('');
@@ -354,7 +354,8 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     setError(null);
     if (!name.trim()) return setError('Ðune name is required');
     if (nameError) return setError(nameError);
-    const isDmtIssuance = name.trim().replace(/[•.\s]/g, '').toUpperCase() === 'BITS';
+    const plainTick = name.trim().replace(/[•.\s]/g, '').toUpperCase();
+    const isDmtIssuance = plainTick === 'DOGECOINBITS' || plainTick === 'BITS';
     if (!enablePremine && !enableMint && !isDmtIssuance) {
       return setError('Enable premine and/or open mint — both can be on together');
     }

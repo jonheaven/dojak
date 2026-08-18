@@ -26,7 +26,7 @@ interface Props {
 export const DuneDmtClaimModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const { address, connected } = useDuneWalletConnection();
   const browser = useBrowserWallet();
-  const [tick, setTick] = useState('BITS');
+  const [tick, setTick] = useState('DOGECOIN•BITS');
   const [blk, setBlk] = useState('');
   const [elem, setElem] = useState('');
   const [busy, setBusy] = useState(false);
@@ -83,7 +83,7 @@ export const DuneDmtClaimModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
     <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Claim DMT Ðune ($BITS)</DialogTitle>
+          <DialogTitle>Claim DMT Ðune (DOGECOIN•BITS)</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-text-secondary">
           Amount = nBits of the claimed header. The reveal UTXO receives a normal Ðune

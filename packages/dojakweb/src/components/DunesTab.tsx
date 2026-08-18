@@ -132,10 +132,10 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
           type="button"
           onClick={() => setDmtClaimOpen(true)}
           className="flex items-center gap-1.5 px-3 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary text-xs hover:border-primary-500 transition-colors"
-          title="Claim a Dogecoin block for a DMT Ðune (BITS). Does not use open-mint."
+          title="Claim a Dogecoin block for a DMT Ðune (DOGECOIN•BITS). Does not use open-mint."
         >
           <SparklesIcon className="w-3.5 h-3.5" />
-          Claim $BITS
+          Claim DOGECOIN•BITS
         </button>
       </div>
 
