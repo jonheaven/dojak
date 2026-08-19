@@ -320,7 +320,7 @@ export function loadBroadcastConfig(): BroadcastConfig {
   }
 }
 
-const BROADCAST_DEFAULTS_MIGRATION_KEY = 'dojakweb-broadcast-defaults-v2';
+const BROADCAST_DEFAULTS_MIGRATION_KEY = 'dojakweb-broadcast-defaults-v3';
 
 /**
  * One-time: command.dog first; drop legacy auto-appended BlockCypher/Blockchair/Tatum
@@ -775,6 +775,12 @@ async function broadcastTransaction(rawTxHex: string): Promise<string> {
 
   let lastError: unknown = null;
   for (const provider of order) {
+    if (provider === 'blockcypher' || provider === 'blockchair' || provider === 'tatum') {
+      console.warn(
+        `[dojakweb:doge-tx] skipping ${provider}: public push APIs ack phantom txids; eco uses command.dog → Core`,
+      );
+      continue;
+    }
     if (provider === 'rpc' && (!cfg.rpcUser || !cfg.rpcPass || !cfg.rpcUrl)) {
       console.info('[dojakweb:doge-tx] skipping RPC in broadcast order: credentials missing');
       continue;
@@ -1470,8 +1476,9 @@ async function waitForBroadcastAcceptance(
   }
 
   throw new Error(
-    'Relay accepted the transaction but it was not visible to your configured read sources (RPC / Command.dog) or public indexers after waiting. ' +
-      'It likely did not propagate — use “Re-broadcast”, raise the fee, or put Dogecoin RPC first in Wallet → Broadcast.',
+    'Relay accepted the transaction but Dogecoin Core / command.dog never saw it. ' +
+      'Check Core with: dogecoin-cli getrawtransaction <txid>  (and dogecoin-cli getblockcount). ' +
+      'Do not trust BlockCypher push hashes — they are often phantom.',
   );
 }
 

@@ -1467,8 +1467,7 @@ export async function waitForTxOnBlockcypher(
 }
 
 export async function broadcastTx(txHex: string): Promise<string> {
-  // Single path: Wallet Settings relay order (Tatum → BlockCypher → Blockchair → RPC by default).
-  // Avoids double RPC attempts and respects the same order as merge/split and Tatum API key priority.
+  // command.dog → Core only (same as Wallet Settings studio default). Public relays are not a fallback.
   const txid = await broadcastUtxoTx(txHex);
   console.log('[doginal-psdt] Broadcast succeeded via wallet relay order:', txid);
   const normalizedTxid = txid.toLowerCase();

@@ -550,14 +550,17 @@ interface BroadcastConfig {
 }
 
 function normalizeUtxoBroadcastPriority(priority: unknown): UtxoBroadcastRelay[] {
-  /** Same default order as Wallet Settings / dogetag (RPC first when present). */
+  /** Match Wallet Settings / dogecoinTxBroadcast: command.dog → Core RPC. Never auto-append
+   *  BlockCypher / Tatum / Blockchair — their `/txs/push` can return a txid that never
+   *  exists on our node or SoChain. */
   const allowed: UtxoBroadcastRelay[] = ['rpc', 'tatum', 'blockcypher', 'blockchair', 'commanddog'];
+  const studioDefault: UtxoBroadcastRelay[] = ['commanddog', 'rpc'];
   const input = Array.isArray(priority) ? priority : [];
   const picked = input.filter((item): item is UtxoBroadcastRelay =>
     typeof item === 'string' && allowed.includes(item as UtxoBroadcastRelay)
   );
   const unique = [...new Set(picked)];
-  for (const item of allowed) {
+  for (const item of studioDefault) {
     if (!unique.includes(item)) unique.push(item);
   }
   return unique;
@@ -1039,8 +1042,16 @@ export async function broadcastUtxoTx(rawHex: string): Promise<string> {
     return txid;
   };
 
+  const PUBLIC_RELAYS: UtxoBroadcastRelay[] = ['blockcypher', 'blockchair', 'tatum'];
+
   let lastError: unknown = null;
   for (const provider of order) {
+    if (PUBLIC_RELAYS.includes(provider)) {
+      console.warn(
+        `[utxo-tools] skipping ${provider}: public push APIs return phantom txids; this eco broadcasts via command.dog → Core`,
+      );
+      continue;
+    }
     if (provider === 'rpc' && (!cfg.rpcUser || !cfg.rpcPass || !cfg.rpcUrl)) {
       continue;
     }
@@ -1060,7 +1071,13 @@ export async function broadcastUtxoTx(rawHex: string): Promise<string> {
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error('All broadcast providers failed.');
+  const hint =
+    'command.dog broadcast needs Dogecoin Core RPC on :22555 (dogecoin-qt running). ' +
+    'Check with: dogecoin-cli getblockcount. Public relays (BlockCypher) are not used — they ack txids that never land.';
+  if (lastError instanceof Error) {
+    throw new Error(`${lastError.message} — ${hint}`);
+  }
+  throw new Error(`Broadcast failed. ${hint}`);
 }
 
 // ── Transaction building ──────────────────────────────────────────────────────
