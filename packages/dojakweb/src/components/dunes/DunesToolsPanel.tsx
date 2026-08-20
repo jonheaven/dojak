@@ -24,6 +24,8 @@ export interface DunesToolsPanelProps {
   className?: string;
   onTxSuccess?: (event: DunesToolsTxSuccess) => void;
   onDeploySuccess?: (txid: string, event: DunesToolsTxSuccess) => void;
+  /** Open the matching modal on mount. Default off — deploy must stay on etch/wizard routes. */
+  autoOpen?: boolean;
 }
 
 const DEFAULT_OPS: DunesUiOp[] = ['deploy', 'mint', 'send'];
@@ -36,13 +38,14 @@ export function DunesToolsPanel({
   className = '',
   onTxSuccess,
   onDeploySuccess,
+  autoOpen = false,
 }: DunesToolsPanelProps) {
   const { address } = useUnifiedWallet();
   const firstOp = ops.includes(initialOp) ? initialOp : ops[0] ?? 'mint';
 
-  const [deployOpen, setDeployOpen] = useState(firstOp === 'deploy');
-  const [mintOpen, setMintOpen] = useState(firstOp === 'mint');
-  const [sendOpen, setSendOpen] = useState(firstOp === 'send');
+  const [deployOpen, setDeployOpen] = useState(autoOpen && firstOp === 'deploy');
+  const [mintOpen, setMintOpen] = useState(autoOpen && firstOp === 'mint');
+  const [sendOpen, setSendOpen] = useState(autoOpen && firstOp === 'send');
   const [sendHolding, setSendHolding] = useState<DuneHolding | undefined>();
   const [holdings, setHoldings] = useState<DuneHolding[] | null>(null);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
