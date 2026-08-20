@@ -311,13 +311,17 @@ export function journalDlockerTx(opts: {
   duneAmount?: string;
   locktimeUnix?: number;
   vout?: number;
+  inscriptionId?: string;
 }): DojakwebWalletTxEntry | null {
   const lockType = opts.lockType || 'doge';
+  const inscriptionId = opts.inscriptionId?.trim();
   const asset =
     lockType === 'dune'
       ? opts.duneName || 'Ðune'
       : lockType === 'inscription'
-        ? 'inscription'
+        ? inscriptionId
+          ? `${inscriptionId.slice(0, 10)}…`
+          : 'inscription'
         : 'DOGE';
   const title =
     opts.title ||
@@ -326,6 +330,7 @@ export function journalDlockerTx(opts: {
     opts.summary ||
     [
       opts.duneAmount && opts.duneName ? `${opts.duneAmount} ${opts.duneName}` : null,
+      inscriptionId && lockType === 'inscription' ? inscriptionId : null,
       opts.locktimeUnix
         ? `until ${new Date(opts.locktimeUnix * 1000).toISOString().slice(0, 10)}`
         : null,
@@ -350,6 +355,7 @@ export function journalDlockerTx(opts: {
       amountDisplay: opts.duneAmount,
       locktimeUnix: opts.locktimeUnix,
       vout: opts.vout,
+      inscriptionId,
     },
   });
 }

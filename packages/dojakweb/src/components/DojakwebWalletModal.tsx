@@ -746,6 +746,8 @@ export function DojakwebWalletModal({
   const [dlottoClassifying, setDlottoClassifying] = useState(false);
   const [revealPassword, setRevealPassword] = useState('');
   const [inscriptions, setInscriptions] = useState<MyDogeInscription[]>([]);
+  const [dlockedInscriptionIds, setDlockedInscriptionIds] = useState<Set<string>>(new Set());
+  const [dlockedOutpoints, setDlockedOutpoints] = useState<Set<string>>(new Set());
   const [spendableBreak, setSpendableBreak] = useState<SpendableBalanceBreakdown | null>(null);
   const [spendableBreakBusy, setSpendableBreakBusy] = useState(false);
   /** Full-viewport Coins & UTXOs (outside narrow drawer). */
@@ -803,6 +805,50 @@ export function DojakwebWalletModal({
   const activeWalletSummary = availableWallets.find((wallet) => wallet.isActive) ?? null;
   const activeWalletType = activeWalletSummary?.type ?? walletType ?? null;
   const activeAddress = activeWalletSummary?.address ?? pendingWallet?.address ?? null;
+
+  useEffect(() => {
+    if (!activeAddress) {
+      setDlockedInscriptionIds(new Set());
+      setDlockedOutpoints(new Set());
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      const urls = [
+        `/api/dlocker/address/${encodeURIComponent(activeAddress)}?status=active&limit=100`,
+        `${getIndexerApiBase().replace(/\/+$/, '')}/api/dlocker/address/${encodeURIComponent(activeAddress)}?status=active&limit=100`,
+      ];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, { headers: { Accept: 'application/json' } });
+          if (!res.ok) continue;
+          const body = (await res.json()) as {
+            locks?: Array<{ inscriptionId?: string; txid?: string; vout?: number }>;
+          };
+          const ids = new Set<string>();
+          const ops = new Set<string>();
+          for (const lock of body.locks || []) {
+            const id = String(lock.inscriptionId || '').trim().toLowerCase();
+            if (id) ids.add(id);
+            if (lock.txid != null && lock.vout != null) {
+              ops.add(`${String(lock.txid).toLowerCase()}:${lock.vout}`);
+            }
+          }
+          if (!cancelled) {
+            setDlockedInscriptionIds(ids);
+            setDlockedOutpoints(ops);
+          }
+          return;
+        } catch {
+          /* try next */
+        }
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAddress]);
 
   useEffect(() => {
     if (step === 'utxos' && activeAddress) {
@@ -5134,13 +5180,31 @@ export function DojakwebWalletModal({
                                         </div>
                                       </div>
                                     <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
-                                      {gridInscriptions.map((item) => (
+                                      {gridInscriptions.map((item) => {
+                                        const out = String(item.output || item.location || '')
+                                          .split(':')
+                                          .slice(0, 2)
+                                          .join(':')
+                                          .toLowerCase();
+                                        const dlocked =
+                                          dlockedInscriptionIds.has(String(item.inscriptionId || '').toLowerCase()) ||
+                                          (out ? dlockedOutpoints.has(out) : false);
+                                        return (
                                         <div
                                           key={item.inscriptionId}
                                           className="group relative overflow-visible rounded-xl border border-white/10 bg-zinc-900 shadow-sm transition hover:border-[#D4A017]/55 hover:shadow-md hover:shadow-[#D4A017]/10"
                                         >
                                           {/* image — overflow-hidden scoped to media only */}
-                                          <div className="overflow-hidden rounded-t-[0.65rem]">
+                                          <div className="relative overflow-hidden rounded-t-[0.65rem]">
+                                            {dlocked ? (
+                                              <div
+                                                className="absolute right-1.5 top-1.5 z-10 inline-flex items-center gap-0.5 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-[#FCD34D]"
+                                                title={t('modal.assets.dlocked')}
+                                              >
+                                                <LockClosedIcon className="h-3 w-3" aria-hidden />
+                                                {t('modal.assets.dlocked')}
+                                              </div>
+                                            ) : null}
                                             {item.contentType?.startsWith('image/') ? (
                                               <img
                                                 src={item.content}
@@ -5365,7 +5429,8 @@ export function DojakwebWalletModal({
                                             </Menu>
                                           </div>
                                         </div>
-                                      ))}
+                                        );
+                                      })}
                                     </div>
                                     </div>
                                   )

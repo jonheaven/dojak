@@ -8,6 +8,7 @@ import {
   DOGEX_PUBLIC_INDEXER_URL,
   getIndexerApiBase,
 } from '../utils/api';
+import { gatedMydogeGetJson } from './mydoge/httpGate';
 import {
   loadWalletTxJournal,
   upsertWalletTxJournalEntry,
@@ -215,6 +216,7 @@ function enrichmentFromDlockerLock(row: Record<string, unknown>): WalletTxEnrich
   const lockType = String(row.lockType ?? row.lock_type ?? 'doge').toLowerCase();
   const duneName = String(row.duneName ?? row.dune_name ?? '').trim();
   const duneAmount = String(row.duneAmount ?? row.dune_amount ?? '').trim();
+  const inscriptionId = String(row.inscriptionId ?? row.inscription_id ?? '').trim();
   const amountDoge =
     typeof row.amountDoge === 'number'
       ? row.amountDoge
@@ -225,7 +227,9 @@ function enrichmentFromDlockerLock(row: Record<string, unknown>): WalletTxEnrich
     lockType === 'dune' && duneName
       ? duneName
       : lockType === 'inscription'
-        ? 'inscription'
+        ? inscriptionId
+          ? `${inscriptionId.slice(0, 10)}…`
+          : 'inscription'
         : 'DOGE';
   const action = 'lock';
   return {
@@ -236,6 +240,7 @@ function enrichmentFromDlockerLock(row: Record<string, unknown>): WalletTxEnrich
     title: `Lock ${asset}`,
     summary: [
       duneAmount && duneName ? `${duneAmount} ${duneName}` : amountDoge != null ? `${amountDoge} Ð` : null,
+      inscriptionId || null,
       status,
     ]
       .filter(Boolean)
@@ -252,6 +257,7 @@ function enrichmentFromDlockerLock(row: Record<string, unknown>): WalletTxEnrich
       locktimeUnix: row.locktimeUnix ?? row.locktime_unix,
       vout: row.vout,
       unlockTxid: row.unlockTxid,
+      inscriptionId: inscriptionId || undefined,
     },
   };
 }
@@ -334,12 +340,15 @@ export async function probeTxProtocolEnrichments(
   txids: string[],
   already: Map<string, WalletTxEnrichment>,
   limit = 24,
+  address?: string,
 ): Promise<Map<string, WalletTxEnrichment>> {
   const out = new Map(already);
   const pending = txids
     .map((t) => t.trim().toLowerCase())
     .filter((t) => /^[0-9a-f]{64}$/.test(t) && !out.has(t))
     .slice(0, limit);
+
+  const mydogeRows = address ? await fetchMydogeInscriptionRows(address) : [];
 
   const CONCURRENCY = 4;
   for (let i = 0; i < pending.length; i += CONCURRENCY) {
@@ -372,11 +381,20 @@ export async function probeTxProtocolEnrichments(
         }
         const market = await fetchFirstJson([`/api/marketplace/tx/${txid}`]);
         if (market && typeof market === 'object' && !(market as any).error) {
-          const e = enrichmentFromMarketplace(txid, market as Record<string, unknown>);
+          const e = await enrichmentFromMarketplace(
+            txid,
+            market as Record<string, unknown>,
+            mydogeRows,
+          );
           if (e) {
             out.set(txid, e);
             return;
           }
+        }
+        const located = enrichmentFromInscriptionLocation(txid, mydogeRows);
+        if (located) {
+          out.set(txid, located);
+          return;
         }
         const dune = await enrichmentFromDuneOutpoints(txid);
         if (dune) out.set(txid, dune);
@@ -386,7 +404,76 @@ export async function probeTxProtocolEnrichments(
   return out;
 }
 
-function enrichmentFromMarketplace(txid: string, row: Record<string, unknown>): WalletTxEnrichment | null {
+type MydogeInscriptionRow = {
+  inscriptionId?: string;
+  inscriptionNumber?: number;
+  output?: string;
+  location?: string;
+};
+
+function outpointKey(raw: string | undefined): string {
+  const parts = String(raw || '')
+    .trim()
+    .toLowerCase()
+    .split(':');
+  if (parts.length >= 2 && /^[0-9a-f]{64}$/.test(parts[0]!) && /^\d+$/.test(parts[1]!)) {
+    return `${parts[0]}:${Number(parts[1])}`;
+  }
+  return '';
+}
+
+async function fetchMydogeInscriptionRows(address: string): Promise<MydogeInscriptionRow[]> {
+  try {
+    const body = await gatedMydogeGetJson(
+      `https://api.mydoge.com/inscriptions/${encodeURIComponent(address)}`,
+    );
+    if (!body || typeof body !== 'object') return [];
+    const list = Array.isArray((body as { list?: unknown[] }).list)
+      ? ((body as { list: unknown[] }).list)
+      : Array.isArray(body)
+        ? (body as unknown[])
+        : [];
+    return list.filter((row) => row && typeof row === 'object') as MydogeInscriptionRow[];
+  } catch {
+    return [];
+  }
+}
+
+function findMydogeAt(rows: MydogeInscriptionRow[], txid: string, vout?: number): MydogeInscriptionRow | null {
+  const want = vout == null ? '' : `${txid}:${vout}`;
+  for (const row of rows) {
+    const op = outpointKey(row.output) || outpointKey(row.location);
+    if (want && op === want) return row;
+    if (!want && op.startsWith(`${txid}:`)) return row;
+  }
+  return null;
+}
+
+function enrichmentFromInscriptionLocation(
+  txid: string,
+  rows: MydogeInscriptionRow[],
+): WalletTxEnrichment | null {
+  const hit = findMydogeAt(rows, txid);
+  const id = String(hit?.inscriptionId ?? '').trim();
+  if (!hit || !id) return null;
+  const num = hit.inscriptionNumber;
+  return {
+    txid,
+    protocol: 'doginals',
+    action: 'transfer',
+    actionLabel: 'NFT',
+    title: typeof num === 'number' ? `#${num}` : `${id.slice(0, 10)}…`,
+    summary: id,
+    indexed: true,
+    metadata: { inscriptionId: id, inscriptionNumber: num },
+  };
+}
+
+async function enrichmentFromMarketplace(
+  txid: string,
+  row: Record<string, unknown>,
+  mydogeRows: MydogeInscriptionRow[] = [],
+): Promise<WalletTxEnrichment | null> {
   const kind = String(row.kind ?? '');
   if (kind !== 'marketplace_sale' && kind !== 'otc_sale') return null;
   const venue = String(row.venue ?? 'openordex').trim() || 'openordex';
@@ -398,19 +485,30 @@ function enrichmentFromMarketplace(txid: string, row: Record<string, unknown>): 
       : typeof row.sellerProceedsDoge === 'number'
         ? row.sellerProceedsDoge
         : undefined;
-  const nfts = Array.isArray(row.nfts) ? (row.nfts as Array<{ inscriptionId?: string }>) : [];
-  const inscriptionId = nfts.map((n) => n.inscriptionId).find(Boolean);
+  const nfts = Array.isArray(row.nfts)
+    ? (row.nfts as Array<{ inscriptionId?: string; vout?: number }>)
+    : [];
+  let inscriptionId = nfts.map((n) => n.inscriptionId).find(Boolean) || '';
+  if (!inscriptionId) {
+    const vout = nfts.find((n) => n.vout != null)?.vout;
+    const hit = findMydogeAt(mydogeRows, txid, vout);
+    inscriptionId = String(hit?.inscriptionId ?? '').trim();
+  }
+  const num = inscriptionId
+    ? findMydogeAt(mydogeRows, txid)?.inscriptionNumber
+    : undefined;
   const summary =
     typeof row.summary === 'string' && row.summary.trim()
       ? row.summary.trim()
       : `${venue} sale${price != null ? ` · ${price} Ð` : ''}`;
+  const title = num != null ? `${venue} #${num}` : venue === 'openordex' ? 'NFT sale' : venue;
   return {
     txid,
     protocol: 'marketplace',
     action: 'buy',
     actionLabel: 'Buy',
-    title: venue === 'openordex' ? 'NFT sale' : venue,
-    summary,
+    title,
+    summary: inscriptionId ? `${summary} · ${inscriptionId.slice(0, 12)}…` : summary,
     originLabel: venue === 'openordex' ? 'OpenOrdex' : venue,
     indexed: true,
     metadata: {
@@ -418,7 +516,7 @@ function enrichmentFromMarketplace(txid: string, row: Record<string, unknown>): 
       seller: seller || undefined,
       buyer: buyer || undefined,
       grossPriceDoge: price,
-      inscriptionId,
+      inscriptionId: inscriptionId || undefined,
       amountDisplay: price != null ? `${price} Ð` : undefined,
     },
   };
@@ -532,7 +630,7 @@ export async function enrichWalletTransactionsForAddress(
   });
   if (!needProbe.length) return byAddress;
 
-  const probed = await probeTxProtocolEnrichments(needProbe, byAddress);
+  const probed = await probeTxProtocolEnrichments(needProbe, byAddress, 24, address);
   const fresh: WalletTxEnrichment[] = [];
   for (const [txid, e] of probed) {
     if (!byAddress.has(txid)) fresh.push(e);

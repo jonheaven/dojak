@@ -174,6 +174,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.assets.filterAll': 'すべて',
   'modal.assets.filterMedia': '画像',
   'modal.assets.filterDlotto': 'ÐLotto',
+  'modal.assets.dlocked': 'ÐLocked',
   'modal.assets.filterDlottoLoading': 'チケット検索中…',
   'modal.assets.noDoginalsHiddenTextHint':
     '画像 Doginals がありません — テキスト/JSON が {count} 件隠れています。',

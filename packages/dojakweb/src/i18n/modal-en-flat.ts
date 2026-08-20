@@ -168,6 +168,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.assets.filterAll': 'All',
   'modal.assets.filterMedia': 'Images',
   'modal.assets.filterDlotto': 'ÐLotto',
+  'modal.assets.dlocked': 'ÐLocked',
   'modal.assets.filterDlottoLoading': 'Finding tickets…',
   'modal.assets.noDoginalsHiddenTextHint':
     'No image Doginals left — {count} text/JSON inscriptions are hidden.',
