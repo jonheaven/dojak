@@ -58,9 +58,42 @@ function isBitcoinjsFeeRateError(msg: string): boolean {
   );
 }
 
+function redeemHasCltv(redeem: Buffer | Uint8Array | undefined): boolean {
+  if (!redeem || !redeem.length) return false;
+  const chunks = bitcoin.script.decompile(Buffer.from(redeem));
+  return Boolean(chunks?.includes(bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY));
+}
+
+/** bitcoinjs cannot classify `<locktime> OP_CLTV OP_DROP` + P2PKH as p2pkh. */
+function tryFinalizeCltvP2shInput(psbt: bitcoin.Psbt, index: number): boolean {
+  const input = psbt.data.inputs[index];
+  if (!input) return false;
+  if (input.finalScriptSig) return true;
+  if (!redeemHasCltv(input.redeemScript) || !input.partialSig?.length) return false;
+  try {
+    psbt.finalizeInput(index, (_i, inp) => {
+      const ps = inp.partialSig![0];
+      const payment = bitcoin.payments.p2sh({
+        redeem: {
+          output: Buffer.from(inp.redeemScript!),
+          input: bitcoin.script.compile([Buffer.from(ps.signature), Buffer.from(ps.pubkey)]),
+        },
+        network: DOGE_NETWORK,
+      });
+      if (!payment.input) throw new Error('CLTV P2SH finalize produced empty scriptSig');
+      return { finalScriptSig: payment.input };
+    });
+    return true;
+  } catch (e) {
+    console.warn('[doginal-psdt] CLTV P2SH finalize failed', e);
+    return false;
+  }
+}
+
 /** Finalize inputs and extract raw tx hex, ignoring Bitcoin-oriented fee caps. */
 export function extractDogePsbtTxHex(psbt: bitcoin.Psbt): string {
   for (let i = 0; i < psbt.inputCount; i++) {
+    if (tryFinalizeCltvP2shInput(psbt, i)) continue;
     try {
       psbt.finalizeInput(i);
     } catch {
@@ -131,14 +164,40 @@ function prevOutScriptForInput(psbt: bitcoin.Psbt, index: number): Buffer | null
   return null;
 }
 
-function inputScriptMatchesPubkey(script: Buffer, publicKey: Buffer): boolean {
+function pubkeyHashInRedeem(redeem: Buffer, publicKey: Buffer): boolean {
+  try {
+    const pkh = Buffer.from(bitcoin.crypto.hash160(publicKey));
+    const chunks = bitcoin.script.decompile(redeem);
+    if (!chunks) return false;
+    return chunks.some((c) => Buffer.isBuffer(c) && c.equals(pkh));
+  } catch {
+    return false;
+  }
+}
+
+function inputScriptMatchesPubkey(
+  script: Buffer,
+  publicKey: Buffer,
+  redeemScript?: Buffer | Uint8Array,
+): boolean {
   try {
     const out = bitcoin.payments.p2pkh({ pubkey: publicKey, network: DOGE_NETWORK }).output;
     if (out && Buffer.from(out).equals(script)) return true;
   } catch {
     /* not p2pkh compressed */
   }
-  return false;
+  if (!redeemScript?.length) return false;
+  try {
+    const redeem = Buffer.from(redeemScript);
+    const p2sh = bitcoin.payments.p2sh({
+      redeem: { output: redeem, network: DOGE_NETWORK },
+      network: DOGE_NETWORK,
+    }).output;
+    if (!p2sh || !Buffer.from(p2sh).equals(script)) return false;
+    return pubkeyHashInRedeem(redeem, publicKey);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -193,10 +252,43 @@ function getLocalWifSignerInputIndexes(psbt: bitcoin.Psbt, publicKey: Buffer): n
     if (isSellerListingInput(psbt, i)) continue;
     if (psbt.data.inputs[i]?.partialSig?.length) continue;
     const script = prevOutScriptForInput(psbt, i);
-    if (!script || !inputScriptMatchesPubkey(script, pub)) continue;
+    const redeem = psbt.data.inputs[i]?.redeemScript;
+    if (!script || !inputScriptMatchesPubkey(script, pub, redeem)) continue;
     indexes.push(i);
   }
   return indexes;
+}
+
+function unsignedTxFromPsbt(psbt: bitcoin.Psbt): bitcoin.Transaction | null {
+  const cache = (psbt as unknown as { __CACHE?: { __TX?: bitcoin.Transaction } }).__CACHE;
+  return cache?.__TX ?? null;
+}
+
+/** bitcoinjs may refuse CLTV-prefixed redeem scripts even when HASH160 matches. */
+async function trySignCltvP2shInput(
+  psbt: bitcoin.Psbt,
+  index: number,
+  signer: bitcoin.SignerAsync,
+): Promise<boolean> {
+  const redeem = psbt.data.inputs[index]?.redeemScript;
+  if (!redeemHasCltv(redeem) || !pubkeyHashInRedeem(Buffer.from(redeem!), Buffer.from(signer.publicKey))) {
+    return false;
+  }
+  const tx = unsignedTxFromPsbt(psbt);
+  if (!tx) return false;
+  const sh = psbt.data.inputs[index]?.sighashType ?? bitcoin.Transaction.SIGHASH_ALL;
+  try {
+    const hash = Buffer.from(tx.hashForSignature(index, Buffer.from(redeem!), sh));
+    const compact = await signer.sign(hash);
+    const signature = bitcoin.script.signature.encode(Buffer.from(compact), sh);
+    psbt.updateInput(index, {
+      partialSig: [{ pubkey: Buffer.from(signer.publicKey), signature }],
+    });
+    return true;
+  } catch (e) {
+    console.warn(`[doginal-psdt] CLTV P2SH sign failed for input ${index}`, e);
+    return false;
+  }
 }
 
 function isUnownedInputSignError(err: unknown): boolean {
@@ -225,6 +317,10 @@ async function signPsbtInputsWithWif(
       }
       signed.push(i);
     } catch (err) {
+      if (await trySignCltvP2shInput(psbt, i, signer)) {
+        signed.push(i);
+        continue;
+      }
       if (isUnownedInputSignError(err)) {
         console.warn(`[doginal-psdt] skip input ${i}: not this wallet's key`);
         continue;
@@ -233,8 +329,13 @@ async function signPsbtInputsWithWif(
     }
   }
   if (!signed.length) {
+    const cltv = [...Array(psbt.inputCount).keys()].some((i) =>
+      redeemHasCltv(psbt.data.inputs[i]?.redeemScript),
+    );
     throw new Error(
-      'This wallet could not sign any input on the PSDT (seller inscription / other-party inputs only). Reconnect the buyer address used for dummy coins and try again.',
+      cltv
+        ? 'This wallet could not sign the ÐLocker time-lock. Reconnect the same address that created the lock and try Unlock again.'
+        : 'This wallet could not sign any input on the PSDT (seller inscription / other-party inputs only). Reconnect the buyer address used for dummy coins and try again.',
     );
   }
   return signed;

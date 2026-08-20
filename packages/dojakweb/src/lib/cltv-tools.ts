@@ -22,7 +22,13 @@
  */
 
 import * as bitcoin from 'bitcoinjs-lib';
+import {
+  fetchSpendableUtxosConservativeForAddress,
+  filterPaymentSpendableUtxos,
+} from './broadcast/dogecoinTxBroadcast';
+import { HARD_DUST_KOINU, SOFT_DUST_KOINU, softDustFeePenaltyKoinu } from './dogecoin/softDust';
 import { DOGE_NETWORK, getTxHex } from './doginal-psdt';
+import { mergePaymentUtxos } from './mempoolSpendOverlay';
 import { DUST_LIMIT, FEE_RATE_KOINU_PER_BYTE } from './utxo-tools';
 
 // ── Lock record (persisted in localStorage) ────────────────────────────────────
@@ -149,7 +155,89 @@ export function buildCltvP2shAddress(
 
 function estimateLockFee(inputCount: number, outputCount: number): number {
   const txSize = 10 + inputCount * 148 + outputCount * 34;
-  return Math.max(100_000, txSize * FEE_RATE_KOINU_PER_BYTE);
+  return Math.max(HARD_DUST_KOINU, txSize * FEE_RATE_KOINU_PER_BYTE);
+}
+
+/** P2SH CLTV vin ~295 bytes; P2PKH vin ~148; P2PKH vout ~34. */
+function estimateUnlockSize(p2pkhInputCount: number, outputCount: number): number {
+  return 10 + 295 + p2pkhInputCount * 148 + outputCount * 34;
+}
+
+function estimateUnlockByteFee(p2pkhInputCount: number, outputCount: number): number {
+  return Math.max(HARD_DUST_KOINU, estimateUnlockSize(p2pkhInputCount, outputCount) * FEE_RATE_KOINU_PER_BYTE);
+}
+
+function resolveUnlockRedeemScript(
+  record: CltvLockRecord,
+  ownerAddress: string,
+  lockScript: Buffer,
+): Buffer {
+  const candidates: Buffer[] = [];
+  if (record.redeemScriptHex && /^[0-9a-fA-F]+$/.test(record.redeemScriptHex) && record.redeemScriptHex.length >= 20) {
+    candidates.push(Buffer.from(record.redeemScriptHex, 'hex'));
+  }
+  try {
+    candidates.push(buildCltvP2shAddress(record.locktimeUnix, ownerAddress).redeemScript);
+  } catch {
+    /* owner address may not be P2PKH */
+  }
+
+  for (const redeem of candidates) {
+    try {
+      const p2sh = bitcoin.payments.p2sh({
+        redeem: { output: redeem, network: DOGE_NETWORK },
+        network: DOGE_NETWORK,
+      }).output;
+      if (p2sh && Buffer.from(p2sh).equals(lockScript)) return redeem;
+    } catch {
+      /* try next */
+    }
+  }
+  throw new Error(
+    'Could not match the ÐLocker redeem script to this lock output. Reconnect the same address that created the lock.',
+  );
+}
+
+async function selectUnlockFeeUtxos(ownerAddress: string): Promise<UtxoInput[]> {
+  const all = await fetchSpendableUtxosConservativeForAddress(ownerAddress);
+  const { safe } = await filterPaymentSpendableUtxos(ownerAddress, all);
+  const merged = mergePaymentUtxos(
+    ownerAddress,
+    safe.map((u) => ({ txid: u.tx_hash, vout: u.tx_output_n, value: u.value })),
+  );
+  return merged.filter((u) => u.value > DUST_LIMIT).sort((a, b) => b.value - a.value);
+}
+
+function combinedUnlockFit(
+  lockValue: number,
+  extra: number,
+  p2pkhInputs: number,
+): { ok: true; fee: number; output: number } | { ok: false } {
+  const byteFee = estimateUnlockByteFee(p2pkhInputs, 1);
+  const outputNoPenalty = lockValue + extra - byteFee;
+  if (outputNoPenalty >= SOFT_DUST_KOINU) {
+    return { ok: true, fee: byteFee, output: outputNoPenalty };
+  }
+  const fee = byteFee + softDustFeePenaltyKoinu([Math.max(outputNoPenalty, HARD_DUST_KOINU)]);
+  const output = lockValue + extra - fee;
+  if (output >= HARD_DUST_KOINU) return { ok: true, fee, output };
+  return { ok: false };
+}
+
+function inscriptionUnlockFit(
+  lockValue: number,
+  extra: number,
+  p2pkhInputs: number,
+): { ok: true; fee: number; change: number } | { ok: false } {
+  const postagePenalty = lockValue > 0 && lockValue < SOFT_DUST_KOINU ? SOFT_DUST_KOINU : 0;
+  const feeWithChange = estimateUnlockByteFee(p2pkhInputs, 2) + postagePenalty;
+  const change = extra - feeWithChange;
+  if (change >= SOFT_DUST_KOINU) {
+    return { ok: true, fee: feeWithChange, change };
+  }
+  const feeNoChange = estimateUnlockByteFee(p2pkhInputs, 1) + postagePenalty;
+  if (extra >= feeNoChange) return { ok: true, fee: feeNoChange, change: 0 };
+  return { ok: false };
 }
 
 // ── Transaction building ───────────────────────────────────────────────────────
@@ -350,6 +438,9 @@ export async function createTimeLockedInscriptionTransaction(params: {
 /**
  * Build a PSBT that spends a CLTV P2SH output back to the owner.
  * Can only be broadcast after nLockTime >= locktimeUnix on-chain.
+ *
+ * Ðune / postage locks are 0.001 Ð carriers — they cannot pay the unlock fee
+ * alone. Extra P2PKH coins from `ownerAddress` cover fee + soft-dust.
  */
 export async function createUnlockTransaction(params: {
   ownerAddress: string;
@@ -363,22 +454,71 @@ export async function createUnlockTransaction(params: {
     throw new Error(`Lock has not expired yet. ${remaining} remaining.`);
   }
 
-  const redeemScript = Buffer.from(record.redeemScriptHex, 'hex');
   const lockTxHex = await getTxHex(record.txid);
+  const lockTx = bitcoin.Transaction.fromHex(lockTxHex);
+  const prev = lockTx.outs[record.vout];
+  if (!prev) {
+    throw new Error(`Lock output ${record.txid}:${record.vout} is missing from the lock transaction.`);
+  }
+  const lockValue = Number(prev.value);
+  const lockScript = Buffer.from(prev.script);
+  const redeemScript = resolveUnlockRedeemScript(record, ownerAddress, lockScript);
 
-  // P2SH spend is ~295 bytes input; single P2PKH output ~34 bytes; overhead 10.
-  const txSize = 10 + 295 + 34;
-  const fee = Math.max(100_000, txSize * FEE_RATE_KOINU_PER_BYTE);
-  const outputAmount = record.amountKoinu - fee;
+  const preserveInscription = record.type === 'inscription';
+  const selected: UtxoInput[] = [];
+  let extra = 0;
+  let fee = 0;
+  let outputAmount = 0;
+  let changeAmount = 0;
 
-  if (outputAmount < DUST_LIMIT) {
-    throw new Error(
-      `Locked amount (${(record.amountKoinu / 1e8).toFixed(4)} DOGE) is too small to cover the unlock fee.`,
-    );
+  const selfFunded = !preserveInscription ? combinedUnlockFit(lockValue, 0, 0) : { ok: false as const };
+  if (selfFunded.ok) {
+    fee = selfFunded.fee;
+    outputAmount = selfFunded.output;
+  } else {
+    const pool = await selectUnlockFeeUtxos(ownerAddress);
+    const takeNext = (): boolean => {
+      const next = pool.find(
+        (u) =>
+          !(u.txid === record.txid && u.vout === record.vout) &&
+          !selected.some((s) => s.txid === u.txid && s.vout === u.vout),
+      );
+      if (!next) return false;
+      selected.push(next);
+      extra += next.value;
+      return true;
+    };
+
+    if (preserveInscription) {
+      let ins = inscriptionUnlockFit(lockValue, extra, selected.length);
+      while (!ins.ok && takeNext()) {
+        ins = inscriptionUnlockFit(lockValue, extra, selected.length);
+      }
+      if (!ins.ok) {
+        throw new Error(
+          'Unlock needs extra DOGE in this wallet to cover fees (the inscription postage cannot pay the spend). Send ~0.02 Ð here and try again.',
+        );
+      }
+      fee = ins.fee;
+      outputAmount = lockValue;
+      changeAmount = ins.change;
+    } else {
+      let comb = combinedUnlockFit(lockValue, extra, selected.length);
+      while (!comb.ok && takeNext()) {
+        comb = combinedUnlockFit(lockValue, extra, selected.length);
+      }
+      if (!comb.ok) {
+        throw new Error(
+          'Unlock needs extra DOGE in this wallet to cover fees (Ðune lock coins are 0.001 Ð postage). Send ~0.02 Ð here and try again.',
+        );
+      }
+      fee = comb.fee;
+      outputAmount = comb.output;
+    }
   }
 
   const psbt = new bitcoin.Psbt({ network: DOGE_NETWORK });
-  // nLockTime must be >= the CLTV script locktime.
+  psbt.setVersion(1);
   psbt.setLocktime(record.locktimeUnix);
 
   psbt.addInput({
@@ -386,11 +526,23 @@ export async function createUnlockTransaction(params: {
     index: record.vout,
     nonWitnessUtxo: Buffer.from(lockTxHex, 'hex'),
     redeemScript,
-    // nSequence must be < 0xffffffff to enable CLTV validation.
     sequence: 0xfffffffe,
   } as any);
 
+  for (const u of selected) {
+    const txHex = await getTxHex(u.txid);
+    psbt.addInput({
+      hash: u.txid,
+      index: u.vout,
+      nonWitnessUtxo: Buffer.from(txHex, 'hex'),
+      sequence: 0xffffffff,
+    } as any);
+  }
+
   psbt.addOutput({ address: ownerAddress, value: BigInt(outputAmount) });
+  if (preserveInscription && changeAmount >= SOFT_DUST_KOINU) {
+    psbt.addOutput({ address: ownerAddress, value: BigInt(changeAmount) });
+  }
 
   return { psbtBase64: psbt.toBase64(), fee, outputAmount };
 }
