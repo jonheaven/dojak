@@ -26,7 +26,12 @@ import {
   fetchSpendableUtxosConservativeForAddress,
   filterPaymentSpendableUtxos,
 } from './broadcast/dogecoinTxBroadcast';
-import { HARD_DUST_KOINU, SOFT_DUST_KOINU, softDustFeePenaltyKoinu } from './dogecoin/softDust';
+import {
+  HARD_DUST_KOINU,
+  SOFT_DUST_KOINU,
+  mineableFeeKoinu,
+  softDustFeePenaltyKoinu,
+} from './dogecoin/softDust';
 import { DOGE_NETWORK, getTxHex } from './doginal-psdt';
 import { mergePaymentUtxos } from './mempoolSpendOverlay';
 import { DUST_LIMIT, FEE_RATE_KOINU_PER_BYTE } from './utxo-tools';
@@ -153,9 +158,39 @@ export function buildCltvP2shAddress(
 
 // ── Fee estimation ─────────────────────────────────────────────────────────────
 
-function estimateLockFee(inputCount: number, outputCount: number): number {
-  const txSize = 10 + inputCount * 148 + outputCount * 34;
-  return Math.max(HARD_DUST_KOINU, txSize * FEE_RATE_KOINU_PER_BYTE);
+function estimateLockVsize(inputCount: number, outputCount: number): number {
+  return 10 + inputCount * 148 + outputCount * 34;
+}
+
+/**
+ * Byte fee + Dogecoin soft-dust add-on.
+ * A 0.001 Ð inscription/Ðune carrier lock out needs +0.01 Ð in the fee or
+ * miners leave the tx in mempool indefinitely (relay still accepts it).
+ */
+function planLockFee(params: {
+  inputCount: number;
+  lockAmountKoinu: number;
+  /** Koins available to pay the fee (and the lock amount when `availableIncludesLock`). */
+  availableKoinu: number;
+  availableIncludesLock: boolean;
+}): { fee: number; change: number; hasChange: boolean } {
+  const { inputCount, lockAmountKoinu, availableKoinu, availableIncludesLock } = params;
+  const forFee = availableIncludesLock ? availableKoinu - lockAmountKoinu : availableKoinu;
+
+  const feeWithChange = mineableFeeKoinu({
+    vsize: estimateLockVsize(inputCount, 3),
+    outputValuesKoinu: [lockAmountKoinu, SOFT_DUST_KOINU],
+  });
+  const change = forFee - feeWithChange;
+  if (change >= SOFT_DUST_KOINU) {
+    return { fee: feeWithChange, change, hasChange: true };
+  }
+
+  const feeNoChange = mineableFeeKoinu({
+    vsize: estimateLockVsize(inputCount, 2),
+    outputValuesKoinu: [lockAmountKoinu],
+  });
+  return { fee: feeNoChange, change: 0, hasChange: false };
 }
 
 /** P2SH CLTV vin ~295 bytes; P2PKH vin ~148; P2PKH vout ~34. */
@@ -290,30 +325,41 @@ export async function createTimeLockedTransaction(params: {
   const announceScript = buildCltvAnnounceScript(locktimeUnix, pubkeyHash);
 
   // Greedy UTXO selection (largest first, skip dust)
-  // Outputs: lock + OP_RETURN announce (+ optional change) → fee uses 3 outs max.
+  // Outputs: lock + OP_RETURN announce (+ optional change ≥ 0.01 Ð).
   const spendable = [...utxos].filter((u) => u.value > DUST_LIMIT).sort((a, b) => b.value - a.value);
   const selected: UtxoInput[] = [];
   let total = 0;
+  let plan = planLockFee({
+    inputCount: 1,
+    lockAmountKoinu: amountKoinu,
+    availableKoinu: 0,
+    availableIncludesLock: true,
+  });
   for (const u of spendable) {
     selected.push(u);
     total += u.value;
-    const fee = estimateLockFee(selected.length, 3);
-    if (total >= amountKoinu + fee) break;
+    plan = planLockFee({
+      inputCount: selected.length,
+      lockAmountKoinu: amountKoinu,
+      availableKoinu: total,
+      availableIncludesLock: true,
+    });
+    if (total >= amountKoinu + plan.fee) break;
   }
 
   if (selected.length === 0) {
     throw new Error('No spendable UTXOs available');
   }
 
-  const actualFee = estimateLockFee(selected.length, 3);
-  if (total < amountKoinu + actualFee) {
+  if (total < amountKoinu + plan.fee) {
     throw new Error(
-      `Insufficient balance. Need ${((amountKoinu + actualFee) / 1e8).toFixed(4)} DOGE, have ${(total / 1e8).toFixed(4)} DOGE`,
+      `Insufficient balance. Need ${((amountKoinu + plan.fee) / 1e8).toFixed(4)} DOGE, have ${(total / 1e8).toFixed(4)} DOGE`,
     );
   }
 
-  const change = total - amountKoinu - actualFee;
-  const hasChange = change >= DUST_LIMIT;
+  const actualFee = plan.hasChange ? plan.fee : total - amountKoinu;
+  const change = plan.change;
+  const hasChange = plan.hasChange;
 
   const psbt = new bitcoin.Psbt({ network: DOGE_NETWORK });
 
@@ -374,22 +420,33 @@ export async function createTimeLockedInscriptionTransaction(params: {
 
   const selectedFee: UtxoInput[] = [];
   let feeTotal = 0;
+  let plan = planLockFee({
+    inputCount: 1,
+    lockAmountKoinu: inscriptionUtxo.value,
+    availableKoinu: 0,
+    availableIncludesLock: false,
+  });
   for (const u of spendableFee) {
     selectedFee.push(u);
     feeTotal += u.value;
-    const fee = estimateLockFee(1 + selectedFee.length, 3);
-    if (feeTotal >= fee) break;
+    plan = planLockFee({
+      inputCount: 1 + selectedFee.length,
+      lockAmountKoinu: inscriptionUtxo.value,
+      availableKoinu: feeTotal,
+      availableIncludesLock: false,
+    });
+    if (feeTotal >= plan.fee) break;
   }
 
-  const actualFee = estimateLockFee(1 + selectedFee.length, 3);
-  if (feeTotal < actualFee) {
+  if (feeTotal < plan.fee) {
     throw new Error(
-      `Insufficient DOGE for fees. Need ~${(actualFee / 1e8).toFixed(4)} DOGE in plain UTXOs.`,
+      `Insufficient DOGE for fees. Need ~${(plan.fee / 1e8).toFixed(4)} DOGE in plain UTXOs (0.001 Ð postage locks pay a 0.01 Ð miner dust add-on).`,
     );
   }
 
-  const change = feeTotal - actualFee;
-  const hasChange = change >= DUST_LIMIT;
+  const actualFee = plan.hasChange ? plan.fee : feeTotal;
+  const change = plan.change;
+  const hasChange = plan.hasChange;
 
   const psbt = new bitcoin.Psbt({ network: DOGE_NETWORK });
 
