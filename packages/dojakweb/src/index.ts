@@ -58,6 +58,19 @@ export {
   publishDpfpBindOnChain,
 } from './lib/dpfpPublish';
 export type { DpfpRole, ChainProfile, PublishDpfpBindResult } from './lib/dpfpPublish';
+export {
+  publishDn05OnChain,
+  encodeDn05Compact,
+  parseNostrPubkey,
+  encodeNpub,
+  normalizeDn05Name,
+  dn05Identifier,
+  pubkeyHexFromInput,
+  DN05_DOMAIN,
+  DN05_MARKER,
+  DN05_MAGIC,
+} from './lib/dn05';
+export type { PublishDn05Result } from './lib/dn05';
 export { useDogePFP } from './hooks/useDogePFP';
 export { useDogePFA } from './hooks/useDogePFA';
 export { useChainProfile } from './hooks/useChainProfile';
