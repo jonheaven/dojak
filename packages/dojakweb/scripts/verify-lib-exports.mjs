@@ -43,6 +43,9 @@ const REQUIRED_EXPORTS = [
   'MydogeHttpError',
   'DogeTxLink',
   'dogeTxExplorerUrl',
+  'DN05_DOMAIN',
+  'DN05_MARKER',
+  'publishDn05OnChain',
 ];
 
 if (!fs.existsSync(distIndex)) {
