@@ -69,7 +69,7 @@
     "doge-sdk": "^0.5.0-beta.5",
     "framer-motion": "^11.5.4",
     "jszip": "^3.10.1",
-    "lucide-react": "^0.439.0",
+    "lucide-react": "^1.33.0",
     "next-intl": "^3.17.2",
     "pako": "^2.1.0",
     "qrcode.react": "^4.2.0",
