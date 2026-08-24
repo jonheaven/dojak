@@ -6,8 +6,8 @@ import { useState } from 'react';
 import {
   ArrowUpRight,
   Boxes,
-  Chrome,
   ExternalLink,
+  Globe,
   Fingerprint,
   LockKeyhole,
   Menu,
@@ -466,7 +466,7 @@ export default function HomePage() {
             ))}
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-zinc-500">
-            <Chrome className="h-4 w-4" aria-hidden />
+            <Globe className="h-4 w-4" aria-hidden />
             <span>Chrome</span>
             <span className="text-zinc-300">·</span>
             <span>Brave</span>
