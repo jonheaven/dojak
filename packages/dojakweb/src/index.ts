@@ -71,6 +71,14 @@ export {
   DN05_MAGIC,
 } from './lib/dn05';
 export type { PublishDn05Result } from './lib/dn05';
+export {
+  publishDxOnChain,
+  encodeDxCompact,
+  dxChallengeTweetText,
+  dxTweetIntentUrl,
+  DX_MAGIC,
+} from './lib/dx/onchain';
+export type { PublishDxResult } from './lib/dx/onchain';
 export { useDogePFP } from './hooks/useDogePFP';
 export { useDogePFA } from './hooks/useDogePFA';
 export { useChainProfile } from './hooks/useChainProfile';
