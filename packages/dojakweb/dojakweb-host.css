@@ -1941,7 +1941,7 @@ body.wallet-drawer-paw-open {
   --wallet-drawer-width: min(390px, 94vw);
   --wallet-drawer-bottom: 28px;
   --wallet-drawer-right: 14px;
-  --wallet-drawer-top-safe: 8px;
+  --wallet-drawer-top-safe: 24px;
   --wallet-paw-grip-offset: 168px;
   --wallet-phone-radius: 1.85rem;
 }
@@ -2102,15 +2102,18 @@ body.wallet-drawer-paw-open [data-headlessui-portal] .ds-wallet-dashboard {
   right: var(--wallet-drawer-right) !important;
   bottom: var(--wallet-drawer-bottom) !important;
   top: auto !important;
-  /* Fixed chassis height — do NOT tie height to bottom (that pinned the top and
-     made vertical drag feel inverted / “range on the wrong side”). */
+  left: auto !important;
+  /* Base drawer CSS uses min-height: 100dvh — that stretched the phone past the
+     top of the viewport once bottom was inset. */
+  min-height: 0 !important;
+  /* Shorter than the viewport so the top bezel sits below the browser chrome. */
   height: min(
-    78vh,
-    760px,
-    calc(100dvh - var(--wallet-drawer-bottom, 28px) - var(--wallet-drawer-top-safe, 8px))
+    64vh,
+    640px,
+    calc(100dvh - var(--wallet-drawer-bottom, 28px) - var(--wallet-drawer-top-safe, 24px))
   ) !important;
   max-height: calc(
-    100dvh - var(--wallet-drawer-bottom, 28px) - var(--wallet-drawer-top-safe, 8px)
+    100dvh - var(--wallet-drawer-bottom, 28px) - var(--wallet-drawer-top-safe, 24px)
   ) !important;
   /* Above .wallet-paw-grip (9995) so the paw sits under the panel */
   z-index: 10050 !important;
