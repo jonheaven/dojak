@@ -723,6 +723,7 @@ export { useDxHostStore } from './stores/dxHostStore';
 export { DojakwebDxTrustedOriginsProvider, useDojakwebDxTrustedOrigins } from './contexts/DojakwebDxContext';
 export {
   buildDxWalletCardHtml,
+  buildDxCollectibleHtml,
   defaultDxContentApiBase,
   dxBadgeInscriptionIdFromEnv,
   escapeHtmlForDxCard,
