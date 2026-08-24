@@ -22,15 +22,11 @@ export interface WalletDrawerProps {
   initialAssetType?: 'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes';
 }
 
-const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v5';
+const POS_STORAGE_KEY = 'dojakweb.walletDrawer.pos.v6';
 const DEFAULT_RIGHT = 14;
-/** SSR / pre-measure fallback only. Runtime default is top-flush. */
+/** Phone sits in the lower-right. Vertical is locked — only X is draggable. */
 const DEFAULT_BOTTOM = 28;
 const EDGE_PAD = 8;
-/** Chassis top may sit this close to the viewport top — not above it. */
-const TOP_SAFE = 8;
-/** Allow sinking until the chassis bottom touches the viewport bottom. */
-const MIN_BOTTOM = 0;
 const CLICK_DRAG_THRESHOLD_PX = 6;
 
 type DrawerPos = { right: number; bottom: number };
@@ -88,15 +84,8 @@ function readStoredPos(): DrawerPos | null {
     const raw = window.localStorage.getItem(POS_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<DrawerPos>;
-    if (
-      typeof parsed.right !== 'number' ||
-      typeof parsed.bottom !== 'number' ||
-      !Number.isFinite(parsed.right) ||
-      !Number.isFinite(parsed.bottom)
-    ) {
-      return null;
-    }
-    return clampPos(parsed.right, parsed.bottom);
+    if (typeof parsed.right !== 'number' || !Number.isFinite(parsed.right)) return null;
+    return clampPos(parsed.right);
   } catch {
     return null;
   }
@@ -113,46 +102,30 @@ function applyPosVars(pos: DrawerPos | null) {
   body.style.setProperty('--wallet-drawer-bottom', `${Math.round(pos.bottom)}px`);
 }
 
-function chassisHeight(): number {
-  const vh = window.innerHeight;
-  return Math.min(vh * 0.78, 760, Math.max(120, vh - TOP_SAFE - EDGE_PAD));
-}
-
-function measureDrawerSize(): { w: number; h: number } {
+function drawerWidth(): number {
   const drawer =
     document.querySelector<HTMLElement>('.ds-wallet-modal--drawer') ||
     document.querySelector<HTMLElement>('[data-headlessui-portal] .ds-wallet-dashboard');
   const fallbackW = Math.min(390, window.innerWidth * 0.94);
-  const w = drawer?.offsetWidth || fallbackW;
-  const liveH = drawer?.getBoundingClientRect().height ?? 0;
-  const cssH = chassisHeight();
-  // Prefer the larger height so clamp never lets the real panel leave the top.
-  const h = liveH > 40 ? Math.max(liveH, cssH) : cssH;
-  return { w, h };
-}
-
-function defaultBottom(): number {
-  const { h: drawerH } = measureDrawerSize();
-  return Math.max(MIN_BOTTOM, window.innerHeight - drawerH - TOP_SAFE);
+  return drawer?.offsetWidth || fallbackW;
 }
 
 function defaultPos(): DrawerPos {
   if (typeof window === 'undefined') {
     return { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
   }
-  return { right: DEFAULT_RIGHT, bottom: defaultBottom() };
+  return clampPos(DEFAULT_RIGHT);
 }
 
-function clampPos(right: number, bottom: number): DrawerPos {
-  const { w: drawerW, h: drawerH } = measureDrawerSize();
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const maxRight = Math.max(EDGE_PAD, vw - drawerW - EDGE_PAD);
-  // CSS `bottom` — larger moves the chassis up. Cap so top never goes above TOP_SAFE.
-  const maxBottom = Math.max(MIN_BOTTOM, vh - drawerH - TOP_SAFE);
+function clampPos(right: number): DrawerPos {
+  if (typeof window === 'undefined') {
+    return { right: Math.max(EDGE_PAD, right), bottom: DEFAULT_BOTTOM };
+  }
+  const drawerW = drawerWidth();
+  const maxRight = Math.max(EDGE_PAD, window.innerWidth - drawerW - EDGE_PAD);
   return {
     right: Math.min(maxRight, Math.max(EDGE_PAD, right)),
-    bottom: Math.min(maxBottom, Math.max(MIN_BOTTOM, bottom)),
+    bottom: DEFAULT_BOTTOM,
   };
 }
 
@@ -184,7 +157,6 @@ export default function WalletDrawer({
     startX: number;
     startY: number;
     originRight: number;
-    originBottom: number;
     moved: boolean;
   } | null>(null);
 
@@ -255,8 +227,7 @@ export default function WalletDrawer({
     // Re-clamp on open so old localStorage positions that lifted the paw get fixed.
     const reclamp = () => {
       setPos((prev) => {
-        const base = prev ?? defaultPos();
-        const next = clampPos(base.right, base.bottom);
+        const next = clampPos((prev ?? defaultPos()).right);
         applyPosVars(next);
         try {
           window.localStorage.setItem(POS_STORAGE_KEY, JSON.stringify(next));
@@ -289,7 +260,7 @@ export default function WalletDrawer({
     const onResize = () => {
       setPos((prev) => {
         if (!prev) return prev;
-        const next = clampPos(prev.right, prev.bottom);
+        const next = clampPos(prev.right);
         try {
           window.localStorage.setItem(POS_STORAGE_KEY, JSON.stringify(next));
         } catch {
@@ -323,7 +294,6 @@ export default function WalletDrawer({
         startX: e.clientX,
         startY: e.clientY,
         originRight: origin.right,
-        originBottom: origin.bottom,
         moved: false,
       };
       setDragging(true);
@@ -341,10 +311,7 @@ export default function WalletDrawer({
     if (!drag.moved && Math.hypot(deltaX, deltaY) > CLICK_DRAG_THRESHOLD_PX) {
       drag.moved = true;
     }
-    const next = clampPos(
-      drag.originRight - deltaX,
-      drag.originBottom - deltaY,
-    );
+    const next = clampPos(drag.originRight - deltaX);
     applyPosVars(next);
     setPos(next);
   }, []);
@@ -367,10 +334,7 @@ export default function WalletDrawer({
         onClose();
         return;
       }
-      const next = clampPos(
-        drag.originRight - (e.clientX - drag.startX),
-        drag.originBottom - (e.clientY - drag.startY),
-      );
+      const next = clampPos(drag.originRight - (e.clientX - drag.startX));
       persistPos(next);
     },
     [onClose, persistPos],
@@ -388,8 +352,8 @@ export default function WalletDrawer({
                 className="wallet-paw-grip"
                 role="button"
                 tabIndex={-1}
-                aria-label="Close wallet drawer or drag to reposition"
-                title="Click to close. Drag to move."
+                aria-label="Close wallet drawer or drag sideways to reposition"
+                title="Click to close. Drag left or right to move."
                 variants={gripVariants}
                 initial="hidden"
                 animate="visible"
