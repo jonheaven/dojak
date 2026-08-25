@@ -6,7 +6,7 @@ import {
   signOpReturnTransaction,
   broadcastSignedTransaction,
   txidFromRawHex,
-} from './broadcast/dogecoinTxBroadcast';
+} from '../broadcast/dogecoinTxBroadcast';
 import { normalizeDxXHandle, parseTweetIdFromInput } from './protocol';
 
 export const DX_MAGIC = 'DX';
