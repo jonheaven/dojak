@@ -1,6 +1,7 @@
 /**
- * Cross-origin Ð𝕏 verification handoff: embedder posts a request; Dojakweb opens the wallet
- * and returns a `register` payload (JSON) for inscription. Hosts MUST use a specific targetOrigin.
+ * Cross-origin Ð𝕏 verification handoff: embedder posts a request; Dojakweb opens the
+ * wallet Identity panel and returns the OP_RETURN bind (`txid`, handle, address).
+ * Hosts MUST use a specific targetOrigin.
  */
 
 export const DOJAKWEB_DX_PM_PROTOCOL = 'dojakweb-dx-v1' as const;

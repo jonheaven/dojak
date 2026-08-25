@@ -205,6 +205,7 @@ export type {
 export * from './wallet/getConnectedWalletAddress';
 
 export { DojakwebWalletModal } from './components/DojakwebWalletModal';
+export { WalletIdentityPanel } from './components/identity/WalletIdentityPanel';
 
 export {
   derivePrivateKeyAtPath,
