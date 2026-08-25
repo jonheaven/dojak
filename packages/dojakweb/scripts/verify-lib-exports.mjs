@@ -46,6 +46,11 @@ const REQUIRED_EXPORTS = [
   'DN05_DOMAIN',
   'DN05_MARKER',
   'publishDn05OnChain',
+  'publishDxOnChain',
+  'dxChallengeTweetText',
+  'dxTweetIntentUrl',
+  'parseTweetIdFromInput',
+  'buildDxCollectibleHtml',
 ];
 
 if (!fs.existsSync(distIndex)) {
