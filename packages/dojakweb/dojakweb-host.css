@@ -112,6 +112,22 @@
   transform: none;
 }
 
+/* Connected: small switcher chip sits outside the icon (parent overflow clips otherwise). */
+.ds-connect-button__switch {
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.ds-connect-button__switch:hover {
+  filter: brightness(1.12);
+}
+
+.ds-connect-button__switch:focus-visible {
+  outline: 2px solid var(--ds-accent-solid);
+  outline-offset: 1px;
+}
+
 /* ── Quick picker (icon flyout / mobile sheet) ── */
 .ds-wallet-quick-picker-backdrop {
   position: fixed;

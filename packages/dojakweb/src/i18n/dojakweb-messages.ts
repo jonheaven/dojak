@@ -34,10 +34,12 @@ const en: MsgTree = {
   wallet: {
     connect: 'Connect wallet',
     openConnectedAria: 'Open connected wallet',
+    closeConnectedAria: 'Close wallet',
     connecting: 'Connecting',
     quickPicker: {
       title: 'Wallets',
       openAria: 'Choose a wallet',
+      switchAria: 'Switch wallet',
       openWallet: 'Open wallet',
       hint: 'Gold ring is the active wallet. Green is connected — tap to switch, × to disconnect.',
       other: 'Other',
@@ -134,10 +136,12 @@ const ja: MsgTree = {
   wallet: {
     connect: 'ウォレット接続',
     openConnectedAria: '接続済みウォレットを開く',
+    closeConnectedAria: 'ウォレットを閉じる',
     connecting: '接続中',
     quickPicker: {
       title: 'ウォレット',
       openAria: 'ウォレットを選択',
+      switchAria: 'ウォレットを切替',
       openWallet: 'ウォレットを開く',
       hint: '金色の枠がアクティブ。緑は接続済み — タップで切替、× で切断。',
       other: 'その他',

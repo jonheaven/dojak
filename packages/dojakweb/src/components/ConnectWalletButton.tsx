@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { WalletIcon } from '@heroicons/react/24/solid';
+import { ArrowsRightLeftIcon, WalletIcon } from '@heroicons/react/24/solid';
 import DojakwebWalletModal from './DojakwebWalletModal';
 import WalletDrawer from './WalletDrawer';
 import {
@@ -91,10 +91,27 @@ export function ConnectWalletButton({
     setDrawerOpen(false);
   }, []);
 
+  const toggleDrawer = useCallback(() => {
+    setPickerOpen(false);
+    if (drawerOpen) {
+      handleCloseDrawer();
+      return;
+    }
+    openDrawer('dashboard');
+  }, [drawerOpen, handleCloseDrawer, openDrawer]);
+
+  const togglePicker = useCallback(() => {
+    setPickerOpen((open) => !open);
+  }, []);
+
   const buttonAriaLabel =
     connected && address
-      ? `${t('wallet.openConnectedAria')} ${address}`
+      ? drawerOpen
+        ? t('wallet.closeConnectedAria')
+        : t('wallet.openConnectedAria')
       : t('wallet.quickPicker.openAria');
+
+  const switchAriaLabel = t('wallet.quickPicker.switchAria');
 
   const focusProps = {
     openNonce,
@@ -105,45 +122,69 @@ export function ConnectWalletButton({
 
   return (
     <>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => {
-          if (drawerOpen) {
-            setDrawerOpen(false);
-          }
-          setPickerOpen((open) => !open);
-        }}
-        aria-label={buttonAriaLabel}
-        title={buttonAriaLabel}
-        aria-expanded={pickerOpen}
-        aria-haspopup="dialog"
-        className={[
-          'ds-connect-button ds-connect-button--icon relative inline-flex h-10 w-10 min-h-10 min-w-10 shrink-0 appearance-none items-center justify-center rounded-full p-0 font-semibold transition hover:brightness-105',
-          'border border-[color:var(--ds-accent-border)]',
-          'bg-[linear-gradient(180deg,var(--ds-accent-solid)_0%,var(--ds-accent-solid-hover)_100%)]',
-          'text-[color:var(--ds-accent-foreground)]',
-          className,
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      >
-        <span className="relative inline-flex h-[1.7rem] w-[1.7rem] shrink-0 items-center justify-center">
-          <WalletIcon className="h-full w-full" aria-hidden="true" />
-          {connected && address ? (
-            <span
-              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[color:var(--ds-accent-solid)]"
-              aria-hidden="true"
-            />
-          ) : null}
-          {approvalPending ? (
-            <span
-              className="absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-[color:var(--ds-accent-solid)] animate-pulse"
-              aria-hidden="true"
-            />
-          ) : null}
-        </span>
-      </button>
+      <span className="relative inline-flex shrink-0">
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => {
+            if (connected) {
+              toggleDrawer();
+              return;
+            }
+            if (drawerOpen) {
+              setDrawerOpen(false);
+            }
+            togglePicker();
+          }}
+          aria-label={buttonAriaLabel}
+          title={buttonAriaLabel}
+          aria-expanded={connected ? drawerOpen : pickerOpen}
+          aria-haspopup={connected ? 'dialog' : 'menu'}
+          className={[
+            'ds-connect-button ds-connect-button--icon relative inline-flex h-10 w-10 min-h-10 min-w-10 shrink-0 appearance-none items-center justify-center rounded-full p-0 font-semibold transition hover:brightness-105',
+            'border border-[color:var(--ds-accent-border)]',
+            'bg-[linear-gradient(180deg,var(--ds-accent-solid)_0%,var(--ds-accent-solid-hover)_100%)]',
+            'text-[color:var(--ds-accent-foreground)]',
+            className,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <span className="relative inline-flex h-[1.7rem] w-[1.7rem] shrink-0 items-center justify-center">
+            <WalletIcon className="h-full w-full" aria-hidden="true" />
+            {connected && address && !approvalPending ? (
+              <span
+                className="absolute -left-0.5 -bottom-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-[color:var(--ds-accent-solid)]"
+                aria-hidden="true"
+              />
+            ) : null}
+            {approvalPending ? (
+              <span
+                className="absolute -left-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-[color:var(--ds-accent-solid)] animate-pulse"
+                aria-hidden="true"
+              />
+            ) : null}
+          </span>
+        </button>
+
+        {connected && address ? (
+          <button
+            type="button"
+            className="ds-connect-button__switch absolute -right-1 -top-1 z-[1] inline-flex h-4 w-4 items-center justify-center rounded-full border border-[color:var(--ds-accent-border)] bg-[color:var(--ds-bg-elevated,#121212)] text-[color:var(--ds-accent-solid)] shadow-md transition hover:brightness-110"
+            aria-label={switchAriaLabel}
+            title={switchAriaLabel}
+            aria-expanded={pickerOpen}
+            aria-haspopup="menu"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              togglePicker();
+            }}
+          >
+            <ArrowsRightLeftIcon className="h-2.5 w-2.5" aria-hidden="true" />
+          </button>
+        ) : null}
+      </span>
 
       <WalletQuickPicker
         open={pickerOpen}
