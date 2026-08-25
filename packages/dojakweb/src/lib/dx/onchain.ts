@@ -16,7 +16,7 @@ export const DX_OP_REVOKE = 0x02;
 export const DX_PROTOCOL_MARKER = 'dx' as const;
 
 export function dxChallengeTweetText(address: string): string {
-  return `Ð𝕏 linking this X account to Dogecoin\n\n${address.trim()}\n\ndogex.dog/dx`;
+  return `I'm linking my 𝕏 account to my wallet on the Dogecoin blockchain using Ð𝕏 protocol:\n\n${address.trim()}\n\ndogex.dog/dx`;
 }
 
 export function dxTweetIntentUrl(address: string): string {
