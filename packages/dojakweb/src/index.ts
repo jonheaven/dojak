@@ -739,7 +739,9 @@ export {
   dxBadgeInscriptionIdFromEnv,
   escapeHtmlForDxCard,
   normalizeDxInscriptionIdForUrl,
+  isDxSouvenirHtml,
 } from './lib/dx/displayHtml';
+export { findDxSouvenirForAddress, findDxSouvenirInInscriptions } from './lib/dx/souvenir';
 export {
   dxInitiate,
   dxConfirm,

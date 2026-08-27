@@ -16,6 +16,14 @@ export type DoggyMarketInscriptionMeta = {
   preview?: string;
   output?: string;
   inscriptionNumber?: number;
+  owner?: string;
+  contentLength?: number;
+  blockHeight?: number;
+  collectionName?: string;
+  collectionSlug?: string;
+  itemName?: string;
+  traits?: Array<{ key: string; value: string }>;
+  outputValue?: number | string;
 };
 
 export function doggyMarketInscriptionJsonUrl(inscriptionId: string): string {
@@ -87,9 +95,51 @@ export async function fetchDoggyMarketInscription(
         headers: { Accept: 'application/json' },
       });
       if (!res.ok) continue;
-      const j = (await res.json()) as DoggyMarketInscriptionMeta;
-      if (!j || typeof j.inscriptionId !== 'string' || typeof j.content !== 'string') continue;
-      return j;
+      const j = (await res.json()) as Record<string, unknown>;
+      const inscriptionId = typeof j.inscriptionId === 'string' ? j.inscriptionId : '';
+      const content = typeof j.content === 'string' ? j.content : '';
+      if (!inscriptionId) continue;
+      const nft = (j.nft && typeof j.nft === 'object' ? j.nft : {}) as Record<string, unknown>;
+      const collection =
+        nft.collection && typeof nft.collection === 'object'
+          ? (nft.collection as Record<string, unknown>)
+          : {};
+      const rawTraits = Array.isArray(nft.traits) ? nft.traits : [];
+      const traits = rawTraits
+        .map((row) => {
+          const t = row && typeof row === 'object' ? (row as Record<string, unknown>) : {};
+          const key = String(t.key ?? t.trait_type ?? '').trim();
+          const value = String(t.value ?? '').trim();
+          return key && value ? { key, value } : null;
+        })
+        .filter((row): row is { key: string; value: string } => Boolean(row));
+      return {
+        inscriptionId,
+        content: content || doggyMarketInscriptionCdnContentUrl(inscriptionId),
+        contentType: typeof j.contentType === 'string' ? j.contentType : undefined,
+        preview: typeof j.preview === 'string' ? j.preview : undefined,
+        output: typeof j.output === 'string' ? j.output : undefined,
+        inscriptionNumber: typeof j.inscriptionNumber === 'number' ? j.inscriptionNumber : undefined,
+        owner: typeof j.owner === 'string' ? j.owner : typeof j.ownerAddress === 'string' ? j.ownerAddress : undefined,
+        contentLength: typeof j.contentLength === 'number' ? j.contentLength : undefined,
+        blockHeight: typeof j.blockHeight === 'number' ? j.blockHeight : undefined,
+        collectionName:
+          typeof collection.name === 'string'
+            ? collection.name
+            : typeof nft.collectionName === 'string'
+              ? nft.collectionName
+              : undefined,
+        collectionSlug:
+          typeof collection.collectionId === 'string'
+            ? collection.collectionId
+            : typeof nft.collectionId === 'string'
+              ? nft.collectionId
+              : undefined,
+        itemName: typeof nft.itemName === 'string' ? nft.itemName : undefined,
+        traits: traits.length ? traits : undefined,
+        outputValue:
+          typeof j.outputValue === 'number' || typeof j.outputValue === 'string' ? j.outputValue : undefined,
+      };
     } catch {
       /* try next */
     }

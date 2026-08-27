@@ -19,6 +19,8 @@ import {
 } from '../../lib/dx/onchain';
 import { normalizeDxXHandle, parseTweetIdFromInput } from '../../lib/dx/protocol';
 import { buildDxCollectibleHtml } from '../../lib/dx/displayHtml';
+import { findDxSouvenirInInscriptions } from '../../lib/dx/souvenir';
+import { HtmlInscriptionThumb } from '../wallet/TextInscriptionPreview';
 import {
   countDoginalTransactionsForContent,
   signDoginalInscriptionChain,
@@ -38,7 +40,7 @@ import {
   type DxRegistration,
   type N05Record,
 } from '../../lib/identity/indexer';
-import { requestDxCardArt, verifyDxTweet } from '../../lib/identity/commandDog';
+import { requestDxCardArt, dxCardArtFailureMessage, verifyDxTweet } from '../../lib/identity/commandDog';
 import type { MyDogeInscription } from '../../utils/api';
 
 const PRIMARY =
@@ -130,6 +132,9 @@ export function WalletIdentityPanel({
   const [wantGrok, setWantGrok] = useState(true);
   const [cardArtUrl, setCardArtUrl] = useState<string | null>(null);
   const [cardInscriptionId, setCardInscriptionId] = useState<string | null>(null);
+  const [artBusy, setArtBusy] = useState(false);
+  const [mintAnother, setMintAnother] = useState(false);
+  const [ownedSouvenirHtml, setOwnedSouvenirHtml] = useState<string | null>(null);
 
   const canSign = Boolean(connected && address && isBrowserWallet && privateKeyWif);
 
@@ -176,6 +181,22 @@ export function WalletIdentityPanel({
   useEffect(() => {
     if (dxMine?.xHandle) setHandleInput(dxMine.xHandle.replace(/^@+/, ''));
   }, [dxMine?.xHandle]);
+
+  useEffect(() => {
+    if (!dxMine) {
+      setOwnedSouvenirHtml(null);
+      return;
+    }
+    let cancelled = false;
+    void findDxSouvenirInInscriptions(inscriptions, { xHandle: dxMine.xHandle }).then((hit) => {
+      if (cancelled || !hit) return;
+      setCardInscriptionId(hit.inscriptionId);
+      setOwnedSouvenirHtml(hit.html);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dxMine, inscriptions]);
 
   useEffect(() => {
     if (n05Mine?.name) {
@@ -307,28 +328,48 @@ export function WalletIdentityPanel({
     }
   }
 
+  async function generateCardArt() {
+    if (!address || !dxMine) {
+      setErr(t('modal.identity.mintWait'));
+      return;
+    }
+    setArtBusy(true);
+    setErr(null);
+    setCardArtUrl(null);
+    try {
+      const art = await requestDxCardArt({ userAddress: address, xHandle: dxMine.xHandle });
+      if (!art.ok) {
+        setErr(art.error || t('modal.identity.grokFailed'));
+        return;
+      }
+      if (art.badgeImageUrl) {
+        setCardArtUrl(art.badgeImageUrl);
+        return;
+      }
+      setErr(dxCardArtFailureMessage(art));
+    } finally {
+      setArtBusy(false);
+    }
+  }
+
   async function mintCard() {
     if (!canSign || !address || !privateKeyWif || !dxMine?.txid) {
       setErr(t('modal.identity.mintWait'));
       return;
     }
+    if (wantGrok && !cardArtUrl) {
+      setErr(t('modal.identity.generateArtFirst'));
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
-      let artUrl = cardArtUrl;
-      if (wantGrok && !artUrl) {
-        const art = await requestDxCardArt({ userAddress: address, xHandle: dxMine.xHandle });
-        if (art.ok && art.badgeImageUrl) {
-          artUrl = art.badgeImageUrl;
-          setCardArtUrl(artUrl);
-        }
-      }
       const html = buildDxCollectibleHtml({
         xHandle: dxMine.xHandle,
         dogeAddress: dxMine.dogeAddress,
         dxTxid: dxMine.txid,
         tweetId: dxMine.tweetId,
-        artUrl,
+        artUrl: wantGrok ? cardArtUrl : null,
       });
       const buf = Buffer.from(html, 'utf8');
       const ct = 'text/html;charset=utf-8';
@@ -456,26 +497,25 @@ export function WalletIdentityPanel({
             <p className="text-xs text-amber-200/90">{t('modal.identity.waitIndex')}</p>
           ) : null}
 
-          <label className="block text-sm text-white">
-            <span className="mb-2 block">{t('modal.verification.handleLabel')}</span>
-            <div className="flex items-center gap-2">
-              <span className="text-white/50">@</span>
-              <input
-                value={handleInput}
-                onChange={(e) => setHandleInput(e.target.value.replace(/^@+/, ''))}
-                placeholder="yourhandle"
-                className={INPUT}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                disabled={busy || Boolean(dxMine)}
-              />
-            </div>
-          </label>
-          {dxTakenByOther ? <p className="text-xs text-red-300">{t('modal.identity.handleTaken')}</p> : null}
-
           {!dxMine ? (
             <>
+              <label className="block text-sm text-white">
+                <span className="mb-2 block">{t('modal.verification.handleLabel')}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/50">@</span>
+                  <input
+                    value={handleInput}
+                    onChange={(e) => setHandleInput(e.target.value.replace(/^@+/, ''))}
+                    placeholder="yourhandle"
+                    className={INPUT}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    disabled={busy}
+                  />
+                </div>
+              </label>
+              {dxTakenByOther ? <p className="text-xs text-red-300">{t('modal.identity.handleTaken')}</p> : null}
               <Btn
                 className={cx('w-full', SECONDARY)}
                 disabled={!address || busy}
@@ -520,32 +560,72 @@ export function WalletIdentityPanel({
               </Btn>
               <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <p className="text-sm font-semibold text-white/90">{t('modal.identity.souvenirTitle')}</p>
-                <p className="text-[11px] leading-5 text-white/50">{t('modal.identity.souvenirHint')}</p>
-                <label className="flex cursor-pointer items-start gap-3 text-sm text-[#D4D4D4]">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 shrink-0 rounded border-white/30 bg-[#0A0A0A] text-amber-500"
-                    checked={wantGrok}
-                    onChange={(e) => setWantGrok(e.target.checked)}
-                    disabled={busy}
-                  />
-                  <span>{t('modal.identity.grokArt')}</span>
-                </label>
-                <Btn className={cx('w-full', PRIMARY)} disabled={busy || !canSign || !dxMine.txid} onClick={() => void mintCard()}>
-                  {busy ? t('modal.identity.inscribing') : t('modal.identity.mintCard')}
-                </Btn>
-                {!dxMine.txid ? <p className="text-[11px] text-white/45">{t('modal.identity.mintWait')}</p> : null}
-                {cardInscriptionId && dxMine ? (
-                  <DxPackRipReveal
-                    xHandle={dxMine.xHandle}
-                    dogeAddress={dxMine.dogeAddress}
-                    badgeImageUrl={cardArtUrl}
-                    packTitle={t('modal.verification.dxPackTitle')}
-                    ripCta={t('modal.verification.dxRipCta')}
-                    cardSubtitle={t('modal.identity.cardSubtitle')}
-                    verifiedBanner={t('modal.verification.dxVerifiedBanner')}
-                  />
-                ) : null}
+                {cardInscriptionId && ownedSouvenirHtml && !mintAnother ? (
+                  <>
+                    <p className="text-[11px] leading-5 text-white/50">{t('modal.identity.souvenirOwned')}</p>
+                    <HtmlInscriptionThumb
+                      item={{
+                        inscriptionId: cardInscriptionId,
+                        contentType: 'text/html;charset=utf-8',
+                        contentBody: ownedSouvenirHtml,
+                      }}
+                      className="mx-auto h-40 w-40 rounded-xl border border-amber-400/30"
+                    />
+                    <p className="truncate font-mono text-[10px] text-white/35">{cardInscriptionId}</p>
+                    <button
+                      type="button"
+                      className="text-[11px] text-amber-200/80 underline"
+                      onClick={() => setMintAnother(true)}
+                    >
+                      {t('modal.identity.mintAnother')}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[11px] leading-5 text-white/50">{t('modal.identity.souvenirHint')}</p>
+                    <label className="flex cursor-pointer items-start gap-3 text-sm text-[#D4D4D4]">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 shrink-0 rounded border-white/30 bg-[#0A0A0A] text-amber-500"
+                        checked={wantGrok}
+                        onChange={(e) => {
+                          setWantGrok(e.target.checked);
+                          setCardArtUrl(null);
+                        }}
+                        disabled={busy || artBusy}
+                      />
+                      <span>{t('modal.identity.grokArt')}</span>
+                    </label>
+                    {wantGrok ? (
+                      <Btn
+                        className={cx('w-full', SECONDARY)}
+                        disabled={busy || artBusy || !dxMine.txid}
+                        onClick={() => void generateCardArt()}
+                      >
+                        {artBusy ? t('modal.identity.generatingArt') : cardArtUrl ? t('modal.identity.regenerateArt') : t('modal.identity.generateArt')}
+                      </Btn>
+                    ) : null}
+                    <Btn
+                      className={cx('w-full', PRIMARY)}
+                      disabled={busy || artBusy || !canSign || !dxMine.txid || (wantGrok && !cardArtUrl)}
+                      onClick={() => void mintCard()}
+                    >
+                      {busy ? t('modal.identity.inscribing') : t('modal.identity.mintCard')}
+                    </Btn>
+                    {!dxMine.txid ? <p className="text-[11px] text-white/45">{t('modal.identity.mintWait')}</p> : null}
+                    {cardInscriptionId && dxMine ? (
+                      <DxPackRipReveal
+                        xHandle={dxMine.xHandle}
+                        dogeAddress={dxMine.dogeAddress}
+                        badgeImageUrl={cardArtUrl}
+                        packTitle={t('modal.verification.dxPackTitle')}
+                        ripCta={t('modal.verification.dxRipCta')}
+                        cardSubtitle={t('modal.identity.cardSubtitle')}
+                        verifiedBanner={t('modal.verification.dxVerifiedBanner')}
+                      />
+                    ) : null}
+                  </>
+                )}
               </div>
             </>
           )}

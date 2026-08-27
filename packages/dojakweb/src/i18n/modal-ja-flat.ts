@@ -162,6 +162,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.assets.unknownType': '不明',
   'modal.assets.send': '送信',
   'modal.assets.inspectText': 'JSON / テキストを見る',
+  'modal.assets.inspectDetails': '詳細を見る',
   'modal.assets.inspectShort': '表示',
   'modal.assets.hideTextJson': 'テキスト / JSON を隠す',
   'modal.assets.showTextJson': 'テキスト / JSON を表示',
@@ -332,7 +333,16 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.identity.souvenirTitle': 'お土産カード（任意）',
   'modal.identity.souvenirHint':
     '共有できる HTML カードをインスクライブします。失くしても 𝕏 は外れません — 紐付けは OP_RETURN です。',
-  'modal.identity.grokArt': 'Grok Imagine アート（失敗時はテキストカード）',
+  'modal.identity.souvenirOwned': 'このウォレットには既に Ð𝕏 お土産カードがあります。',
+  'modal.identity.mintAnother': 'もう一枚ミント',
+  'modal.identity.grokArt':
+    'Grok Imagine アート — 先にプレビュー生成。オフで正方形テキストカード',
+  'modal.identity.generateArt': 'Grok アートを生成',
+  'modal.identity.regenerateArt': 'Grok アートを再生成',
+  'modal.identity.generatingArt': '生成中…',
+  'modal.identity.generateArtFirst':
+    '先に Grok アートを生成するか、Grok のチェックを外してテキストカードのみ',
+  'modal.identity.grokFailed': 'Grok アートのリクエストに失敗',
   'modal.identity.mintCard': 'お土産カードをミント',
   'modal.identity.mintWait': 'dogex が bind の txid を出してからミントしてください。',
   'modal.identity.inscribing': 'インスクライブ中…',

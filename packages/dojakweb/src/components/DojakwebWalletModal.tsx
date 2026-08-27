@@ -55,10 +55,13 @@ import { clearMempoolOverlayForAddress } from '../lib/mempoolSpendOverlay';
 import {
   TextInscriptionCardMedia,
   WasmInscriptionCardMedia,
-  InscriptionTextInspectModal,
+  HtmlInscriptionCardMedia,
+  HtmlInscriptionThumb,
+  isHtmlInscription,
   isTextishInscription,
   isWasmInscription,
 } from './wallet/TextInscriptionPreview';
+import { InscriptionInspectModal } from './wallet/InscriptionInspectModal';
 import {
   isDlottoInscriptionText,
   loadInscriptionTextBody,
@@ -975,7 +978,7 @@ export function DojakwebWalletModal({
   const [hideTextJsonInscriptions, setHideTextJsonInscriptions] = useState(
     () => getWalletDataProviderConfig().hideTextJsonInscriptions === true,
   );
-  const [textInspectItem, setTextInspectItem] = useState<MyDogeInscription | null>(null);
+  const [inspectItem, setInspectItem] = useState<MyDogeInscription | null>(null);
   /** Local per-address hide list (does not affect chain ownership). */
   const [hiddenInscriptionIds, setHiddenInscriptionIds] = useState<Set<string>>(() => new Set());
   const [showHiddenInscriptions, setShowHiddenInscriptions] = useState(false);
@@ -3178,7 +3181,7 @@ export function DojakwebWalletModal({
               className={cx(
                 'flex min-h-full',
                 isDrawerMode
-                  ? cx('h-[100dvh] min-h-0 items-stretch p-0', isDrawerLeft ? 'justify-start' : 'justify-end')
+                  ? cx('h-full min-h-0 items-stretch p-0', isDrawerLeft ? 'justify-start' : 'justify-end')
                   : 'items-center justify-center px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-8',
               )}
             >
@@ -3210,7 +3213,7 @@ export function DojakwebWalletModal({
                     !isDark && 'ds-light',
                     isDrawerMode
                       ? cx(
-                          'ds-wallet-modal--drawer pointer-events-auto fixed top-0 z-[10001] flex h-[100dvh] max-h-[100dvh] min-h-0 w-[min(100dvw,430px)] max-w-[min(100dvw,430px)] flex-col overflow-hidden',
+                          'ds-wallet-modal--drawer pointer-events-auto fixed z-[10001] flex min-h-0 w-[min(100dvw,430px)] max-w-[min(100dvw,430px)] flex-col overflow-hidden',
                           isDrawerLeft ? 'left-0 ds-wallet-modal--drawer-left' : 'right-0',
                         )
                       : 'w-full max-h-[92vh] max-w-lg',
@@ -4818,32 +4821,51 @@ export function DojakwebWalletModal({
                                               </div>
                                             ) : null}
                                             {item.contentType?.startsWith('image/') ? (
-                                              <img
-                                                src={item.content}
-                                                alt={`#${item.inscriptionNumber}`}
-                                                className="aspect-square w-full object-cover"
-                                                loading="lazy"
-                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => setInspectItem(item)}
+                                                className="block w-full"
+                                              >
+                                                <img
+                                                  src={item.content}
+                                                  alt={`#${item.inscriptionNumber}`}
+                                                  className="aspect-square w-full object-cover"
+                                                  loading="lazy"
+                                                />
+                                              </button>
                                             ) : isWasmInscription(item.contentType) ? (
                                               <WasmInscriptionCardMedia
                                                 item={item}
-                                                onInspect={() => setTextInspectItem(item)}
+                                                onInspect={() => setInspectItem(item)}
+                                              />
+                                            ) : isHtmlInscription(item.contentType) ? (
+                                              <HtmlInscriptionCardMedia
+                                                item={item}
+                                                onInspect={() => setInspectItem(item)}
                                               />
                                             ) : isTextishInscription(item.contentType) ? (
                                               <TextInscriptionCardMedia
                                                 item={item}
-                                                onInspect={() => setTextInspectItem(item)}
+                                                onInspect={() => setInspectItem(item)}
                                               />
                                             ) : (
-                                              <div className="flex aspect-square w-full items-center justify-center bg-gray-800 text-xs text-white/40">
+                                              <button
+                                                type="button"
+                                                onClick={() => setInspectItem(item)}
+                                                className="flex aspect-square w-full items-center justify-center bg-gray-800 text-xs text-white/40"
+                                              >
                                                 {item.contentType ?? t('modal.assets.unknownType')}
-                                              </div>
+                                              </button>
                                             )}
                                           </div>
                                           <div className="flex items-center justify-between gap-1 border-t border-white/5 bg-zinc-950 px-2.5 py-2">
-                                            <div className="min-w-0 truncate text-xs font-semibold tabular-nums text-white/90">
+                                            <button
+                                              type="button"
+                                              onClick={() => setInspectItem(item)}
+                                              className="min-w-0 truncate text-left text-xs font-semibold tabular-nums text-white/90 hover:text-[#FCD34D]"
+                                            >
                                               #{item.inscriptionNumber}
-                                            </div>
+                                            </button>
                                             {/* ··· more menu per inscription */}
                                             <Menu as="div" className="relative shrink-0">
                                               <Menu.Button
@@ -4854,23 +4876,21 @@ export function DojakwebWalletModal({
                                                 <EllipsisHorizontalIcon className="h-4 w-4" />
                                               </Menu.Button>
                                               <WalletMenuItems theme={isDark ? 'dark' : 'light'} anchor="bottom end" className="min-w-[12rem]">
-                                                  {isTextishInscription(item.contentType) ? (
-                                                    <Menu.Item>
-                                                      {({ focus, active }) => (
-                                                        <button
-                                                          type="button"
-                                                          onClick={() => setTextInspectItem(item)}
-                                                          className={cx(
-                                                            'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
-                                                            (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
-                                                          )}
-                                                        >
-                                                          <DocumentTextIcon className="h-4 w-4 shrink-0 text-sky-200/90" aria-hidden />
-                                                          <span className="leading-tight">{t('modal.assets.inspectText')}</span>
-                                                        </button>
-                                                      )}
-                                                    </Menu.Item>
-                                                  ) : null}
+                                                  <Menu.Item>
+                                                    {({ focus, active }) => (
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => setInspectItem(item)}
+                                                        className={cx(
+                                                          'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition',
+                                                          (focus || active) ? 'bg-zinc-800' : 'hover:bg-zinc-800',
+                                                        )}
+                                                      >
+                                                        <DocumentTextIcon className="h-4 w-4 shrink-0 text-amber-200/90" aria-hidden />
+                                                        <span className="leading-tight">{t('modal.assets.inspectDetails') || 'View details'}</span>
+                                                      </button>
+                                                    )}
+                                                  </Menu.Item>
                                                   {item.contentType?.startsWith('image/') ? (
                                                     <>
                                                       <Menu.Item>
@@ -5725,7 +5745,7 @@ export function DojakwebWalletModal({
                           ) : isWasmInscription(selectedInscription.contentType) ? (
                             <button
                               type="button"
-                              onClick={() => setTextInspectItem(selectedInscription)}
+                              onClick={() => setInspectItem(selectedInscription)}
                               className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg border border-emerald-400/25 bg-[#0a0f0c] text-[8px] font-bold uppercase tracking-wide text-emerald-200 transition hover:brightness-110"
                               title="Ðalkanes WASM"
                             >
@@ -5734,10 +5754,15 @@ export function DojakwebWalletModal({
                               </span>
                               WASM
                             </button>
+                          ) : isHtmlInscription(selectedInscription.contentType) ? (
+                            <HtmlInscriptionThumb
+                              item={selectedInscription}
+                              onClick={() => setInspectItem(selectedInscription)}
+                            />
                           ) : isTextishInscription(selectedInscription.contentType) ? (
                             <button
                               type="button"
-                              onClick={() => setTextInspectItem(selectedInscription)}
+                              onClick={() => setInspectItem(selectedInscription)}
                               className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-950 text-[9px] font-bold uppercase tracking-wide text-sky-200/90 transition hover:brightness-110"
                             >
                               <DocumentTextIcon className="h-5 w-5" aria-hidden />
@@ -5975,7 +6000,7 @@ export function DojakwebWalletModal({
                           ) : isWasmInscription(selectedInscription.contentType) ? (
                             <button
                               type="button"
-                              onClick={() => setTextInspectItem(selectedInscription)}
+                              onClick={() => setInspectItem(selectedInscription)}
                               className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg border border-emerald-400/25 bg-[#0a0f0c] text-[8px] font-bold uppercase tracking-wide text-emerald-200 transition hover:brightness-110"
                               title="Ðalkanes WASM"
                             >
@@ -5984,10 +6009,15 @@ export function DojakwebWalletModal({
                               </span>
                               WASM
                             </button>
+                          ) : isHtmlInscription(selectedInscription.contentType) ? (
+                            <HtmlInscriptionThumb
+                              item={selectedInscription}
+                              onClick={() => setInspectItem(selectedInscription)}
+                            />
                           ) : isTextishInscription(selectedInscription.contentType) ? (
                             <button
                               type="button"
-                              onClick={() => setTextInspectItem(selectedInscription)}
+                              onClick={() => setInspectItem(selectedInscription)}
                               className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-950 text-[9px] font-bold uppercase tracking-wide text-sky-200/90 transition hover:brightness-110"
                             >
                               <DocumentTextIcon className="h-5 w-5" aria-hidden />
@@ -7103,10 +7133,10 @@ export function DojakwebWalletModal({
         </Dialog>
       </Transition>
 
-      <InscriptionTextInspectModal
-        item={textInspectItem}
-        open={Boolean(textInspectItem)}
-        onClose={() => setTextInspectItem(null)}
+      <InscriptionInspectModal
+        item={inspectItem}
+        open={Boolean(inspectItem)}
+        onClose={() => setInspectItem(null)}
       />
 
       {utxoManagerOpen &&

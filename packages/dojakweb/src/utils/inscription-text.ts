@@ -40,8 +40,21 @@ export function isTextishInscription(contentType?: string | null): boolean {
   const ct = normalizeContentType(contentType);
   if (!ct) return false;
   if (ct === 'application/json' || ct.endsWith('+json')) return true;
-  if (ct.startsWith('text/html')) return false;
+  if (isHtmlInscription(contentType)) return false;
   return ct.startsWith('text/');
+}
+
+/** HTML Doginals — render in sandboxed iframe, not as plain text. */
+export function isHtmlInscription(contentType?: string | null): boolean {
+  const ct = normalizeContentType(contentType);
+  if (!ct) return false;
+  return (
+    ct === 'text/html' ||
+    ct === 'application/xhtml+xml' ||
+    ct === 'application/html' ||
+    ct.endsWith('+html') ||
+    ct.includes('html')
+  );
 }
 
 /** Ðalkanes / WASM bytecode inscriptions (application/wasm, alkane/*). */

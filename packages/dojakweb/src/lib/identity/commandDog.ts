@@ -28,11 +28,40 @@ export async function verifyDxTweet(params: {
   }
 }
 
+export type DxCardArtResult = {
+  ok: boolean;
+  badgeImageUrl?: string | null;
+  error?: string;
+  /** Set when xAI is not configured on command.dog. */
+  grokSkipped?: string;
+  /** Set when Grok was attempted but failed. */
+  grokError?: string;
+};
+
+function parseDxCardArtJson(j: Record<string, unknown>): DxCardArtResult {
+  const visual = (j.visual_data && typeof j.visual_data === 'object'
+    ? j.visual_data
+    : {}) as Record<string, unknown>;
+  const url =
+    (typeof j.badge_image_url === 'string' ? j.badge_image_url : null) ||
+    (typeof visual.badge_image_url === 'string' ? visual.badge_image_url : null);
+  const grokSkipped =
+    typeof visual.image_generation_skipped === 'string' ? visual.image_generation_skipped : undefined;
+  const grokErrorRaw = visual.image_generation_error;
+  const grokError =
+    typeof grokErrorRaw === 'string'
+      ? grokErrorRaw
+      : grokErrorRaw != null
+        ? JSON.stringify(grokErrorRaw)
+        : undefined;
+  return { ok: true, badgeImageUrl: url, grokSkipped, grokError };
+}
+
 export async function requestDxCardArt(params: {
   userAddress: string;
   xHandle: string;
   stylePack?: string;
-}): Promise<{ ok: boolean; badgeImageUrl?: string | null; error?: string }> {
+}): Promise<DxCardArtResult> {
   try {
     const res = await fetch(`${cmdRoot()}/v1/dx/card-art`, {
       method: 'POST',
@@ -43,18 +72,20 @@ export async function requestDxCardArt(params: {
         style_pack: params.stylePack ?? 'trading_card',
       }),
     });
-    const j = (await res.json()) as {
-      ok?: boolean;
-      badge_image_url?: string | null;
-      error?: string;
-      visual_data?: { badge_image_url?: string };
-    };
+    const j = (await res.json()) as Record<string, unknown> & { error?: string };
     if (!res.ok) return { ok: false, error: j.error || `HTTP ${res.status}` };
-    return {
-      ok: true,
-      badgeImageUrl: j.badge_image_url || j.visual_data?.badge_image_url || null,
-    };
+    return parseDxCardArtJson(j);
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Card art failed' };
   }
+}
+
+/** Human message when Grok was requested but no image URL came back. */
+export function dxCardArtFailureMessage(art: DxCardArtResult): string {
+  return (
+    art.error ||
+    art.grokSkipped ||
+    art.grokError ||
+    'Grok Imagine did not return art — configure XAI_API_KEY on command.dog or mint a text-only card'
+  );
 }
