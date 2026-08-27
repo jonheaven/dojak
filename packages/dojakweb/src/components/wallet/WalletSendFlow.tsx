@@ -28,6 +28,12 @@ import { getPaymentUtxosForSend } from '../../lib/paymentUtxos';
 import { getSpendableBalanceBreakdown, type SpendableBalanceBreakdown } from '../../lib/spendableBalance';
 import { dogeTxExplorerUrl } from '../../utils/dogeTxExplorer';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
+import { fetchDxByHandle, type DxRegistration } from '../../lib/identity/indexer';
+import {
+  looksLikeDxHandleInput,
+  parseDxHandleInput,
+  dxPayTweetIntentUrl,
+} from '../../lib/dx/pay';
 
 function isLikelyTxid(id: string): boolean {
   return /^[0-9a-fA-F]{64}$/.test(id.trim());
@@ -155,6 +161,9 @@ export function WalletSendFlow({
   const [spendableDoge, setSpendableDoge] = useState<number | null>(null);
   const [spendableBusy, setSpendableBusy] = useState(false);
   const [spendBreak, setSpendBreak] = useState<SpendableBalanceBreakdown | null>(null);
+  const [dxReg, setDxReg] = useState<DxRegistration | null>(null);
+  const [dxLookup, setDxLookup] = useState<'off' | 'invalid' | 'loading' | 'linked' | 'unlinked' | 'error'>('off');
+  const [dxError, setDxError] = useState<string | null>(null);
 
   // Open the picker when this seed has other HD accounts (the main inter-account UX).
   useEffect(() => {
@@ -196,7 +205,70 @@ export function WalletSendFlow({
     };
   }, [connected, activeAddress, balance, phase, txid]);
 
-  const validation = useMemo(() => validateDogecoinAddress(recipient), [recipient]);
+  const dxHandleAttempt = looksLikeDxHandleInput(recipient);
+  const parsedDxHandle = useMemo(() => parseDxHandleInput(recipient), [recipient]);
+
+  useEffect(() => {
+    if (!dxHandleAttempt) {
+      setDxReg(null);
+      setDxLookup('off');
+      setDxError(null);
+      return;
+    }
+    if (!parsedDxHandle) {
+      setDxReg(null);
+      setDxLookup('invalid');
+      setDxError('Invalid 𝕏 handle (use @username, max 15 characters).');
+      return;
+    }
+    let cancelled = false;
+    setDxLookup('loading');
+    setDxError(null);
+    const t = window.setTimeout(() => {
+      void fetchDxByHandle(parsedDxHandle)
+        .then((reg) => {
+          if (cancelled) return;
+          if (reg?.dogeAddress) {
+            setDxReg(reg);
+            setDxLookup('linked');
+            setDxError(null);
+          } else {
+            setDxReg(null);
+            setDxLookup('unlinked');
+            setDxError(
+              `No Ð𝕏 bind for ${parsedDxHandle}. They need to link at dogex.dog/dx before you can pay by handle.`,
+            );
+          }
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          setDxReg(null);
+          setDxLookup('error');
+          setDxError(e instanceof Error ? e.message : 'Ð𝕏 lookup failed');
+        });
+    }, 320);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [dxHandleAttempt, parsedDxHandle]);
+
+  const validation = useMemo(() => {
+    if (dxHandleAttempt) {
+      if (dxLookup === 'linked' && dxReg?.dogeAddress) {
+        return validateDogecoinAddress(dxReg.dogeAddress);
+      }
+      return {
+        ok: false as const,
+        address: recipient,
+        error:
+          dxLookup === 'loading'
+            ? 'Looking up Ð𝕏…'
+            : dxError || 'Enter a linked @handle or a Dogecoin address.',
+      };
+    }
+    return validateDogecoinAddress(recipient);
+  }, [dxHandleAttempt, dxLookup, dxReg, dxError, recipient]);
 
   const bookMatch = useMemo(() => {
     if (!validation.ok) return null;
@@ -320,7 +392,7 @@ export function WalletSendFlow({
       }
       setTxid(id);
       setPhase('success');
-      pushRecent(quote.recipient, bookMatch?.label);
+      pushRecent(quote.recipient, parsedDxHandle || bookMatch?.label);
       setRecent(loadRecent());
       const existing = entries.find(
         (e) => e.address.toLowerCase() === quote.recipient.toLowerCase(),
@@ -373,6 +445,7 @@ export function WalletSendFlow({
     quote,
     refreshBalance,
     sendTransaction,
+    parsedDxHandle,
   ]);
 
   const resetAll = useCallback(() => {
@@ -385,6 +458,9 @@ export function WalletSendFlow({
     setStatus(null);
     setSaveLabel('');
     setShowContacts(false);
+    setDxReg(null);
+    setDxLookup('off');
+    setDxError(null);
   }, []);
 
   const pickAddress = useCallback((addr: string, label?: string) => {
@@ -452,7 +528,7 @@ export function WalletSendFlow({
             <div className="flex justify-between gap-3">
               <span className="text-white/45">To</span>
               <span className="max-w-[60%] break-all text-right font-mono text-xs text-white/80">
-                {bookMatch?.label ? `${bookMatch.label} · ` : ''}
+                {parsedDxHandle ? `${parsedDxHandle} · ` : bookMatch?.label ? `${bookMatch.label} · ` : ''}
                 {quote.recipient}
               </span>
             </div>
@@ -494,6 +570,21 @@ export function WalletSendFlow({
           <ArrowDownTrayIcon className="h-4 w-4 rotate-[-90deg]" />
         </a>
 
+        {parsedDxHandle ? (
+          <a
+            href={dxPayTweetIntentUrl({
+              amountDoge: quote.amountDoge,
+              handle: parsedDxHandle,
+              txid,
+            })}
+            target="_blank"
+            rel="noreferrer"
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-transparent px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/5"
+          >
+            Post receipt on 𝕏
+          </a>
+        ) : null}
+
         <Button type="button" className={cx('w-full', PRIMARY_BUTTON)} onClick={resetAll}>
           Send another
         </Button>
@@ -522,7 +613,12 @@ export function WalletSendFlow({
             <div className="flex justify-between gap-3">
               <span className="text-white/50">To</span>
               <span className="max-w-[65%] break-all text-right font-mono text-xs text-white">
-                {bookMatch?.label ? (
+                {parsedDxHandle ? (
+                  <span className="mb-0.5 block text-[11px] text-[#FCD34D]/90">
+                    {parsedDxHandle}
+                    {dxReg?.tweetVerified === true ? ' · verified Ð𝕏' : ' · on-chain claim'}
+                  </span>
+                ) : bookMatch?.label ? (
                   <span className="mb-0.5 block text-[11px] text-[#FCD34D]/90">{bookMatch.label}</span>
                 ) : null}
                 {quote.recipient}
@@ -597,8 +693,9 @@ export function WalletSendFlow({
   return (
     <div className="space-y-4">
       <p className="text-sm leading-relaxed text-white/65">
-        Send DOGE on Dogecoin mainnet. Addresses are checksum-verified. Spendable coins come from
-        wallet data provider (MyDoge) so recently used inputs are not reused.
+        Send DOGE on Dogecoin mainnet. Paste a D… address or an 𝕏 handle (`@name`) linked via Ð𝕏.
+        Addresses are checksum-verified. Spendable coins come from wallet data provider (MyDoge) so
+        recently used inputs are not reused.
       </p>
 
       <div>
@@ -626,15 +723,26 @@ export function WalletSendFlow({
             setRecipient(normalizeDogeAddressInput(text));
             setError(null);
           }}
-          placeholder="D… Dogecoin address"
+          placeholder="D… address or @handle"
           className={INPUT_CLASS}
           disabled={busy}
           autoComplete="off"
           spellCheck={false}
-          aria-invalid={Boolean(recipient) && !validation.ok}
+          aria-invalid={Boolean(recipient) && !validation.ok && dxLookup !== 'loading'}
         />
         {recipient ? (
-          validation.ok ? (
+          dxHandleAttempt ? (
+            dxLookup === 'loading' ? (
+              <p className="mt-1.5 text-[11px] text-amber-200/90">Looking up Ð𝕏 for {parsedDxHandle}…</p>
+            ) : dxLookup === 'linked' && dxReg ? (
+              <p className="mt-1.5 text-[11px] text-emerald-300/90">
+                {dxReg.xHandle} → {dxReg.dogeAddress.slice(0, 10)}…
+                {dxReg.tweetVerified === true ? ' · tweet verified' : ' · on-chain claim'}
+              </p>
+            ) : (
+              <p className="mt-1.5 text-[11px] text-red-300/90">{dxError || validation.error}</p>
+            )
+          ) : validation.ok ? (
             <p className="mt-1.5 text-[11px] text-emerald-300/90">
               Valid {dogeAddressKindLabel(validation.kind)}
               {bookMatch ? ` · ${bookMatch.label}` : ''}
@@ -648,7 +756,7 @@ export function WalletSendFlow({
           )
         ) : (
           <p className="mt-1.5 text-[11px] text-white/40">
-            One wrong character fails the checksum — paste when you can.
+            Pay by Ð𝕏 handle (`@name`) or paste a Dogecoin address.
           </p>
         )}
         {connected && otherSiblings.length > 0 ? (
@@ -862,7 +970,7 @@ export function WalletSendFlow({
       <Button
         type="button"
         className={cx('w-full', PRIMARY_BUTTON, (busy || quoteBusy) && 'cursor-wait')}
-        disabled={busy || !validation.ok || !amountOk}
+        disabled={busy || quoteBusy || !validation.ok || !amountOk || dxLookup === 'loading'}
         onClick={() => void goReview()}
       >
         {busy ? 'Preparing…' : 'Review send'}

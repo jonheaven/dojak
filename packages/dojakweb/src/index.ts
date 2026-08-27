@@ -79,6 +79,16 @@ export {
   DX_MAGIC,
 } from './lib/dx/onchain';
 export type { PublishDxResult } from './lib/dx/onchain';
+export {
+  looksLikeDxHandleInput,
+  parseDxHandleInput,
+  dxHandlePathSegment,
+  formatDxPayAmount,
+  dxPayReceiptTweetText,
+  dxPayTweetIntentUrl,
+  dxPayInviteTweetText,
+  dxPayInviteTweetIntentUrl,
+} from './lib/dx/pay';
 export { useDogePFP } from './hooks/useDogePFP';
 export { useDogePFA } from './hooks/useDogePFA';
 export { useChainProfile } from './hooks/useChainProfile';
