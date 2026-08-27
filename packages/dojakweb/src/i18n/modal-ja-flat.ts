@@ -49,6 +49,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.aria.refreshTransactions': '取引を更新',
   'modal.aria.layoutPaw': '肉球オーバーレイ',
   'modal.aria.layoutDock': '右カラムに固定',
+  'modal.aria.layoutModal': '中央モーダル',
   'modal.aria.showListingQr': 'QR コードを表示',
   'modal.aria.copyShareLink': '共有リンクをコピー',
   'modal.aria.cancelListing': '出品をキャンセル',

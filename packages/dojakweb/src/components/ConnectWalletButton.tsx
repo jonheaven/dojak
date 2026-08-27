@@ -194,21 +194,21 @@ export function ConnectWalletButton({
         onRequestOpenDrawer={(step) => openDrawer(step)}
       />
 
-      {mode === 'drawer' ? (
-        <WalletDrawer
-          isOpen={drawerOpen}
-          onClose={handleCloseDrawer}
-          initialStep={drawerStep}
-          isDark={isDark}
-          {...focusProps}
-        />
-      ) : (
+      {mode === 'modal' ? (
         <DojakwebWalletModal
           isOpen={drawerOpen}
           onClose={handleCloseDrawer}
           isDark={isDark}
           initialStep={drawerStep}
           mode="modal"
+          {...focusProps}
+        />
+      ) : (
+        <WalletDrawer
+          isOpen={drawerOpen}
+          onClose={handleCloseDrawer}
+          initialStep={drawerStep}
+          isDark={isDark}
           {...focusProps}
         />
       )}

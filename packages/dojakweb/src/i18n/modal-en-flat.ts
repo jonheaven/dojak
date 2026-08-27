@@ -48,6 +48,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.aria.refreshTransactions': 'Refresh transactions',
   'modal.aria.layoutPaw': 'Paw overlay layout',
   'modal.aria.layoutDock': 'Dock as right column',
+  'modal.aria.layoutModal': 'Centered modal layout',
   'modal.aria.showListingQr': 'Show QR code',
   'modal.aria.copyShareLink': 'Copy share link',
   'modal.aria.cancelListing': 'Cancel listing',

@@ -1,21 +1,34 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useGlobalStore } from '../stores/globalStore';
 
-export type WalletDrawerLayout = 'paw' | 'dock';
+export type WalletDrawerLayout = 'paw' | 'dock' | 'modal';
 
 export const WALLET_DRAWER_LAYOUT_KEY = 'dojakweb.walletDrawer.layout.v1';
 export const WALLET_DRAWER_LAYOUT_EVENT = 'dojakweb-wallet-drawer-layout';
+
+function readLegacyModal(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = window.localStorage.getItem('dojakweb-global-store');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { state?: { walletInterface?: string } };
+    return parsed.state?.walletInterface === 'modal';
+  } catch {
+    return false;
+  }
+}
 
 export function readWalletDrawerLayout(): WalletDrawerLayout {
   if (typeof window === 'undefined') return 'paw';
   try {
     const raw = window.localStorage.getItem(WALLET_DRAWER_LAYOUT_KEY);
-    if (raw === 'dock' || raw === 'paw') return raw;
+    if (raw === 'dock' || raw === 'paw' || raw === 'modal') return raw;
   } catch {
     /* ignore quota / private mode */
   }
-  return 'paw';
+  return readLegacyModal() ? 'modal' : 'paw';
 }
 
 export function writeWalletDrawerLayout(layout: WalletDrawerLayout): void {
@@ -24,10 +37,15 @@ export function writeWalletDrawerLayout(layout: WalletDrawerLayout): void {
   } catch {
     /* ignore */
   }
+  try {
+    useGlobalStore.getState().setWalletInterface(layout === 'modal' ? 'modal' : 'drawer');
+  } catch {
+    /* store may not be hydrated yet */
+  }
   window.dispatchEvent(new Event(WALLET_DRAWER_LAYOUT_EVENT));
 }
 
-/** Paw overlay (default) vs DevTools-style right column. Persists in localStorage. */
+/** Paw overlay (default), DevTools-style dock, or centered modal. Persists in localStorage. */
 export function useWalletDrawerLayout(): [
   WalletDrawerLayout,
   (layout: WalletDrawerLayout) => void,

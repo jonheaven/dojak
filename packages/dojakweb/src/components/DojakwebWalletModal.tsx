@@ -41,6 +41,7 @@ import {
   CpuChipIcon,
   ViewColumnsIcon,
   DevicePhoneMobileIcon,
+  ArrowsPointingInIcon,
 } from '@heroicons/react/24/outline';
 import { Usb } from 'lucide-react';
 import { WalletMenuItems } from './wallet/WalletMenuItems';
@@ -177,7 +178,6 @@ import {
 } from '../lib/wallet-tx-journal';
 import { enrichWalletTransactionsForAddress } from '../lib/wallet-tx-enrichment';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
-import { useGlobalStore } from '../stores/globalStore';
 import { DOJAKWEB_DX_PM_PROTOCOL, DOJAKWEB_DX_RESPONSE, type DxPostMessageResponse } from '../lib/dx/postMessage';
 import { useDxHostStore } from '../stores/dxHostStore';
 import { extractProtectedOutpoints } from '../lib/dogetag/protectedOutpoints';
@@ -187,7 +187,7 @@ import { DogePFPAvatar } from './DogePFPAvatar';
 import { DogePFAHeaderControl } from './DogePFAHeaderControl';
 import { useDogePFP } from '../hooks/useDogePFP';
 import { useDogePFA } from '../hooks/useDogePFA';
-import { useWalletDrawerLayout } from '../hooks/useWalletDrawerLayout';
+import { useWalletDrawerLayout, writeWalletDrawerLayout } from '../hooks/useWalletDrawerLayout';
 import { useIsMobileWallet } from '../hooks/useMediaQuery';
 import { useConnectedWalletAddress } from '../wallet/getConnectedWalletAddress';
 import { TechDetails } from './ui/tech-details';
@@ -633,12 +633,6 @@ export function DojakwebWalletModal({
   const ghostRound = isDark
     ? 'border-white/10 bg-white/[0.06] text-white hover:bg-white/[0.1]'
     : 'border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-100';
-  const {
-    walletInterface: gsWalletInterface,
-    setWalletInterface: gsSetWalletInterface,
-    drawerSide: gsDrawerSide,
-    setDrawerSide: gsSetDrawerSide,
-  } = useGlobalStore();
   const browser = useBrowserWallet();
   const dojakwebBiometricFacade = useMemo(() => createDojakwebBiometricFacade(), []);
   const {
@@ -2621,6 +2615,7 @@ export function DojakwebWalletModal({
       enabled: settingsOneClickLocalSigning,
       maxDoge: Number(settingsOneClickLocalSigningMaxDoge) || 0.05,
     });
+    writeWalletDrawerLayout(drawerLayout);
     if (typeof window !== 'undefined') {
       localStorage.setItem(BROADCAST_DISABLED_KEY, JSON.stringify(disabledBroadcastProviders));
     }
@@ -6960,59 +6955,39 @@ export function DojakwebWalletModal({
 
                             {/* Wallet Interface */}
                             <div>
-                              <span className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-white/35">Wallet Interface</span>
+                              <span className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                                Wallet interface
+                              </span>
                               <div className="flex gap-2">
-                                {(['drawer', 'modal'] as const).map((iface) => (
+                                {([
+                                  { id: 'paw' as const, label: 'Paw', Icon: DevicePhoneMobileIcon },
+                                  { id: 'dock' as const, label: 'Dock', Icon: ViewColumnsIcon },
+                                  { id: 'modal' as const, label: 'Modal', Icon: ArrowsPointingInIcon },
+                                ]).map(({ id, label, Icon }) => (
                                   <button
-                                    key={iface}
+                                    key={id}
                                     type="button"
-                                    onClick={() => gsSetWalletInterface(iface)}
+                                    onClick={() => setDrawerLayout(id)}
                                     className={cx(
-                                      'flex flex-1 items-center justify-center gap-2 border py-2.5 text-xs font-semibold uppercase tracking-wide transition',
-                                      gsWalletInterface === iface
+                                      'flex flex-1 flex-col items-center justify-center gap-1 border py-2.5 text-xs font-semibold uppercase tracking-wide transition',
+                                      drawerLayout === id
                                         ? 'border-[#D4A017] bg-[#D4A017]/10 text-white'
                                         : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10',
                                     )}
                                   >
-                                    {iface === 'drawer' ? 'Drawer' : 'Modal'}
+                                    <Icon className="h-3.5 w-3.5" />
+                                    {label}
                                   </button>
                                 ))}
                               </div>
-                              <p className="mt-1 text-[10px] text-white/30">Takes effect on next open</p>
+                              <p className="mt-1 text-[10px] leading-snug text-white/30">
+                                {drawerLayout === 'modal'
+                                  ? 'Centered overlay. Applies as soon as you leave settings — or close and reopen.'
+                                  : drawerLayout === 'dock'
+                                    ? 'Full-height right column. The paw holds it; click the paw to close. Not draggable.'
+                                    : 'Floating phone. Drag the paw sideways to move; click it to close.'}
+                              </p>
                             </div>
-
-                            {gsWalletInterface === 'drawer' ? (
-                              <div>
-                                <span className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-white/35">
-                                  Drawer layout
-                                </span>
-                                <div className="flex gap-2">
-                                  {(['paw', 'dock'] as const).map((layoutKind) => (
-                                    <button
-                                      key={layoutKind}
-                                      type="button"
-                                      onClick={() => setDrawerLayout(layoutKind)}
-                                      className={cx(
-                                        'flex flex-1 items-center justify-center gap-2 border py-2.5 text-xs font-semibold uppercase tracking-wide transition',
-                                        drawerLayout === layoutKind
-                                          ? 'border-[#D4A017] bg-[#D4A017]/10 text-white'
-                                          : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10',
-                                      )}
-                                    >
-                                      {layoutKind === 'paw' ? (
-                                        <DevicePhoneMobileIcon className="h-3.5 w-3.5" />
-                                      ) : (
-                                        <ViewColumnsIcon className="h-3.5 w-3.5" />
-                                      )}
-                                      {layoutKind === 'paw' ? 'Paw' : 'Dock'}
-                                    </button>
-                                  ))}
-                                </div>
-                                <p className="mt-1 text-[10px] text-white/30">
-                                  Paw floats over the page. Dock is a full-height right column that pushes the site over — like browser DevTools. Saved in this browser.
-                                </p>
-                              </div>
-                            ) : null}
 
                             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                               <button
@@ -7044,30 +7019,6 @@ export function DojakwebWalletModal({
                                 />
                               </label>
                             </div>
-
-                            {/* Drawer Side */}
-                            {gsWalletInterface === 'drawer' && (
-                              <div>
-                                <span className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-white/35">Drawer Side</span>
-                                <div className="flex gap-2">
-                                  {(['right', 'left'] as const).map((side) => (
-                                    <button
-                                      key={side}
-                                      type="button"
-                                      onClick={() => gsSetDrawerSide(side)}
-                                      className={cx(
-                                        'flex flex-1 items-center justify-center gap-2 border py-2.5 text-xs font-semibold uppercase tracking-wide transition',
-                                        gsDrawerSide === side
-                                          ? 'border-[#D4A017] bg-[#D4A017]/10 text-white'
-                                          : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10',
-                                      )}
-                                    >
-                                      {side === 'right' ? '→ Right' : '← Left'}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
 
                             <div className="grid grid-cols-2 gap-2">
                               <label className="block">

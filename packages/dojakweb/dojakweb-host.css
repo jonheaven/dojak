@@ -2206,11 +2206,22 @@ body.wallet-drawer-paw-open .ds-wallet-modal-backdrop--drawer {
 /* DevTools-style dock: full-height right column; host content shrinks via padding. */
 html.wallet-drawer-dock-open {
   --dojakweb-dock-width: min(430px, 100vw);
+  --wallet-drawer-width: var(--dojakweb-dock-width);
+  --wallet-drawer-right: 0px;
+  --wallet-drawer-bottom: 0px;
 }
 
 html.wallet-drawer-dock-open body {
   padding-right: var(--dojakweb-dock-width) !important;
   box-sizing: border-box !important;
+}
+
+/* Fixed host chrome (top nav) must inset too — body padding does not move position:fixed. */
+html.wallet-drawer-dock-open .dogex-console-topbar,
+html.wallet-drawer-dock-open [data-wallet-dock-shift],
+html.wallet-drawer-dock-open header.fixed,
+html.wallet-drawer-dock-open header.sticky {
+  right: var(--dojakweb-dock-width) !important;
 }
 
 html.wallet-drawer-dock-open .ds-wallet-modal--drawer,
@@ -2230,8 +2241,16 @@ body.wallet-drawer-dock-open [data-headlessui-portal] .ds-wallet-dashboard {
   z-index: 10050 !important;
 }
 
-body.wallet-drawer-dock-open .wallet-paw-grip {
-  display: none !important;
+body.wallet-drawer-dock-open .wallet-paw-grip,
+.wallet-paw-grip--docked {
+  display: block;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+body.wallet-drawer-dock-open .wallet-paw-grip:active,
+body.wallet-drawer-dock-open.wallet-drawer-dragging .wallet-paw-grip {
+  cursor: pointer;
 }
 
 .ds-wallet-dashboard.flex.flex-col {

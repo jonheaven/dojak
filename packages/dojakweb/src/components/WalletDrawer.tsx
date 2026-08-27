@@ -148,8 +148,9 @@ export default function WalletDrawer({
   const isDark = isDarkProp ?? theme === 'dark';
   const isMobile = useIsMobileWallet();
   const [layout] = useWalletDrawerLayout();
+  const isModal = !isMobile && layout === 'modal';
   const isDock = !isMobile && layout === 'dock';
-  const isPaw = !isMobile && layout === 'paw';
+  const isPawLayout = !isMobile && layout === 'paw';
   const [pos, setPos] = useState<DrawerPos | null>(() => readStoredPos() ?? defaultPos());
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{
@@ -176,22 +177,34 @@ export default function WalletDrawer({
   useEffect(() => {
     const body = document.body;
     const html = document.documentElement;
-    body.classList.remove('wallet-drawer-paw-open', 'wallet-drawer-mobile-open', 'wallet-drawer-dock-open');
+    body.classList.remove(
+      'wallet-drawer-paw-open',
+      'wallet-drawer-mobile-open',
+      'wallet-drawer-dock-open',
+      'wallet-drawer-has-paw',
+    );
     html.classList.remove('wallet-drawer-dock-open');
     if (!isOpen) return;
     if (isMobile) {
       body.classList.add('wallet-drawer-mobile-open');
+    } else if (isModal) {
+      /* centered dialog — no chassis / dock shift */
     } else if (isDock) {
-      body.classList.add('wallet-drawer-dock-open');
+      body.classList.add('wallet-drawer-dock-open', 'wallet-drawer-has-paw');
       html.classList.add('wallet-drawer-dock-open');
     } else {
-      body.classList.add('wallet-drawer-paw-open');
+      body.classList.add('wallet-drawer-paw-open', 'wallet-drawer-has-paw');
     }
     return () => {
-      body.classList.remove('wallet-drawer-paw-open', 'wallet-drawer-mobile-open', 'wallet-drawer-dock-open');
+      body.classList.remove(
+        'wallet-drawer-paw-open',
+        'wallet-drawer-mobile-open',
+        'wallet-drawer-dock-open',
+        'wallet-drawer-has-paw',
+      );
       html.classList.remove('wallet-drawer-dock-open');
     };
-  }, [isOpen, isMobile, isDock]);
+  }, [isOpen, isMobile, isDock, isModal]);
 
   useEffect(() => {
     if (!isOpen || !isMobile) return;
@@ -208,12 +221,12 @@ export default function WalletDrawer({
   }, [dragging]);
 
   useEffect(() => {
-    if (!isOpen || isMobile || isDock) {
-      if (isDock) applyPosVars(null);
+    if (!isOpen || isMobile || isDock || isModal) {
+      applyPosVars(null);
       return;
     }
     applyPosVars(pos);
-  }, [isOpen, isMobile, isDock, pos]);
+  }, [isOpen, isMobile, isDock, isModal, pos]);
 
   useEffect(() => {
     return () => {
@@ -223,7 +236,7 @@ export default function WalletDrawer({
   }, []);
 
   useEffect(() => {
-    if (!isOpen || isMobile || isDock) return;
+    if (!isOpen || isMobile || isDock || isModal) return;
     // Re-clamp on open so old localStorage positions that lifted the paw get fixed.
     const reclamp = () => {
       setPos((prev) => {
@@ -253,10 +266,10 @@ export default function WalletDrawer({
       window.cancelAnimationFrame(raf);
       ro?.disconnect();
     };
-  }, [isOpen, isMobile, isDock]);
+  }, [isOpen, isMobile, isDock, isModal]);
 
   useEffect(() => {
-    if (!isOpen || isMobile || isDock || !pos) return;
+    if (!isOpen || isMobile || isDock || isModal || !pos) return;
     const onResize = () => {
       setPos((prev) => {
         if (!prev) return prev;
@@ -272,7 +285,7 @@ export default function WalletDrawer({
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [isOpen, isMobile, isDock, pos]);
+  }, [isOpen, isMobile, isDock, isModal, pos]);
 
   const persistPos = useCallback((next: DrawerPos) => {
     setPos(next);
@@ -285,7 +298,7 @@ export default function WalletDrawer({
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (e.button !== 0 || isMobile || isDock) return;
+      if (e.button !== 0 || !isPawLayout) return;
       e.preventDefault();
       e.stopPropagation();
       const origin = pos ?? defaultPos();
@@ -299,7 +312,7 @@ export default function WalletDrawer({
       setDragging(true);
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [pos, isMobile, isDock],
+    [pos, isPawLayout],
   );
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -340,7 +353,7 @@ export default function WalletDrawer({
     [onClose, persistPos],
   );
 
-  const showPaw = isOpen && isPaw;
+  const showPaw = isOpen && !isMobile && !isModal;
 
   const paw =
     typeof document !== 'undefined'
@@ -349,19 +362,31 @@ export default function WalletDrawer({
             {showPaw ? (
               <motion.div
                 key="wallet-paw"
-                className="wallet-paw-grip"
+                className={`wallet-paw-grip${isDock ? ' wallet-paw-grip--docked' : ''}`}
                 role="button"
                 tabIndex={-1}
-                aria-label="Close wallet drawer or drag sideways to reposition"
-                title="Click to close. Drag left or right to move."
+                aria-label={
+                  isDock
+                    ? 'Close wallet'
+                    : 'Close wallet or drag sideways to reposition'
+                }
+                title={isDock ? 'Click to close' : 'Click to close. Drag left or right to move.'}
                 variants={gripVariants}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                onPointerDown={onPointerDown}
-                onPointerMove={onPointerMove}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
+                onPointerDown={isPawLayout ? onPointerDown : undefined}
+                onPointerMove={isPawLayout ? onPointerMove : undefined}
+                onPointerUp={isPawLayout ? endDrag : undefined}
+                onPointerCancel={isPawLayout ? endDrag : undefined}
+                onClick={
+                  isDock
+                    ? (e) => {
+                        e.preventDefault();
+                        onClose();
+                      }
+                    : undefined
+                }
               >
                 <motion.img
                   src={bundledPawSrc}
@@ -384,7 +409,7 @@ export default function WalletDrawer({
         onClose={onClose}
         isDark={isDark}
         initialStep={initialStep}
-        mode="drawer"
+        mode={isModal ? 'modal' : 'drawer'}
         openNonce={openNonce}
         initialNftFilter={initialNftFilter}
         initialDashboardTab={initialDashboardTab}
