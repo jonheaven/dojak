@@ -74,6 +74,7 @@ import {
 } from '../utils/hidden-inscriptions';
 import { WalletConnectChooser } from './WalletConnectChooser';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
+import { readWalletTheme, WALLET_THEME_EVENT } from '../lib/wallet-theme-pref';
 import { walletCredentialInputProps, walletSecretDecoyFields, walletSecretInputProps } from '../lib/wallet-secret-input';
 import {
   buildListingPSDT,
@@ -620,8 +621,23 @@ export function DojakwebWalletModal({
   initialDashboardTab,
   initialAssetType,
 }: DojakwebWalletModalProps) {
-  const { theme: walletTheme } = useDojakwebTheme();
-  const isDark = isDarkProp ?? walletTheme === 'dark';
+  const { theme: walletTheme, setTheme: setWalletTheme } = useDojakwebTheme();
+  const [pickedTheme, setPickedTheme] = useState<typeof walletTheme | null>(() =>
+    typeof window === 'undefined' ? null : readWalletTheme(),
+  );
+  useEffect(() => {
+    const sync = () => setPickedTheme(readWalletTheme());
+    window.addEventListener(WALLET_THEME_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(WALLET_THEME_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+  const resolvedTheme =
+    pickedTheme ??
+    (isDarkProp === undefined ? walletTheme : isDarkProp ? 'dark' : 'light');
+  const isDark = resolvedTheme === 'dark';
   const isMobileWallet = useIsMobileWallet();
   const [drawerLayout, setDrawerLayout] = useWalletDrawerLayout();
   const txExplorerPref = useDogeTxExplorerPreference();
@@ -3195,6 +3211,9 @@ export function DojakwebWalletModal({
               >
                 <Dialog.Panel
                   data-ds-theme={isDark ? 'dark' : 'light'}
+                  data-wallet-layout={
+                    !isDrawerMode ? 'modal' : isMobileWallet ? 'mobile' : drawerLayout
+                  }
                   className={cx(
                     'ds-wallet-dashboard relative flex flex-col overflow-hidden',
                     !isDark && 'ds-light',
@@ -3202,6 +3221,8 @@ export function DojakwebWalletModal({
                       ? cx(
                           'ds-wallet-modal--drawer pointer-events-auto fixed z-[10001] flex min-h-0 w-[min(100dvw,430px)] max-w-[min(100dvw,430px)] flex-col overflow-hidden',
                           isDrawerLeft ? 'left-0 ds-wallet-modal--drawer-left' : 'right-0',
+                          !isMobileWallet && drawerLayout === 'paw' && 'ds-wallet-modal--paw',
+                          !isMobileWallet && drawerLayout === 'dock' && 'ds-wallet-modal--dock',
                         )
                       : 'w-full max-h-[92vh] max-w-lg',
                     isDrawerMode
@@ -6917,7 +6938,11 @@ export function DojakwebWalletModal({
                                   <button
                                     key={th}
                                     type="button"
-                                    onClick={() => onThemeChange?.(th)}
+                                    onClick={() => {
+                                      setPickedTheme(th);
+                                      setWalletTheme(th);
+                                      onThemeChange?.(th);
+                                    }}
                                     className={cx(
                                       'flex flex-1 items-center justify-center gap-2 border py-2.5 text-xs font-semibold uppercase tracking-wide transition',
                                       (th === 'dark' ? isDark : !isDark)
@@ -6961,7 +6986,7 @@ export function DojakwebWalletModal({
                               </div>
                               <p className="mt-1 text-[10px] leading-snug text-white/30">
                                 {drawerLayout === 'modal'
-                                  ? 'Centered overlay. Applies as soon as you leave settings — or close and reopen.'
+                                  ? 'Centered overlay. Applies immediately.'
                                   : drawerLayout === 'dock'
                                     ? 'Full-height right column. The paw holds it; click the paw to close. Not draggable.'
                                     : 'Floating phone. Drag the paw sideways to move; click it to close.'}

@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { useIsMobileWallet } from '../hooks/useMediaQuery';
 import { useWalletDrawerLayout } from '../hooks/useWalletDrawerLayout';
+import { readWalletTheme } from '../lib/wallet-theme-pref';
 import DojakwebWalletModal from './DojakwebWalletModal';
 /** Bundled Shiba paw — desktop phone-chassis only; never shown on mobile. */
 import bundledPawSrc from '../assets/paw.png';
@@ -145,7 +146,12 @@ export default function WalletDrawer({
   initialAssetType,
 }: WalletDrawerProps) {
   const { theme } = useDojakwebTheme();
-  const isDark = isDarkProp ?? theme === 'dark';
+  // User Dark/Light in Settings wins. Host `isDark` is only the live default
+  // before the user has picked a wallet chrome theme.
+  const isDark =
+    readWalletTheme() != null || isDarkProp === undefined
+      ? theme === 'dark'
+      : Boolean(isDarkProp);
   const isMobile = useIsMobileWallet();
   const [layout] = useWalletDrawerLayout();
   const isModal = !isMobile && layout === 'modal';
@@ -174,7 +180,8 @@ export default function WalletDrawer({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [isOpen, onClose]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!isOpen) return;
     const body = document.body;
     const html = document.documentElement;
     body.classList.remove(
@@ -184,7 +191,6 @@ export default function WalletDrawer({
       'wallet-drawer-has-paw',
     );
     html.classList.remove('wallet-drawer-dock-open');
-    if (!isOpen) return;
     if (isMobile) {
       body.classList.add('wallet-drawer-mobile-open');
     } else if (isModal) {
@@ -220,12 +226,16 @@ export default function WalletDrawer({
     return () => document.body.classList.remove('wallet-drawer-dragging');
   }, [dragging]);
 
-  useEffect(() => {
-    if (!isOpen || isMobile || isDock || isModal) {
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    if (isMobile || isDock || isModal) {
       applyPosVars(null);
       return;
     }
     applyPosVars(pos);
+    return () => {
+      applyPosVars(null);
+    };
   }, [isOpen, isMobile, isDock, isModal, pos]);
 
   useEffect(() => {

@@ -2253,6 +2253,62 @@ body.wallet-drawer-dock-open.wallet-drawer-dragging .wallet-paw-grip {
   cursor: pointer;
 }
 
+/* Chassis follows React `data-wallet-layout` immediately (paw ↔ dock without
+   close/reopen). Beats leftover html.wallet-drawer-dock-open rules. */
+.ds-wallet-dashboard.ds-wallet-modal--drawer[data-wallet-layout="paw"],
+.ds-wallet-modal--drawer.ds-wallet-modal--paw {
+  position: fixed !important;
+  width: var(--wallet-drawer-width, min(390px, 94vw)) !important;
+  max-width: var(--wallet-drawer-width, min(390px, 94vw)) !important;
+  right: var(--wallet-drawer-right, 14px) !important;
+  left: auto !important;
+  top: var(--wallet-drawer-top-safe, 25px) !important;
+  bottom: var(--wallet-drawer-bottom, 28px) !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: calc(
+    100dvh - var(--wallet-drawer-top-safe, 25px) - var(--wallet-drawer-bottom, 28px)
+  ) !important;
+  z-index: 10050 !important;
+  border-radius: var(--wallet-phone-radius, 1.85rem) !important;
+  border: 3px solid #e8d48b !important;
+  background: #0c0c0e !important;
+  box-shadow:
+    0 28px 64px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(247, 201, 72, 0.35),
+    inset 0 1px 0 rgba(255, 236, 179, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+  overflow: hidden;
+}
+
+.ds-wallet-dashboard.ds-wallet-modal--drawer[data-wallet-layout="paw"][data-ds-theme="light"],
+.ds-wallet-dashboard.ds-wallet-modal--drawer[data-wallet-layout="paw"].ds-light,
+.ds-wallet-modal--drawer.ds-wallet-modal--paw[data-ds-theme="light"],
+.ds-wallet-modal--drawer.ds-wallet-modal--paw.ds-light {
+  background: #f7f5f0 !important;
+  border-color: #c9a84c !important;
+  box-shadow:
+    0 28px 64px rgba(40, 30, 10, 0.22),
+    0 0 0 1px rgba(201, 168, 76, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+.ds-wallet-dashboard.ds-wallet-modal--drawer[data-wallet-layout="dock"],
+.ds-wallet-modal--drawer.ds-wallet-modal--dock {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: auto !important;
+  width: var(--dojakweb-dock-width, min(430px, 100vw)) !important;
+  max-width: var(--dojakweb-dock-width, min(430px, 100vw)) !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  z-index: 10050 !important;
+}
+
 .ds-wallet-dashboard.flex.flex-col {
   min-height: 0;
 }
