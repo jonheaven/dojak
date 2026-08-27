@@ -92,7 +92,7 @@ export {
 export { useDogePFP } from './hooks/useDogePFP';
 export { useDogePFA } from './hooks/useDogePFA';
 export { useChainProfile } from './hooks/useChainProfile';
-export { DogePFPAvatar, walletAvatarGradient } from './components/DogePFPAvatar';
+export { DogePFPAvatar, walletAvatarGradient, dxAvatarUrl, dxAvatarByAddressUrl } from './components/DogePFPAvatar';
 
 export {
   DOJAKWEB_PREFERRED_LOCALE_KEY,

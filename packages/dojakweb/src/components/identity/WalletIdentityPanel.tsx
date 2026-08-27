@@ -21,6 +21,7 @@ import { normalizeDxXHandle, parseTweetIdFromInput } from '../../lib/dx/protocol
 import { buildDxCollectibleHtml } from '../../lib/dx/displayHtml';
 import { findDxSouvenirInInscriptions } from '../../lib/dx/souvenir';
 import { HtmlInscriptionThumb } from '../wallet/TextInscriptionPreview';
+import { DogePFPAvatar } from '../DogePFPAvatar';
 import {
   countDoginalTransactionsForContent,
   signDoginalInscriptionChain,
@@ -483,14 +484,17 @@ export function WalletIdentityPanel({
         <div className="space-y-3">
           <p className="text-sm leading-6 text-[#D4D4D4]">{t('modal.identity.dxIntro')}</p>
           {dxMine ? (
-            <div className="rounded-xl border border-amber-400/25 bg-amber-500/10 p-3 text-sm text-amber-50">
-              <p className="font-semibold">{dxMine.xHandle}</p>
-              <p className="mt-1 font-mono text-[11px] text-white/60 break-all">{dxMine.txid}</p>
-              <p className="mt-1 text-[11px] text-white/55">
-                {dxMine.tweetVerified === true
-                  ? t('modal.identity.tweetVerified')
-                  : t('modal.identity.tweetPending')}
-              </p>
+            <div className="flex items-start gap-3 rounded-xl border border-amber-400/25 bg-amber-500/10 p-3 text-sm text-amber-50">
+              <DogePFPAvatar size="md" address={address} xHandle={dxMine.xHandle} />
+              <div className="min-w-0">
+                <p className="font-semibold">{dxMine.xHandle}</p>
+                <p className="mt-1 font-mono text-[11px] text-white/60 break-all">{dxMine.txid}</p>
+                <p className="mt-1 text-[11px] text-white/55">
+                  {dxMine.tweetVerified === true
+                    ? t('modal.identity.tweetVerified')
+                    : t('modal.identity.tweetPending')}
+                </p>
+              </div>
             </div>
           ) : null}
           {lastDxTxid && !dxMine ? (

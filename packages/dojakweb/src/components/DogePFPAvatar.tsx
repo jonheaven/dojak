@@ -3,6 +3,7 @@ import { useDogePFP } from '../hooks/useDogePFP';
 import { useChainProfile } from '../hooks/useChainProfile';
 import { useDoginals } from '../hooks/useDoginals';
 import { useConnectedWalletAddress } from '../wallet/getConnectedWalletAddress';
+import { getCommandDogApiBaseUrl } from '../utils/api';
 import dogeNobgSrc from '../assets/doge-nobg.svg';
 
 /** Pointy-top hexagon — same geometry as `clip-path` (percent coords → SVG user space). */
@@ -39,6 +40,11 @@ interface DogePFPAvatarProps {
   fallback?: React.ReactNode;
   /** Seed for the default gradient + chain profile lookup (falls back to connected address). */
   address?: string | null;
+  /**
+   * Ð𝕏 handle. When there is no ÐPFP, show the cached X photo from command.dog
+   * (`GET /v1/dx/avatar/:handle`). Not chain identity — display fallback only.
+   */
+  xHandle?: string | null;
   /** Show a soft ring when dogex flags bind author no longer holds the media. */
   showNotHoldingHint?: boolean;
 }
@@ -50,6 +56,17 @@ const sizeClasses = {
   lg: 'h-12 w-12',
   xl: 'h-16 w-16',
 };
+
+export function dxAvatarUrl(handle: string): string {
+  const inner = handle.trim().replace(/^@+/, '');
+  const base = getCommandDogApiBaseUrl().replace(/\/+$/, '');
+  return `${base}/v1/dx/avatar/${encodeURIComponent(inner)}`;
+}
+
+export function dxAvatarByAddressUrl(address: string): string {
+  const base = getCommandDogApiBaseUrl().replace(/\/+$/, '');
+  return `${base}/v1/dx/avatar/address/${encodeURIComponent(address.trim())}`;
+}
 
 function hashHue(seed: string): number {
   let h = 2166136261;
@@ -131,13 +148,15 @@ function DefaultDogeAvatar({
  * Resolution order:
  * 1. Connected self + local device pref (`useDogePFP`) — instant after "Set as ÐPFP"
  * 2. dogex chain profile for `address` (`useChainProfile`) — eco-wide identity
- * 3. Wallet-hashed default doge mark
+ * 3. Ð𝕏 handle → command.dog cached X photo (display only)
+ * 4. Wallet-hashed default doge mark
  */
 export const DogePFPAvatar: React.FC<DogePFPAvatarProps> = ({
   size = 'md',
   className = '',
   fallback,
   address: addressProp,
+  xHandle,
   showNotHoldingHint = true,
 }) => {
   const {
@@ -173,6 +192,7 @@ export const DogePFPAvatar: React.FC<DogePFPAvatarProps> = ({
     needDoginals ? connectedAddress || '' : '',
   );
   const [imgError, setImgError] = useState(false);
+  const [dxError, setDxError] = useState(false);
 
   const pfpDoginal = pfpInscriptionId
     ? doginals.find((d) => d.inscriptionId === pfpInscriptionId)
@@ -181,10 +201,15 @@ export const DogePFPAvatar: React.FC<DogePFPAvatarProps> = ({
     (pfpContentUrl && pfpContentUrl.length > 0 ? pfpContentUrl : null) ??
     pfpDoginal?.previewUrl ??
     null;
+  const dxSrc = xHandle?.trim() ? dxAvatarUrl(xHandle) : null;
 
   useEffect(() => {
     setImgError(false);
   }, [pfpInscriptionId, imgSrc]);
+
+  useEffect(() => {
+    setDxError(false);
+  }, [dxSrc]);
 
   const hasDirectImage = Boolean(pfpContentUrl && pfpContentUrl.length > 0);
   const waitingOnDoginals = Boolean(needDoginals && pfpInscriptionId && !hasDirectImage && doginalsLoading);
@@ -206,6 +231,21 @@ export const DogePFPAvatar: React.FC<DogePFPAvatarProps> = ({
   const showPlaceholder = !pfpInscriptionId || !imgSrc || imgError;
 
   if (showPlaceholder) {
+    if (dxSrc && !dxError) {
+      return (
+        <div
+          className={`relative shrink-0 overflow-hidden rounded-full border border-white/15 ${sizeClasses[size]} ${className}`}
+          title={xHandle ? `X photo for ${xHandle} (not ÐPFP)` : undefined}
+        >
+          <img
+            src={dxSrc}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={() => setDxError(true)}
+          />
+        </div>
+      );
+    }
     if (fallback) {
       return <div className={className}>{fallback}</div>;
     }
