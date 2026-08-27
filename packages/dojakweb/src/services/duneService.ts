@@ -48,7 +48,7 @@ import {
 } from '../lib/mempoolSpendOverlay';
 import { upsertWalletTxJournalEntry, type DojakwebWalletTxProtocol } from '../lib/wallet-tx-journal';
 import { filterUtxosByRpcGetTxOutIfConfigured } from '../lib/utxo-tools';
-import { DOGEX_PUBLIC_INDEXER_URL, getIndexerApiBase } from '../utils/api';
+import { getIndexerFetchBases } from '../utils/api';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -527,10 +527,7 @@ async function fetchOutpointDuneAmount(
   duneId: string,
 ): Promise<bigint | null> {
   const want = normalizeDuneId(duneId);
-  const bases = [
-    getIndexerApiBase().replace(/\/+$/, ''),
-    DOGEX_PUBLIC_INDEXER_URL,
-  ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+  const bases = getIndexerFetchBases();
 
   for (const base of bases) {
     const url = `${base}/api/dunes/outpoint/${encodeURIComponent(txid)}/${vout}`;

@@ -170,6 +170,22 @@ export function getIndexerApiBase(): string {
   return fromEnv || DOGEX_PUBLIC_INDEXER_URL;
 }
 
+/**
+ * Bases the browser may fetch. Same-origin `/api/indexer` already rewrites to
+ * dogex.command.dog — never add the public host (CORS + double-wait on 530).
+ */
+export function getIndexerFetchBases(): string[] {
+  const primary = getIndexerApiBase().replace(/\/+$/, '');
+  if (
+    typeof window !== 'undefined' &&
+    (primary.includes('/api/indexer') || primary.includes('dogex.command.dog'))
+  ) {
+    return [primary];
+  }
+  const pub = DOGEX_PUBLIC_INDEXER_URL.replace(/\/+$/, '');
+  return [primary, pub].filter((b, i, arr) => b && arr.indexOf(b) === i);
+}
+
 /** wonky-dogeord HTTP root — Dunes UTXO balances (dogex proxies here server-side too). */
 export function getWonkyOrdApiBase(): string {
   if (typeof window !== 'undefined') {
@@ -210,14 +226,7 @@ function mapWonkyDuneHoldings(payload: unknown): DuneHolding[] {
 }
 
 async function fetchDunesFromIndexer(address: string): Promise<{ rows: DuneHolding[]; reached: boolean }> {
-  // On dogenals, `/api/indexer` already rewrites to dogex.command.dog — do not also
-  // hit the public host (that doubles a hung-tunnel wait and freezes Assets on "Loading…").
-  const primary = getIndexerApiBase().replace(/\/+$/, '');
-  const pub = DOGEX_PUBLIC_INDEXER_URL.replace(/\/+$/, '');
-  const bases =
-    primary.includes('/api/indexer') || primary.includes('dogex.command.dog')
-      ? [primary]
-      : [primary, pub].filter((b, i, arr) => b && arr.indexOf(b) === i);
+  const bases = getIndexerFetchBases();
 
   const TIMEOUT_MS = 4_000;
   for (const base of bases) {
@@ -1618,10 +1627,7 @@ export const walletDataApi = {
 
     // MyDoge often omits script hex — peek dogex raw for recent rows so Activity matches Ðexplorer.
     if (page === 1) {
-      const bases = [
-        getIndexerApiBase().replace(/\/+$/, ''),
-        DOGEX_PUBLIC_INDEXER_URL,
-      ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+      const bases = getIndexerFetchBases();
       const candidates = transactions.filter((t) => t.txid && !t.protocolHint).slice(0, 12);
       await Promise.all(
         candidates.map(async (t) => {

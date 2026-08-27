@@ -6,7 +6,7 @@
  * sentinel). Older bags still sit on 0.01 postage / large DOGE change — the
  * 0.001 skip alone is not enough for those.
  */
-import { DOGEX_PUBLIC_INDEXER_URL, getIndexerApiBase } from '../utils/api';
+import { getIndexerFetchBases } from '../utils/api';
 
 export type DuneGuardUtxo = {
   tx_hash: string;
@@ -55,14 +55,7 @@ function outpointKey(u: { tx_hash: string; tx_output_n: number }): string {
 }
 
 function dogexBases(): string[] {
-  const primary = getIndexerApiBase().replace(/\/+$/, '');
-  // `/api/indexer` already rewrites to dogex.command.dog — never double-wait.
-  if (primary.includes('/api/indexer') || primary.includes('dogex.command.dog')) {
-    return [primary];
-  }
-  return [primary, DOGEX_PUBLIC_INDEXER_URL.replace(/\/+$/, '')].filter(
-    (b, i, arr) => b && arr.indexOf(b) === i,
-  );
+  return getIndexerFetchBases();
 }
 
 /**

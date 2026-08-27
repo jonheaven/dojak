@@ -743,7 +743,6 @@ export function DojakwebWalletModal({
     let cancelled = false;
     const load = async () => {
       const urls = [
-        `/api/dlocker/address/${encodeURIComponent(activeAddress)}?status=active&limit=100`,
         `${getIndexerApiBase().replace(/\/+$/, '')}/api/dlocker/address/${encodeURIComponent(activeAddress)}?status=active&limit=100`,
       ];
       for (const url of urls) {

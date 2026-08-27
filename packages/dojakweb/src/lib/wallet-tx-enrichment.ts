@@ -4,10 +4,7 @@
  * payouts, tickets, and contract calls — not just plain Dogecoin sends.
  */
 
-import {
-  DOGEX_PUBLIC_INDEXER_URL,
-  getIndexerApiBase,
-} from '../utils/api';
+import { getIndexerFetchBases } from '../utils/api';
 import { gatedMydogeGetJson } from './mydoge/httpGate';
 import {
   loadWalletTxJournal,
@@ -32,9 +29,7 @@ export type WalletTxEnrichment = {
 };
 
 function indexerBases(): string[] {
-  return [getIndexerApiBase().replace(/\/+$/, ''), DOGEX_PUBLIC_INDEXER_URL].filter(
-    (b, i, arr) => b && arr.indexOf(b) === i,
-  );
+  return getIndexerFetchBases();
 }
 
 async function fetchJsonQuiet(url: string, timeoutMs = 12_000): Promise<unknown | null> {

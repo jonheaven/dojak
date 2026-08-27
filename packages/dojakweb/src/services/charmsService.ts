@@ -376,11 +376,8 @@ export class CharmsService {
 
     const paths: string[] = [];
     try {
-      const { getIndexerApiBase, DOGEX_PUBLIC_INDEXER_URL } = await import('../utils/api');
-      const bases = [
-        getIndexerApiBase().replace(/\/$/, ''),
-        String(DOGEX_PUBLIC_INDEXER_URL || '').replace(/\/$/, ''),
-      ].filter((b, i, arr) => b && arr.indexOf(b) === i);
+      const { getIndexerFetchBases } = await import('../utils/api');
+      const bases = getIndexerFetchBases();
       for (const indexer of bases) {
         paths.push(`${indexer}/api/charms/utxos/${encodeURIComponent(txid)}/${Number(vout)}`);
       }
@@ -413,7 +410,16 @@ export class CharmsService {
           if (isCmdDog) skipCommandDogCharmsUtxos = true;
           continue;
         }
-        if (response.status === 502 || response.status === 503 || response.status === 504 || response.status === 524) {
+        if (
+          response.status === 502 ||
+          response.status === 503 ||
+          response.status === 504 ||
+          response.status === 521 ||
+          response.status === 522 ||
+          response.status === 523 ||
+          response.status === 524 ||
+          response.status === 530
+        ) {
           sawTransportFail = true;
           continue;
         }
