@@ -13,6 +13,9 @@ import {
   type ParsedInscriptionText,
 } from '../../utils/inscription-text';
 
+import { doggyMarketInscriptionCdnContentUrl } from '../../lib/doggy-market-inscription';
+import { mydogeInscriptionContentUrl } from '../../lib/inscription-media';
+
 type InscriptionLike = {
   inscriptionId: string;
   inscriptionNumber?: number;
@@ -59,16 +62,14 @@ function contentFallbackUrls(inscriptionId?: string, primary?: string | null): s
   };
 
   push(proxiedContentUrl(primary));
+  if (id) {
+    push(doggyMarketInscriptionCdnContentUrl(id));
+    push(mydogeInscriptionContentUrl(id));
+  }
   if (typeof window !== 'undefined' && id) {
     const origin = window.location.origin;
-    const host = window.location.hostname;
-    // dogecoin.games Vercel rewrite
     push(`${origin}/api/indexer/cdn/content/${encodeURIComponent(id)}`);
-    // dojakweb / Next hosts
     push(`${origin}/__indexer/cdn/content/${encodeURIComponent(id)}`);
-    if (!host.includes('dogecoin.games')) {
-      push(`https://dogex.command.dog/cdn/content/${encodeURIComponent(id)}`);
-    }
   }
   return out;
 }

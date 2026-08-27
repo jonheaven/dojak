@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { XMarkIcon, ArrowTopRightOnSquareIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
-import { dogexCdnContentUrl } from '../utils/api';
+import { inscriptionContentPrimary } from '../lib/inscription-media';
 
 interface InscriptionData {
   address: string;
@@ -109,13 +109,11 @@ export const InscriptionModal: React.FC<InscriptionModalProps> = ({
 
   const resolveImageSrc = () => {
     if (!inscription) return '';
-    const preview = inscription.preview?.trim();
-    const content = inscription.content?.trim();
-    const id = inscription.inscriptionId?.trim();
-    if (preview) return preview;
-    if (content) return content;
-    if (id) return dogexCdnContentUrl(id);
-    return '';
+    return inscriptionContentPrimary({
+      inscriptionId: inscription.inscriptionId,
+      content: inscription.content,
+      preview: inscription.preview,
+    });
   };
 
   if (!isOpen) return null;

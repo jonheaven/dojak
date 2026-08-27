@@ -129,10 +129,10 @@ import {
   getIndexerApiBase,
   getDefaultWalletDataProviderUrl,
   isDefaultWalletDataProviderUrl,
-  dogexCdnContentUrl,
   withTimeout,
 } from '../utils/api';
-import { fetchDogexIndexerHealth } from '../lib/dogex-indexer-health';
+import { inscriptionContentPrimary } from '../lib/inscription-media';
+import { InscriptionMediaImg } from './wallet/InscriptionMediaImg';
 import {
   readOneClickLocalSigningPolicy,
   writeOneClickLocalSigningPolicy,
@@ -384,9 +384,13 @@ function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ');
 }
 
-/** Prefer `content` (direct media URL) then indexer `preview` for ÐPFP / ÐPFA storage. */
+/** Prefer public Doggy / MyDoge content URLs for ÐPFP / ÐPFA storage. */
 function inscriptionMediaUrlForProfile(item: MyDogeInscription): string {
-  return String(item.content || item.preview || '').trim();
+  return inscriptionContentPrimary({
+    inscriptionId: item.inscriptionId,
+    content: item.content,
+    preview: item.preview,
+  });
 }
 
 function truncateAddress(address: string | null | undefined) {
@@ -910,17 +914,6 @@ export function DojakwebWalletModal({
       const next = [tx, ...prev.filter((item) => item.txid !== tx.txid)];
       return next.slice(0, 12);
     });
-  }, []);
-
-  const resolveInscriptionMediaUrl = useCallback((inscription: MyDogeInscription | null) => {
-    if (!inscription) return '';
-    const id = inscription.inscriptionId?.trim();
-    const preview = inscription.preview?.trim();
-    const content = inscription.content?.trim();
-    if (id) return dogexCdnContentUrl(id);
-    if (preview) return preview;
-    if (content) return content;
-    return '';
   }, []);
 
   // ── Inscription action state ──
@@ -4820,11 +4813,12 @@ export function DojakwebWalletModal({
                                                 onClick={() => setInspectItem(item)}
                                                 className="block w-full"
                                               >
-                                                <img
-                                                  src={item.content}
+                                                <InscriptionMediaImg
+                                                  inscriptionId={item.inscriptionId}
+                                                  content={item.content}
+                                                  preview={item.preview}
                                                   alt={`#${item.inscriptionNumber}`}
                                                   className="aspect-square w-full object-cover"
-                                                  loading="lazy"
                                                 />
                                               </button>
                                             ) : isWasmInscription(item.contentType) ? (
@@ -5723,18 +5717,11 @@ export function DojakwebWalletModal({
                       <div className="space-y-4">
                         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-3">
                           {selectedInscription.contentType?.startsWith('image/') ? (
-                            <img
-                              src={resolveInscriptionMediaUrl(selectedInscription)}
-                              alt=""
+                            <InscriptionMediaImg
+                              inscriptionId={selectedInscription.inscriptionId}
+                              content={selectedInscription.content}
+                              preview={selectedInscription.preview}
                               className="h-14 w-14 rounded-lg object-cover"
-                              onError={(e) => {
-                                const fallback = selectedInscription.preview?.trim() || selectedInscription.content?.trim();
-                                if (fallback && e.currentTarget.src !== fallback) {
-                                  e.currentTarget.src = fallback;
-                                  return;
-                                }
-                                e.currentTarget.style.display = 'none';
-                              }}
                             />
                           ) : isWasmInscription(selectedInscription.contentType) ? (
                             <button
@@ -5978,18 +5965,11 @@ export function DojakwebWalletModal({
                       <div className="space-y-4">
                         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-3">
                           {selectedInscription.contentType?.startsWith('image/') ? (
-                            <img
-                              src={resolveInscriptionMediaUrl(selectedInscription)}
-                              alt=""
+                            <InscriptionMediaImg
+                              inscriptionId={selectedInscription.inscriptionId}
+                              content={selectedInscription.content}
+                              preview={selectedInscription.preview}
                               className="h-14 w-14 rounded-lg object-cover"
-                              onError={(e) => {
-                                const fallback = selectedInscription.preview?.trim() || selectedInscription.content?.trim();
-                                if (fallback && e.currentTarget.src !== fallback) {
-                                  e.currentTarget.src = fallback;
-                                  return;
-                                }
-                                e.currentTarget.style.display = 'none';
-                              }}
                             />
                           ) : isWasmInscription(selectedInscription.contentType) ? (
                             <button

@@ -915,15 +915,10 @@ function mapInubitsRowToMyDoge(row: InubitsWalletInscriptionRow, walletAddress: 
         })()
       : `${inubitsBase}${path.startsWith('/') ? path : `/${path}`}`
     : '';
-  // Prefer InuBits content URL; fall back to dogex CDN for body fetch in the UI.
-  // Never throw here — a bad CDN base must not drop the whole InuBits merge (text tickets).
+  // Prefer Doggy CDN — dogex tunnel 530 must not drop InuBits merge.
   let content = preview;
   if (!content) {
-    try {
-      content = dogexCdnContentUrl(inscriptionId);
-    } catch {
-      content = '';
-    }
+    content = `https://cdn.doggy.market/content/${encodeURIComponent(inscriptionId)}`;
   }
   return {
     address: String(row.address ?? walletAddress),

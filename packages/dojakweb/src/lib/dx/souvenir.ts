@@ -30,12 +30,12 @@ function contentUrls(item: Pick<MyDogeInscription, 'inscriptionId' | 'content' |
   const id = String(item.inscriptionId || '').trim();
   if (id) {
     try {
-      push(dogexCdnContentUrl(id));
+      push(doggyMarketInscriptionCdnContentUrl(id));
     } catch {
       /* ignore */
     }
     try {
-      push(doggyMarketInscriptionCdnContentUrl(id));
+      push(dogexCdnContentUrl(id));
     } catch {
       /* ignore */
     }

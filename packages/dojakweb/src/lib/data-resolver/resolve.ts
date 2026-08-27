@@ -13,23 +13,24 @@ import { gatedMydogeGetJson } from '../mydoge/httpGate';
 
 export type InscriptionContentSource = 'dogex-cdn' | 'doggy-cdn' | 'mydoge-preview' | 'none';
 
-/** Prefer dogex CDN, then existing preview, then Doggy CDN for images. */
+/** Prefer MyDoge/Doggy CDNs; dogex only when the wallet provider is dogex. */
 export function resolveInscriptionPreviewUrl(inscription: MyDogeInscription): {
   url: string;
   source: InscriptionContentSource;
 } {
   const id = inscription.inscriptionId?.trim();
-  if (id) {
-    const cfg = getWalletDataProviderConfig();
-    if (cfg.walletDataProvider === 'dogex' || cfg.indexerApiBase) {
-      return { url: dogexCdnContentUrl(id), source: 'dogex-cdn' };
-    }
-  }
-  if (inscription.preview?.trim()) {
+  const cfg = getWalletDataProviderConfig();
+  if (inscription.preview?.trim() && cfg.walletDataProvider !== 'dogex') {
     return { url: inscription.preview.trim(), source: 'mydoge-preview' };
   }
   if (id && inscription.contentType?.startsWith('image/')) {
     return { url: doggyMarketInscriptionCdnContentUrl(id), source: 'doggy-cdn' };
+  }
+  if (id && cfg.walletDataProvider === 'dogex') {
+    return { url: dogexCdnContentUrl(id), source: 'dogex-cdn' };
+  }
+  if (inscription.preview?.trim()) {
+    return { url: inscription.preview.trim(), source: 'mydoge-preview' };
   }
   return { url: '', source: 'none' };
 }

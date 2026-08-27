@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import {
-  doggyMarketInscriptionCdnContentUrl,
   doggyMarketInscriptionPageUrl,
   fetchDoggyMarketInscription,
   type DoggyMarketInscriptionMeta,
 } from '../../lib/doggy-market-inscription';
-import { dogexCdnContentUrl } from '../../utils/api';
+import { inscriptionContentCandidates, inscriptionContentPrimary } from '../../lib/inscription-media';
+import { InscriptionMediaImg } from './InscriptionMediaImg';
 import {
   isHtmlInscription,
   isTextishInscription,
@@ -32,21 +32,11 @@ type InscriptionLike = {
 };
 
 function mediaUrl(item: InscriptionLike, doggy?: DoggyMarketInscriptionMeta | null): string {
-  const id = item.inscriptionId?.trim();
-  if (id) {
-    try {
-      return dogexCdnContentUrl(id);
-    } catch {
-      /* fall through */
-    }
-  }
-  return (
-    doggy?.content ||
-    doggy?.preview ||
-    item.content ||
-    item.preview ||
-    (id ? doggyMarketInscriptionCdnContentUrl(id) : '')
-  );
+  return inscriptionContentPrimary({
+    inscriptionId: item.inscriptionId,
+    content: doggy?.content || item.content,
+    preview: doggy?.preview || item.preview,
+  });
 }
 
 export function InscriptionInspectModal({
@@ -85,16 +75,11 @@ export function InscriptionInspectModal({
               contentBody: item.contentBody,
               contentUrl: item.content || item.preview,
               inscriptionId: item.inscriptionId,
-              extraFallbackUrls: [
-                (() => {
-                  try {
-                    return dogexCdnContentUrl(item.inscriptionId);
-                  } catch {
-                    return '';
-                  }
-                })(),
-                doggyMarketInscriptionCdnContentUrl(item.inscriptionId),
-              ].filter(Boolean),
+              extraFallbackUrls: inscriptionContentCandidates({
+                inscriptionId: item.inscriptionId,
+                content: item.content,
+                preview: item.preview,
+              }).slice(1),
               signal: ac.signal,
             })
           : Promise.resolve(null),
@@ -182,7 +167,12 @@ export function InscriptionInspectModal({
                 {'{ WASM }'}
               </div>
             ) : ct.startsWith('image/') || (!isTextishInscription(ct) && src) ? (
-              <img src={src} alt="" className="aspect-square w-full object-contain bg-black" />
+              <InscriptionMediaImg
+                inscriptionId={item.inscriptionId}
+                content={doggy?.content || item.content}
+                preview={doggy?.preview || item.preview}
+                className="aspect-square w-full object-contain bg-black"
+              />
             ) : loading ? (
               <div className="py-12 text-center text-sm text-white/45">Loading…</div>
             ) : pretty ? (

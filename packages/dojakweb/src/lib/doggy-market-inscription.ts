@@ -79,14 +79,13 @@ export async function fetchDoggyMarketInscription(
       ? [`http://localhost:7070/api/inscriptions/${encodeURIComponent(id)}`]
       : []),
   ];
+  // Same-origin `/api/doggy` (Express → api.doggy.market, Vercel → command.dog).
+  // Do not fetch api.doggy.market from the browser (CORS). Do not require dogex.
+  urls.push(`/api/doggy/inscriptions/${encodeURIComponent(id)}`);
   const cfg = typeof window !== 'undefined' ? getWalletDataProviderConfig() : null;
-  if (cfg?.walletDataProvider === 'dogex' || cfg?.indexerApiBase) {
+  if (cfg?.walletDataProvider === 'dogex') {
     urls.push(`${getIndexerApiBase()}/api/compat/doggy/inscriptions/${encodeURIComponent(id)}`);
   }
-  urls.push(
-    `/api/doggy-inscription?id=${encodeURIComponent(id)}`,
-    doggyMarketInscriptionJsonUrl(id),
-  );
 
   for (const url of urls) {
     try {

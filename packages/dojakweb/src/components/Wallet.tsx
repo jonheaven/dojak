@@ -20,7 +20,7 @@ import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { DunesTab } from './DunesTab';
 import { CharmsTab } from './CharmsTab';
 import { AlkanesToolsPanel } from './alkanes/AlkanesToolsPanel';
-import { dogexCdnContentUrl } from '../utils/api';
+import { inscriptionContentPrimary } from '../lib/inscription-media';
 
 interface WalletProps {
   onNavigateToSection?: (section: string) => void;
@@ -67,13 +67,11 @@ export const Wallet: React.FC<WalletProps> = ({ onNavigateToSection }) => {
   };
 
   const resolveInscriptionThumb = (inscription: typeof filteredInscriptions[number]) => {
-    const preview = inscription.preview?.trim();
-    const content = inscription.content?.trim();
-    const id = inscription.inscriptionId?.trim();
-    if (preview) return preview;
-    if (content) return content;
-    if (id) return dogexCdnContentUrl(id);
-    return '';
+    return inscriptionContentPrimary({
+      inscriptionId: inscription.inscriptionId,
+      content: inscription.content,
+      preview: inscription.preview,
+    });
   };
 
   const isLoading = isLoadingWalletInfo || isLoadingDrc20Tokens || isLoadingInscriptions || isLoadingDunes || isLoadingUtxos || isLoadingCharms;
