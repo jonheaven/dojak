@@ -249,7 +249,7 @@ export function WalletSendFlow({
             setDxReg(null);
             setDxLookup('unlinked');
             setDxError(
-              `No Ð𝕏 bind for ${parsedDxHandle}. They need to link at dogex.dog/dx before you can pay by handle.`,
+              `No Ð𝕏 bind for ${parsedDxHandle}. They need to link at /dx (dogex.dog or dogeshit.lol) before you can pay by handle.`,
             );
           }
         })
