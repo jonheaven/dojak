@@ -89,6 +89,8 @@ export interface PreferenceStore {
   enableSignData: boolean;
   autoLockTimeId: number;
   openInSidePanel: boolean;
+  /** One-shot: docked side panel is the product default (toolbar click). */
+  sidePanelDockDefaultV1?: boolean;
   developerMode: boolean;
   theme: 'light' | 'dark';
   customIndexerUrl?: string;
@@ -149,7 +151,8 @@ class PreferenceService {
         addressFlags: {},
         enableSignData: false,
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
-        openInSidePanel: false,
+        openInSidePanel: true,
+        sidePanelDockDefaultV1: true,
         developerMode: false,
         theme: 'light',
         biometricUnlockEnabled: false,
@@ -255,8 +258,13 @@ class PreferenceService {
       this.store.autoLockTimeId = DEFAULT_LOCKTIME_ID;
     }
 
+    if (!this.store.sidePanelDockDefaultV1) {
+      this.store.openInSidePanel = true;
+      this.store.sidePanelDockDefaultV1 = true;
+    }
+
     if (typeof this.store.openInSidePanel !== 'boolean') {
-      this.store.openInSidePanel = false;
+      this.store.openInSidePanel = true;
     }
 
     if (typeof this.store.developerMode !== 'boolean') {

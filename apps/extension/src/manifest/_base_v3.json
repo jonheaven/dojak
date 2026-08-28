@@ -8,13 +8,17 @@
     "tabs",
     "notifications",
     "scripting",
-    "windows"
+    "windows",
+    "sidePanel"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   },
   "action": {
     "default_popup": "popup.html",

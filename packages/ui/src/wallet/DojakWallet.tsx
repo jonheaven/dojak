@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
 import { isValidAddress } from '../utils/bitcoin-utils';
-import { shortAddress } from '../utils';
+import { getUiType, shortAddress } from '../utils';
 import { useWalletCore, WalletTransaction } from './WalletCoreContext';
 import { FEE_OPTIONS, FeePreset, WALLET_TABS, WalletTab } from './walletTypes';
 
@@ -22,6 +22,7 @@ function formatUsd(value: number) {
 
 export function DojakWallet() {
   const walletCore = useWalletCore();
+  const isSidePanel = getUiType().isSidePanel;
   const [activeTab, setActiveTab] = useState<WalletTab>('home');
   const [balance, setBalance] = useState(0);
   const [address, setAddress] = useState('D8n4gQ8S4aQszM4xTq3w9fF6xR9H1skGgT');
@@ -153,7 +154,7 @@ export function DojakWallet() {
 
   return (
     <main className="wallet-safe-area min-h-screen bg-zinc-950 text-zinc-100">
-      <section className="mx-auto flex min-h-screen w-full max-w-[402px] flex-col gap-4 px-4 py-4">
+      <section className={`mx-auto flex min-h-screen w-full flex-col gap-4 px-4 py-4 ${isSidePanel ? '' : 'max-w-[402px]'}`}>
         <header className="rounded-2xl border border-zinc-800 bg-zinc-900/90 p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Dojak Wallet</p>
           <h1 className="mt-1 text-xl font-semibold">Dogecoin</h1>

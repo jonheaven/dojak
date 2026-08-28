@@ -19,6 +19,7 @@ import {
   type DxRegistration,
   type DxVerifyTweetResult
 } from '@dojak/core/dx';
+import { preferenceService } from '@dojak/core/background/service';
 
 const X_HOSTS = new Set(['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com']);
 
@@ -294,7 +295,36 @@ async function clearPending(): Promise<void> {
 
 let lastPopupWindowId: number | null = null;
 
-async function openDxPopup(): Promise<void> {
+async function openDxPopup(windowId?: number): Promise<void> {
+  const chromeWithSidePanel = chrome as {
+    sidePanel?: {
+      open: (options: { windowId?: number; tabId?: number }) => Promise<void>;
+    };
+  };
+  const preferSidePanel = (() => {
+    try {
+      return preferenceService.getOpenInSidePanel();
+    } catch {
+      return true;
+    }
+  })();
+
+  if (preferSidePanel && chromeWithSidePanel.sidePanel?.open) {
+    try {
+      let id = windowId;
+      if (id == null) {
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        id = tab?.windowId;
+      }
+      if (id != null) {
+        await chromeWithSidePanel.sidePanel.open({ windowId: id });
+        return;
+      }
+    } catch {
+      /* no user gesture / API missing — fall through */
+    }
+  }
+
   try {
     if (chrome.action?.openPopup) {
       await chrome.action.openPopup();
@@ -326,7 +356,9 @@ async function openDxPopup(): Promise<void> {
   lastPopupWindowId = win.id ?? null;
 }
 
-async function openAction(partial: Omit<DxPendingAction, 'createdAt' | 'source'> & { source?: 'x.com' }): Promise<void> {
+async function openAction(
+  partial: Omit<DxPendingAction, 'createdAt' | 'source'> & { source?: 'x.com'; windowId?: number }
+): Promise<void> {
   const handle = tryParsePayHandle(partial.handle);
   if (!handle) throw new Error('Invalid handle');
   const action: DxPendingAction = {
@@ -349,7 +381,7 @@ async function openAction(partial: Omit<DxPendingAction, 'createdAt' | 'source'>
   } catch {
     /* popup may not be listening yet */
   }
-  await openDxPopup();
+  await openDxPopup(partial.windowId);
 }
 
 function reply(sendResponse: (r: unknown) => void, value: unknown): void {
@@ -399,7 +431,8 @@ class DxController {
               handle: String(message.handle || ''),
               postId: message.postId || null,
               displayName: message.displayName || null,
-              avatarUrl: message.avatarUrl || null
+              avatarUrl: message.avatarUrl || null,
+              windowId: sender.tab?.windowId
             });
             return { ok: true };
           }

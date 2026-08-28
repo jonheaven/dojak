@@ -23,6 +23,7 @@ declare global {
   interface Chrome {
     sidePanel?: {
       setPanelBehavior: (options: { openPanelOnActionClick: boolean }) => Promise<void>;
+      open: (options: { windowId?: number; tabId?: number }) => Promise<void>;
     };
   }
 }

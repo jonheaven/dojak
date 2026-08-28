@@ -112,6 +112,12 @@ module.exports = function commonConfig(env = {}) {
         chunks: ['popup'],
         inject: 'body'
       }),
+      new HtmlWebpackPlugin({
+        filename: 'sidepanel.html',
+        template: path.resolve(rootDir, 'src/popup/sidepanel.html'),
+        chunks: ['popup'],
+        inject: 'body'
+      }),
       new CopyWebpackPlugin({
         patterns: [
           {

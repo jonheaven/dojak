@@ -7,6 +7,11 @@
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+html.dojak-side-panel .dx-root,
+html.dojak-side-panel .dx-shell {
+  min-height: 100vh;
+}
+
 .dx-shell {
   display: flex;
   flex-direction: column;

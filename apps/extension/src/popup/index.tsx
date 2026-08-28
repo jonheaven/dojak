@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { DojakWallet, WalletCoreProvider } from '@dojak/ui';
+import { getUiType } from '@dojak/ui/utils';
 import type { DxPendingAction } from '@dojak/core/dx';
 import { DX_PENDING_CHANGED } from '@dojak/core/dx';
 import '@dojak/ui/src/styles/global.less';
@@ -84,7 +85,16 @@ function PopupApp() {
     );
   }, [ready, view, pending]);
 
-  return <div className="mx-auto w-full max-w-[402px] overflow-y-auto" style={{ maxHeight: 640 }}>{body}</div>;
+  const isSidePanel = getUiType().isSidePanel;
+
+  return (
+    <div
+      className={isSidePanel ? 'h-full w-full overflow-y-auto' : 'mx-auto w-full max-w-[402px] overflow-y-auto'}
+      style={isSidePanel ? { minHeight: '100%' } : { maxHeight: 640 }}
+    >
+      {body}
+    </div>
+  );
 }
 
 const root = document.getElementById('root');
