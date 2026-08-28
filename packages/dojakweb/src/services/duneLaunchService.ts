@@ -30,13 +30,13 @@ import {
   buildLaunchCurveSellScript,
   parseSpacedDune,
 } from '../lib/dunestone';
+import { enforceBroadcastFeeRateKoinuPerByte } from '../lib/fees/dogecoinFeePolicy';
 
 const MIN_FEE_KOINU = 100_000;
 const POSTAGE_KOINU = 100_000;
 const TX_OVERHEAD_BYTES = 10;
 const P2PKH_INPUT_BYTES = 148;
 const P2PKH_OUTPUT_BYTES = 34;
-const DEFAULT_FEE_RATE_KOINU_PER_BYTE = 1000;
 
 const DOGE_NETWORK = {
   messagePrefix: '\x19Dogecoin Signed Message:\n',
@@ -254,13 +254,17 @@ async function signWalletFundedTx(params: {
   feeRate: number;
 }): Promise<Omit<DuneLaunchCurveTxResult, 'opReturnScriptHex' | 'outputIndexes'>> {
   assertDuneTxSigner(params.signer);
+  const feeRate = await enforceBroadcastFeeRateKoinuPerByte({
+    requestedKoinuPerByte: params.feeRate,
+    context: 'duneLaunchService.signWalletFundedTx',
+  });
   const utxos = await spendableUtxos(params.signer.fromAddress);
   const planned = planWalletFundedTx({
     fromAddress: params.signer.fromAddress,
     opReturnScript: params.opReturnScript,
     extraOutputs: params.extraOutputs,
     utxos,
-    feeRate: params.feeRate,
+    feeRate,
   });
 
   if (params.signer.privateKeyWIF) {
@@ -379,7 +383,7 @@ export async function launchDuneCurve(
       { address: creatorAddress, value: POSTAGE_KOINU },
       { address: treasuryAddress, value: POSTAGE_KOINU },
     ],
-    feeRate: Math.max(1, Math.floor(params.feeRate ?? DEFAULT_FEE_RATE_KOINU_PER_BYTE)),
+    feeRate: Math.max(1, Math.floor(params.feeRate ?? 0)),
   });
   const txid = await maybeBroadcast(signed.rawHex, params.broadcast ?? true);
 
@@ -402,7 +406,7 @@ export async function graduateDuneCurve(
     signer: params.signer,
     opReturnScript,
     extraOutputs: [],
-    feeRate: Math.max(1, Math.floor(params.feeRate ?? DEFAULT_FEE_RATE_KOINU_PER_BYTE)),
+    feeRate: Math.max(1, Math.floor(params.feeRate ?? 0)),
   });
   const txid = await maybeBroadcast(signed.rawHex, params.broadcast ?? true);
 

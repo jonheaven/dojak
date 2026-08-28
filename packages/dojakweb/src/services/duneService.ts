@@ -48,6 +48,7 @@ import {
 } from '../lib/mempoolSpendOverlay';
 import { upsertWalletTxJournalEntry, type DojakwebWalletTxProtocol } from '../lib/wallet-tx-journal';
 import { filterUtxosByRpcGetTxOutIfConfigured } from '../lib/utxo-tools';
+import { enforceBroadcastFeeRateKoinuPerKb } from '../lib/fees/dogecoinFeePolicy';
 import { getIndexerFetchBases } from '../utils/api';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -443,13 +444,17 @@ async function signDuneTransaction(
   },
 ): Promise<BuiltTx> {
   assertDuneTxSigner(signer);
+  const enforcedFeeRate = await enforceBroadcastFeeRateKoinuPerKb({
+    requestedKoinuPerKb: feeRate,
+    context: 'signDuneTransaction',
+  });
   const utxos = opts?.utxos ?? (await getSpendableUtxos(signer.fromAddress));
   const buildParams: BuildDuneTxParams = {
     fromAddress: signer.fromAddress,
     opReturnScript,
     extraOutputs,
     utxos,
-    feeRate,
+    feeRate: enforcedFeeRate,
     mustIncludeUtxos: opts?.mustIncludeUtxos,
     forceChangeOutput: opts?.forceChangeOutput,
     opReturnValue: opts?.opReturnValue,
@@ -462,7 +467,7 @@ async function signDuneTransaction(
       opReturnScript,
       extraOutputs,
       utxos,
-      feeRate,
+      feeRate: enforcedFeeRate,
       mustIncludeUtxos: opts?.mustIncludeUtxos,
       forceChangeOutput: opts?.forceChangeOutput,
       opReturnValue: opts?.opReturnValue,
@@ -726,7 +731,7 @@ export interface EtchResult {
 export async function etchDune(params: EtchDuneParams): Promise<EtchResult> {
   const {
     name, supply, divisibility, symbol, terms, turbo = false,
-    feeRate = 1_000_000, signer, broadcast = true,
+    feeRate = 0, signer, broadcast = true,
   } = params;
 
   // Validate name
@@ -798,7 +803,7 @@ export interface MintResult {
  */
 export async function mintDune(params: MintDuneParams): Promise<MintResult> {
   const {
-    duneId, postage = POSTAGE_KOINU, feeRate = 1_000_000,
+    duneId, postage = POSTAGE_KOINU, feeRate = 0,
     signer, broadcast = true,
   } = params;
   const destination = params.destination?.trim() || signer.fromAddress;
@@ -877,7 +882,7 @@ export async function sendDune(params: SendDuneParams): Promise<SendResult> {
   const {
     duneId, amount, divisibility,
     recipientAddress, postage = POSTAGE_KOINU,
-    feeRate = 1_000_000, signer, broadcast = true,
+    feeRate = 0, signer, broadcast = true,
     duneName, spacedName, symbol, activity,
   } = params;
 
@@ -1035,7 +1040,7 @@ export async function sendDuneAirdropBatch(params: {
     recipients,
     signer,
     postage = POSTAGE_KOINU,
-    feeRate = 1_000_000,
+    feeRate = 0,
     jobFee,
     chainedCarrier,
   } = params;

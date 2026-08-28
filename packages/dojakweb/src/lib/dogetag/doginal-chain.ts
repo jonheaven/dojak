@@ -29,6 +29,7 @@ import {
   SOFT_DUST_KOINU,
   softDustFeePenaltyKoinu,
 } from '../dogecoin/softDust';
+import { enforceBroadcastFeeRateKoinuPerKb } from '../fees/dogecoinFeePolicy';
 
 const MAX_CHUNK_LEN = 240;
 const MAX_PAYLOAD_LEN = 1500;
@@ -372,10 +373,14 @@ export async function signDoginalInscriptionChain(params: SignDoginalChainParams
     contentType,
     fromAddress,
     privateKeyWIF,
-    feeRate = 1_000_000,
+    feeRate: requestedFeeRate = 0,
     excludedOutpoints,
     inscriptionReceiveAddress: inscriptionReceiveRaw,
   } = params;
+  const feeRate = await enforceBroadcastFeeRateKoinuPerKb({
+    requestedKoinuPerKb: requestedFeeRate,
+    context: 'signDoginalInscriptionChain',
+  });
 
   if (!content.length) throw new Error('Inscription content is empty.');
   const ct = contentType.trim();

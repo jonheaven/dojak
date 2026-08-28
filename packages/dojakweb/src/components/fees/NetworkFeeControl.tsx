@@ -5,10 +5,10 @@ import {
   DOJAKWEB_FEE_PRESET_RATES,
   DOJAKWEB_TX_FEE_PREF_EVENT,
   clampDojakwebFeeRateKoinuPerByte,
-  dojakwebFeeRateKoinuPerByteFromPreference,
   estimateP2pkhFeeDoge,
   formatDojakwebFeeRate,
   readDojakwebTxFeePreference,
+  resolveDojakwebFeeRateKoinuPerByte,
   writeDojakwebTxFeePreference,
   type DojakwebTxFeePreference,
   type DojakwebTxFeePreset,
@@ -37,6 +37,9 @@ export type NetworkFeeControlProps = {
 /**
  * Shared Normal / Fast / Priority / Custom fee picker for Dojakweb hosts
  * (dogenals Ðunes, dogecoin.games bets, alkanes, etc.).
+ *
+ * Presets are multipliers on the live Command.dog estimatesmartfee — never a
+ * static 1000 koinu/B “Normal” that underpays during fee wars.
  */
 export function NetworkFeeControl({
   className,
@@ -47,6 +50,7 @@ export function NetworkFeeControl({
   title = 'Network fee',
 }: NetworkFeeControlProps) {
   const [pref, setPref] = useState<DojakwebTxFeePreference>(() => readDojakwebTxFeePreference());
+  const [liveRate, setLiveRate] = useState(() => dojakwebFeeRateKoinuPerByteFromPreferenceSafe(pref));
 
   useEffect(() => {
     const sync = () => setPref(readDojakwebTxFeePreference());
@@ -58,28 +62,37 @@ export function NetworkFeeControl({
     };
   }, []);
 
-  const rate = dojakwebFeeRateKoinuPerByteFromPreference(pref);
+  useEffect(() => {
+    let cancelled = false;
+    void resolveDojakwebFeeRateKoinuPerByte(pref).then((rate) => {
+      if (!cancelled) setLiveRate(rate);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pref]);
+
   const estimate = useMemo(
     () =>
       estimateP2pkhFeeDoge({
-        rateKoinuPerByte: rate,
+        rateKoinuPerByte: liveRate,
         opReturnScriptLen,
         inputs,
         outputs,
       }),
-    [inputs, opReturnScriptLen, outputs, rate],
+    [inputs, opReturnScriptLen, outputs, liveRate],
   );
 
   useEffect(() => {
-    onRateKoinuPerByteChange?.(rate);
-  }, [onRateKoinuPerByteChange, rate]);
+    onRateKoinuPerByteChange?.(liveRate);
+  }, [onRateKoinuPerByteChange, liveRate]);
 
   const setPreset = (preset: DojakwebTxFeePreset) => {
     const next: DojakwebTxFeePreference = {
       preset,
       customRateKoinuPerByte:
         preset === 'custom'
-          ? pref.customRateKoinuPerByte ?? DOJAKWEB_FEE_PRESET_RATES.fast
+          ? pref.customRateKoinuPerByte ?? liveRate
           : undefined,
     };
     writeDojakwebTxFeePreference(next);
@@ -107,7 +120,7 @@ export function NetworkFeeControl({
           {title}
         </span>
         <span className="inline-flex flex-wrap items-center justify-end gap-1 text-[10px] font-semibold tabular-nums text-amber-600 dark:text-amber-300">
-          <span>{formatDojakwebFeeRate(rate)}</span>
+          <span>{formatDojakwebFeeRate(liveRate)}</span>
           <span aria-hidden>·</span>
           <span>~{estimate.toFixed(estimate >= 0.01 ? 3 : 4)} Ð</span>
         </span>
@@ -135,19 +148,29 @@ export function NetworkFeeControl({
           <input
             type="number"
             min={DOJAKWEB_FEE_PRESET_RATES.normal}
-            max={50_000}
+            max={500_000}
             step={500}
-            value={rate}
+            value={liveRate}
             onChange={(e) => setCustom(e.target.value)}
             className="min-h-[34px] w-full rounded-md border border-border-primary bg-bg-primary px-2 text-sm font-semibold tabular-nums text-text-primary outline-none focus:border-amber-500/60"
           />
         </label>
       ) : null}
       <p className="mt-1.5 text-[10px] leading-snug text-text-secondary">
-        Normal is the inclusion floor (10× relay). Underpaying leaves etches stuck in the mempool.
+        Rates track live Core estimatesmartfee (via command.dog). Underpaying is blocked at
+        sign/broadcast — stuck mempool etches should not happen again.
       </p>
     </div>
   );
+}
+
+function dojakwebFeeRateKoinuPerByteFromPreferenceSafe(pref: DojakwebTxFeePreference): number {
+  if (pref.preset === 'custom') {
+    return clampDojakwebFeeRateKoinuPerByte(
+      pref.customRateKoinuPerByte ?? DOJAKWEB_FEE_PRESET_RATES.fast,
+    );
+  }
+  return DOJAKWEB_FEE_PRESET_RATES[pref.preset];
 }
 
 export default NetworkFeeControl;

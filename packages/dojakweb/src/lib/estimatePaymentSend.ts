@@ -5,8 +5,8 @@ import { coinSelectP2PKH } from 'doge-sdk';
 import { assertValidDogecoinAddress } from './dogecoinAddressValidate';
 import { fixCoinSelectP2PKHFee } from './fixCoinSelectP2PKHFee';
 import { getPaymentUtxosForSend } from './paymentUtxos';
+import { enforceBroadcastFeeRateKoinuPerByte } from './fees/dogecoinFeePolicy';
 
-const FEE_RATE = 1_000; // koinu/byte — Dogecoin-reliable default
 const DUST_KOINU = 100_000; // 0.001 DOGE
 
 export type PaymentSendQuote = {
@@ -61,6 +61,10 @@ export async function estimatePaymentSend(params: {
       `Not enough spendable DOGE: you asked to send ${toDoge(amountKoinu)} Ð, but only ${toDoge(spendableKoinu)} Ð is spendable right now. The rest is usually inscription carriers (0.001 Ð), locked coins, or inputs still held by a recent / stuck mempool send — open ··· → Coins & UTXOs.`,
     );
   }
+
+  const FEE_RATE = await enforceBroadcastFeeRateKoinuPerByte({
+    context: 'estimatePaymentSend',
+  });
 
   let selected: ReturnType<typeof coinSelectP2PKH>;
   try {

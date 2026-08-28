@@ -4,12 +4,16 @@
  * Canonical unit: **koinu/byte** (same as dogecoin.games casino bets).
  * Ðune / Core-style builders that use koinu/kB should multiply by 1000.
  *
- * Floor = inclusion floor (10× Core min-relay) so product txs confirm under load.
+ * Preset multipliers apply on top of the **live** Command.dog fee estimate.
+ * Static 1000 koinu/B is only a floor when the estimate API is down — it is
+ * never treated as a safe “Normal” broadcast rate during fee spikes.
  */
 import {
   FEE_RATE_CAP_KOINU_PER_BYTE,
   INCLUSION_FLOOR_KOINU_PER_BYTE,
   INCLUSION_FLOOR_KOINU_PER_KB,
+  enforceBroadcastFeeRateKoinuPerByte,
+  resolveInclusionFeeRateKoinuPerByte,
 } from './dogecoinFeePolicy';
 
 export type DojakwebTxFeePreset = 'normal' | 'fast' | 'priority' | 'custom';
@@ -24,8 +28,16 @@ export const DOJAKWEB_TX_FEE_PREF_KEY = 'dojakweb:txFeePreference:v1';
 const LEGACY_GAMES_FEE_PREF_KEY = 'dogecoin-games-casino-fee-pref-v1';
 export const DOJAKWEB_TX_FEE_PREF_EVENT = 'dojakweb:txFeePreference:changed';
 
+/** Multipliers vs live inclusion estimate (blocks=2). */
+export const DOJAKWEB_FEE_PRESET_MULT: Record<Exclude<DojakwebTxFeePreset, 'custom'>, number> = {
+  normal: 1,
+  fast: 1.5,
+  priority: 2.5,
+};
+
+/** @deprecated Static labels only — use resolveDojakwebFeeRateKoinuPerByte for real rates. */
 export const DOJAKWEB_FEE_PRESET_RATES: Record<Exclude<DojakwebTxFeePreset, 'custom'>, number> = {
-  normal: INCLUSION_FLOOR_KOINU_PER_BYTE, // 1_000 koinu/B = 1_000_000 koinu/kB
+  normal: INCLUSION_FLOOR_KOINU_PER_BYTE,
   fast: 2_000,
   priority: 5_000,
 };
@@ -34,7 +46,7 @@ export const DOJAKWEB_FEE_MIN_KOINU_PER_BYTE = INCLUSION_FLOOR_KOINU_PER_BYTE;
 export const DOJAKWEB_FEE_MAX_KOINU_PER_BYTE = FEE_RATE_CAP_KOINU_PER_BYTE;
 
 export function clampDojakwebFeeRateKoinuPerByte(rate: number): number {
-  if (!Number.isFinite(rate)) return DOJAKWEB_FEE_PRESET_RATES.normal;
+  if (!Number.isFinite(rate)) return DOJAKWEB_FEE_MIN_KOINU_PER_BYTE;
   return Math.round(
     Math.min(DOJAKWEB_FEE_MAX_KOINU_PER_BYTE, Math.max(DOJAKWEB_FEE_MIN_KOINU_PER_BYTE, rate)),
   );
@@ -67,7 +79,6 @@ export function readDojakwebTxFeePreference(): DojakwebTxFeePreference {
     const raw = window.localStorage.getItem(DOJAKWEB_TX_FEE_PREF_KEY);
     if (raw) return normalizePref(JSON.parse(raw) as Partial<DojakwebTxFeePreference>);
 
-    // One-time migrate from dogecoin.games casino pref
     const legacy = window.localStorage.getItem(LEGACY_GAMES_FEE_PREF_KEY);
     if (legacy) {
       const migrated = normalizePref(JSON.parse(legacy) as Partial<DojakwebTxFeePreference>);
@@ -95,6 +106,10 @@ export function writeDojakwebTxFeePreference(pref: DojakwebTxFeePreference): voi
   window.dispatchEvent(new CustomEvent(DOJAKWEB_TX_FEE_PREF_EVENT, { detail: next }));
 }
 
+/**
+ * Sync snapshot for UI before the live estimate returns.
+ * Prefer `resolveDojakwebFeeRateKoinuPerByte` before signing/broadcasting.
+ */
 export function dojakwebFeeRateKoinuPerByteFromPreference(
   pref = readDojakwebTxFeePreference(),
 ): number {
@@ -106,11 +121,31 @@ export function dojakwebFeeRateKoinuPerByteFromPreference(
   return DOJAKWEB_FEE_PRESET_RATES[pref.preset];
 }
 
-/** For Ðune / Core builders: koinu/kB. */
+/** Live rate: max(preference, network estimate). Always call before broadcast. */
+export async function resolveDojakwebFeeRateKoinuPerByte(
+  pref = readDojakwebTxFeePreference(),
+): Promise<number> {
+  if (pref.preset === 'custom') {
+    return enforceBroadcastFeeRateKoinuPerByte({
+      requestedKoinuPerByte: pref.customRateKoinuPerByte,
+      context: 'txFeePreference.custom',
+    });
+  }
+  const network = await resolveInclusionFeeRateKoinuPerByte(2);
+  const mult = DOJAKWEB_FEE_PRESET_MULT[pref.preset];
+  return clampDojakwebFeeRateKoinuPerByte(Math.ceil(network * mult));
+}
+
 export function dojakwebFeeRateKoinuPerKbFromPreference(
   pref = readDojakwebTxFeePreference(),
 ): number {
   return koinuPerByteToKoinuPerKb(dojakwebFeeRateKoinuPerByteFromPreference(pref));
+}
+
+export async function resolveDojakwebFeeRateKoinuPerKb(
+  pref = readDojakwebTxFeePreference(),
+): Promise<number> {
+  return koinuPerByteToKoinuPerKb(await resolveDojakwebFeeRateKoinuPerByte(pref));
 }
 
 export function formatDojakwebFeeRate(rateKoinuPerByte: number): string {

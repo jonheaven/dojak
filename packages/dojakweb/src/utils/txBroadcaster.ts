@@ -410,7 +410,7 @@ export async function broadcastBatchSend(
  * Inscription / wallet fee rate in koinu per kB (same unit as the inscribe UI).
  * Always ≥ inclusion floor (10× Core min relay). Prefers Command.dog fee-estimate.
  */
-export async function getFeeEstimate(targetBlocks = 6): Promise<number> {
+export async function getFeeEstimate(targetBlocks = 2): Promise<number> {
   if (typeof window === 'undefined') return INCLUSION_FLOOR_KOINU_PER_KB;
 
   const fromApi = await resolveInclusionFeeRateKoinuPerKb(targetBlocks);

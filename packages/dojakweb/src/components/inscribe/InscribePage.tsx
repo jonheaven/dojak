@@ -515,7 +515,7 @@ export const InscribePage: React.FC = () => {
 
   const refreshFeeFromNode = useCallback(async () => {
     try {
-      const r = await getFeeEstimate(6);
+      const r = await getFeeEstimate(2);
       setFeeRate(r);
       toast.success(`Fee rate ${r.toLocaleString()} koinu/kB`);
     } catch {
@@ -524,7 +524,7 @@ export const InscribePage: React.FC = () => {
   }, [toast]);
 
   React.useEffect(() => {
-    void getFeeEstimate(6)
+    void getFeeEstimate(2)
       .then(setFeeRate)
       .catch(() => {});
   }, []);

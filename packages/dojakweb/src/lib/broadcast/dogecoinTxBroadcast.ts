@@ -28,6 +28,10 @@ import {
   softDustFeePenaltyKoinu,
 } from '../dogecoin/softDust';
 import { excludeDogexDuneBearingUtxos } from '../duneOutpointGuard';
+import {
+  enforceBroadcastFeeRateKoinuPerByte,
+  INCLUSION_FLOOR_KOINU_PER_BYTE,
+} from '../fees/dogecoinFeePolicy';
 
 export type { DogetagTip } from '../tx/types';
 
@@ -49,11 +53,11 @@ export interface NormalisedUtxo {
 const INSCRIPTION_CARRIER_VALUE = HARD_DUST_KOINU; // koinu — Doginals carrier sentinel
 
 /**
- * Absolute minimum fee rate we will ever use. Dogecoin's minimum relay fee is
- * 100 koinu/byte (0.001 DOGE/kB); using anything lower guarantees rejection.
- * Callers should prefer 1000 koinu/byte (10×) for reliable inclusion.
+ * Absolute fallback floor only (10× Core min-relay). Live product builds MUST
+ * raise via `enforceBroadcastFeeRateKoinuPerByte` — never broadcast at this
+ * alone during a fee spike.
  */
-export const MIN_FEE_RATE_KOINU_PER_BYTE = 1000; // inclusion floor (10× Core min-relay)
+export const MIN_FEE_RATE_KOINU_PER_BYTE = INCLUSION_FLOOR_KOINU_PER_BYTE;
 
 function normalizeOutpointKey(txid: string, vout: number): string {
   return `${txid.toLowerCase()}:${vout}`;
@@ -883,13 +887,16 @@ export interface SignedOpReturnTx {
 export async function estimateOpReturnFee(
   message: string,
   fromAddress: string,
-  feeRate = 1000,
+  feeRate = 0,
   tip?: DogetagTip,
   excludedOutpoints?: string[],
   additionalOpReturnPayloads?: Buffer[],
 ): Promise<OpReturnFeeEstimate> {
   const msgBytes = utf8PayloadForDogetagMessage(message);
-  feeRate = Math.max(MIN_FEE_RATE_KOINU_PER_BYTE, feeRate);
+  feeRate = await enforceBroadcastFeeRateKoinuPerByte({
+    requestedKoinuPerByte: feeRate,
+    context: 'estimateOpReturnFee',
+  });
 
   const extra = additionalOpReturnPayloads ?? [];
   for (const b of extra) {
@@ -964,15 +971,15 @@ export async function signOpReturnTransaction(
     rawPayload,
     fromAddress,
     privateKeyWIF,
-    feeRate: rawFeeRate = 1000,
+    feeRate: rawFeeRate = 0,
     tip,
     excludedOutpoints,
     additionalOpReturnPayloads,
   } = params;
-  const feeRate = Math.max(MIN_FEE_RATE_KOINU_PER_BYTE, rawFeeRate);
-  if (rawFeeRate < MIN_FEE_RATE_KOINU_PER_BYTE) {
-    console.warn(`[dojakweb:doge-tx] feeRate ${rawFeeRate} below minimum relay fee — clamped to ${MIN_FEE_RATE_KOINU_PER_BYTE} koinu/byte`);
-  }
+  const feeRate = await enforceBroadcastFeeRateKoinuPerByte({
+    requestedKoinuPerByte: rawFeeRate,
+    context: 'signOpReturnTransaction',
+  });
 
   const msgBytes = rawPayload
     ? (() => {
@@ -1170,12 +1177,15 @@ export interface BuiltOpReturnPSDT {
 export async function buildOpReturnPSDT(
   message:     string,
   fromAddress: string,
-  rawFeeRate = 1000,
+  rawFeeRate = 0,
   tip?:        DogetagTip,
   excludedOutpoints?: string[],
   additionalOpReturnPayloads?: Buffer[],
 ): Promise<BuiltOpReturnPSDT> {
-  const feeRate = Math.max(MIN_FEE_RATE_KOINU_PER_BYTE, rawFeeRate);
+  const feeRate = await enforceBroadcastFeeRateKoinuPerByte({
+    requestedKoinuPerByte: rawFeeRate,
+    context: 'buildOpReturnPSDT',
+  });
 
   const msgBytes = utf8PayloadForDogetagMessage(message);
   const extra = additionalOpReturnPayloads ?? [];

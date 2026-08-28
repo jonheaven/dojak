@@ -110,7 +110,7 @@ export async function publishDpfpBindOnChain(
     text: json,
     fromAddress: params.fromAddress,
     privateKeyWIF: params.privateKeyWIF,
-    feeRate: params.feeRate ?? 1_000_000,
+    feeRate: params.feeRate ?? 0,
     contentType: 'application/json',
     metaprotocol: params.role === 'pfp' ? 'Ð:PFP' : 'Ð:PFA',
     excludedOutpoints: params.excludedOutpoints,

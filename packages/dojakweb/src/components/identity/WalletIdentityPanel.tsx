@@ -374,13 +374,12 @@ export function WalletIdentityPanel({
       });
       const buf = Buffer.from(html, 'utf8');
       const ct = 'text/html;charset=utf-8';
-      const fee = feeForChain(1_000_000, countDoginalTransactionsForContent(buf, ct));
       const plan = await signDoginalInscriptionChain({
         content: buf,
         contentType: ct,
         fromAddress: address,
         privateKeyWIF: privateKeyWif,
-        feeRate: fee,
+        feeRate: 0,
         excludedOutpoints: extractProtectedOutpoints(inscriptions),
       });
       await broadcastSignedDoginalChain(plan);

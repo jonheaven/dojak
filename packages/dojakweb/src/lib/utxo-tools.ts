@@ -36,11 +36,10 @@ export const DUST_LIMIT = HARD_DUST_KOINU;
 export const INSCRIPTION_LIKELY_UTXO_KOINU = DUST_LIMIT;
 
 /**
- * Dogecoin Core default: minrelaytxfee = 0.001 DOGE/kB = 100 koinu/byte.
- * We use 1000 koinu/byte (10× minimum) for reliable relay and quick inclusion.
- * At current DOGE prices this is <$0.001 per tx — essentially free.
+ * Fallback floor only (10× Core min-relay). Prefer
+ * `enforceBroadcastFeeRateKoinuPerByte` before any broadcast.
  */
-export const FEE_RATE_KOINU_PER_BYTE = 1000; // koinu / byte  (1 DOGE / kB)
+export const FEE_RATE_KOINU_PER_BYTE = 1000; // koinu / byte fallback — NOT a safe broadcast rate
 /** @deprecated use FEE_RATE_KOINU_PER_BYTE */
 export const FEE_RATE_SATS_PER_BYTE = FEE_RATE_KOINU_PER_BYTE;
 /** Floor: always pay at least this even for tiny transactions. */

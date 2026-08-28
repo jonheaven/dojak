@@ -275,7 +275,7 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
                       <SelectValue placeholder="Select fee rate" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1000">Normal (1 koinu/byte) - inclusion floor</SelectItem>
+                      <SelectItem value="1000">Fallback floor only — prefer live estimate</SelectItem>
                       <SelectItem value="2000">Fast (2 koinu/byte)</SelectItem>
                       <SelectItem value="5000">Turbo (5 koinu/byte)</SelectItem>
                     </SelectContent>

@@ -823,7 +823,7 @@ export function DojakwebWalletModal({
           mediaInscriptionId,
           fromAddress: activeAddress,
           privateKeyWIF: browser.wallet.privateKey,
-          feeRate: 1_000_000,
+          feeRate: 0,
           excludedOutpoints: extractProtectedOutpoints(inscriptions),
           onProgress: (msg) => toast.loading(msg, { id: toastId }),
         });

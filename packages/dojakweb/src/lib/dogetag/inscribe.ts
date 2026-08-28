@@ -23,6 +23,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import * as secp from '@noble/secp256k1';
 import { DogeMemoryWallet, createP2PKHTransaction, decodePrivateKeyFromWIF } from 'doge-sdk';
 import { fetchSpendableUtxosConservativeForAddress, filterPaymentSpendableUtxos } from '../broadcast/dogecoinTxBroadcast';
+import { enforceBroadcastFeeRateKoinuPerKb } from '../fees/dogecoinFeePolicy';
 import {
   HARD_DUST_KOINU,
   SOFT_DUST_KOINU,
@@ -474,7 +475,7 @@ export async function signInscriptionTxs(
     text,
     fromAddress,
     privateKeyWIF,
-    feeRate = 1_000_000,
+    feeRate: requestedFeeRate = 0,
     excludedOutpoints,
     inscriptionReceiveAddress: inscriptionReceiveRaw,
     contentType: contentTypeRaw,
@@ -483,6 +484,10 @@ export async function signInscriptionTxs(
     metaprotocol,
     metadata,
   } = params;
+  const feeRate = await enforceBroadcastFeeRateKoinuPerKb({
+    requestedKoinuPerKb: requestedFeeRate,
+    context: 'signInscriptionTxs',
+  });
 
   // ── Input validation ────────────────────────────────────────────────────────
   const contentBuf = Buffer.from(text, 'utf8');

@@ -94,7 +94,6 @@ export interface BrowserWalletSendTransactionOptions {
   opReturnHex?: string;
 }
 
-const DEFAULT_DOGE_FEE_RATE = 1_000;
 const DEFAULT_MIN_CONFIRMATIONS = 1;
 
 function hexToBytes(hex: string): Uint8Array {
@@ -1083,7 +1082,11 @@ export class BrowserWallet {
     }
 
     const wallet = await this.resolveWalletForSend(options);
-    const feeRate = Math.max(1, Math.floor(options.feeRate ?? DEFAULT_DOGE_FEE_RATE));
+    const { enforceBroadcastFeeRateKoinuPerByte } = await import('./fees/dogecoinFeePolicy');
+    const feeRate = await enforceBroadcastFeeRateKoinuPerByte({
+      requestedKoinuPerByte: options.feeRate,
+      context: 'BrowserWallet.sendDoge',
+    });
     const minConfirmations = Math.max(
       0,
       Math.floor(options.minConfirmations ?? DEFAULT_MIN_CONFIRMATIONS)

@@ -651,7 +651,7 @@ export function WalletSendFlow({
           >
             <p>
               {quote.inputCount} input{quote.inputCount === 1 ? '' : 's'} · {quote.outputCount}{' '}
-              output{quote.outputCount === 1 ? '' : 's'} · fee rate 1000 koinu/byte · UTXOs from
+              output{quote.outputCount === 1 ? '' : 's'} · live inclusion fee · UTXOs from
               wallet data provider (MyDoge) + local mempool overlay
             </p>
           </TechDetails>

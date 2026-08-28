@@ -45,9 +45,14 @@ export async function createEasyDxInscribeJob(opts: {
   const json = opts.jsonBody;
   const contentHash = await sha256Hex(json);
   const bytes = new TextEncoder().encode(json).length;
+  const { enforceBroadcastFeeRateKoinuPerKb } = await import('../fees/dogecoinFeePolicy');
+  const feeRateKoinuPerKb = await enforceBroadcastFeeRateKoinuPerKb({
+    requestedKoinuPerKb: opts.feeRate,
+    context: 'easyDxInscribeJob',
+  });
   const job = await createInscribeJob({
     display_name: opts.displayName ?? 'Ðoge𝕏ID register',
-    fee_rate_koinu_per_kb: opts.feeRate ?? 1_000_000,
+    fee_rate_koinu_per_kb: feeRateKoinuPerKb,
     marker: 'dog',
     items: [
       {

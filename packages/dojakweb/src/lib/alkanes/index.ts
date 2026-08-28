@@ -238,7 +238,7 @@ export async function broadcastAlkanesCall(params: {
     rawPayload: payload,
     fromAddress: params.fromAddress,
     privateKeyWIF: params.privateKeyWIF,
-    feeRate: params.feeRate ?? 1000,
+    feeRate: params.feeRate ?? 0,
     tip:
       attach >= 1_000_000
         ? { address: params.fromAddress, satoshis: attach }
@@ -286,7 +286,7 @@ export async function deployAlkaneWasm(params: {
     contentType: params.contentType || 'application/wasm',
     fromAddress: params.fromAddress,
     privateKeyWIF: params.privateKeyWIF,
-    feeRate: params.feeRate ?? 1_000_000,
+    feeRate: params.feeRate ?? 0,
   });
   for (let i = 0; i < pair.stages.length; i++) {
     const stage = pair.stages[i]!;

@@ -498,11 +498,10 @@ function witnessUtxoFromPrevTx(txBuf: Buffer, vout: number, ctx: string): { scri
 
 // ── Constants ────────────────────────────────────────────────────────────────
 /**
- * Dogecoin minimum relay fee: 0.001 DOGE/kB = 100 koinu/byte.
- * We use 1000 koinu/byte (10×) for reliable mempool acceptance and fast inclusion.
- * At current prices this costs <$0.001 per buy tx — essentially free.
+ * Fallback only when fee API is unreachable. Prefer `resolveBuyFeeRateKoinuPerByte`
+ * / `enforceBroadcastFeeRateKoinuPerByte` — static 1000 koinu/B stuck ÐLaunch etches.
  */
-export const DEFAULT_FEE_RATE   = 1_000;       // koinu / byte  (1 DOGE / kB = 10× minimum relay fee)
+export const DEFAULT_FEE_RATE   = 1_000;       // koinu / byte fallback (NOT a safe broadcast rate)
 export const DUMMY_UTXO_VALUE   = 100_000;     // 0.001 DOGE — "dummy" sentinel
 
 /** Extra vbytes in buy/dummy fee math (output count varints, signature length slack). */
@@ -1001,9 +1000,10 @@ export async function buildDummyUtxoPSDT(
   paymentUtxos: OrdUtxo[],
   opts?: { feeRateKoinuPerByte?: number; dummyValueKoinu?: number; dummyCount?: number },
 ): Promise<string> {
-  // Dummy splits are ~226 vB. Do not use live buy-priority estimates (up to 50k koinu/byte):
-  // that yields ~0.1 Ð fees and trips bitcoinjs-lib / MyDoge `maximumFeeRate` (5000 sat/vB).
-  const feeRate = opts?.feeRateKoinuPerByte ?? DEFAULT_FEE_RATE;
+  // Dummy splits are ~226 vB. Cap so we do not trip MyDoge/bitcoinjs maximumFeeRate,
+  // but never underpay the live inclusion estimate within that cap.
+  const live = await resolveBuyFeeRateKoinuPerByte(6);
+  const feeRate = Math.min(5_000, Math.max(opts?.feeRateKoinuPerByte ?? live, live));
   const dummyValue = opts?.dummyValueKoinu ?? DUMMY_UTXO_VALUE;
   const dummyCount = Math.max(1, Math.floor(opts?.dummyCount ?? 1));
   const psbt  = new bitcoin.Psbt(DOGE_PSBT_OPTS);

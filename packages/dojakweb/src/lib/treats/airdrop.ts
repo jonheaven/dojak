@@ -96,7 +96,11 @@ async function planTreatsAirdropTx(params: {
   changeAmount: number;
   totalSats: number;
 }> {
-  const feeRate = Math.max(MIN_FEE_RATE_KOINU_PER_BYTE, params.feeRate);
+  const { enforceBroadcastFeeRateKoinuPerByte } = await import('../fees/dogecoinFeePolicy');
+  const feeRate = await enforceBroadcastFeeRateKoinuPerByte({
+    requestedKoinuPerByte: params.feeRate,
+    context: 'planTreatsAirdropTx',
+  });
   const utxos = await fetchSpendableUtxosConservativeForAddress(params.fromAddress);
   if (!utxos.length) {
     throw new Error('No confirmed UTXOs found. Your wallet needs DOGE to cover fee and paired dust.');
@@ -233,7 +237,7 @@ export async function signAndBroadcastTreatsAirdropBatch(params: {
   const planned = await planTreatsAirdropTx({
     fromAddress: params.signer.fromAddress,
     pairs,
-    feeRate: params.feeRate ?? MIN_FEE_RATE_KOINU_PER_BYTE,
+    feeRate: params.feeRate ?? 0,
     jobFee: params.jobFee,
   });
   const rawHex = await signPlannedTreatsAirdrop(params.signer, planned);

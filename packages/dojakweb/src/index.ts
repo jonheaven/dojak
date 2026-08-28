@@ -565,10 +565,16 @@ export {
   MIN_RELAY_KOINU_PER_BYTE,
   INCLUSION_FLOOR_KOINU_PER_KB,
   INCLUSION_FLOOR_KOINU_PER_BYTE,
+  FEE_RATE_CAP_KOINU_PER_BYTE,
+  FEE_RATE_CAP_KOINU_PER_KB,
+  DEFAULT_PRODUCT_FEE_TARGET_BLOCKS,
   resolveInclusionFeeRateKoinuPerKb,
   resolveInclusionFeeRateKoinuPerByte,
+  enforceBroadcastFeeRateKoinuPerByte,
+  enforceBroadcastFeeRateKoinuPerKb,
   clampKoinuPerKb,
   clampKoinuPerByte,
+  clearFeeEstimateCache,
 } from './lib/fees/dogecoinFeePolicy';
 
 export {
@@ -583,6 +589,8 @@ export {
   writeDojakwebTxFeePreference,
   dojakwebFeeRateKoinuPerByteFromPreference,
   dojakwebFeeRateKoinuPerKbFromPreference,
+  resolveDojakwebFeeRateKoinuPerByte,
+  resolveDojakwebFeeRateKoinuPerKb,
   formatDojakwebFeeRate,
   estimateP2pkhFeeDoge,
   type DojakwebTxFeePreset,

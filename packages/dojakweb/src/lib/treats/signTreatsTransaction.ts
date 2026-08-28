@@ -122,11 +122,15 @@ async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> 
     op,
     fromAddress,
     recipientAddress,
-    feeRate: rawFeeRate = 1000,
+    feeRate: rawFeeRate = 0,
     excludedOutpoints,
   } = params;
 
-  const feeRate = Math.max(MIN_FEE_RATE_KOINU_PER_BYTE, rawFeeRate);
+  const { enforceBroadcastFeeRateKoinuPerByte } = await import('../fees/dogecoinFeePolicy');
+  const feeRate = await enforceBroadcastFeeRateKoinuPerByte({
+    requestedKoinuPerByte: rawFeeRate,
+    context: 'planTreatsTx',
+  });
   const needsPair = op !== 'burn';
   const recipient = needsPair ? (recipientAddress?.trim() || fromAddress) : undefined;
 
