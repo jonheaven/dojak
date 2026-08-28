@@ -28,6 +28,10 @@ const REQUIRED = [
   'invalidateMydogeUtxoCaches',
   'gatedMydogeGetJson',
   'excludeDogexDuneBearingUtxos',
+  'NetworkFeeControl',
+  'NetworkFeeFuelButton',
+  'resolveDojakwebFeeRateKoinuPerByte',
+  'resolveRequestedOrPreferredFeeRateKoinuPerByte',
 ];
 
 if (!fs.existsSync(distWallet)) {

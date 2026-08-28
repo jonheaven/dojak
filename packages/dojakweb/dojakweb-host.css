@@ -1800,6 +1800,10 @@ html[data-theme="light"] .wallet-input::placeholder,
   color: rgba(255, 255, 255, 0.35);
 }
 
+.ds-wallet-approval__fee {
+  margin: 0.15rem 0 0.35rem;
+}
+
 .ds-wallet-approval__footer {
   flex: 0 0 auto;
   display: grid;

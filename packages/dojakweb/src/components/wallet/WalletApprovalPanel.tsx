@@ -11,6 +11,7 @@ import {
 } from '../../stores/walletApprovalStore';
 import { walletSecretInputProps } from '../../lib/wallet-secret-input';
 import { createDojakwebSessionSecretStore } from '../../lib/dojakweb-biometric';
+import { NetworkFeeControl } from '../fees/NetworkFeeControl';
 
 /**
  * In-wallet signing modal (extension-style Approve / Reject).
@@ -252,6 +253,10 @@ export function WalletApprovalPanel() {
         {pending.status === 'error' && pending.error ? (
           <p className="ds-wallet-approval__tx-error">{pending.error}</p>
         ) : null}
+
+        <div className="ds-wallet-approval__fee">
+          <NetworkFeeControl compact tone="wallet" disabled={working} />
+        </div>
 
         <p className="ds-wallet-approval__hint">
           Only approve if you trust this site. Approving signs and may broadcast a Dogecoin

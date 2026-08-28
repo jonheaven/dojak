@@ -121,6 +121,23 @@ export function dojakwebFeeRateKoinuPerByteFromPreference(
   return DOJAKWEB_FEE_PRESET_RATES[pref.preset];
 }
 
+/**
+ * Honor an explicit positive rate, otherwise the wallet Normal/Fast/Priority/Custom pref.
+ * Use this when callers pass `0` / omit feeRate (treat as “wallet default”, not underpay).
+ */
+export async function resolveRequestedOrPreferredFeeRateKoinuPerByte(
+  requested?: number | null,
+  context?: string,
+): Promise<number> {
+  if (requested != null && Number.isFinite(Number(requested)) && Number(requested) > 0) {
+    return enforceBroadcastFeeRateKoinuPerByte({
+      requestedKoinuPerByte: requested,
+      context: context ?? 'requestedOrPreferred.explicit',
+    });
+  }
+  return resolveDojakwebFeeRateKoinuPerByte();
+}
+
 /** Live rate: max(preference, network estimate). Always call before broadcast. */
 export async function resolveDojakwebFeeRateKoinuPerByte(
   pref = readDojakwebTxFeePreference(),

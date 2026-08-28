@@ -1082,11 +1082,11 @@ export class BrowserWallet {
     }
 
     const wallet = await this.resolveWalletForSend(options);
-    const { enforceBroadcastFeeRateKoinuPerByte } = await import('./fees/dogecoinFeePolicy');
-    const feeRate = await enforceBroadcastFeeRateKoinuPerByte({
-      requestedKoinuPerByte: options.feeRate,
-      context: 'BrowserWallet.sendDoge',
-    });
+    const { resolveRequestedOrPreferredFeeRateKoinuPerByte } = await import('./fees/txFeePreference');
+    const feeRate = await resolveRequestedOrPreferredFeeRateKoinuPerByte(
+      options.feeRate,
+      'BrowserWallet.sendDoge',
+    );
     const minConfirmations = Math.max(
       0,
       Math.floor(options.minConfirmations ?? DEFAULT_MIN_CONFIRMATIONS)

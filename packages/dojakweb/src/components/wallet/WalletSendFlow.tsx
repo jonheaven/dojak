@@ -24,6 +24,8 @@ import {
   estimatePaymentSend,
   type PaymentSendQuote,
 } from '../../lib/estimatePaymentSend';
+import { DOJAKWEB_TX_FEE_PREF_EVENT } from '../../lib/fees/txFeePreference';
+import { NetworkFeeControl } from '../fees/NetworkFeeControl';
 import { getPaymentUtxosForSend } from '../../lib/paymentUtxos';
 import { getSpendableBalanceBreakdown, type SpendableBalanceBreakdown } from '../../lib/spendableBalance';
 import { dogeTxExplorerUrl } from '../../utils/dogeTxExplorer';
@@ -164,6 +166,17 @@ export function WalletSendFlow({
   const [dxReg, setDxReg] = useState<DxRegistration | null>(null);
   const [dxLookup, setDxLookup] = useState<'off' | 'invalid' | 'loading' | 'linked' | 'unlinked' | 'error'>('off');
   const [dxError, setDxError] = useState<string | null>(null);
+  const [feeTick, setFeeTick] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setFeeTick((n) => n + 1);
+    window.addEventListener(DOJAKWEB_TX_FEE_PREF_EVENT, bump);
+    window.addEventListener('storage', bump);
+    return () => {
+      window.removeEventListener(DOJAKWEB_TX_FEE_PREF_EVENT, bump);
+      window.removeEventListener('storage', bump);
+    };
+  }, []);
 
   // Open the picker when this seed has other HD accounts (the main inter-account UX).
   useEffect(() => {
@@ -285,10 +298,16 @@ export function WalletSendFlow({
   const amountNum = Number(amount);
   const amountOk = Number.isFinite(amountNum) && amountNum > 0;
 
-  // Debounced live quote on form
+  // Debounced live quote on form + review (fee tank can change either screen)
   useEffect(() => {
-    if (phase !== 'form' || !connected || !activeAddress || !validation.ok || !amountOk) {
-      setQuote(null);
+    if (
+      (phase !== 'form' && phase !== 'review') ||
+      !connected ||
+      !activeAddress ||
+      !validation.ok ||
+      !amountOk
+    ) {
+      if (phase === 'form') setQuote(null);
       return;
     }
     let cancelled = false;
@@ -319,7 +338,7 @@ export function WalletSendFlow({
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [phase, connected, activeAddress, validation, amountOk, amountNum]);
+  }, [phase, connected, activeAddress, validation, amountOk, amountNum, feeTick]);
 
   const handleMax = useCallback(async () => {
     if (!connected || !activeAddress) {
@@ -628,6 +647,7 @@ export function WalletSendFlow({
               <span className="text-white/50">Network fee</span>
               <span className="font-mono text-white">{formatDoge(quote.feeDoge)} Ð</span>
             </div>
+            <NetworkFeeControl compact tone="wallet" />
             <div className="flex justify-between gap-3">
               <span className="text-white/50">Change back</span>
               <span className="font-mono text-white/80">{formatDoge(quote.changeDoge)} Ð</span>
@@ -929,12 +949,13 @@ export function WalletSendFlow({
       </div>
 
       <div className="rounded-xl border border-white/10 bg-[#0A0A0A] px-4 py-3">
+        <NetworkFeeControl compact tone="wallet" className="mb-2 border-0 bg-transparent p-0" />
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-semibold text-white/80">Network fee</span>
+          <span className="text-sm font-semibold text-white/80">This send</span>
           {quoteBusy ? (
             <span className="text-xs text-white/40">Estimating…</span>
           ) : quote ? (
-            <span className="font-mono text-sm text-white">{formatDoge(quote.feeDoge)} Ð</span>
+            <span className="font-mono text-sm text-white">{formatDoge(quote.feeDoge)} Ð fee</span>
           ) : (
             <span className="text-xs text-white/40">Enter recipient & amount</span>
           )}

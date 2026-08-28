@@ -594,6 +594,7 @@ export {
   dojakwebFeeRateKoinuPerKbFromPreference,
   resolveDojakwebFeeRateKoinuPerByte,
   resolveDojakwebFeeRateKoinuPerKb,
+  resolveRequestedOrPreferredFeeRateKoinuPerByte,
   formatDojakwebFeeRate,
   estimateP2pkhFeeDoge,
   type DojakwebTxFeePreset,
@@ -604,6 +605,10 @@ export {
   NetworkFeeControl,
   type NetworkFeeControlProps,
 } from './components/fees/NetworkFeeControl';
+export {
+  NetworkFeeFuelButton,
+  type NetworkFeeFuelButtonProps,
+} from './components/fees/NetworkFeeFuelButton';
 
 // Nostr order-book client
 export {

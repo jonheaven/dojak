@@ -50,6 +50,8 @@ import { WalletPinNumpad } from './wallet/WalletPinNumpad';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import { WalletApprovalPanel } from './wallet/WalletApprovalPanel';
 import { WalletSendFlow } from './wallet/WalletSendFlow';
+import { NetworkFeeControl } from './fees/NetworkFeeControl';
+import { NetworkFeeFuelButton } from './fees/NetworkFeeFuelButton';
 import { UtxoManagement } from './wallet/UtxoManagement';
 import { getSpendableBalanceBreakdown, type SpendableBalanceBreakdown } from '../lib/spendableBalance';
 import { clearMempoolOverlayForAddress } from '../lib/mempoolSpendOverlay';
@@ -3455,6 +3457,7 @@ export function DojakwebWalletModal({
                             >
                               <TagIcon className="h-3.5 w-3.5" />
                             </button>
+                            <NetworkFeeFuelButton className={chromeBtn} />
                             <button
                               type="button"
                               onClick={openSettings}
@@ -6691,6 +6694,12 @@ export function DojakwebWalletModal({
                         {/* ══ NETWORK TAB ══ */}
                         {settingsTab === 'network' && (
                           <div className="space-y-3">
+                            <div>
+                              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                                Transaction speed
+                              </div>
+                              <NetworkFeeControl tone="wallet" />
+                            </div>
                             {/* Broadcast relay priority */}
                             <div>
                               <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/35">Broadcast Relays</div>

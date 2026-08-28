@@ -30,7 +30,7 @@ import {
   buildLaunchCurveSellScript,
   parseSpacedDune,
 } from '../lib/dunestone';
-import { enforceBroadcastFeeRateKoinuPerByte } from '../lib/fees/dogecoinFeePolicy';
+import { resolveRequestedOrPreferredFeeRateKoinuPerByte } from '../lib/fees/txFeePreference';
 
 const MIN_FEE_KOINU = 100_000;
 const POSTAGE_KOINU = 100_000;
@@ -254,10 +254,10 @@ async function signWalletFundedTx(params: {
   feeRate: number;
 }): Promise<Omit<DuneLaunchCurveTxResult, 'opReturnScriptHex' | 'outputIndexes'>> {
   assertDuneTxSigner(params.signer);
-  const feeRate = await enforceBroadcastFeeRateKoinuPerByte({
-    requestedKoinuPerByte: params.feeRate,
-    context: 'duneLaunchService.signWalletFundedTx',
-  });
+  const feeRate = await resolveRequestedOrPreferredFeeRateKoinuPerByte(
+    params.feeRate,
+    'duneLaunchService.signWalletFundedTx',
+  );
   const utxos = await spendableUtxos(params.signer.fromAddress);
   const planned = planWalletFundedTx({
     fromAddress: params.signer.fromAddress,

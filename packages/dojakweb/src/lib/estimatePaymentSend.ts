@@ -5,7 +5,7 @@ import { coinSelectP2PKH } from 'doge-sdk';
 import { assertValidDogecoinAddress } from './dogecoinAddressValidate';
 import { fixCoinSelectP2PKHFee } from './fixCoinSelectP2PKHFee';
 import { getPaymentUtxosForSend } from './paymentUtxos';
-import { enforceBroadcastFeeRateKoinuPerByte } from './fees/dogecoinFeePolicy';
+import { resolveRequestedOrPreferredFeeRateKoinuPerByte } from './fees/txFeePreference';
 
 const DUST_KOINU = 100_000; // 0.001 DOGE
 
@@ -62,9 +62,10 @@ export async function estimatePaymentSend(params: {
     );
   }
 
-  const FEE_RATE = await enforceBroadcastFeeRateKoinuPerByte({
-    context: 'estimatePaymentSend',
-  });
+  const FEE_RATE = await resolveRequestedOrPreferredFeeRateKoinuPerByte(
+    null,
+    'estimatePaymentSend',
+  );
 
   let selected: ReturnType<typeof coinSelectP2PKH>;
   try {
@@ -126,10 +127,11 @@ export async function estimatePaymentSend(params: {
 export async function estimateMaxSendableDoge(fromAddress: string): Promise<number> {
   const utxos = await getPaymentUtxosForSend(fromAddress);
   const spendable = utxos.reduce((s, u) => s + u.value, 0);
-  if (spendable <= DUST_KOINU + FEE_RATE * 250) return 0;
+  const feeRate = await resolveRequestedOrPreferredFeeRateKoinuPerByte(null, 'estimateMaxSendable');
+  if (spendable <= DUST_KOINU + feeRate * 250) return 0;
 
   // Rough first pass: leave headroom for ~2-in / 2-out tx
-  let hi = spendable - FEE_RATE * 400;
+  let hi = spendable - feeRate * 400;
   if (hi < DUST_KOINU) return 0;
 
   try {

@@ -189,3 +189,37 @@ export {
 } from '../lib/host-preferences-sync';
 
 export { toast } from 'sonner';
+
+/** Local Browser Wallet network-fee tank (shared localStorage with hosts). */
+export {
+  DOJAKWEB_TX_FEE_PREF_KEY,
+  DOJAKWEB_TX_FEE_PREF_EVENT,
+  DOJAKWEB_FEE_PRESET_RATES,
+  DOJAKWEB_FEE_MIN_KOINU_PER_BYTE,
+  DOJAKWEB_FEE_MAX_KOINU_PER_BYTE,
+  clampDojakwebFeeRateKoinuPerByte,
+  koinuPerByteToKoinuPerKb,
+  readDojakwebTxFeePreference,
+  writeDojakwebTxFeePreference,
+  dojakwebFeeRateKoinuPerByteFromPreference,
+  dojakwebFeeRateKoinuPerKbFromPreference,
+  resolveDojakwebFeeRateKoinuPerByte,
+  resolveDojakwebFeeRateKoinuPerKb,
+  resolveRequestedOrPreferredFeeRateKoinuPerByte,
+  formatDojakwebFeeRate,
+  estimateP2pkhFeeDoge,
+  type DojakwebTxFeePreset,
+  type DojakwebTxFeePreference,
+} from '../lib/fees/txFeePreference';
+export {
+  enforceBroadcastFeeRateKoinuPerByte,
+  enforceBroadcastFeeRateKoinuPerKb,
+} from '../lib/fees/dogecoinFeePolicy';
+export {
+  NetworkFeeControl,
+  type NetworkFeeControlProps,
+} from '../components/fees/NetworkFeeControl';
+export {
+  NetworkFeeFuelButton,
+  type NetworkFeeFuelButtonProps,
+} from '../components/fees/NetworkFeeFuelButton';

@@ -54,6 +54,9 @@ const REQUIRED_EXPORTS = [
   'boostParentWithCpfp',
   'formatDojakwebFeeRate',
   'enforceBroadcastFeeRateKoinuPerByte',
+  'NetworkFeeControl',
+  'NetworkFeeFuelButton',
+  'resolveRequestedOrPreferredFeeRateKoinuPerByte',
 ];
 
 if (!fs.existsSync(distIndex)) {
