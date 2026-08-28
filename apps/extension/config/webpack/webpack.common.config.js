@@ -34,6 +34,7 @@ module.exports = function commonConfig(env = {}) {
         '@dojak/core/dx': path.resolve(rootDir, '../../packages/core/src/dx'),
         '@dojak/ui/src': path.resolve(rootDir, '../../packages/ui/src'),
         '@': path.resolve(rootDir, 'src'),
+        '@dojak/biometrics': path.resolve(rootDir, '../../packages/biometrics/src'),
         '@dojak/core': path.resolve(rootDir, '../../packages/core/src'),
         '@dojak/ui': path.resolve(rootDir, '../../packages/ui/src'),
         'react-native$': 'react-native-web',
@@ -66,7 +67,8 @@ module.exports = function commonConfig(env = {}) {
           include: [
             path.resolve(rootDir, 'src'),
             path.resolve(rootDir, '../../packages/core/src'),
-            path.resolve(rootDir, '../../packages/ui/src')
+            path.resolve(rootDir, '../../packages/ui/src'),
+            path.resolve(rootDir, '../../packages/biometrics/src')
           ],
           use: {
             loader: require.resolve('babel-loader'),
