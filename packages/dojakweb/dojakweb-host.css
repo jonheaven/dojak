@@ -1841,6 +1841,141 @@ html[data-theme="light"] .wallet-input::placeholder,
   cursor: not-allowed;
 }
 
+/*
+ * Light chrome for the signing overlay.
+ * NetworkFeeControl already follows DojakwebTheme; without these overrides the
+ * approval shell stayed forced-dark while the fee picker flipped to light.
+ * Prefer .ds-light / data-ds-theme on the panel itself (WalletApprovalPanel).
+ */
+.ds-wallet-approval.ds-light,
+.ds-wallet-approval[data-ds-theme='light'] {
+  background: rgba(250, 249, 246, 0.98);
+  color: #18181b;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__header,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__header,
+.ds-wallet-approval.ds-light .ds-wallet-approval__footer,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__footer {
+  border-color: rgba(24, 24, 27, 0.1);
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__eyebrow,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__eyebrow {
+  color: #a16207;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__title,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__title {
+  color: #0f0e0d;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__desc,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__desc,
+.ds-wallet-approval.ds-light .ds-wallet-approval__hint,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__hint,
+.ds-wallet-approval.ds-light .ds-wallet-approval__section-label,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__section-label,
+.ds-wallet-approval.ds-light .ds-wallet-approval__detail-label,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__detail-label {
+  color: rgba(63, 63, 70, 0.75);
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__details,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__details {
+  border-color: rgba(24, 24, 27, 0.12);
+  background: rgba(24, 24, 27, 0.03);
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__details--psbt,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__details--psbt {
+  border-color: rgba(180, 120, 20, 0.35);
+  background: rgba(212, 160, 23, 0.08);
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__detail-value,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__detail-value {
+  color: #18181b;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__psbt-ok,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__psbt-ok {
+  color: #15803d;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__redflag,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__redflag {
+  border-color: rgba(185, 28, 28, 0.45);
+  background: rgba(254, 226, 226, 0.85);
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__redflag-title,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__redflag-title {
+  color: #991b1b;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__redflag-body,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__redflag-body,
+.ds-wallet-approval.ds-light .ds-wallet-approval__redflag-list,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__redflag-list {
+  color: #7f1d1d;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__psbt-audit--warn .ds-wallet-approval__redflag,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__psbt-audit--warn .ds-wallet-approval__redflag {
+  border-color: rgba(180, 120, 20, 0.5);
+  background: rgba(254, 243, 199, 0.9);
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__psbt-audit--warn .ds-wallet-approval__redflag-title,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__psbt-audit--warn .ds-wallet-approval__redflag-title {
+  color: #92400e;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__psbt-audit--warn .ds-wallet-approval__redflag-body,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__psbt-audit--warn .ds-wallet-approval__redflag-body {
+  color: #78350f;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__unlock,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__unlock {
+  border-color: rgba(180, 120, 20, 0.35);
+  background: rgba(254, 243, 199, 0.55);
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__unlock-title,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__unlock-title {
+  color: #78350f;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__input,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__input {
+  border-color: rgba(24, 24, 27, 0.15);
+  background: #fff;
+  color: #18181b;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__session,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__session {
+  border-color: rgba(4, 120, 87, 0.3);
+  background: rgba(209, 250, 229, 0.65);
+  color: #065f46;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__tx-error,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__tx-error {
+  border-color: rgba(185, 28, 28, 0.35);
+  background: rgba(254, 226, 226, 0.75);
+  color: #991b1b;
+}
+
+.ds-wallet-approval.ds-light .ds-wallet-approval__btn-reject,
+.ds-wallet-approval[data-ds-theme='light'] .ds-wallet-approval__btn-reject {
+  border-color: rgba(24, 24, 27, 0.15);
+  background: rgba(24, 24, 27, 0.04);
+  color: #18181b;
+}
+
 /* PIN numpad — telephone dialpad (no Tailwind grid in wallet bundle) */
 .ds-pin-numpad {
   display: flex;

@@ -12,6 +12,7 @@ import {
 import { walletSecretInputProps } from '../../lib/wallet-secret-input';
 import { createDojakwebSessionSecretStore } from '../../lib/dojakweb-biometric';
 import { NetworkFeeControl } from '../fees/NetworkFeeControl';
+import { useDojakwebTheme } from '../../contexts/DojakwebThemeContext';
 
 /**
  * In-wallet signing modal (extension-style Approve / Reject).
@@ -21,6 +22,8 @@ import { NetworkFeeControl } from '../fees/NetworkFeeControl';
  * Unlock once per tab session — password is not re-prompted until disconnect or tab close.
  */
 export function WalletApprovalPanel() {
+  const { theme } = useDojakwebTheme();
+  const isLight = theme === 'light';
   const pending = useSyncExternalStore(
     walletApprovalStore.subscribe,
     walletApprovalStore.getSnapshot,
@@ -139,7 +142,8 @@ export function WalletApprovalPanel() {
 
   return (
     <div
-      className="ds-wallet-approval"
+      className={isLight ? 'ds-wallet-approval ds-light' : 'ds-wallet-approval'}
+      data-ds-theme={isLight ? 'light' : 'dark'}
       role="dialog"
       aria-modal="true"
       aria-labelledby="wallet-approval-title"
