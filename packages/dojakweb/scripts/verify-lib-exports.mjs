@@ -51,6 +51,9 @@ const REQUIRED_EXPORTS = [
   'dxTweetIntentUrl',
   'parseTweetIdFromInput',
   'buildDxCollectibleHtml',
+  'boostParentWithCpfp',
+  'formatDojakwebFeeRate',
+  'enforceBroadcastFeeRateKoinuPerByte',
 ];
 
 if (!fs.existsSync(distIndex)) {
