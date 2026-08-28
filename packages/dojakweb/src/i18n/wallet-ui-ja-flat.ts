@@ -67,7 +67,7 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
     'api.command.dog（またはトンネル URL）のゲートウェイ。残高・インスクリプションは MyDoge 互換未実装 — チェーン健全性とブロードキャスト用。開発は VITE_COMMAND_DOG_API_URL。',
   'providerModal.electrsLabel': 'Electrs (Esplora)',
   'providerModal.electrsDesc':
-    'electrs.command.dog 経由のローカル electrs-doge。Core tip 到達後のみ。初期インデックス中は MyDoge 既定のまま。',
+    'electrs.command.dog 経由のローカル electrs-doge（UTXO）。tip 到達後のみ。取引履歴・インスクリプションは electrs 準備完了まで MyDoge。',
   'providerModal.selected': '選択中',
   'providerModal.activeUrl': 'アクティブなウォレットデータ URL',
   'providerModal.gearHint': 'ウォレットページの歯車からいつでもプロバイダーを切り替えられます。',
@@ -80,7 +80,7 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
   'providerModal.password': 'パスワード',
   'providerModal.whatControlsTitle': 'ここで制御するもの',
   'providerModal.whatControlsBody':
-    'データプロバイダーは残高・保有・inscription・dune・UTXO 検索を制御します。ブロードキャストモードは署名後のデモトランザクションの送信方法を制御します。',
+    'データプロバイダーは UTXO・残高・保有を制御します。取引履歴は electrs 準備完了まで MyDoge を使います。ブロードキャストは署名後の送信経路です。',
   'providerModal.testConnection': '接続テスト',
   'providerModal.testing': 'テスト中...',
   'providerModal.save': '設定を保存',

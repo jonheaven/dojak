@@ -68,7 +68,7 @@ export const WALLET_UI_EN_FLAT: Record<string, string> = {
     'Gateway at api.command.dog (or your tunnel URL). Balances/inscriptions are not MyDoge-parity yet — use for chain health + broadcast relay; set VITE_COMMAND_DOG_API_URL for dev.',
   'providerModal.electrsLabel': 'Electrs (Esplora)',
   'providerModal.electrsDesc':
-    'Local electrs-doge via electrs.command.dog. Use only after it is at Core tip — factory default stays MyDoge so the wallet keeps working during first index.',
+    'Local electrs-doge for UTXOs via electrs.command.dog — only after tip. Transaction lists and inscriptions stay on MyDoge until electrs history is ready.',
   'providerModal.selected': 'Selected',
   'providerModal.activeUrl': 'Active wallet data URL',
   'providerModal.gearHint': 'Use the gear icon from the wallet page to switch between providers at any time.',
@@ -81,7 +81,7 @@ export const WALLET_UI_EN_FLAT: Record<string, string> = {
   'providerModal.password': 'Password',
   'providerModal.whatControlsTitle': 'What this controls',
   'providerModal.whatControlsBody':
-    'Wallet data provider controls balances, holdings, inscriptions, tokens, and coin lookups. Broadcast mode controls how demo transactions are submitted after your wallet signs them.',
+    'Wallet data provider controls UTXOs / balances / holdings. Transaction history uses MyDoge while electrs is indexing. Broadcast mode controls how signed txs are submitted.',
   'providerModal.testConnection': 'Test Connection',
   'providerModal.testing': 'Testing...',
   'providerModal.save': 'Save Configuration',

@@ -1474,10 +1474,13 @@ export const walletDataApi = {
   },
 
   fetchTransactions: async (address: string, page = 1, pageSize = 10): Promise<DogeTransactionsPage> => {
-    if (isCommandDogWalletDataProvider() || isElectrsWalletDataProvider()) {
-      return { transactions: [], total: 0 };
-    }
-    const base = getWalletProviderBaseUrl();
+    // Tx lists stay on MyDoge until electrs (or dogex) has a tip-ready address history API.
+    // Electrs/commanddog are UTXO / gateway paths — never return an empty stub here.
+    const cfg = getWalletDataProviderConfig();
+    const base =
+      cfg.walletDataProvider === 'electrs' || cfg.walletDataProvider === 'commanddog'
+        ? DEFAULT_MYDOGE_PROVIDER_URL
+        : getWalletProviderBaseUrl();
     const route = `/address/${address}?details=txs&page=${page}&pageSize=${pageSize}`;
     const url = `${base}/wallet/info?route=${encodeURIComponent(route)}`;
     const data = await fetchJson(url);
