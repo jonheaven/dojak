@@ -54,7 +54,7 @@ function task_prepare() {
   // Monorepo-safe preparation: source assets directly from src/bin.
   const raw = gulp.src(['src/qr-scanner.html', 'src/qr-scanner.js'], { allowEmpty: true }).pipe(gulp.dest(`dist/${options.browser}`));
   const optionsPage = gulp.src('src/options.html', { allowEmpty: true }).pipe(gulp.dest(`dist/${options.browser}`));
-  const icons = gulp.src('bin/icons/**/*', { allowEmpty: true }).pipe(gulp.dest(`dist/${options.browser}/icons`));
+  const icons = gulp.src(['bin/icons/**/*', 'src/assets/doge.svg'], { allowEmpty: true }).pipe(gulp.dest(`dist/${options.browser}/icons`));
   const locales = gulp.src('src/_locales/**/*').pipe(gulp.dest(`dist/${options.browser}/_locales`));
   const manifestBase = gulp.src('src/manifest/_base_v3.json').pipe(gulp.dest(`dist/${options.browser}/manifest`));
   const manifestBrowser = gulp.src(`src/manifest/${options.browser}.json`, { allowEmpty: true }).pipe(gulp.dest(`dist/${options.browser}/manifest`));

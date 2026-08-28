@@ -6,7 +6,7 @@ import eventBus from '@dojak/core/eventBus';
 import { Message } from '@dojak/core/utils';
 import { openExtensionInTab } from '@dojak/ui/features/browser/tabs';
 
-import { phishingController, providerController, walletController } from './controller';
+import { dxController, phishingController, providerController, walletController } from './controller';
 import {
   contactBookService,
   keyringService,
@@ -101,6 +101,9 @@ restoreAppState();
 
 // Initialize phishing protection features
 phishingController.init();
+
+// Ð𝕏 — x.com overlay lookups + popup tip/link
+dxController.init();
 
 // for page provider
 browserRuntimeOnConnect((port) => {

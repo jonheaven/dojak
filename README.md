@@ -64,6 +64,8 @@ Build output:
 - unpacked extension: `apps/extension/dist/chrome`
 - packaged zip: `apps/extension/dist/dojak-chrome-mv3-v<version>.zip`
 
+On **x.com** / **twitter.com** the extension injects a Dogecoin tip button on posts and a Ð𝕏 chip on profiles. Clicks open the popped-out wallet: pay a linked handle (dogex `/api/dx` + command.dog `/v1/dx/resolve`) or bind your profile fully in-extension (tweet proof via `/v1/dx/verify-tweet`, compact DX OP_RETURN, broadcast `POST /v1/tx/broadcast`).
+
 ### Mobile (`apps/mobile`)
 
 Expo dev server:

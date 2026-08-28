@@ -14,7 +14,8 @@ module.exports = function commonConfig(env = {}) {
       background: path.resolve(rootDir, '../../packages/core/src/background/index.ts'),
       'content-script': path.resolve(rootDir, 'src/content-script/index.ts'),
       pageProvider: path.resolve(rootDir, 'src/content-script/pageProvider/index.ts'),
-      popup: path.resolve(rootDir, 'src/popup/index.tsx')
+      popup: path.resolve(rootDir, 'src/popup/index.tsx'),
+      'x-overlay': path.resolve(rootDir, 'src/content-script/x-overlay/index.ts')
     },
     output: {
       path: path.resolve(rootDir, `dist/${env.browser || 'chrome'}`),
@@ -30,6 +31,7 @@ module.exports = function commonConfig(env = {}) {
         '@dojak/core/utils': path.resolve(rootDir, '../../packages/core/src/shared/utils'),
         '@dojak/core/constant': path.resolve(rootDir, '../../packages/core/src/shared/constant'),
         '@dojak/core/types': path.resolve(rootDir, '../../packages/core/src/shared/types.ts'),
+        '@dojak/core/dx': path.resolve(rootDir, '../../packages/core/src/dx'),
         '@dojak/ui/src': path.resolve(rootDir, '../../packages/ui/src'),
         '@': path.resolve(rootDir, 'src'),
         '@dojak/core': path.resolve(rootDir, '../../packages/core/src'),
@@ -121,8 +123,8 @@ module.exports = function commonConfig(env = {}) {
             noErrorOnMissing: true
           },
           {
-            from: path.resolve(rootDir, 'src/qr-scanner.js'),
-            to: path.resolve(rootDir, `dist/${env.browser || 'chrome'}/qr-scanner.js`),
+            from: path.resolve(rootDir, 'src/assets/doge.svg'),
+            to: path.resolve(rootDir, `dist/${env.browser || 'chrome'}/icons/doge.svg`),
             noErrorOnMissing: true
           }
         ]

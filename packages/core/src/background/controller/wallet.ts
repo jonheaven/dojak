@@ -66,6 +66,7 @@ import { AddressType, ChainType } from '@unisat/wallet-types';
 import { ContactBookItem } from '../service/contactBook';
 import { ConnectedSite } from '../service/permission';
 import BaseController from './base';
+import { encodeDxCompact } from '../../dx/protocol';
 
 export type AccountAsset = {
   name: string;
@@ -1069,13 +1070,86 @@ export class WalletController extends BaseController {
       throw new Error('Invalid address.');
     }
 
-    // Stub implementation for sendDOGE - needs proper implementation
-    const psbt = bitcoin.Psbt.fromHex(
-      '020000000100000000000000000000000000000000000000000000000000000000000000000000000000ffffffff01000000000000000000000000'
-    );
-    const toSignInputs: ToSignInput[] = [];
+    const sendBtc = (txHelpers as { sendBTC?: Function }).sendBTC;
+    if (typeof sendBtc !== 'function') {
+      throw new Error('Payment builder is not available. Unlock Dojak and try again after updating the extension.');
+    }
+
+    const { psbt, toSignInputs } = await sendBtc({
+      btcUtxos,
+      tos: [{ address: to, satoshis: amount }],
+      networkType,
+      changeAddress: account.address,
+      feeRate,
+      enableRBF,
+      memo,
+      memos
+    });
 
     return this.getSignedResult(psbt, toSignInputs);
+  };
+
+  /**
+   * Sign a payment, then broadcast through command.dog → Core (never public relays).
+   * Used by the Ð𝕏 tip / bind popup.
+   */
+  sendAndBroadcastDOGE = async (params: {
+    to: string;
+    amount: number;
+    feeRate: number;
+    enableRBF?: boolean;
+    memo?: string;
+    memos?: string[];
+  }) => {
+    const signed = await this.sendDOGE({
+      to: params.to,
+      amount: params.amount,
+      feeRate: params.feeRate,
+      enableRBF: params.enableRBF ?? false,
+      memo: params.memo,
+      memos: params.memos
+    });
+    if (!signed?.rawtx || signed.rawtx.length < 20) {
+      throw new Error('Wallet signed an empty transaction. Unlock Dojak and try again.');
+    }
+    const txid = await this.broadcastViaCommandDog(signed.rawtx);
+    return { txid, rawtx: signed.rawtx, fee: signed.fee };
+  };
+
+  broadcastViaCommandDog = async (rawHex: string): Promise<string> => {
+    const hex = rawHex.replace(/\s+/g, '');
+    const res = await fetch('https://api.command.dog/v1/tx/broadcast', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hex })
+    });
+    const text = await res.text();
+    let body: { txid?: string; error?: string; rpc_message?: string } = {};
+    try {
+      body = text ? JSON.parse(text) : {};
+    } catch {
+      /* keep */
+    }
+    if (!res.ok) {
+      throw new Error(body.rpc_message || body.error || `Broadcast failed (HTTP ${res.status})`);
+    }
+    if (!body.txid) throw new Error('Broadcast succeeded without a txid');
+    return body.txid;
+  };
+
+  publishDxRegister = async (params: { handle: string; tweetId: string; feeRate?: number }) => {
+    const payload = encodeDxCompact({ op: 'register', handle: params.handle, tweetId: params.tweetId });
+    const memoHex = payload.toString('hex');
+    const account = preferenceService.getCurrentAccount();
+    if (!account) throw new Error('no current account');
+    const feeRate = params.feeRate && params.feeRate > 0 ? params.feeRate : 2;
+    return this.sendAndBroadcastDOGE({
+      to: account.address,
+      amount: 1_000_000,
+      feeRate,
+      enableRBF: false,
+      memos: [memoHex]
+    });
   };
 
   sendAllDOGE = async ({

@@ -1,75 +1,94 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
-import { storage } from '@dojak/core';
-import { DojakWallet, WalletCoreProvider, WalletTransaction } from '@dojak/ui';
+import { DojakWallet, WalletCoreProvider } from '@dojak/ui';
+import type { DxPendingAction } from '@dojak/core/dx';
+import { DX_PENDING_CHANGED } from '@dojak/core/dx';
 import '@dojak/ui/src/styles/global.less';
 
-const BALANCE_KEY = 'popup-balance';
-const ADDRESS_KEY = 'popup-address';
-const TXS_KEY = 'popup-transactions';
+import { clearPendingAction, getPendingAction } from './dx/api';
+import { DxLinkScreen } from './dx/DxLinkScreen';
+import { DxTipScreen } from './dx/DxTipScreen';
+import { createPopupAdapter } from './walletAdapter';
+import './dx/dx.css';
 
-const fallbackAddress = 'D8n4gQ8S4aQszM4xTq3w9fF6xR9H1skGgT';
+type View = 'wallet' | 'tip' | 'link';
 
-const adapter = {
-  getBalance: async () => {
-    const cached = await storage.get(BALANCE_KEY);
-    return {
-      amount: Number(cached ?? 0),
-      btc_amount: '0',
-      inscription_amount: 0,
-      inscription_btc_amount: '0',
-      pending_amount: 0,
-      pending_btc_amount: '0',
-      transferable_inscription_amount: 0,
-      transferable_inscription_btc_amount: '0',
-      satoshidoge: { amount: '0' },
-      satoshidoge_pending: { amount: '0' }
-    } as any;
-  },
-  getAddress: async () => (await storage.get(ADDRESS_KEY)) ?? fallbackAddress,
-  getUsdRate: async () => 0.12,
-  getTransactions: async () => {
-    const cached = (await storage.get(TXS_KEY)) as WalletTransaction[] | undefined;
-    return cached ?? [];
-  },
-  getConnectedAccounts: async () => [((await storage.get(ADDRESS_KEY)) as string) ?? fallbackAddress],
-  validateAddress: (address: string) => /^D[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(address.trim()),
-  copyText: async (value: string) => {
-    await navigator.clipboard.writeText(value);
-  },
-  sendDogecoin: async ({ amount, to }: { amount: number; to: string }) => {
-    const current = Number((await storage.get(BALANCE_KEY)) ?? 0);
-    const next = Math.max(0, current - amount);
-    await storage.set(BALANCE_KEY, next);
+const adapter = createPopupAdapter();
 
-    const tx = {
-      txid: `popup-${Date.now()}`,
-      amount,
-      direction: 'sent' as const,
-      timestamp: Date.now(),
-      to,
-      status: 'confirmed' as const
+function PopupApp() {
+  const [view, setView] = useState<View>('wallet');
+  const [pending, setPending] = useState<DxPendingAction | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+    void getPendingAction()
+      .then((action) => {
+        if (cancelled) return;
+        setPending(action);
+        if (action?.type === 'tip') setView('tip');
+        else if (action?.type === 'link') setView('link');
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
     };
-    const txs = ((await storage.get(TXS_KEY)) as WalletTransaction[] | undefined) ?? [];
-    await storage.set(TXS_KEY, [tx, ...txs].slice(0, 20));
+    load();
+    const onMsg = (message: { type?: string }) => {
+      if (message?.type === DX_PENDING_CHANGED) load();
+    };
+    chrome.runtime.onMessage.addListener(onMsg);
+    return () => {
+      cancelled = true;
+      chrome.runtime.onMessage.removeListener(onMsg);
+    };
+  }, []);
 
-    return { txid: tx.txid };
-  },
-  logout: async () => {
-    await Promise.all([storage.set(BALANCE_KEY, 0), storage.set(TXS_KEY, [])]);
-  },
-  getVersion: async () => '0.1.0-mvp'
-};
+  const back = async () => {
+    await clearPendingAction().catch(() => undefined);
+    setPending(null);
+    setView('wallet');
+  };
+
+  const body = useMemo(() => {
+    if (!ready) {
+      return (
+        <div className="dx-root">
+          <div className="dx-shell">
+            <p className="dx-kicker">Dojak</p>
+            <h1 className="dx-title">Opening Ð𝕏…</h1>
+          </div>
+        </div>
+      );
+    }
+    if (view === 'tip' && pending) {
+      return <DxTipScreen action={pending} adapter={adapter} onBack={() => void back()} />;
+    }
+    if (view === 'link') {
+      return <DxLinkScreen action={pending} adapter={adapter} onBack={() => void back()} />;
+    }
+    return (
+      <div>
+        <div className="dx-mini">
+          <p className="dx-mini-copy">Ð𝕏 on 𝕏 · tip posts · link your profile</p>
+          <button type="button" className="dx-mini-btn" onClick={() => setView('link')}>
+            Link Ð𝕏
+          </button>
+        </div>
+        <WalletCoreProvider adapter={adapter}>
+          <DojakWallet />
+        </WalletCoreProvider>
+      </div>
+    );
+  }, [ready, view, pending]);
+
+  return <div className="mx-auto w-full max-w-[402px] overflow-y-auto" style={{ maxHeight: 640 }}>{body}</div>;
+}
 
 const root = document.getElementById('root');
 
 if (root) {
-  ReactDOM.createRoot(root).render(
-    <div className="mx-auto w-full max-w-[402px] overflow-y-auto" style={{ maxHeight: 600 }}>
-      <WalletCoreProvider adapter={adapter}>
-        <DojakWallet />
-      </WalletCoreProvider>
-    </div>
-  );
+  ReactDOM.createRoot(root).render(<PopupApp />);
 }

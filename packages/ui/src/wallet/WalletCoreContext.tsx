@@ -6,6 +6,7 @@ export type SendDogecoinRequest = {
   to: string;
   amount: number;
   feeRate?: number;
+  memo?: string;
 };
 
 export type SendDogecoinResult = {
