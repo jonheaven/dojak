@@ -624,10 +624,13 @@ export function buildLaunchCurveEtchScript(params: LaunchCurveEtchScriptParams):
     launchCurve: {
       op: 'launch',
       maxSupply: params.maxSupply,
-      curveType: params.curveType ?? 1n,
+      curveType: params.curveType ?? 4n, // default XYK (constant-product)
       basePrice: params.basePrice,
       slope: params.slope ?? 0n,
-      graduationSupply: params.graduationSupply ?? params.maxSupply,
+      // XYK: raise target in koinu (Starter 42,069 Ð). Linear: token threshold.
+      graduationSupply:
+        params.graduationSupply ??
+        ((params.curveType ?? 4n) === 4n ? 42_069n * 100_000_000n : params.maxSupply),
       creatorFeeBps: params.creatorFeeBps ?? 100n,
       metadata: params.metadata,
       creatorOutput: params.creatorOutput,

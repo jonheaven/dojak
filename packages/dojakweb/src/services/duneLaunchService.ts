@@ -85,8 +85,21 @@ export interface DuneLaunchCurveLaunchParams {
   /** Native Ðune display name. For launchpad tickers, pass the ticker-like name. */
   name: string;
   maxSupply: bigint | string | number;
+  /**
+   * Linear: open unit price (koinu).
+   * XYK (`curveType` 4): initial virtual DOGE reserve (koinu).
+   */
   basePriceKoinu: bigint | string | number;
   slopeKoinu?: bigint | string | number;
+  /**
+   * Wire curve id: 1=linear, 2=exponential, 3=sigmoid, 4=xyk (constant-product).
+   * Default 4 (Pump.fun-style virtual reserves).
+   */
+  curveType?: bigint | string | number;
+  /**
+   * Linear: token supply threshold.
+   * XYK (`curveType` 4): DOGE raise target in koinu (`doge_raised`).
+   */
   graduationSupply?: bigint | string | number;
   creatorFeeBps?: bigint | string | number;
   creatorAddress?: string;
@@ -361,12 +374,17 @@ export async function launchDuneCurve(
   parseSpacedDune(params.name);
   const maxSupply = toBigint(params.maxSupply);
   const basePrice = toBigint(params.basePriceKoinu);
+  const curveType = toBigint(params.curveType, 4n); // default XYK
   const opReturnScript = buildLaunchCurveEtchScript({
     name: params.name,
     maxSupply,
     basePrice,
+    curveType,
     slope: toBigint(params.slopeKoinu, 0n),
-    graduationSupply: toBigint(params.graduationSupply, maxSupply),
+    graduationSupply: toBigint(
+      params.graduationSupply,
+      curveType === 4n ? 42_069n * 100_000_000n : maxSupply,
+    ),
     creatorFeeBps: toBigint(params.creatorFeeBps, 100n),
     divisibility: params.divisibility ?? 0,
     symbol: params.symbol,
