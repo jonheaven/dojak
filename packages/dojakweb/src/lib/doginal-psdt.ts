@@ -250,6 +250,8 @@ function getLocalWifSignerInputIndexes(psbt: bitcoin.Psbt, publicKey: Buffer): n
   const indexes: number[] = [];
   for (let i = 0; i < psbt.inputCount; i++) {
     if (isSellerListingInput(psbt, i)) continue;
+    // Already-finalized co-signer / treasury inputs — do not touch.
+    if (psbt.data.inputs[i]?.finalScriptSig?.length) continue;
     if (psbt.data.inputs[i]?.partialSig?.length) continue;
     const script = prevOutScriptForInput(psbt, i);
     const redeem = psbt.data.inputs[i]?.redeemScript;
