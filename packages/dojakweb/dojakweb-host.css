@@ -1846,9 +1846,13 @@ html[data-theme="light"] .wallet-input::placeholder,
  * NetworkFeeControl already follows DojakwebTheme; without these overrides the
  * approval shell stayed forced-dark while the fee picker flipped to light.
  * Prefer .ds-light / data-ds-theme on the panel itself (WalletApprovalPanel).
+ * Also inherit when the chassis already has .ds-light (host light mode).
  */
 .ds-wallet-approval.ds-light,
-.ds-wallet-approval[data-ds-theme='light'] {
+.ds-wallet-approval[data-ds-theme='light'],
+.ds-wallet-dashboard.ds-light > .ds-wallet-approval,
+.ds-wallet-dashboard[data-ds-theme='light'] > .ds-wallet-approval,
+:is(html[data-theme='light'], html.light) .ds-wallet-dashboard.ds-light > .ds-wallet-approval {
   background: rgba(250, 249, 246, 0.98);
   color: #18181b;
 }

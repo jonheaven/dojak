@@ -14,6 +14,14 @@ import { createDojakwebSessionSecretStore } from '../../lib/dojakweb-biometric';
 import { NetworkFeeControl } from '../fees/NetworkFeeControl';
 import { useDojakwebTheme } from '../../contexts/DojakwebThemeContext';
 
+export type WalletApprovalPanelProps = {
+  /**
+   * Match the wallet chassis (`DojakwebWalletModal` resolved isDark).
+   * When omitted, falls back to DojakwebThemeProvider (host theme / Settings pick).
+   */
+  isDark?: boolean;
+};
+
 /**
  * In-wallet signing modal (extension-style Approve / Reject).
  *
@@ -21,9 +29,11 @@ import { useDojakwebTheme } from '../../contexts/DojakwebThemeContext';
  * Never enters document flow / never pushes the main wallet scroll view.
  * Unlock once per tab session — password is not re-prompted until disconnect or tab close.
  */
-export function WalletApprovalPanel() {
+export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelProps = {}) {
   const { theme } = useDojakwebTheme();
-  const isLight = theme === 'light';
+  // Prefer chassis chrome so the sign sheet cannot stay forced-dark while the
+  // phone shell (and NetworkFeeControl) are already light.
+  const isLight = isDarkProp !== undefined ? !isDarkProp : theme === 'light';
   const pending = useSyncExternalStore(
     walletApprovalStore.subscribe,
     walletApprovalStore.getSnapshot,

@@ -3239,7 +3239,7 @@ export function DojakwebWalletModal({
                     Must stay a direct child of .ds-wallet-dashboard so it covers the chassis
                     without entering the scrollable body or pushing dashboard layout.
                   */}
-                  <WalletApprovalPanel />
+                  <WalletApprovalPanel isDark={isDark} />
                   <DuneSendModal
                     embedded
                     isOpen={duneSendOpen}
