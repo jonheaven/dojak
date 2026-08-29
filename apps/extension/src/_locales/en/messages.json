@@ -1,7 +1,7 @@
 {
   "appName": { "message": "Dojak Wallet" },
   "appDescription": {
-    "message": "Inscribe and store your Doginals in the world's first open-source Dogecoin Chrome wallet!"
+    "message": "Non-custodial Dogecoin wallet: DOGE, DRC-20, Doginals, Dunes, native X tipping, and one-click dApp connect."
   },
   "receive": {
     "message": "Receive"

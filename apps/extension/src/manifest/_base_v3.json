@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Dojak Wallet",
   "version": "0.1.2.0",
-  "description": "Dogecoin wallet with native Ð𝕏 tipping and profile linking on X.com.",
+  "description": "Non-custodial Dogecoin wallet: DOGE, DRC-20, Doginals, Dunes, native X tipping, and one-click dApp connect.",
   "permissions": [
     "storage",
     "tabs",

@@ -1,7 +1,7 @@
 {
-  "appName": { "message": "UniSat Wallet" },
+  "appName": { "message": "Dojak Wallet" },
   "appDescription": {
-    "message": "Создавайте и храните свои надписи в первом в мире Chrome-кошельке для Ordinals с открытым исходным кодом!"
+    "message": "Некастодиальный кошелёк Dogecoin: DOGE, DRC-20, Doginals, Dunes, чаевые в X и подключение dApp в один клик."
   },
   "receive": {
     "message": "Получить"

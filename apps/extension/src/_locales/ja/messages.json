@@ -1,7 +1,7 @@
 {
-  "appName": { "message": "UniSat Wallet" },
+  "appName": { "message": "Dojak Wallet" },
   "appDescription": {
-    "message": "世界初のオープンソースOrdinals ChromeウォレットでインスクリプションをInscribeして保存しましょう！"
+    "message": "セルフカストディのDogecoinウォレット。DOGE、DRC-20、Doginals、Dunes、Xチップ、ワンクリックdApp接続。"
   },
   "receive": {
     "message": "受信"

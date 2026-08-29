@@ -68,9 +68,10 @@ Dojak's extension is built for Chrome and compatible with Chromium-based browser
 
 3. **Submit to Chrome Web Store**:
    - Upload the ZIP file to the dashboard.
-   - Add details: Name, description, category (Productivity or Finance), icons (128x128 PNG).
+   - Paste listing copy from [chrome-web-store-listing.md](chrome-web-store-listing.md) (name, summary, description, category Finance).
+   - Icons: 128x128 PNG (already in the package).
    - Set visibility: Public.
-   - Provide privacy policy URL.
+   - Provide a **public** privacy policy URL (HTTPS). The in-extension Privacy screen does not satisfy Chrome.
    - Submit for review.
 
 4. **Review Process**:

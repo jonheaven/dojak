@@ -1,7 +1,7 @@
 {
-  "appName": { "message": "UniSat Wallet" },
+  "appName": { "message": "Dojak Wallet" },
   "appDescription": {
-    "message": "Inscrivez et stockez vos inscriptions dans le premier portefeuille Chrome open-source au monde pour les Ordinals !"
+    "message": "Portefeuille Dogecoin non-custodial : DOGE, DRC-20, Doginals, Dunes, pourboires sur X et connexion dApp en un clic."
   },
   "receive": {
     "message": "Recevoir"
