@@ -292,7 +292,8 @@ function launchCurveOpToWire(op: LaunchCurveOp): bigint {
 
 function packLaunchHeader(lc: DuneLaunchCurve): bigint {
   const op = launchCurveOpToWire(lc.op);
-  const curveType = lc.curveType ?? (lc.op === 'launch' ? 1n : 0n);
+  // Launch default XYK (4). Must match buildLaunchCurveEtchScript — never silently fall back to linear.
+  const curveType = lc.curveType ?? (lc.op === 'launch' ? 4n : 0n);
   const fee = lc.creatorFeeBps ?? (lc.op === 'launch' ? 100n : 0n);
   const output = BigInt(lc.output ?? 0);
   const creatorOut = BigInt(lc.creatorOutput ?? (lc.op === 'launch' ? 1 : 0));
