@@ -500,7 +500,7 @@ export default function DRC20TokenScreen() {
                     preset="swap"
                     icon="swap_wrap"
                     onClick={(e) => {
-                      window.open(`https://dojak.dog/wrap?tick=${encodeURIComponent(ticker)}`);
+                      window.open(`https://dogenals.com`);
                     }}
                     iconSize={{
                       width: 12,
@@ -513,7 +513,7 @@ export default function DRC20TokenScreen() {
                     preset="swap"
                     icon="swap_unwrap"
                     onClick={(e) => {
-                      window.open(`https://dojak.dog/wrap?action=unwrap&tick=${encodeURIComponent(ticker)}`);
+                      window.open(`https://dogenals.com`);
                     }}
                     iconSize={{
                       width: 12,

@@ -437,7 +437,7 @@ export const AddressInput = (props: InputProps) => {
             color="yellow"
             text={t('more_details')}
             onClick={() => {
-              window.open('https://docs.dojak.dog/dojak-wallet/name-recognized-and-resolved');
+              window.open('https://dogenals.org');
             }}
           />
           <Text preset="sub" size="sm" text={')'} />

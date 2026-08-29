@@ -1,30 +1,67 @@
-# Chrome Web Store listing (paste-ready)
+# Chrome Web Store — submit today
 
-Copy these fields into the Chrome Web Store developer dashboard. Keep this file in sync when product surfaces change.
+Do these in order. Skipping the privacy URL or answering “no user data” while we inject on all sites is an instant reject.
 
-Chrome limits: **name** 45 characters · **summary** 132 characters · **description** 16,000 characters. Use **plain text** (no HTML). Category: **Finance** (or Productivity if Finance is blocked).
+## 0. Wait for Vercel (privacy URL)
 
----
+After this commit lands on `main`, confirm these load over HTTPS:
 
-## Name
+- https://dojak.app/privacy
+- https://dojak.app/terms
+
+Do **not** submit until `/privacy` is live. Chrome checks the URL.
+
+## 1. Build the zip (operator)
+
+From `dojak/` repo root:
+
+```text
+pnpm --filter @dojak/extension exec gulp build --env=pro --browser=chrome --manifest=mv3 --channel=github
+```
+
+Upload: `apps/extension/dist/dojak-chrome-mv3-v0.1.2.0.zip`
+
+Load unpacked `apps/extension/dist/chrome` once and click through create-wallet / home / send / assets so screenshots are real UI.
+
+## 2. Screenshots (required — 1280×800 PNG or JPEG, no alpha)
+
+Chrome rejects promo banners with giant slogans. Shoot the **actual extension**:
+
+1. Home — DOGE balance (side panel)
+2. Send flow
+3. Doginals / assets list
+4. Connect / approve prompt (`window.dojak`)
+5. x.com with the Ð𝕏 tip control (optional but strong)
+
+Store icon: `apps/extension/bin/icons/icon-128.png`
+
+## 3. Listing fields
+
+**Name**
 
 ```
 Dojak Wallet
 ```
 
-## Summary (132-character max)
+**Summary** (132 max)
 
 ```
 Non-custodial Dogecoin wallet: DOGE, DRC-20, Doginals, Dunes, native X tipping, and one-click dApp connect.
 ```
 
-## Single purpose (reviewer field)
+**Category:** Finance (Productivity if Finance is blocked)
 
-```
-Provide a self-custodial Dogecoin wallet for sending DOGE, managing inscriptions and tokens, tipping on X, and connecting to dApps.
-```
+**Language:** English (United States)
 
-## Description
+**Visibility:** Public
+
+**Homepage:** `https://dojak.app`
+
+**Support:** `https://dojak.app/faq`
+
+**Privacy policy:** `https://dojak.app/privacy`
+
+**Description** (plain text)
 
 ```
 Overview
@@ -66,19 +103,81 @@ Sites detect window.dojak / isDojak, then requestAccounts, signPsbt, sendBitcoin
 Open standards live at dogenals.org. Dojak is the wallet on top.
 
 Learn more: https://dojak.app
+Privacy: https://dojak.app/privacy
+Terms: https://dojak.app/terms
 Docs: https://dogenals.org
 FAQ: https://dojak.app/faq
 ```
 
-## Dashboard extras
+## 4. Single purpose (paste)
 
-| Field | Value |
+```
+Provide a self-custodial Dogecoin wallet: send and receive DOGE, manage Doginals/DRC-20/Dunes, tip on X via Ð𝕏, and let sites connect through window.dojak with an explicit user approval for every signature. Keys stay encrypted on-device.
+```
+
+## 5. Permission justifications (paste each)
+
+**storage**
+Store the encrypted vault, account labels, connected-site permissions, and preferences locally. Keys never leave the device.
+
+**tabs**
+Know the active tab so dApp Connect and the X.com Ð𝕏 overlay can open the correct approval UI.
+
+**notifications**
+Optional transaction / approval alerts while the wallet is in the background.
+
+**scripting**
+Inject the page provider (`window.dojak`) on the active site after the user installs a wallet, same as other browser wallets.
+
+**windows**
+Open the approval / side-panel UI for connect, send, and sign prompts.
+
+**sidePanel**
+Primary wallet UI in Chrome’s side panel so the user can sign without leaving the page.
+
+**host_permissions: `<all_urls>`**
+(1) Inject `window.dojak` on whichever dApp the user opens so Connect works without an allowlist of every Dogecoin site. (2) User-configurable indexer/RPC endpoints. (3) x.com/twitter.com overlay for Ð𝕏 tips. We do not scrape the web for ads or sell browsing history. Details: https://dojak.app/privacy
+
+## 6. Privacy practices form — answers that match the code
+
+Say **Yes, this extension collects or uses user data.** (Content scripts on sites + chain API calls. Saying No here is a reject.)
+
+| Category | Answer |
 | --- | --- |
-| Category | Finance |
-| Language | English (United States) |
-| Visibility | Public |
-| Privacy policy URL | Public HTTPS page (required). In-extension Privacy screen is not enough. |
-| Support URL | https://dojak.app/faq |
-| Homepage | https://dojak.app |
+| Personally identifiable information | Not collected (no accounts, names, or emails) |
+| Health | No |
+| Financial and payment | Yes — cryptocurrency addresses and tx data handled locally; broadcasts go to Dogecoin via command.dog. No bank/card data collected by Dojak |
+| Authentication | No (unlock password encrypts local vault only; never sent to us) |
+| Personal communications | No |
+| Location | No |
+| Web history | Disclose: provider inject on visited sites for Connect; no history sold or used for ads |
+| User activity | Local preferences / connected sites only |
+| Website content | Yes — used only to offer Connect / Ð𝕏 tip UI and approval prompts the user starts |
 
-Do **not** put changelog bullets, competitor names, or “open source” claims in the listing. Dojak the product is proprietary; Dogenals standards at dogenals.org are the open layer.
+**Why is data used?** To provide the wallet’s primary features (balances, send, dApp connect, Ð𝕏).
+
+**Sold to third parties?** No
+
+**Used for creditworthiness?** No
+
+**Remote code?** No. All JS is bundled in the zip. Minification only.
+
+## 7. Review notes (optional box)
+
+```
+Dojak Wallet is a non-custodial Dogecoin wallet (MV3). Seed/keys are encrypted in chrome.storage and never sent to our servers.
+
+<all_urls> + a content script are required to inject window.dojak on dApps the user visits (industry-standard wallet provider) and to add Ð𝕏 tip UI on x.com / twitter.com. We do not monetize browsing data.
+
+Broadcast and index traffic goes to command.dog / dogex (Dogecoin L1). Privacy policy: https://dojak.app/privacy
+Terms: https://dojak.app/terms
+Support: https://dojak.app/faq
+Source/product: https://github.com/jonheaven/dojak
+```
+
+## Do not
+
+- Claim the product is open source (Dogenals spec is; Dojak is not)
+- Put competitor names in the listing
+- Answer “no user data” on the privacy form
+- Submit before https://dojak.app/privacy returns 200

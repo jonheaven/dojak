@@ -653,6 +653,16 @@ export default function HomePage() {
                   FAQ
                 </Link>
               </li>
+              <li>
+                <Link href="/privacy" className="hover:text-[#D4A017]">
+                  Privacy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="hover:text-[#D4A017]">
+                  Terms
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
@@ -688,7 +698,16 @@ export default function HomePage() {
         </div>
         <div className="border-t border-zinc-800">
           <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-3 px-4 py-6 text-xs text-zinc-500 sm:flex-row sm:items-center">
-            <span>© {new Date().getFullYear()} Dojak · Privacy-respecting · Self-custodial</span>
+            <span>
+              © {new Date().getFullYear()} Dojak ·{' '}
+              <Link href="/privacy" className="hover:text-[#D4A017]">
+                Privacy
+              </Link>{' '}
+              ·{' '}
+              <Link href="/terms" className="hover:text-[#D4A017]">
+                Terms
+              </Link>
+            </span>
             <span className="font-serif italic text-zinc-400">Built for the shibes.</span>
           </div>
         </div>

@@ -66,7 +66,7 @@ const PhishingScreen = () => {
         {/* Actions */}
         <div className="phishing-actions">
           <a
-            href="https://github.com/dojak-wallet/phishing-detect/issues/new"
+            href="https://github.com/jonheaven/dojak/issues/new"
             target="_blank"
             rel="noopener noreferrer"
             className="phishing-report-link"

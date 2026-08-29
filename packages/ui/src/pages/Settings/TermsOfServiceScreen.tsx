@@ -17,7 +17,7 @@ export default function TermsOfServiceScreen() {
         <div style={{ maxWidth: '800px', margin: '0 auto', lineHeight: '1.6' }}>
           <Text text="Dojak Wallet - Terms of Service" preset="title-bold" size="lg" style={{ marginBottom: spacing.medium }} />
           
-          <Text text="Last Updated: March 4, 2026" preset="sub" style={{ marginBottom: spacing.large }} />
+          <Text text="Last Updated: August 28, 2026" preset="sub" style={{ marginBottom: spacing.large }} />
 
           <div style={{ marginBottom: spacing.large }}>
             <Text text="1. Acceptance of Terms" preset="bold" size="md" style={{ marginBottom: spacing.small }} />
@@ -113,7 +113,7 @@ export default function TermsOfServiceScreen() {
           <div style={{ marginBottom: spacing.large }}>
             <Text text="10. Contact" preset="bold" size="md" style={{ marginBottom: spacing.small }} />
             <Text 
-              text="For questions about these terms, please contact the Dojak development team through our official GitHub repository."
+              text="For questions about these terms, use github.com/jonheaven/dojak or dojak.app/terms."
               style={{ marginBottom: spacing.medium }}
             />
           </div>

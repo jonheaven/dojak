@@ -17,7 +17,7 @@ export default function PrivacyPolicyScreen() {
         <div style={{ maxWidth: '800px', margin: '0 auto', lineHeight: '1.6' }}>
           <Text text="Dojak Wallet - Privacy Policy" preset="title-bold" size="lg" style={{ marginBottom: spacing.medium }} />
           
-          <Text text="Last Updated: March 4, 2026" preset="sub" style={{ marginBottom: spacing.large }} />
+          <Text text="Last Updated: August 28, 2026" preset="sub" style={{ marginBottom: spacing.large }} />
 
           <div style={{ marginBottom: spacing.large }}>
             <Text text="1. Overview" preset="bold" size="md" style={{ marginBottom: spacing.small }} />
@@ -50,6 +50,7 @@ export default function PrivacyPolicyScreen() {
             <ul style={{ marginLeft: spacing.medium, marginBottom: spacing.medium }}>
               <li><Text text="Local Storage: Your encrypted wallet data, preferences, and settings are stored only on your device" /></li>
               <li><Text text="Network Requests: When you use the wallet, your IP address may be visible to blockchain API providers we connect to" /></li>
+              <li><Text text="Website provider: a page script (window.dojak) is injected so dApps can request connect/sign — we do not sell browsing history" /></li>
               <li><Text text="No Analytics: We do not use analytics or tracking services" /></li>
               <li><Text text="No Personal Information: We do not collect names, emails, or personal identification" /></li>
             </ul>
@@ -62,9 +63,9 @@ export default function PrivacyPolicyScreen() {
               style={{ marginBottom: spacing.small }}
             />
             <ul style={{ marginLeft: spacing.medium, marginBottom: spacing.medium }}>
-              <li><Text text="Blockchain APIs (Tatum, local RPC, Dojak API) to fetch balance and transaction data" /></li>
-              <li><Text text="Indexer services for Doginals, DRC-20, and Dunes token information" /></li>
-              <li><Text text="DNS resolver services for .doge names" /></li>
+              <li><Text text="command.dog and dogex indexers for balances, Doginals, DRC-20, Dunes, and broadcast" /></li>
+              <li><Text text="Ð𝕏 resolve/verify when you tip or link a profile on X" /></li>
+              <li><Text text="Explorer links you choose to open (explorer.dogenals.com)" /></li>
             </ul>
             <Text 
               text="These services may log your IP address and the addresses you query. Please review their respective privacy policies."
@@ -143,7 +144,7 @@ export default function PrivacyPolicyScreen() {
           <div style={{ marginBottom: spacing.large }}>
             <Text text="12. Contact" preset="bold" size="md" style={{ marginBottom: spacing.small }} />
             <Text 
-              text="For privacy-related questions, please reach out through our official GitHub repository."
+              text="For privacy-related questions, use github.com/jonheaven/dojak or dojak.app/privacy."
               style={{ marginBottom: spacing.medium }}
             />
           </div>

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
-import { DISCORD_URL, GITHUB_URL, TWITTER_URL } from '@dojak/core/constant';
+import { GITHUB_URL, TWITTER_URL } from '@dojak/core/constant';
 import { Column, Content, Footer, Header, Icon, Layout, Row, Text } from '@dojak/ui/components';
 import { NavTabBar } from '@dojak/ui/components/NavTabBar';
 import { SwitchNetworkBar } from '@dojak/ui/components/SwitchNetworkBar';
@@ -45,15 +45,6 @@ export default function SettingsTabScreen() {
           <SettingsList />
 
           <Row justifyCenter gap="xl" mt="lg">
-            <Icon
-              icon="discord"
-              size={fontSizes.iconMiddle}
-              color="textDim"
-              onClick={() => {
-                window.open(DISCORD_URL);
-              }}
-            />
-
             <Icon
               icon="twitter"
               size={fontSizes.iconMiddle}

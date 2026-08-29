@@ -91,7 +91,7 @@ export default function AboutUsScreen() {
                   whiteSpace: 'nowrap',
                   gap: 0
                 }}
-                onClick={() => window.open('https://dojak.dog/extension/update')}
+                onClick={() => window.open('https://dojak.app')}
               >
                 <Icon icon="arrowUp" size={14} />
                 <Text

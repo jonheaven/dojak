@@ -71,7 +71,7 @@ Dojak's extension is built for Chrome and compatible with Chromium-based browser
    - Paste listing copy from [chrome-web-store-listing.md](chrome-web-store-listing.md) (name, summary, description, category Finance).
    - Icons: 128x128 PNG (already in the package).
    - Set visibility: Public.
-   - Provide a **public** privacy policy URL (HTTPS). The in-extension Privacy screen does not satisfy Chrome.
+   - Provide privacy policy URL: **https://dojak.app/privacy** (must be live before you click Submit).
    - Submit for review.
 
 4. **Review Process**:
