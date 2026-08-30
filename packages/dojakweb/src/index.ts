@@ -72,6 +72,15 @@ export {
 } from './lib/dn05';
 export type { PublishDn05Result } from './lib/dn05';
 export {
+  publishDnsOnChain,
+  buildDnsInscriptionJson,
+  normalizeDnsName,
+  isDnsName,
+  DNS_MARKER,
+  DNS_HERO_NAMESPACE,
+} from './lib/dnsPublish';
+export type { PublishDnsResult, DnsRecords as DnsNameRecords } from './lib/dnsPublish';
+export {
   publishDxOnChain,
   encodeDxCompact,
   dxChallengeTweetText,

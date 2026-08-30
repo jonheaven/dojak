@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AtSymbolIcon, CheckBadgeIcon } from '@heroicons/react/24/outline';
+import { AtSymbolIcon, CheckBadgeIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { toast } from 'sonner';
 import { useDojakwebI18n } from '../../contexts/DojakwebLocaleContext';
 import {
@@ -12,6 +12,7 @@ import {
   publishDn05OnChain,
   pubkeyHexFromInput,
 } from '../../lib/dn05';
+import { normalizeDnsName, publishDnsOnChain } from '../../lib/dnsPublish';
 import {
   dxChallengeTweetText,
   dxTweetIntentUrl,
@@ -38,8 +39,10 @@ import {
   fetchDxByHandle,
   fetchN05ByAddress,
   fetchN05ByName,
+  fetchDnsByAddress,
   type DxRegistration,
   type N05Record,
+  type DnsNameRecord,
 } from '../../lib/identity/indexer';
 import { requestDxCardArt, dxCardArtFailureMessage, verifyDxTweet } from '../../lib/identity/commandDog';
 import type { MyDogeInscription } from '../../utils/api';
@@ -85,7 +88,7 @@ function feeForChain(base: number, stages: number): number {
   return Math.ceil(base);
 }
 
-export type WalletIdentityTab = 'dx' | 'n05';
+export type WalletIdentityTab = 'dx' | 'n05' | 'dns';
 
 export type WalletIdentityPanelProps = {
   address: string | null;
@@ -117,6 +120,7 @@ export function WalletIdentityPanel({
 
   const [dxMine, setDxMine] = useState<DxRegistration | null>(null);
   const [n05Mine, setN05Mine] = useState<N05Record | null>(null);
+  const [dnsMine, setDnsMine] = useState<DnsNameRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [handleInput, setHandleInput] = useState(() => (seedDxHandle || '').replace(/^@+/, ''));
@@ -129,6 +133,9 @@ export function WalletIdentityPanel({
   const [n05Pubkey, setN05Pubkey] = useState('');
   const [nameTaken, setNameTaken] = useState<N05Record | null | undefined>(undefined);
   const [lastN05Txid, setLastN05Txid] = useState<string | null>(null);
+  const [dnsLabel, setDnsLabel] = useState('');
+  const [dnsUrl, setDnsUrl] = useState('');
+  const [lastDnsTxid, setLastDnsTxid] = useState<string | null>(null);
 
   const [wantGrok, setWantGrok] = useState(true);
   const [cardArtUrl, setCardArtUrl] = useState<string | null>(null);
@@ -156,13 +163,19 @@ export function WalletIdentityPanel({
     if (!address) {
       setDxMine(null);
       setN05Mine(null);
+      setDnsMine([]);
       return;
     }
     setLoading(true);
     try {
-      const [dx, n05] = await Promise.all([fetchDxByAddress(address), fetchN05ByAddress(address)]);
+      const [dx, n05, dns] = await Promise.all([
+        fetchDxByAddress(address),
+        fetchN05ByAddress(address),
+        fetchDnsByAddress(address),
+      ]);
       setDxMine(dx);
       setN05Mine(n05);
+      setDnsMine(dns);
     } finally {
       setLoading(false);
     }
@@ -433,13 +446,46 @@ export function WalletIdentityPanel({
     }
   }
 
+  async function claimDns() {
+    if (!canSign || !address || !privateKeyWif) {
+      setErr(t('modal.identity.needBrowser'));
+      return;
+    }
+    const name = normalizeDnsName(dnsLabel);
+    if (!name) {
+      setErr('Need a valid name (jon.doge)');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const result = await publishDnsOnChain({
+        fromAddress: address,
+        privateKeyWIF: privateKeyWif,
+        op: 'register',
+        name,
+        records: {
+          address,
+          url: dnsUrl.trim() || undefined,
+        },
+      });
+      setLastDnsTxid(result.inscriptionId);
+      toast.success(`${name} inscribed`);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-white/10 bg-[#0A0A0A] px-4 py-3 text-xs leading-5 text-white/70">
         {t('modal.identity.blurb')}
       </div>
 
-      <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+      <div className="grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
         <button
           type="button"
           onClick={() => {
@@ -467,6 +513,20 @@ export function WalletIdentityPanel({
         >
           <AtSymbolIcon className="h-4 w-4" aria-hidden />
           ÐN05
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setTab('dns');
+            setErr(null);
+          }}
+          className={cx(
+            'flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-semibold transition',
+            tab === 'dns' ? 'bg-emerald-400/15 text-emerald-100' : 'text-white/55 hover:text-white',
+          )}
+        >
+          <GlobeAltIcon className="h-4 w-4" aria-hidden />
+          DNS
         </button>
       </div>
 
@@ -633,7 +693,7 @@ export function WalletIdentityPanel({
             </>
           )}
         </div>
-      ) : (
+      ) : tab === 'n05' ? (
         <div className="space-y-3">
           <p className="text-sm leading-6 text-[#D4D4D4]">{t('modal.identity.n05Intro')}</p>
           {n05Mine ? (
@@ -691,6 +751,77 @@ export function WalletIdentityPanel({
               {busy ? t('modal.identity.broadcasting') : t('modal.identity.releaseN05')}
             </Btn>
           )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm leading-6 text-[#D4D4D4]">
+            Claim a <span className="font-semibold text-emerald-200">.doge</span> name as a Doginal.
+            Point it at a site. Transfer the inscription to give it away.
+          </p>
+          {dnsMine.length ? (
+            <ul className="space-y-2">
+              {dnsMine.map((n) => (
+                <li
+                  key={n.name}
+                  className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-50"
+                >
+                  <p className="font-semibold">{n.name}</p>
+                  {n.records?.url ? (
+                    <p className="truncate font-mono text-[11px] text-white/55">{n.records.url}</p>
+                  ) : (
+                    <p className="text-[11px] text-white/45">No site yet</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-white/50">No .doge names on this wallet yet.</p>
+          )}
+          <label className="block text-sm text-white">
+            <span className="mb-2 block">Name</span>
+            <div className="flex items-center gap-2">
+              <input
+                value={dnsLabel}
+                onChange={(e) => setDnsLabel(e.target.value)}
+                placeholder="jon"
+                className={INPUT}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                disabled={busy}
+              />
+              <span className="shrink-0 text-xs text-white/45">.doge</span>
+            </div>
+          </label>
+          <label className="block text-sm text-white">
+            <span className="mb-2 block">Site URL (optional)</span>
+            <input
+              value={dnsUrl}
+              onChange={(e) => setDnsUrl(e.target.value)}
+              placeholder="https://"
+              className={INPUT}
+              autoCapitalize="none"
+              disabled={busy}
+            />
+          </label>
+          {lastDnsTxid ? (
+            <p className="break-all font-mono text-[11px] text-white/50">{lastDnsTxid}</p>
+          ) : null}
+          <Btn
+            className={cx('w-full', PRIMARY)}
+            disabled={busy || !canSign || !normalizeDnsName(dnsLabel)}
+            onClick={() => void claimDns()}
+          >
+            {busy ? t('modal.identity.broadcasting') : 'Register name'}
+          </Btn>
+          <a
+            href="https://dogetrix.com/dns"
+            target="_blank"
+            rel="noreferrer"
+            className="block text-center text-xs text-emerald-300/80 hover:text-emerald-200"
+          >
+            Open DNS on dogetrix.com
+          </a>
         </div>
       )}
 

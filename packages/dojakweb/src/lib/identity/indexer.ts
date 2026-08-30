@@ -80,8 +80,37 @@ export async function fetchN05ByName(name: string): Promise<N05Record | null> {
     });
     if (!res.ok) return null;
     const j = (await res.json()) as { linked?: boolean; record?: N05Record | null };
-    return j.linked && j.record ? j.record : null;
+    return j.linked && j.record ? j.record : j.record ?? null;
   } catch {
     return null;
+  }
+}
+
+export type DnsNameRecord = {
+  name: string;
+  namespace?: string;
+  inscriptionId?: string;
+  owner?: string | null;
+  records?: {
+    address?: string | null;
+    url?: string | null;
+    site?: string | null;
+    avatar?: string | null;
+    content?: string | null;
+  };
+};
+
+export async function fetchDnsByAddress(address: string): Promise<DnsNameRecord[]> {
+  const a = address.trim();
+  if (!a) return [];
+  try {
+    const res = await fetch(`${indexerRoot()}/api/dns/address/${encodeURIComponent(a)}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return [];
+    const j = (await res.json()) as { names?: DnsNameRecord[] };
+    return j.names ?? [];
+  } catch {
+    return [];
   }
 }
