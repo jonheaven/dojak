@@ -23,6 +23,12 @@ const ALLOWED_SIGNING_HOSTNAMES = new Set([
   'www.dogenals.net',
   'dogenals.org',
   'www.dogenals.org',
+  'dogecoin.dog',
+  'www.dogecoin.dog',
+  'dogetrix.com',
+  'www.dogetrix.com',
+  'dogex.dog',
+  'www.dogex.dog',
   'command.dog',
   'www.command.dog',
 ]);
@@ -34,6 +40,8 @@ const ALLOWED_SIGNING_HOSTNAME_SUFFIXES = [
   '.dogenals.org',
   '.command.dog',
   '.dogecoin.games',
+  '.dogecoin.dog',
+  '.dogetrix.com',
 ];
 const warnedUnexpectedSigningHostnames = new Set<string>();
 
