@@ -39,6 +39,7 @@ const REQUIRED_EXPORTS = [
   'journalDlockerTx',
   'journalIncineratorTx',
   'createInscriptionIncineratorTransaction',
+  'MAX_INCINERATOR_BATCH',
   'gatedMydogeGetJson',
   'invalidateMydogeUtxoCaches',
   'filterPaymentSpendableUtxos',
