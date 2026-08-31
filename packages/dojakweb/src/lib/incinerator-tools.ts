@@ -1,5 +1,5 @@
 /**
- * ÐIncinerator — spend Doginal carriers into a valued OP_RETURN (ord circulating burn).
+ * BurneÐ — spend Doginal carriers into a valued OP_RETURN (ord circulating burn).
  *
  * Layout (required for satpoint assignment):
  *   vin 0..n-1  inscription UTXOs (postage stays in the burn output)

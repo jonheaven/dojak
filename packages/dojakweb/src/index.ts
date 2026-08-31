@@ -705,7 +705,7 @@ export type {
   TimeLockedTxResult,
 } from './lib/cltv-tools';
 
-// ÐIncinerator — ord circulating burn (valued OP_RETURN)
+// BurneÐ — ord circulating burn (valued OP_RETURN)
 export {
   INCINERATOR_TAG,
   MAX_INCINERATOR_BATCH,

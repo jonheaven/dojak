@@ -59,7 +59,7 @@ export const WALLET_TX_PROTOCOL_LABELS: Record<DojakwebWalletTxProtocol, string>
   dlotto: 'ÐLotto',
   dgames: 'ÐGames',
   dlocker: 'ÐLocker',
-  incinerator: 'ÐIncinerator',
+  incinerator: 'BurneÐ',
   dogepark: 'DogePark',
   dogetag: 'ÐogeTag',
   unknown: 'Unknown',
@@ -114,7 +114,7 @@ export function guessWalletTxOriginLabel(host: string, path: string): string {
   }
   if (h.includes('dogenals')) {
     if (p.includes('/lock')) return 'dogenals · ÐLocker';
-    if (p.includes('/incinerator') || p.includes('/burn')) return 'dogenals · ÐIncinerator';
+    if (p.includes('/incinerator') || p.includes('/burn')) return 'dogenals · BurneÐ';
     if (p.includes('alkane')) return 'dogenals · Ðalkanes';
     if (p.includes('dogepark')) return 'dogenals · DogePark';
     // Protocol (Ðunes / Treats) already has its own chip — don't restamp "dogenals · Ðunes".
@@ -383,7 +383,7 @@ export function journalIncineratorTx(opts: {
     title,
     summary: ids.join(', ') || undefined,
     status: 'broadcasted',
-    originLabel: 'dogenals · ÐIncinerator',
+    originLabel: 'dogenals · BurneÐ',
     metadata: {
       actionLabel: 'Burn',
       inscriptionId: first,
