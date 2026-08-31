@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Chrome, Globe, Smartphone, MonitorSmartphone } from 'lucide-react';
+import { Globe, Puzzle, Smartphone, MonitorSmartphone } from 'lucide-react';
 import { BrowserChipRow, InstallCta } from '../../components/InstallCta';
 import { SiteShell } from '../../components/SiteShell';
 import { WalletPopupMock } from '../../components/WalletPopupMock';
@@ -24,7 +24,7 @@ const surfaces = [
     name: 'Browser Extension',
     badge: 'Live' as const,
     tone: 'live' as const,
-    icon: Chrome,
+    icon: Puzzle,
     body: 'Primary product. Side panel + popup, Safe Spend, Ð𝕏 tips, window.dojak for dApps.',
     href: LINKS.chromeStore,
     cta: 'Chrome Web Store',

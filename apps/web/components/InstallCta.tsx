@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Chrome, Globe, Smartphone } from 'lucide-react';
+import { Globe, Puzzle, Smartphone } from 'lucide-react';
 import { LINKS } from '../lib/site';
 import { CTA } from './site-ui';
 
@@ -89,7 +89,7 @@ export function InstallCta({
 
 export function BrowserChipRow({ className = '' }: { className?: string }) {
   const chips = [
-    { icon: Chrome, label: 'Chrome' },
+    { icon: Puzzle, label: 'Chrome' },
     { icon: Globe, label: 'Brave' },
     { icon: Globe, label: 'Edge' },
     { icon: Smartphone, label: 'Android · iOS' }
