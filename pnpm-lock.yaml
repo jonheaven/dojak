@@ -649,6 +649,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@noble/hashes':
+        specifier: ^1.7.1
+        version: 1.8.0
       '@scure/bip32':
         specifier: ^2.0.1
         version: 2.2.0
@@ -15124,6 +15127,7 @@ snapshots:
 
   '@dojak/core@file:packages/core':
     dependencies:
+      '@noble/hashes': 1.8.0
       '@scure/bip32': 2.2.0
       '@scure/bip39': 2.2.0
       '@unisat/i18n': 1.0.0
