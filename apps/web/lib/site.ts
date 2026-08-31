@@ -40,6 +40,7 @@ export const PROTOCOL_TAGS = [
   'Alkanes',
   'ÐMP',
   'Ð𝕏',
+  'Ðocial',
   'Ðignal',
   'window.dojak'
 ] as const;
@@ -48,7 +49,7 @@ export const HOME_FAQS = [
   {
     question: 'Is Dojak open source?',
     answer:
-      'Dogenals standards at dogenals.org are open and MIT-licensed. Dojak wallet apps are proprietary products implementing those standards — polished UX on an open protocol layer.'
+      'Yes. MIT-licensed at github.com/jonheaven/dojak. Protocol rules stay in the Dogenals spec at dogenals.org so any wallet can interoperate.',
   },
   {
     question: 'Where do my keys live?',

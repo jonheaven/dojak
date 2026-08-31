@@ -244,29 +244,30 @@ export interface SignedIntent {
   payloadHash: string;
 }
 
-export type DmpIntentType = 'listing' | 'bid' | 'settle' | 'cancel';
+export type DmpIntentType = 'list' | 'bid' | 'settle' | 'cancel';
 
 export interface DmpIntentCommonParams {
   address?: string;
+  /** Unix seconds; spec field `ts`. */
+  ts?: number;
   nonce?: number;
 }
 
 export interface DmpListingIntentParams extends DmpIntentCommonParams {
+  inscription_id: string;
   price_koinu: number;
-  psbt_cid: string;
-  expiry_height: number;
+  psdt?: string;
 }
 
 export interface DmpBidIntentParams extends DmpIntentCommonParams {
   listing_id: string;
   price_koinu: number;
-  psbt_cid: string;
-  expiry_height: number;
+  psdt?: string;
 }
 
 export interface DmpSettleIntentParams extends DmpIntentCommonParams {
   listing_id: string;
-  psbt_cid: string;
+  psdt?: string;
   bid_id?: string;
 }
 
@@ -275,7 +276,7 @@ export interface DmpCancelIntentParams extends DmpIntentCommonParams {
 }
 
 export interface DmpIntentParamsMap {
-  listing: DmpListingIntentParams;
+  list: DmpListingIntentParams;
   bid: DmpBidIntentParams;
   settle: DmpSettleIntentParams;
   cancel: DmpCancelIntentParams;
@@ -284,32 +285,31 @@ export interface DmpIntentParamsMap {
 export type DmpIntentParams<T extends DmpIntentType = DmpIntentType> = DmpIntentParamsMap[T];
 
 export interface SignedDmpIntentBase {
-  protocol: 'DMP';
-  version: '1.0';
+  p: 'Ð:MP';
+  op: DmpIntentType;
   seller: string;
-  nonce: number;
+  ts: number;
   signature: string;
 }
 
 export interface SignedDmpListingIntent extends SignedDmpIntentBase {
-  op: 'listing';
-  price_koinu: number;
-  psbt_cid: string;
-  expiry_height: number;
+  op: 'list';
+  inscription_id: string;
+  price: string;
+  psdt?: string;
 }
 
 export interface SignedDmpBidIntent extends SignedDmpIntentBase {
   op: 'bid';
   listing_id: string;
-  price_koinu: number;
-  psbt_cid: string;
-  expiry_height: number;
+  price: string;
+  psdt?: string;
 }
 
 export interface SignedDmpSettleIntent extends SignedDmpIntentBase {
   op: 'settle';
   listing_id: string;
-  psbt_cid: string;
+  psdt?: string;
   bid_id?: string;
 }
 
@@ -319,7 +319,7 @@ export interface SignedDmpCancelIntent extends SignedDmpIntentBase {
 }
 
 export interface SignedDmpIntentMap {
-  listing: SignedDmpListingIntent;
+  list: SignedDmpListingIntent;
   bid: SignedDmpBidIntent;
   settle: SignedDmpSettleIntent;
   cancel: SignedDmpCancelIntent;

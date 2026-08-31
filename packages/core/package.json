@@ -9,6 +9,10 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./dogenals": {
+      "types": "./src/modules/dogenals/index.ts",
+      "default": "./src/modules/dogenals/index.ts"
+    },
     "./wallet-web": {
       "types": "./dist/wallet-web.d.ts",
       "import": "./dist/wallet-web.js",
@@ -19,6 +23,7 @@
     "build:wallet-web": "pnpm exec vite build --config vite.wallet-web.config.ts"
   },
   "dependencies": {
+    "@noble/hashes": "^1.7.1",
     "@scure/bip32": "^2.0.1",
     "@scure/bip39": "^2.0.1",
     "@unisat/i18n": "^1.0.0",

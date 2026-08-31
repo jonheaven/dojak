@@ -26,7 +26,10 @@ export function encodeDogenalsEra2Dxd(kind: string, payload: string): Buffer {
   return Buffer.from(wire, 'utf8');
 }
 
-/** Ðignal / ÐMS / reserved T modules (no stylized-X fallback rule). */
+/**
+ * Legacy Era-2 ASCII modules (`Ð:W` / `Ð:M` / `Ð:T`).
+ * Ðignal's current spec magic is `Ð:DIG` — use `encodeDignalSignal` in `@dojak/core`.
+ */
 export function encodeDogenalsEra2AsciiModule(
   module: 'W' | 'M' | 'T',
   kind: string,

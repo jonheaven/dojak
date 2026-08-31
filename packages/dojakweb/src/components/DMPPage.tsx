@@ -21,25 +21,18 @@
  * PROTOCOL OVERVIEW
  * =========================================================================
  *
- * ÐMP uses signed JSON intents that are cryptographically verifiable.
- * Each intent contains:
- *   - protocol: "DMP"
- *   - version: "1.0"
- *   - op: operation type (listing, bid, settle, cancel)
- *   - seller: Dogecoin address
- *   - operation-specific parameters
- *   - nonce: timestamp for uniqueness
- *   - signature: ECDSA signature of canonical JSON
+ * ÐMP uses on-chain JSON envelopes (`p: "Ð:MP"`) plus a seller-signed PSDT fill.
+ * Spec: dogenals/spec/protocols/dmp/spec.md · public: github.com/jonheaven/dmp-spec
+ * Wallet signing here produces that envelope (op: list | bid | settle | cancel).
  *
  * =========================================================================
  * INTEGRATION GUIDE
  * =========================================================================
  *
  * For marketplace developers:
- *   1. Use signDMPIntent() from the wallet context
- *   2. Validate signatures server-side using canonical JSON
- *   3. Construct PSBTs from the provided psbt_cid
- *   4. Broadcast transactions when intents are matched
+ *   1. Use signDMPIntent() from the wallet context (emits p:"Ð:MP")
+ *   2. Inscribe the envelope; attach seller-signed PSDT as `psdt`
+ *   3. Buyers complete the PSDT and broadcast via command.dog → Core
  */
 
 import React, { useState } from 'react';
@@ -57,9 +50,7 @@ import { toast } from 'sonner';
 
 const SAMPLE_LISTING_ID = `${'a'.repeat(64)}i0`;
 const SAMPLE_BID_ID = `${'b'.repeat(64)}i0`;
-const SAMPLE_LISTING_PSBT_CID = 'ipfs://QmMarketplaceDemoListingPsbt';
-const SAMPLE_BID_PSBT_CID = 'ipfs://QmMarketplaceDemoBidPsbt';
-const SAMPLE_SETTLEMENT_PSBT_CID = 'ipfs://QmMarketplaceDemoSettlementPsbt';
+const SAMPLE_PSDT = 'cHNidP8BAH0CAAAAAdemoPSDT';
 
 function parsePositiveInteger(rawValue: string, field: string): number {
   const parsed = Number.parseInt(rawValue, 10);
@@ -136,8 +127,7 @@ export function DMPPage() {
   const { connected, address, signDMPIntent, walletType } = useUnifiedWallet();
 
   const [priceKoinu, setPriceKoinu] = useState('4206900000');
-  const [expiryHeight, setExpiryHeight] = useState('5000000');
-  const [activeAction, setActiveAction] = useState<'listing' | 'bid' | 'settle' | 'cancel' | null>(null);
+  const [activeAction, setActiveAction] = useState<'list' | 'bid' | 'settle' | 'cancel' | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
 
   const walletLabel =
@@ -157,7 +147,7 @@ export function DMPPage() {
               ? 'Dogewatch'
             : null;
 
-  const handleSignIntent = async (intentType: 'listing' | 'bid' | 'settle' | 'cancel') => {
+  const handleSignIntent = async (intentType: 'list' | 'bid' | 'settle' | 'cancel') => {
     if (!connected || !address) {
       toast.error('Connect your wallet first');
       return;
@@ -168,26 +158,25 @@ export function DMPPage() {
       let signedIntent;
 
       switch (intentType) {
-        case 'listing':
-          signedIntent = await signDMPIntent('listing', {
-            price_koinu: parsePositiveInteger(priceKoinu, 'price_koinu'),
-            psbt_cid: SAMPLE_LISTING_PSBT_CID,
-            expiry_height: parsePositiveInteger(expiryHeight, 'expiry_height'),
+        case 'list':
+          signedIntent = await signDMPIntent('list', {
+            inscription_id: SAMPLE_LISTING_ID,
+            price_koinu: parsePositiveInteger(priceKoinu, 'price'),
+            psdt: SAMPLE_PSDT,
           });
           break;
         case 'bid':
           signedIntent = await signDMPIntent('bid', {
             listing_id: SAMPLE_LISTING_ID,
-            price_koinu: parsePositiveInteger(priceKoinu, 'price_koinu'),
-            psbt_cid: SAMPLE_BID_PSBT_CID,
-            expiry_height: parsePositiveInteger(expiryHeight, 'expiry_height'),
+            price_koinu: parsePositiveInteger(priceKoinu, 'price'),
+            psdt: SAMPLE_PSDT,
           });
           break;
         case 'settle':
           signedIntent = await signDMPIntent('settle', {
             listing_id: SAMPLE_LISTING_ID,
             bid_id: SAMPLE_BID_ID,
-            psbt_cid: SAMPLE_SETTLEMENT_PSBT_CID,
+            psdt: SAMPLE_PSDT,
           });
           break;
         case 'cancel':
@@ -199,7 +188,7 @@ export function DMPPage() {
 
       const resultJson = JSON.stringify(signedIntent, null, 2);
       setResults(prev => ({ ...prev, [intentType]: resultJson }));
-      toast.success(`${intentType.charAt(0).toUpperCase() + intentType.slice(1)} intent signed successfully`);
+      toast.success(`${intentType} envelope signed`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown signing error';
       toast.error(message);
@@ -330,9 +319,9 @@ export function DMPPage() {
       {connected && (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 space-y-4">
           <h3 className="text-lg font-semibold text-white">Demo Parameters</h3>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-1 gap-4">
             <div>
-              <label className="block text-sm text-zinc-400 mb-2">Price (koinu)</label>
+              <label className="block text-sm text-zinc-400 mb-2">Price (koinu string on-chain)</label>
               <input
                 type="number"
                 min="1"
@@ -340,18 +329,6 @@ export function DMPPage() {
                 value={priceKoinu}
                 onChange={(e) => setPriceKoinu(e.target.value)}
                 placeholder="1000000"
-                className="w-full bg-black border border-zinc-700 rounded-xl px-4 py-3 font-mono text-sm text-zinc-200"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-zinc-400 mb-2">Expiry Height</label>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={expiryHeight}
-                onChange={(e) => setExpiryHeight(e.target.value)}
-                placeholder="5000000"
                 className="w-full bg-black border border-zinc-700 rounded-xl px-4 py-3 font-mono text-sm text-zinc-200"
               />
             </div>
@@ -371,27 +348,26 @@ export function DMPPage() {
           <div className="grid gap-6">
             <OperationExample
               title="Create Listing"
-              description="Sign an intent to list an item for sale on the marketplace."
-              intentType="listing"
+              description="Sign a spec list envelope (p: Ð:MP, op: list) with seller-signed PSDT."
+              intentType="list"
               params={{
-                price_koinu: priceKoinu,
-                psbt_cid: SAMPLE_LISTING_PSBT_CID,
-                expiry_height: expiryHeight,
+                inscription_id: SAMPLE_LISTING_ID,
+                price: priceKoinu,
+                psdt: SAMPLE_PSDT,
               }}
-              result={results.listing || null}
-              onExecute={() => handleSignIntent('listing')}
-              isExecuting={activeAction === 'listing'}
+              result={results.list || null}
+              onExecute={() => handleSignIntent('list')}
+              isExecuting={activeAction === 'list'}
             />
 
             <OperationExample
               title="Place Bid"
-              description="Sign an intent to place a bid on an existing marketplace listing."
+              description="Sign a spec bid envelope against an existing list inscription."
               intentType="bid"
               params={{
                 listing_id: SAMPLE_LISTING_ID,
-                price_koinu: priceKoinu,
-                psbt_cid: SAMPLE_BID_PSBT_CID,
-                expiry_height: expiryHeight,
+                price: priceKoinu,
+                psdt: SAMPLE_PSDT,
               }}
               result={results.bid || null}
               onExecute={() => handleSignIntent('bid')}
@@ -400,12 +376,12 @@ export function DMPPage() {
 
             <OperationExample
               title="Settle Transaction"
-              description="Sign an intent to settle a completed marketplace transaction."
+              description="Sign a spec settle envelope. Chain truth is the PSDT fill + inscription move."
               intentType="settle"
               params={{
                 listing_id: SAMPLE_LISTING_ID,
                 bid_id: SAMPLE_BID_ID,
-                psbt_cid: SAMPLE_SETTLEMENT_PSBT_CID,
+                psdt: SAMPLE_PSDT,
               }}
               result={results.settle || null}
               onExecute={() => handleSignIntent('settle')}
@@ -441,11 +417,12 @@ export function DMPPage() {
             <div className="bg-black/30 rounded-lg p-4">
               <h4 className="text-sm font-semibold text-emerald-400 mb-2">1. Sign ÐMP Intents</h4>
               <pre className="text-xs text-zinc-300 font-mono bg-black/50 p-3 rounded">
-{`const signedIntent = await signDMPIntent('listing', {
-  price_koinu: 4206900000,        // Price in koinu
-  psbt_cid: 'ipfs://Qm...',       // IPFS/Arweave link to PSBT
-  expiry_height: 5000000,         // Dogecoin block height
-});`}
+{`const signed = await signDMPIntent('list', {
+  inscription_id: 'txid…i0',
+  price_koinu: 4206900000,  // emitted as price string
+  psdt: sellerSignedPsdtBase64,
+});
+// Inscribe JSON with p:"Ð:MP"  — spec: dogenals.org / github.com/jonheaven/dmp-spec`}
               </pre>
             </div>
 
@@ -463,13 +440,9 @@ const isValid = verifySignature(canonicalJson, signature, seller);`}
             <div className="bg-black/30 rounded-lg p-4">
               <h4 className="text-sm font-semibold text-emerald-400 mb-2">3. Construct PSBT Transactions</h4>
               <pre className="text-xs text-zinc-300 font-mono bg-black/50 p-3 rounded">
-{`// Fetch PSBT from psbt_cid
-const psbt = await fetchPSBT(intent.psbt_cid);
-
-// Add marketplace fee outputs, validate amounts
-// Combine buyer and seller inputs as needed
-
-const finalTx = psbt.finalizeAllInputs().extractTransaction();`}
+{`// PSDT is the fill contract (SIGHASH_SINGLE|ANYONECANPAY).
+// Buyer adds payment inputs and broadcasts via command.dog → Core.
+const completed = await completeListingPsdt(signed.psdt, buyerUtxos);`}
               </pre>
             </div>
           </div>
@@ -481,10 +454,10 @@ const finalTx = psbt.finalizeAllInputs().extractTransaction();`}
                 <h4 className="text-sm font-semibold text-amber-300">Security Notes</h4>
                 <ul className="text-xs text-amber-200 mt-2 space-y-1">
                   <li>• Always validate addresses match the signing address</li>
-                  <li>• Check expiry heights against current blockchain height</li>
-                  <li>• Verify PSBT CIDs point to valid, unmodified transactions</li>
-                  <li>• Implement rate limiting to prevent spam</li>
-                  <li>• Store signed intents for dispute resolution</li>
+                  <li>• The listed dog MUST stay in the seller UTXO until settle</li>
+                  <li>• Verify PSDT hash when both psdt and psdt_hash are present</li>
+                  <li>• Broadcast through command.dog → Core, never public-relay phantoms</li>
+                  <li>• Store signed envelopes for dispute resolution</li>
                 </ul>
               </div>
             </div>
@@ -505,13 +478,13 @@ const finalTx = psbt.finalizeAllInputs().extractTransaction();`}
             <div className="bg-black/50 rounded-lg p-4">
               <pre className="text-xs text-zinc-300 font-mono">
 {`{
-  "protocol": "DMP",
-  "version": "1.0",
-  "op": "listing|bid|settle|cancel",
+  "p": "Ð:MP",
+  "op": "list",
+  "inscription_id": "<txid>i0",
+  "price": "4206900000",
   "seller": "D...",
-  "nonce": 1640995200000,
-  "signature": "3045...",
-  // Operation-specific fields...
+  "psdt": "cHNidP8…",
+  "ts": 1700001000
 }`}
               </pre>
             </div>
@@ -519,37 +492,36 @@ const finalTx = psbt.finalizeAllInputs().extractTransaction();`}
 
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <h4 className="text-sm font-semibold text-white mb-2">Listing Intent</h4>
+              <h4 className="text-sm font-semibold text-white mb-2">list</h4>
               <div className="text-xs text-zinc-300 space-y-1">
-                <div><strong>price_koinu:</strong> Sale price in koinu</div>
-                <div><strong>psbt_cid:</strong> IPFS/Arweave link to PSBT</div>
-                <div><strong>expiry_height:</strong> Dogecoin block height</div>
+                <div><strong>inscription_id:</strong> listed dog</div>
+                <div><strong>price:</strong> koinu decimal string</div>
+                <div><strong>psdt:</strong> seller-signed fill template</div>
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold text-white mb-2">Bid Intent</h4>
+              <h4 className="text-sm font-semibold text-white mb-2">bid</h4>
               <div className="text-xs text-zinc-300 space-y-1">
-                <div><strong>listing_id:</strong> Target listing inscription ID</div>
-                <div><strong>price_koinu:</strong> Bid amount in koinu</div>
-                <div><strong>psbt_cid:</strong> IPFS/Arweave link to PSBT</div>
-                <div><strong>expiry_height:</strong> Dogecoin block height</div>
+                <div><strong>listing_id:</strong> list inscription</div>
+                <div><strong>price:</strong> bid koinu string</div>
+                <div><strong>psdt:</strong> optional bid template</div>
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold text-white mb-2">Settle Intent</h4>
+              <h4 className="text-sm font-semibold text-white mb-2">settle</h4>
               <div className="text-xs text-zinc-300 space-y-1">
-                <div><strong>listing_id:</strong> Listing inscription ID</div>
-                <div><strong>bid_id:</strong> Bid inscription ID (optional)</div>
-                <div><strong>psbt_cid:</strong> Settlement PSBT link</div>
+                <div><strong>listing_id:</strong> list inscription</div>
+                <div><strong>bid_id:</strong> optional bid inscription</div>
+                <div><strong>psdt:</strong> completed fill</div>
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold text-white mb-2">Cancel Intent</h4>
+              <h4 className="text-sm font-semibold text-white mb-2">cancel</h4>
               <div className="text-xs text-zinc-300 space-y-1">
-                <div><strong>listing_id:</strong> Listing to cancel</div>
+                <div><strong>listing_id:</strong> list to cancel</div>
               </div>
             </div>
           </div>

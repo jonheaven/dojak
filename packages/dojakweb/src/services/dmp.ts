@@ -1,10 +1,11 @@
+import { DMP_MARKER } from '@dojak/core/dogenals';
 import type {
   DmpIntentParams,
   DmpIntentType,
   SignedDmpIntent,
 } from '../types/wallet';
 
-export const DMP_PROTOCOL = 'DMP';
+export const DMP_PROTOCOL = DMP_MARKER;
 export const DMP_VERSION = '1.0';
 
 const ALLOWED_SIGNING_HOSTNAMES = new Set([
@@ -101,13 +102,11 @@ function validatePositiveInteger(value: number, field: string): number {
   return value;
 }
 
-function validateCid(value: string): string {
+function validatePsdt(value: string | undefined): string | undefined {
+  if (!value) return undefined;
   const normalized = value.trim();
-  if (normalized.length < 7 || normalized.length > 256) {
-    throw new Error('ÐMP psbt_cid must be between 7 and 256 characters');
-  }
-  if (!normalized.startsWith('ipfs://') && !normalized.startsWith('ar://')) {
-    throw new Error('ÐMP psbt_cid must start with ipfs:// or ar://');
+  if (normalized.length < 8) {
+    throw new Error('ÐMP psdt must be a seller-signed PSDT (base64)');
   }
   return normalized;
 }
@@ -124,8 +123,11 @@ function resolveAddress(requestedAddress: string | undefined, activeAddress: str
   return normalizedRequestedAddress;
 }
 
-function generateNonce(): number {
-  return Date.now();
+function unixTs(params: { ts?: number; nonce?: number }): number {
+  const raw = params.ts ?? params.nonce;
+  if (raw === undefined) return Math.floor(Date.now() / 1000);
+  if (raw > 1_000_000_000_000) return Math.floor(raw / 1000);
+  return validatePositiveInteger(raw, 'ts');
 }
 
 function decodeBase64(value: string): Uint8Array | null {
@@ -201,58 +203,53 @@ function buildUnsignedIntent<T extends DmpIntentType>(
   params: DmpSigningParams<T>
 ): Omit<SignedDmpIntent<T>, 'signature'> {
   const seller = resolveAddress(params.address, params.activeAddress);
-  const nonce = validatePositiveInteger(params.nonce ?? generateNonce(), 'nonce');
+  const ts = unixTs(params);
 
   switch (intentType) {
-    case 'listing': {
-      const listingParams = params as DmpSigningParams<'listing'>;
+    case 'list': {
+      const listingParams = params as DmpSigningParams<'list'>;
       return {
-        protocol: DMP_PROTOCOL,
-        version: DMP_VERSION,
-        op: 'listing',
+        p: DMP_PROTOCOL,
+        op: 'list',
         seller,
-        price_koinu: validatePositiveInteger(listingParams.price_koinu, 'price_koinu'),
-        psbt_cid: validateCid(listingParams.psbt_cid),
-        expiry_height: validatePositiveInteger(listingParams.expiry_height, 'expiry_height'),
-        nonce,
+        inscription_id: validateInscriptionId(listingParams.inscription_id, 'listing_id'),
+        price: String(validatePositiveInteger(listingParams.price_koinu, 'price')),
+        psdt: validatePsdt(listingParams.psdt),
+        ts,
       } as unknown as Omit<SignedDmpIntent<T>, 'signature'>;
     }
     case 'bid': {
       const bidParams = params as DmpSigningParams<'bid'>;
       return {
-        protocol: DMP_PROTOCOL,
-        version: DMP_VERSION,
+        p: DMP_PROTOCOL,
         op: 'bid',
         seller,
         listing_id: validateInscriptionId(bidParams.listing_id, 'listing_id'),
-        price_koinu: validatePositiveInteger(bidParams.price_koinu, 'price_koinu'),
-        psbt_cid: validateCid(bidParams.psbt_cid),
-        expiry_height: validatePositiveInteger(bidParams.expiry_height, 'expiry_height'),
-        nonce,
+        price: String(validatePositiveInteger(bidParams.price_koinu, 'price')),
+        psdt: validatePsdt(bidParams.psdt),
+        ts,
       } as unknown as Omit<SignedDmpIntent<T>, 'signature'>;
     }
     case 'settle': {
       const settleParams = params as DmpSigningParams<'settle'>;
       return {
-        protocol: DMP_PROTOCOL,
-        version: DMP_VERSION,
+        p: DMP_PROTOCOL,
         op: 'settle',
         seller,
         listing_id: validateInscriptionId(settleParams.listing_id, 'listing_id'),
         bid_id: settleParams.bid_id ? validateInscriptionId(settleParams.bid_id, 'bid_id') : undefined,
-        psbt_cid: validateCid(settleParams.psbt_cid),
-        nonce,
+        psdt: validatePsdt(settleParams.psdt),
+        ts,
       } as unknown as Omit<SignedDmpIntent<T>, 'signature'>;
     }
     case 'cancel': {
       const cancelParams = params as DmpSigningParams<'cancel'>;
       return {
-        protocol: DMP_PROTOCOL,
-        version: DMP_VERSION,
+        p: DMP_PROTOCOL,
         op: 'cancel',
         seller,
         listing_id: validateInscriptionId(cancelParams.listing_id, 'listing_id'),
-        nonce,
+        ts,
       } as unknown as Omit<SignedDmpIntent<T>, 'signature'>;
     }
     default:

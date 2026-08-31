@@ -1,10 +1,17 @@
 # Dojakweb (`@dojak/web`)
 
-**Proprietary — first-party modular use only.** Browser-facing wallet UI, providers, and Dogenals-related web flows shared across **our** proprietary dApps (extension, web, demos, and other internal hosts), all speaking the **open** Dogenals standard on-chain. Lives as a **private** workspace package in the **`dojak`** monorepo (`"private": true`); **not** on the public npm registry and **not** for external teams to depend on.
+Embeddable React wallet for Dogecoin / Dogenals. Open source (MIT) in the **[dojak](https://github.com/jonheaven/dojak)** monorepo.
 
-**Public standard:** clone **[dogenals](https://github.com/jonheaven/dogenals)** and work from **`spec/`** (sibling path **`../dogenals/spec`** next to `dojak/` under `dogeco`). Sites **dogenals.com** / **dogenals.org** / **dogenals.net** explain and teach that corpus—**not** this package.
+Normative protocols: **[dogenals/spec](https://github.com/jonheaven/dogenals/tree/main/spec)**. This package encodes, signs, and displays; it is not an indexer.
 
-Third-party wallets and apps should implement the **open spec** and their **own** code—not redistribute Dojakweb.
+Workspace `"private": true` blocks accidental npmjs publishes. Use the Git repo, pnpm workspace, or GitHub Package `@jonheaven/dojak-web`.
+
+```tsx
+import { DojakWalletProvider, ConnectWalletButton, encodeDsocialEngageLike } from '@dojak/web/wallet';
+import '@dojak/web/wallet.css';
+```
+
+Spec matrix: [docs/SPEC.md](../../docs/SPEC.md).
 
 ## Development
 
@@ -14,4 +21,4 @@ From monorepo root:
 pnpm --filter @dojak/web run build:lib
 ```
 
-Internal integration testing uses **[dojakweb-demo](https://github.com/jonheaven/dojakweb-demo)** (sibling clone beside this repo).
+Internal host for UI iteration: sibling **dojakweb-demo** (optional).

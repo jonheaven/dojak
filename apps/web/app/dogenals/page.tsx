@@ -22,9 +22,14 @@ const protocolRows = [
     walletSurface: 'Offer notifications, listing actions, buy/sell UX hooks'
   },
   {
-    name: 'Ðignal',
-    role: 'Encrypted message signaling on Dogecoin',
-    walletSurface: 'Private negotiation and message-center flows'
+    name: 'Ðunes + Treats',
+    role: 'Hero fungible (0xD0) and OP_RETURN companion (p:dt)',
+    walletSurface: 'Etch, mint, send, UTXO protection'
+  },
+  {
+    name: 'Ðocial + Ðignal',
+    role: 'Public social OS (Ð:SOC) and encrypted DMs (Ð:DIG)',
+    walletSurface: 'Binary OP_RETURN encoders + post/message JSON'
   },
   {
     name: 'Ð𝕏 / Ðoge𝕏ID direction',
@@ -49,8 +54,8 @@ export default function DogenalsPage() {
           description={
             <>
               Dogenals references here point to the canonical standards corpus at{' '}
-              <code className="site-code">dogenals.org</code>. Dojak is the first-party wallet product implementation
-              layer built on that open protocol foundation.
+              <code className="site-code">dogenals.org</code>. Dojak is the open-source reference wallet
+              (github.com/jonheaven/dojak) built on that spec.
             </>
           }
         />
@@ -87,10 +92,9 @@ export default function DogenalsPage() {
             </p>
           </article>
           <article className="site-card border-[#D4A017] bg-[#D4A017] p-6 text-zinc-950">
-            <h3 className="text-xl font-bold">Flagship product commitment</h3>
+            <h3 className="text-xl font-bold">Open-source wallet</h3>
             <p className="mt-3 text-sm leading-6 text-zinc-800">
-              Dojak is where the premium UX ships first: cross-platform consistency, faster feature cycles, and
-              community-native product voice for Dogecoin users.
+              MIT source at github.com/jonheaven/dojak. Fork it, audit it, or implement the spec in your own client.
             </p>
           </article>
         </section>

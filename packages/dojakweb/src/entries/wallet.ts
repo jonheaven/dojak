@@ -223,3 +223,22 @@ export {
   NetworkFeeFuelButton,
   type NetworkFeeFuelButtonProps,
 } from '../components/fees/NetworkFeeFuelButton';
+
+/** Dogenals spec encoders (Ðocial / Ðignal / ÐMP / Ð:WOW). Indexing stays in dogex. */
+export {
+  DSOCIAL_MARKER,
+  encodeDsocialEngageLike,
+  encodeDsocialFollow,
+  encodeDsocialSignal,
+  encodeDsocialSignalHex,
+  buildDsocialPostJson,
+  DIGNAL_MARKER,
+  encodeDignalSignal,
+  encodeDignalShortText,
+  DMP_MARKER,
+  buildDmpListEnvelope,
+  WOW_MARKER,
+  buildWowSendJson,
+  DLOTTO_MARKER,
+  isDlottoMarker,
+} from '../lib/dogenals';

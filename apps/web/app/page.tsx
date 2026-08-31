@@ -119,7 +119,7 @@ export default function HomePage() {
             <BrowserChipRow className="!text-zinc-400" />
             <p className="max-w-lg text-sm leading-6 text-zinc-400">
               Keys encrypted on your device. No custodial parking lot. Open standards at dogenals.org —
-              proprietary polish on top.
+              open-source wallet on GitHub.
             </p>
           </div>
 
@@ -293,7 +293,7 @@ export default function HomePage() {
               </li>
               <li className="flex gap-2">
                 <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A017]" />
-                Open standards at dogenals.org · proprietary polished product.
+                Open standards at dogenals.org · MIT wallet on GitHub.
               </li>
               <li className="flex gap-2">
                 <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-[#D4A017]" />

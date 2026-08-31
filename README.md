@@ -1,31 +1,36 @@
-# Dojak Wallet (`dojakwallet`)
+# Dojak Wallet
 
-**Dojak Wallet** is a **proprietary** `pnpm` + **Turbo** monorepo for the Dogecoin wallet product: **browser extension**, **mobile** (Expo), **core**/crypto logic, and the internal **web** module (`packages/dojakweb`). The marketing site at **dojak.app** ships from the same repo.
+**MIT-licensed** Dogecoin wallet: browser extension, mobile (Expo), shared crypto core, and **`@dojak/web`** (embeddable React wallet). Marketing site: [dojak.app](https://dojak.app).
 
-### Open standard (public) vs Dojak (proprietary)
+**Source:** [github.com/jonheaven/dojak](https://github.com/jonheaven/dojak)
 
-- **Dogenals standard (open source):** normative protocols and docs live in the **[dogenals](https://github.com/jonheaven/dogenals)** repo under **`spec/`** — on disk next to this monorepo that is typically **`../dogenals/spec`**. That tree is what indexers, wallets, and apps **outside** Dojak should implement against.
-- **Dojak products (proprietary):** this monorepo, **[dojakweb-demo](https://github.com/jonheaven/dojakweb-demo)**, and **`@dojak/web`** are **not** substitutes for the public spec and are **not** offered as a reusable npm library for others to ship. **`@dojak/web`** is **private modular** code we reuse across **our** proprietary dApps (extension, marketing site, internal demos, other first-party hosts)—all interoperating on-chain via the **open** Dogenals standard. IP stays in our repos; third parties implement **`spec/`** themselves.
+Dojak implements the **[Dogenals](https://github.com/jonheaven/dogenals)** protocol specs (`spec/` — locally `../dogenals/spec`). The spec is the rulebook; this repo is a reference wallet. Indexing stays in [dogex](https://github.com/jonheaven/dogex). Broadcast is [command.dog](https://github.com/jonheaven/command.dog) → Dogecoin Core.
 
-## Architecture overview
+Brand name and logo remain reserved (see [LICENSE](LICENSE)). Code is MIT.
+
+## Spec coverage
+
+See **[docs/SPEC.md](docs/SPEC.md)** for the protocol matrix (Ðunes, Treats, ÐMP, Ðocial, Ðignal, ÐLotto, Ð𝕏, DNS, …). Encoders live in `@dojak/core` (`src/modules/dogenals/`) and are re-exported from `@dojak/web`.
+
+## Architecture
 
 | Layer | Role |
 | --- | --- |
-| **Apps** | Shipped products: extension, mobile client, public web. |
-| **Packages** | Internal shared code: crypto/core, React Native UI, biometrics, and **`@dojak/web`** (`packages/dojakweb`) — proprietary browser wallet web layer, **private** and consumed across **our** dApps (from this monorepo and linked first-party repos), not distributed as a public SDK. |
-| **Backend** | Optional API server (`backend/`), run outside the main Turbo graph. |
+| **Apps** | Extension, mobile, marketing site (`dojak.app`) |
+| **Packages** | `@dojak/core`, `@dojak/web`, `@dojak/ui`, `@dojak/biometrics` |
+| **Backend** | Optional API (`backend/`), outside the default Turbo graph |
 
-**Monorepo vs demo:** product code lives under `packages/*` and `apps/*`. The internal **Vite demo** (**[dojakweb-demo](https://github.com/jonheaven/dojakweb-demo)**) is a sibling clone (`../dojakweb-demo`) used to exercise **`@dojak/web`** via workspace / `file:` links—it is not a distribution template for npm.
+Workspace packages stay `"private": true` so they are not published to npmjs by accident. Consume via this Git repo / pnpm workspace. Optional GitHub Package: `@jonheaven/dojak-web`.
 
 ## Workspace layout
 
 - `apps/extension` — Chrome extension wallet
-- `apps/mobile` — Expo React Native app (Android/iOS)
-- `apps/web` — Next.js App Router marketing site (`dojak.app`)
-- `packages/core` — shared wallet / core logic (`@dojak/core`)
-- `packages/ui` — shared wallet UI components (`@dojak/ui`)
+- `apps/mobile` — Expo React Native (Android/iOS)
+- `apps/web` — Next.js marketing site (`dojak.app`)
+- `packages/core` — shared wallet / Dogenals encoders (`@dojak/core`)
+- `packages/ui` — shared wallet UI (`@dojak/ui`)
 - `packages/biometrics` — biometric unlock (`@dojak/biometrics`)
-- `packages/dojakweb` — **`@dojak/web`** (proprietary browser wallet web module; `private`, not for public registry)
+- `packages/dojakweb` — **`@dojak/web`** embeddable browser wallet
 - `backend` — API server (not in default `turbo` workspaces)
 
 ## Prerequisites
@@ -112,6 +117,14 @@ Run production build locally:
 pnpm --filter web start
 ```
 
+### `@dojak/web` library
+
+```bash
+pnpm --filter @dojak/web run build:lib
+```
+
+Host apps import `DojakWalletProvider` from `@dojak/web/wallet`. Spec encoders (`encodeDsocialEngageLike`, `encodeDignalSignal`, `buildDmpListEnvelope`, …) are on both `@dojak/web` and `@dojak/web/wallet`.
+
 ### Backend (`backend`)
 
 Development:
@@ -141,16 +154,13 @@ pnpm --dir backend start
 
 ## Deploy `apps/web` to Vercel (`dojak.app`)
 
-1. Push repo to GitHub/GitLab/Bitbucket.
+1. Push repo to GitHub.
 2. Import project in Vercel.
 3. Set **Root Directory** to `apps/web`.
-4. Set **Install Command** to:
-   - `pnpm install --frozen-lockfile`
-5. Set **Build Command** to:
-   - `pnpm --filter web build`
+4. Set **Install Command** to `pnpm install --frozen-lockfile`.
+5. Set **Build Command** to `pnpm --filter web build`.
 6. Keep **Output Directory** as `.next`.
 7. Add `dojak.app` (and optional `www.dojak.app`) in Vercel domains.
-8. Configure DNS records at your registrar.
 
 `apps/web/vercel.json` is already configured for the above commands.
 
@@ -210,3 +220,7 @@ pnpm --dir backend start
 - Run backend explicitly:
   - `pnpm --dir backend dev`
   - `pnpm --dir backend build`
+
+## License
+
+[MIT](LICENSE) — brand name and logo reserved.

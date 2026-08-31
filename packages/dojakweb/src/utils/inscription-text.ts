@@ -1,5 +1,7 @@
 /** Helpers for rendering text / JSON Doginals in the wallet UI. */
 
+import { isDlottoMarker } from '@dojak/core/dogenals';
+
 export function normalizeContentType(contentType?: string | null): string {
   return String(contentType || '')
     .split(';')[0]
@@ -173,7 +175,7 @@ export function parseInscriptionText(raw: string): ParsedInscriptionText {
 export function isDlottoInscriptionText(body?: string | null): boolean {
   if (!body) return false;
   const parsed = parseInscriptionText(body);
-  return Boolean(parsed.protocol && /lotto/i.test(parsed.protocol));
+  return Boolean(parsed.protocol && isDlottoMarker(parsed.protocol));
 }
 
 async function fetchTextUrl(url: string, signal?: AbortSignal): Promise<string | null> {

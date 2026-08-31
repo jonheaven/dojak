@@ -93,11 +93,11 @@ export default function SecurityPage() {
           <article className="site-card p-6">
             <div className="mb-3 flex items-center gap-2 text-[#A67C0F]">
               <FileWarning className="h-5 w-5" />
-              <h2 className="text-lg font-bold text-zinc-950">Open standard · proprietary app</h2>
+              <h2 className="text-lg font-bold text-zinc-950">Open standard · open-source wallet</h2>
             </div>
             <p className="text-sm leading-6 text-zinc-600">
-              Protocol rules are public and implementation-neutral. Dojak is the flagship UX product on top —
-              so auditors can compare wallet behavior to the published standard, not a private closed dialect.
+              Protocol rules are public at dogenals.org. Dojak is MIT-licensed at github.com/jonheaven/dojak —
+              auditors can compare wallet bytes to the published spec.
             </p>
           </article>
         </section>

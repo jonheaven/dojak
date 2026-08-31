@@ -1,6 +1,6 @@
 {
   "name": "dojakwallet",
-  "description": "Dojak Wallet Monorepo – Extension + Mobile + Core",
+  "description": "Open-source Dogecoin / Dogenals wallet — extension, mobile, @dojak/web",
   "private": true,
   "packageManager": "pnpm@10.17.0",
   "workspaces": [

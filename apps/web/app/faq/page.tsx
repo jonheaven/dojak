@@ -19,7 +19,7 @@ const sections = [
       },
       {
         q: 'Is Dojak itself the standard?',
-        a: 'No. Dojak is a first-party proprietary wallet product implementation. The standard remains open and implementation-neutral at dogenals.org.'
+        a: 'No. Dojak is the open-source reference wallet. The standard remains implementation-neutral at dogenals.org — any wallet can encode the same envelopes.',
       },
       {
         q: 'Are Dogenals protocols chain-native or bridge-dependent?',
@@ -69,8 +69,8 @@ const sections = [
         a: 'No. The standards are intentionally open so anyone can build. The site positions Dojak as the flagship UX implementation, not the only valid implementation.'
       },
       {
-        q: 'How should users interpret "open standards + proprietary app"?',
-        a: 'The protocol layer is open/public; the product layer (design, integrations, delivery quality) is proprietary. This keeps interoperability open while shipping a polished first-party experience.'
+        q: 'How should users interpret "open standards + open-source wallet"?',
+        a: 'Protocol rules are public MIT specs. Dojak is a public MIT wallet that implements them. Anyone can fork the wallet or write an independent one from the spec.'
       },
       {
         q: 'What is the audience split for content?',

@@ -65,9 +65,9 @@ const publishPkg = {
   name: "@jonheaven/dojak-web",
   version: srcPkg.version,
   description:
-    "Private first-party Dogecoin wallet embed (Dojakweb) for jonheaven dApps. Not for public redistribution.",
+    "Open-source Dogecoin / Dogenals wallet embed. Implements dogenals/spec.",
   type: "module",
-  license: "UNLICENSED",
+  license: "MIT",
   repository: {
     type: "git",
     url: "https://github.com/jonheaven/dojak.git",
@@ -75,7 +75,7 @@ const publishPkg = {
   },
   publishConfig: {
     registry: "https://npm.pkg.github.com",
-    access: "restricted",
+    access: "public",
   },
   main: "./dist/wallet.js",
   module: "./dist/wallet.js",
@@ -142,5 +142,5 @@ import "@dojak/web/wallet.css";
 
 console.log(`[dojak-web] publish root ready → ${outDir}`);
 console.log(
-  `[dojak-web] next: npm publish --access restricted (from .publish-github/)`,
+  `[dojak-web] next: npm publish --access public (from .publish-github/)`,
 );

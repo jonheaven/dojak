@@ -18,7 +18,7 @@ type DemoLandingProps = {
 const valueProps = [
   {
     title: 'First-party wallet UX stack',
-    detail: 'Connect, signing, address state, and wallet management flows built for the Dojak product—not redistributed as a public SDK.',
+    detail: 'Connect, signing, address state, and wallet management — the same stack the extension and storefront use.',
     icon: Layers,
   },
   {
@@ -43,12 +43,12 @@ const faq = [
   {
     question: 'Where is the open Dogenals standard?',
     answer:
-      'Normative protocols live in the public dogenals repo under spec/ (GitHub: jonheaven/dogenals). That is what third parties implement. Dojakweb is proprietary product code built on the standard—not a redistributable library.',
+      'Normative protocols live in dogenals/spec (GitHub: jonheaven/dogenals). Dojak is the open-source reference wallet that encodes those rules — not a second spec.',
   },
   {
     question: 'Is Dojakweb an npm library for other projects?',
     answer:
-      'No. @dojak/web is a private workspace package inside the Dojak monorepo. External teams should read the open spec and ship their own wallet—not install this package.',
+      'Workspace package (private: true so it is not published to npmjs by accident). Clone github.com/jonheaven/dojak or use GitHub Package @jonheaven/dojak-web. The spec remains the interoperability contract.',
   },
   {
     question: 'Can first-party hosts use their own backend/indexer?',
@@ -153,9 +153,9 @@ export function DemoLanding({
               Exercise the Dojak wallet stack.
             </h1>
             <p className="max-w-3xl text-sm leading-7 text-text-secondary sm:text-base dark:text-white/72">
-              This app runs the same private modular <code className="text-xs">@dojak/web</code> package we reuse across our proprietary
-              dApps—local browser wallet, extension adapters, and Ledger flows—while on-chain behavior follows the **open** Dogenals standard
-              (<code className="text-xs">dogenals/spec</code>). Not a redistributable SDK for third parties; they implement the spec in their own codebases.
+              This app runs the same <code className="text-xs">@dojak/web</code> package as the extension and storefront —
+              local browser wallet, extension adapters, and Ledger — encoding the open Dogenals spec
+              (<code className="text-xs">dogenals/spec</code>). Source: github.com/jonheaven/dojak.
             </p>
             <div className="flex flex-wrap gap-3">
               <button

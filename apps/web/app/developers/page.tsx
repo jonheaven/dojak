@@ -65,7 +65,7 @@ export default function DevelopersPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <CTA href={LINKS.githubSpec} label="Dogenals Spec" primary />
               <CTA href="/dogenals" label="Protocol Wall" />
-              <CTA href={LINKS.dogenals} label="dogenals.org" />
+              <CTA href={LINKS.githubWallet} label="Dojak on GitHub" />
             </div>
           </div>
           <BuilderSnippet />
@@ -94,8 +94,8 @@ export default function DevelopersPage() {
           <article className="site-card border-[#D4A017] bg-[#D4A017] p-6 text-zinc-950">
             <h3 className="text-xl font-bold">First-party embed</h3>
             <p className="mt-3 text-sm leading-6 text-zinc-800">
-              Studio apps may embed <code className="rounded bg-black/10 px-1">@dojak/web</code> for in-page vault
-              UX. Third parties should implement against the public spec and detect{' '}
+              Studio apps may embed <code className="rounded bg-black/10 px-1">@dojak/web</code> from the public
+              dojak repo. Third parties can do the same, or implement the spec themselves and detect{' '}
               <code className="rounded bg-black/10 px-1">window.dojak</code> from the extension.
             </p>
           </article>
