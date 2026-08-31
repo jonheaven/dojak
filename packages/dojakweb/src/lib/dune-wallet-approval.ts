@@ -22,7 +22,7 @@ export async function runDuneTxWithWalletApproval<T>(opts: {
   approveLabel: string;
   /** Local Browser Wallet path — receives unlocked session WIF after Approve. */
   runWithLocalWif: (signer: DuneTxSigner) => Promise<T>;
-  /** Extension / PSBT path (MyDoge, Spooky, etc.). */
+  /** Extension / PSBT path (Dojak, Doge Soft). */
   runWithResolvedSigner: (signer: DuneTxSigner) => Promise<T>;
 }): Promise<T> {
   if (!opts.resolved.ok) {

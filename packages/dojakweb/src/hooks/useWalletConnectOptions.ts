@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
-import { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import type { WalletType } from '../types/wallet';
@@ -10,9 +9,7 @@ import { getInjectedDogeSoftProvider } from '../utils/dogesoft-provider';
 
 /** Install / download pages for wallets that are not injected yet. */
 export const WALLET_INSTALL_URLS: Partial<Record<ConnectKind, string>> = {
-  mydoge: 'https://www.mydoge.com/',
   dojak: 'https://github.com/jonheaven/dojak',
-  spookydoge: 'https://spookydoge.com/',
   dogesoft: 'https://dogesoft.io/',
   ledger: 'https://www.ledger.com/',
   dogewatch: 'https://dogewatch.io/',
@@ -45,7 +42,7 @@ export function partitionWalletTiles(tiles: WalletOptionTile[]): {
 
 export type ConnectKind = Extract<
   WalletType,
-  'spookydoge' | 'dogesoft' | 'mydoge' | 'browser' | 'dojak' | 'ledger' | 'dogewatch'
+  'dogesoft' | 'browser' | 'dojak' | 'ledger' | 'dogewatch'
 >;
 
 export type WalletOptionTile = {
@@ -90,12 +87,8 @@ function shortName(type: ConnectKind, t: (key: string) => string): string {
   switch (type) {
     case 'browser':
       return t('wallet.quickPicker.short.browser');
-    case 'mydoge':
-      return t('wallet.quickPicker.short.mydoge');
     case 'dojak':
       return t('wallet.quickPicker.short.dojak');
-    case 'spookydoge':
-      return t('wallet.quickPicker.short.spookydoge');
     case 'dogesoft':
       return t('wallet.quickPicker.short.dogesoft');
     case 'ledger':
@@ -112,7 +105,6 @@ export function useWalletConnectOptions(options?: {
   onConnected?: (type: ConnectKind) => void;
 }): UseWalletConnectOptionsResult {
   const { connect, setActiveWallet, disconnectWallet, availableWallets, walletType } = useUnifiedWallet();
-  const myDogeContext = useMyDogeWallet();
   const { hasWallet } = useBrowserWallet();
   const { t } = useDojakwebI18n();
 
@@ -123,14 +115,6 @@ export function useWalletConnectOptions(options?: {
   const [connectingType, setConnectingType] = useState<ConnectKind | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  const myDoge = myDogeContext?.myDoge || null;
-  const spooky =
-    typeof window !== 'undefined' && (window as any).dogecoin?.isSpookyWallet === true
-      ? (window as any).dogecoin
-      : null;
-  const spookyHint =
-    typeof window !== 'undefined' &&
-    !!((window as any).isSpookyWallet || (window as any).__DOJAKWEB_FLAGS?.isSpookyWallet);
   const dojak = typeof window !== 'undefined' && window.dojak?.isDojak ? window.dojak : null;
   const [dogeSoftReady, setDogeSoftReady] = useState(
     () => typeof window !== 'undefined' && !!getInjectedDogeSoftProvider(),
@@ -190,22 +174,6 @@ export function useWalletConnectOptions(options?: {
         isActive: walletType === 'browser',
       },
       {
-        type: 'mydoge',
-        title: t('wallet.options.mydoge.title'),
-        shortTitle: shortName('mydoge', t),
-        subtitle: myDoge
-          ? t('wallet.options.mydoge.subtitleOk')
-          : t('wallet.options.mydoge.subtitleInstall'),
-        ariaLabel: `${t('wallet.options.mydoge.title')}. ${
-          myDoge ? t('wallet.options.mydoge.subtitleOk') : t('wallet.options.mydoge.subtitleInstall')
-        }`,
-        logo: '/mydoge.webp',
-        available: !!myDoge,
-        connected: connectedTypes.has('mydoge'),
-        isActive: walletType === 'mydoge',
-        installUrl: WALLET_INSTALL_URLS.mydoge,
-      },
-      {
         type: 'dojak',
         title: t('wallet.options.dojak.title'),
         shortTitle: shortName('dojak', t),
@@ -220,27 +188,6 @@ export function useWalletConnectOptions(options?: {
         connected: connectedTypes.has('dojak'),
         isActive: walletType === 'dojak',
         installUrl: WALLET_INSTALL_URLS.dojak,
-      },
-      {
-        type: 'spookydoge',
-        title: t('wallet.options.spookydoge.title'),
-        shortTitle: shortName('spookydoge', t),
-        subtitle: spooky
-          ? t('wallet.options.spookydoge.subtitleOk')
-          : t('wallet.options.spookydoge.subtitleInstall'),
-        ariaLabel:
-          spookyHint && spooky
-            ? `${t('wallet.options.spookydoge.title')}. ${t('wallet.options.spookydoge.preferred')}. ${t('wallet.options.spookydoge.subtitleOk')}`
-            : `${t('wallet.options.spookydoge.title')}. ${
-                spooky
-                  ? t('wallet.options.spookydoge.subtitleOk')
-                  : t('wallet.options.spookydoge.subtitleInstall')
-              }`,
-        logo: '/spookydoge.webp',
-        available: !!spooky,
-        connected: connectedTypes.has('spookydoge'),
-        isActive: walletType === 'spookydoge',
-        installUrl: WALLET_INSTALL_URLS.spookydoge,
       },
       {
         type: 'dogesoft',
@@ -299,10 +246,7 @@ export function useWalletConnectOptions(options?: {
     dojak,
     dogeSoft,
     hasBrowserWallet,
-    myDoge,
     serialPresent,
-    spooky,
-    spookyHint,
     t,
     usbPresent,
     walletType,

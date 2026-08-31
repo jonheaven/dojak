@@ -590,7 +590,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.walletSwitcher.group.localHint': 'このブラウザに保存されたシードから導出した HD アカウント。拡張機能やハードウェアは上のウォレット切り替えから。',
   'modal.walletSwitcher.group.extTitle': '接続中の拡張機能',
   'modal.walletSwitcher.group.extHint':
-    'MyDoge、Spooky Doge、Dojak はそれぞれの API で署名します',
+    'Dojak と Doge Soft はそれぞれの API で署名します',
   'modal.walletSwitcher.group.hwTitle': 'ハードウェアウォレット',
   'modal.walletSwitcher.group.hwHint': 'Ledger などデバイス署名を好む方向け',
   'modal.walletSwitcher.connected': '接続済み',

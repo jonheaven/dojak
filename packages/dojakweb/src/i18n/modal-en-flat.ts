@@ -596,7 +596,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.walletSwitcher.group.localTitle': 'Local Browser Wallets',
   'modal.walletSwitcher.group.localHint': 'HD accounts derived from seeds saved in this browser. Switch wallet above for extensions or hardware.',
   'modal.walletSwitcher.group.extTitle': 'Connected Extensions',
-  'modal.walletSwitcher.group.extHint': 'MyDoge, Spooky Doge, and Dojak sign with their own injected APIs.',
+  'modal.walletSwitcher.group.extHint': 'Dojak and Doge Soft sign with their own injected APIs.',
   'modal.walletSwitcher.group.hwTitle': 'Hardware Wallets',
   'modal.walletSwitcher.group.hwHint': 'Ledger-backed signing for users who prefer a device.',
   'modal.walletSwitcher.connected': 'Connected',

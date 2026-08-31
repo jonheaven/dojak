@@ -39,7 +39,7 @@ Or clone the public GitHub repo and `file:` / submodule.
 
 ## 2. Shell providers
 
-- **`DojakWalletProvider`** (`@dojak/web/wallet`) — **preferred for embed hosts**: Dojak + MyDoge + SpookyDoge drawer. **Dogecoin L1 only.** Also exports spec encoders (Ðocial, Ðignal, ÐMP, Ð:WOW).
+- **`DojakWalletProvider`** (`@dojak/web/wallet`) — **preferred for embed hosts**: Dojak + Doge Soft drawer (plus local browser and hardware). **Dogecoin L1 only.** Also exports spec encoders (Ðocial, Ðignal, ÐMP, Ð:WOW).
 - **`DojakwebProvider`** — full stack (Treats, Dunes, Charms, Nostr, …).
 
 ### Embed import (host dApps)

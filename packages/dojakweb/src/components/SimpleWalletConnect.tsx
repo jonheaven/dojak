@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, LoaderCircle } from 'lucide-react';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
-import { useMyDogeWallet } from '../contexts/useMyDogeWallet';
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { getInjectedDogeSoftProvider } from '../utils/dogesoft-provider';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
@@ -14,7 +13,7 @@ interface SimpleWalletConnectProps {
 }
 
 interface WalletIcon {
-  type: 'spookydoge' | 'dogesoft' | 'mydoge' | 'dojak' | 'browser';
+  type: 'dogesoft' | 'dojak' | 'browser';
   logo?: string;
   detected: boolean;
   name: string;
@@ -22,35 +21,17 @@ interface WalletIcon {
 
 export default function SimpleWalletConnect({ onConnect, onError }: SimpleWalletConnectProps) {
   const { connect } = useUnifiedWallet();
-  const myDogeContext = useMyDogeWallet();
   const { hasWallet } = useBrowserWallet();
 
   const [connectingType, setConnectingType] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [hasBrowserWallet, setHasBrowserWallet] = useState(false);
 
-  const myDoge = myDogeContext?.myDoge || null;
-  const spooky = typeof window !== 'undefined' &&
-    (window as any).dogecoin?.isSpookyWallet === true
-      ? (window as any).dogecoin
-      : null;
   const dojak = typeof window !== 'undefined' && window.dojak?.isDojak ? window.dojak : null;
   const dogeSoft = typeof window !== 'undefined' ? getInjectedDogeSoftProvider() : null;
 
   const walletIcons: WalletIcon[] = useMemo(
     () => [
-      {
-        type: 'mydoge',
-        logo: '/mydoge.webp',
-        detected: !!myDoge,
-        name: 'MyDoge',
-      },
-      {
-        type: 'spookydoge',
-        logo: '/spookydoge.webp',
-        detected: !!spooky,
-        name: 'SpookyDoge',
-      },
       {
         type: 'dogesoft',
         logo: '/dogesoft.png',
@@ -69,7 +50,7 @@ export default function SimpleWalletConnect({ onConnect, onError }: SimpleWallet
         name: 'Browser Wallet',
       },
     ].filter((wallet) => wallet.type === 'browser' || wallet.detected),
-    [myDoge, spooky, dogeSoft, dojak, hasBrowserWallet],
+    [dogeSoft, dojak, hasBrowserWallet],
   );
 
   useEffect(() => {

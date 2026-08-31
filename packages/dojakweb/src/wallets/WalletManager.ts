@@ -1,8 +1,7 @@
 import { WalletAdapter, WalletConfig, type WalletConnection } from './types';
-import { MyDogeAdapter } from './MyDogeAdapter';
 import { DojakAdapter } from './DojakAdapter';
-import { SpookyDogeAdapter } from './SpookyDogeAdapter';
 import { DogeSoftAdapter } from './DogeSoftAdapter';
+import { unsupportedExtensionWalletMessage } from '../types/wallet';
 
 
 export class WalletManager {
@@ -17,22 +16,6 @@ export class WalletManager {
       adapter: DogeSoftAdapter,
       enabled: true,
       priority: 12
-    });
-
-    this.registerWallet({
-      id: 'spookydoge',
-      name: 'Spooky Doge',
-      adapter: SpookyDogeAdapter,
-      enabled: true,
-      priority: 11
-    });
-
-    this.registerWallet({
-      id: 'mydoge',
-      name: 'MyDoge',
-      adapter: MyDogeAdapter,
-      enabled: true,
-      priority: 10
     });
 
     this.registerWallet({
@@ -121,8 +104,11 @@ export class WalletManager {
     return null;
   }
 
-  /** Connect by registered wallet id (e.g. `mydoge`, `dojak`, `spookydoge`, `dogesoft`). */
+  /** Connect by registered wallet id (`dojak` or `dogesoft`). */
   async connect(walletId: string): Promise<WalletConnection> {
+    if (walletId === 'mydoge' || walletId === 'spookydoge') {
+      throw new Error(unsupportedExtensionWalletMessage(walletId));
+    }
     const adapter = this.getWallet(walletId);
     if (!adapter) {
       throw new Error(`Unknown wallet: ${walletId}`);

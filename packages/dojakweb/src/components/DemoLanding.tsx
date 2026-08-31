@@ -23,7 +23,7 @@ const valueProps = [
   },
   {
     title: 'Supports how Dogecoin users already sign',
-    detail: 'Use local encrypted browser wallets, browser extensions (MyDoge / Dojak / Spooky), and Ledger hardware flows in one API.',
+    detail: 'Use local encrypted browser wallets, Dojak and Doge Soft extensions, and Ledger hardware flows in one API.',
     icon: Wallet,
   },
   {
@@ -316,29 +316,27 @@ export function DemoLanding({
         subtitle="High-signal summary of what the app integration currently claims and tests."
       >
         <div className="overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary dark:border-white/10 dark:bg-black/25">
-          <div className="grid grid-cols-[1.3fr_repeat(5,minmax(0,1fr))] gap-px bg-border-primary/30 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary dark:bg-white/5 dark:text-white/55">
+          <div className="grid grid-cols-[1.3fr_repeat(4,minmax(0,1fr))] gap-px bg-border-primary/30 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary dark:bg-white/5 dark:text-white/55">
             <div className="bg-bg-tertiary p-3 dark:bg-black/40">Feature</div>
             <div className="bg-bg-tertiary p-3 dark:bg-black/40">Browser</div>
-            <div className="bg-bg-tertiary p-3 dark:bg-black/40">MyDoge</div>
-            <div className="bg-bg-tertiary p-3 dark:bg-black/40">Spooky</div>
             <div className="bg-bg-tertiary p-3 dark:bg-black/40">Dojak</div>
+            <div className="bg-bg-tertiary p-3 dark:bg-black/40">Doge Soft</div>
             <div className="bg-bg-tertiary p-3 dark:bg-black/40">Ledger</div>
           </div>
           <div className="divide-y divide-border-primary dark:divide-white/5">
             {[
-              { feature: 'Connect / disconnect', browser: 'yes', mydoge: 'yes', spooky: 'yes', dojak: 'yes', ledger: 'yes' },
-              { feature: 'Sign messages', browser: 'yes', mydoge: 'yes', spooky: 'yes', dojak: 'yes', ledger: 'yes' },
-              { feature: 'Sign PSDTs', browser: 'yes', mydoge: 'yes', spooky: 'yes', dojak: 'yes', ledger: 'partial' },
-              { feature: 'PSDT probes', browser: 'yes', mydoge: 'yes', spooky: 'yes', dojak: 'yes', ledger: 'no' },
-              { feature: 'In-browser UTXO tools', browser: 'yes', mydoge: 'yes', spooky: 'yes', dojak: 'yes', ledger: 'yes' },
-              { feature: 'Message / PSDT debug logging', browser: 'yes', mydoge: 'yes', spooky: 'yes', dojak: 'yes', ledger: 'yes' },
+              { feature: 'Connect / disconnect', browser: 'yes', dojak: 'yes', dogesoft: 'yes', ledger: 'yes' },
+              { feature: 'Sign messages', browser: 'yes', dojak: 'yes', dogesoft: 'yes', ledger: 'yes' },
+              { feature: 'Sign PSDTs', browser: 'yes', dojak: 'yes', dogesoft: 'yes', ledger: 'partial' },
+              { feature: 'PSDT probes', browser: 'yes', dojak: 'yes', dogesoft: 'yes', ledger: 'no' },
+              { feature: 'In-browser UTXO tools', browser: 'yes', dojak: 'yes', dogesoft: 'yes', ledger: 'yes' },
+              { feature: 'Message / PSDT debug logging', browser: 'yes', dojak: 'yes', dogesoft: 'yes', ledger: 'yes' },
             ].map((row) => (
-              <div key={row.feature} className="grid grid-cols-[1.3fr_repeat(5,minmax(0,1fr))] gap-px bg-border-primary/20 dark:bg-white/5">
+              <div key={row.feature} className="grid grid-cols-[1.3fr_repeat(4,minmax(0,1fr))] gap-px bg-border-primary/20 dark:bg-white/5">
                 <div className="bg-bg-primary p-3 text-sm text-text-primary dark:bg-black/20 dark:text-white">{row.feature}</div>
                 <div className="bg-bg-primary p-3 text-sm text-text-secondary dark:bg-black/20 dark:text-white/80">{row.browser}</div>
-                <div className="bg-bg-primary p-3 text-sm text-text-secondary dark:bg-black/20 dark:text-white/80">{row.mydoge}</div>
-                <div className="bg-bg-primary p-3 text-sm text-text-secondary dark:bg-black/20 dark:text-white/80">{row.spooky}</div>
                 <div className="bg-bg-primary p-3 text-sm text-text-secondary dark:bg-black/20 dark:text-white/80">{row.dojak}</div>
+                <div className="bg-bg-primary p-3 text-sm text-text-secondary dark:bg-black/20 dark:text-white/80">{row.dogesoft}</div>
                 <div className="bg-bg-primary p-3 text-sm text-text-secondary dark:bg-black/20 dark:text-white/80">{row.ledger}</div>
               </div>
             ))}

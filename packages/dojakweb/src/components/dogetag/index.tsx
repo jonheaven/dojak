@@ -288,7 +288,7 @@ export const DogetagPage: React.FC<{
         </div>
         <h2 className="mb-2 text-base font-bold text-white">Connect your wallet to create</h2>
         <p className="mb-4 text-sm text-zinc-400">
-          Works with your local Dojakweb wallet, MyDoge, SpookyDoge, Dojak, or any extension that supports PSBT signing.
+          Works with your local Dojakweb wallet, Dojak, or Doge Soft.
         </p>
         <button
           type="button"

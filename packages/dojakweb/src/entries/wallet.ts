@@ -1,5 +1,5 @@
 /**
- * @dojak/web/wallet — embeddable Dojak / MyDoge / SpookyDoge drawer for host dApps.
+ * @dojak/web/wallet — embeddable Dojak / Doge Soft drawer for host dApps.
  * Import from `@dojak/web/wallet` (not `.`) to avoid pulling Treats/Dunes/Charms/Nostr/etc.
  */
 export {

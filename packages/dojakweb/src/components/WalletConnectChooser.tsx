@@ -22,7 +22,7 @@ export type WalletConnectChooserProps = {
 };
 
 /**
- * Icon-grid wallet picker: Local Browser, MyDoge, Dojak, SpookyDoge, Doge Soft, Dogewatch, Ledger.
+ * Icon-grid wallet picker: Local Browser, Dojak, Doge Soft, Dogewatch, Ledger.
  * Shared by WalletSelectionModal and the phone-drawer intro.
  */
 export function WalletConnectChooser({

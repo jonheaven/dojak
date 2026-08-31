@@ -94,15 +94,17 @@ export async function myDogeSignPsbt(psbtHex: string): Promise<string> {
 
 export async function myDogeConnect(): Promise<{ connected: boolean; address?: string }> {
   const walletManager = await import('../wallets');
-  try {
-    await walletManager.walletManager.connect('mydoge');
-    const connectedWallet = await walletManager.walletManager.getConnectedWallet();
-    if (connectedWallet) {
-      const address = await connectedWallet.getAddress();
-      return { connected: true, address };
+  for (const id of ['dojak', 'dogesoft'] as const) {
+    try {
+      await walletManager.walletManager.connect(id);
+      const connectedWallet = await walletManager.walletManager.getConnectedWallet();
+      if (connectedWallet) {
+        const address = await connectedWallet.getAddress();
+        return { connected: true, address };
+      }
+    } catch (error) {
+      console.error(`Failed to connect ${id} wallet:`, error);
     }
-  } catch (error) {
-    console.error('Failed to connect MyDoge wallet:', error);
   }
   return { connected: false };
 }

@@ -12,7 +12,7 @@ export type DuneTxSignerResult =
   | { ok: true; signer: DuneTxSigner }
   | { ok: false; message: string };
 
-const PSBT_WALLET_TYPES: WalletType[] = ['mydoge', 'spookydoge', 'dogesoft', 'dojak', 'dogewatch', 'browser'];
+const PSBT_WALLET_TYPES: WalletType[] = ['dogesoft', 'dojak', 'dogewatch', 'browser'];
 
 function hasPsbtSigning(type: WalletType | null): type is WalletType {
   return type !== null && PSBT_WALLET_TYPES.includes(type);
@@ -50,7 +50,7 @@ async function loadBrowserWalletForSigning(
  * Resolve signing for Dune etch / mint / send.
  * - Unlocked in-browser wallet -> local WIF sign (fast path)
  * - Connected in-browser wallet (locked) -> PSBT via signPSBTOnly (unlock prompt)
- * - MyDoge, Dojak ext, SpookyDoge, Dogewatch -> PSBT via signPSBTOnly
+ * - Dojak ext, Doge Soft, Dogewatch -> PSBT via signPSBTOnly
  */
 export async function resolveDuneTxSigner(
   unified: {
@@ -101,7 +101,7 @@ export async function resolveDuneTxSigner(
     return {
       ok: false,
       message:
-        'Ledger cannot sign Dune OP_RETURN PSBTs from the browser yet. Use MyDoge, Dojak, SpookyDoge, or the in-browser Dojak wallet.',
+        'Ledger cannot sign Dune OP_RETURN PSBTs from the browser yet. Use Dojak, Doge Soft, or the in-browser Dojak wallet.',
     };
   }
 
@@ -127,7 +127,7 @@ export async function resolveDuneTxSigner(
   if (!unified.connected || !unified.address) {
     return {
       ok: false,
-      message: 'Connect a wallet (MyDoge, Dojak, SpookyDoge, or in-browser Dojak) before signing.',
+      message: 'Connect a wallet (Dojak, Doge Soft, or in-browser Dojak) before signing.',
     };
   }
 
@@ -141,7 +141,7 @@ export async function resolveDuneTxSigner(
 
   return {
     ok: false,
-    message: 'Connect MyDoge, Dojak, SpookyDoge, or create an in-browser Dojak wallet to etch Dunes.',
+    message: 'Connect Dojak, Doge Soft, or create an in-browser Dojak wallet to etch Dunes.',
   };
 }
 

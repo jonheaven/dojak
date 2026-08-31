@@ -22,7 +22,7 @@ export interface DojakWalletProviderProps {
 }
 
 /**
- * Slim embeddable provider for host dApps: Dogecoin L1 wallet (Dojak + MyDoge + SpookyDoge + browser).
+ * Slim embeddable provider for host dApps: Dogecoin L1 wallet (Dojak + Doge Soft + local browser + hardware).
  */
 export function DojakWalletProvider({
   children,

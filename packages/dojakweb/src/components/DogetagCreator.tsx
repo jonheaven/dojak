@@ -424,7 +424,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
         rawTxHex = signedResult.rawHex;
       } else {
         if (typeof wallet?.signPsbt !== 'function') {
-          throw new Error('Your wallet does not support PSBT signing. Please connect MyDoge, SpookyDoge, Dojak, or another extension wallet.');
+          throw new Error('Your wallet does not support PSBT signing. Please connect Dojak or Doge Soft.');
         }
         const signedPsbt = await wallet.signPsbt(builtPsbt.psbtBase64);
 

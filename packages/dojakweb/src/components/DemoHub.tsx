@@ -138,7 +138,7 @@ export function DemoHub({
   const capabilities: CapabilityCard[] = [
     {
       title: 'Wallet support',
-      description: 'Browser wallet, MyDoge, Dojak, SpookyDoge, and Ledger support with logging-rich adapter paths.',
+      description: 'Browser wallet, Dojak, Doge Soft, and Ledger support with logging-rich adapter paths.',
       accent: 'bg-emerald-500/10 text-emerald-300',
       icon: <WalletIcon className="h-5 w-5" aria-hidden />,
     },

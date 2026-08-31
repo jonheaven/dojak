@@ -380,7 +380,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
     if (!resolved.ok) {
       return setError(
         resolved.message ||
-          'Connect MyDoge, Dojak, SpookyDoge, or your in-browser Dojak wallet first.',
+          'Connect Dojak, Doge Soft, or your in-browser Dojak wallet first.',
       );
     }
     setSigningAddress(resolved.signer.fromAddress);
@@ -699,7 +699,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
               ) : (
                 <Alert>
                   <AlertDescription className="text-xs">
-                    Connect MyDoge, Dojak, SpookyDoge, or your in-browser Dojak wallet to deploy.
+                    Connect Dojak, Doge Soft, or your in-browser Dojak wallet to deploy.
                   </AlertDescription>
                 </Alert>
               )}
