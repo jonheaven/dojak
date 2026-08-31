@@ -1,20 +1,21 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { PageBack, PageHeader } from '../../components/site-ui';
+import { SiteShell } from '../../components/SiteShell';
+import { PageHeader } from '../../components/site-ui';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — Dojak Wallet',
+  title: 'Terms of Service',
   description:
-    'Terms of Service for Dojak Wallet, a non-custodial Dogecoin Chrome extension. You control your keys. Transactions are irreversible.'
+    'Terms of Service for Dojak Wallet, a non-custodial Dogecoin Chrome extension. You control your keys. Transactions are irreversible.',
+  alternates: { canonical: 'https://dojak.app/terms' }
 };
 
 const updated = 'August 28, 2026';
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-white text-zinc-950">
+    <SiteShell>
       <div className="relative mx-auto max-w-3xl px-4 py-14">
-        <PageBack />
         <PageHeader
           eyebrow="Legal"
           title="Terms of Service"
@@ -116,6 +117,6 @@ export default function TermsPage() {
           </section>
         </article>
       </div>
-    </main>
+    </SiteShell>
   );
 }

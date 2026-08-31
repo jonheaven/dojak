@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { CTA, PageBack, PageHeader } from '../../components/site-ui';
+import { SiteShell } from '../../components/SiteShell';
+import { CTA, PageHeader } from '../../components/site-ui';
 
 export const metadata: Metadata = {
-  title: 'Dojak Protocol Wall — Dogenals Flagship Wallet',
+  title: 'Protocol Wall — Dogenals Flagship Wallet',
   description:
-    'Dojak protocol wall: how the flagship wallet maps to open standards at dogenals.org across DMS, DMP, DWhisper, DX, and Dogecoin L1-native flows.'
+    'Dojak protocol wall: how the flagship wallet maps to open standards at dogenals.org across DMS, DMP, DWhisper, DX, and Dogecoin L1-native flows.',
+  alternates: { canonical: 'https://dojak.app/dogenals' }
 };
 
 const protocolRows = [
@@ -38,10 +40,9 @@ const protocolRows = [
 
 export default function DogenalsPage() {
   return (
-    <main className="min-h-screen bg-white text-zinc-950">
+    <SiteShell>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-96 site-grid site-grid-fade" />
       <div className="relative mx-auto max-w-5xl px-4 py-14">
-        <PageBack />
         <PageHeader
           eyebrow="Protocol Wall"
           title="Dojak × Dogenals: flagship wallet map"
@@ -127,10 +128,11 @@ export default function DogenalsPage() {
             >
               Open Dogenals Spec
             </Link>
-            <CTA href="/#download" label="Get Dojak" primary />
+            <CTA href="/download" label="Get Dojak" primary />
+            <CTA href="/developers" label="Developers" />
           </div>
         </section>
       </div>
-    </main>
+    </SiteShell>
   );
 }

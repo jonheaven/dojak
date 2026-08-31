@@ -1,20 +1,21 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { PageBack, PageHeader } from '../../components/site-ui';
+import { SiteShell } from '../../components/SiteShell';
+import { PageHeader } from '../../components/site-ui';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — Dojak Wallet',
+  title: 'Privacy Policy',
   description:
-    'Dojak Wallet privacy policy: non-custodial Dogecoin wallet. Keys stay on your device. What data is handled locally, what third-party APIs see, and how content scripts work.'
+    'Dojak Wallet privacy policy: non-custodial Dogecoin wallet. Keys stay on your device. What data is handled locally, what third-party APIs see, and how content scripts work.',
+  alternates: { canonical: 'https://dojak.app/privacy' }
 };
 
 const updated = 'August 28, 2026';
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-white text-zinc-950">
+    <SiteShell>
       <div className="relative mx-auto max-w-3xl px-4 py-14">
-        <PageBack />
         <PageHeader
           eyebrow="Legal"
           title="Privacy Policy"
@@ -150,6 +151,6 @@ export default function PrivacyPage() {
           </section>
         </article>
       </div>
-    </main>
+    </SiteShell>
   );
 }

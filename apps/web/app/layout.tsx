@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Newsreader, Space_Grotesk } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
+import { HOME_FAQS } from '../lib/site';
 
 const sans = Space_Grotesk({
   subsets: ['latin'],
@@ -24,18 +25,24 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://dojak.app'),
-  title: 'Dojak — Add it. Own it. Browse free.',
+  title: {
+    default: 'Dojak — The Dogecoin Wallet',
+    template: '%s · Dojak'
+  },
   description:
-    'Self-custodial Dogecoin + Dogenals wallet. Install the extension, keep keys on-device, approve every send. Protocol-aware UTXO protection for Doginals. Built on open standards at dogenals.org.',
+    'Self-custodial Dogecoin wallet for Chrome, Brave, Edge, Android, and iOS. DOGE, Doginals, DRC-20, Dunes, Alkanes, Ð𝕏 tips, and window.dojak dApp connect — with protocol-aware UTXO protection.',
   keywords: [
     'Dojak wallet',
     'Dogecoin wallet',
-    'Dogenals',
+    'Dogecoin extension',
     'Doginals wallet',
-    'self-custodial wallet',
-    'DRC-20',
+    'DRC-20 wallet',
+    'Dunes wallet',
+    'self-custodial Dogecoin',
+    'Dogenals',
     'window.dojak',
-    'DOGE wallet'
+    'DOGE Chrome extension',
+    'best Dogecoin wallet'
   ],
   icons: {
     icon: [
@@ -46,9 +53,9 @@ export const metadata: Metadata = {
     apple: [{ url: '/icons/icon-256.png', sizes: '256x256' }]
   },
   openGraph: {
-    title: 'Dojak — The Wallet Doge Deserves',
+    title: 'Dojak — The Dogecoin Wallet Done Right',
     description:
-      'Add it. Own it. Browse free. Protocol-aware Dogecoin wallet for Doginals — keys stay with you.',
+      'Add it. Own it. Browse free. Self-custodial extension & apps for DOGE, Doginals, DRC-20, and the Dogenals stack.',
     url: 'https://dojak.app',
     siteName: 'Dojak',
     images: [
@@ -64,13 +71,15 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Add it. Own it. Browse free. — Dojak',
-    description: 'Self-custodial Dogecoin + Dogenals wallet. Protocol-aware UTXO safety.',
-    images: ['/brand/dojak.png']
+    title: 'Dojak — The Dogecoin Wallet',
+    description: 'Self-custodial Dogecoin + Dogenals wallet. Protocol-aware UTXO safety. Extension · mobile · web.',
+    images: ['/brand/dojak.png'],
+    creator: '@jontype'
   },
   alternates: {
     canonical: 'https://dojak.app'
-  }
+  },
+  category: 'finance'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -80,7 +89,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     name: 'Dojak',
     url: 'https://dojak.app',
     logo: 'https://dojak.app/icons/icon-256.png',
-    sameAs: ['https://github.com/jonheaven/dogenals', 'https://github.com/jonheaven/dojak', 'https://x.com/jontype']
+    sameAs: [
+      'https://github.com/jonheaven/dogenals',
+      'https://github.com/jonheaven/dojak',
+      'https://x.com/jontype'
+    ]
   };
 
   const softwareSchema = {
@@ -88,15 +101,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     '@type': 'SoftwareApplication',
     name: 'Dojak Wallet',
     applicationCategory: 'FinanceApplication',
-    operatingSystem: 'Web, Android, iOS, Browser Extension',
+    operatingSystem: 'Chrome, Brave, Edge, Android, iOS, Web',
     offers: {
       '@type': 'Offer',
       price: '0',
       priceCurrency: 'USD'
     },
     url: 'https://dojak.app',
+    downloadUrl: 'https://dojak.app/download',
     description:
       'Self-custodial Dogecoin wallet with protocol-aware UTXO protection for Doginals / Dogenals. Extension, mobile, and local web wallet.'
+  };
+
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: HOME_FAQS.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer
+      }
+    }))
   };
 
   return (
@@ -111,6 +138,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           id="dojak-software-schema"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+        />
+        <Script
+          id="dojak-faq-schema"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
         {children}
       </body>

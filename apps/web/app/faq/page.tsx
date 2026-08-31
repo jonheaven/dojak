@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { CTA, PageBack, PageHeader } from '../../components/site-ui';
+import { SiteShell } from '../../components/SiteShell';
+import { CTA, PageHeader } from '../../components/site-ui';
 
 export const metadata: Metadata = {
-  title: 'Dojak Technical FAQ',
+  title: 'Technical FAQ',
   description:
-    'Deep technical FAQ for Dojak and Dogenals implementers: UTXO safety, protocol semantics, indexing, trust model, and interoperability details.'
+    'Deep technical FAQ for Dojak and Dogenals implementers: UTXO safety, protocol semantics, indexing, trust model, and interoperability details.',
+  alternates: { canonical: 'https://dojak.app/faq' }
 };
 
 const sections = [
@@ -81,10 +82,9 @@ const sections = [
 
 export default function TechnicalFaqPage() {
   return (
-    <main className="min-h-screen bg-white text-zinc-950">
+    <SiteShell>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-96 site-grid site-grid-fade" />
       <div className="relative mx-auto max-w-4xl px-4 py-14">
-        <PageBack />
         <PageHeader
           eyebrow="Technical FAQ"
           title="Deep protocol details for power users"
@@ -115,8 +115,9 @@ export default function TechnicalFaqPage() {
         <div className="mt-10 flex flex-wrap gap-3">
           <CTA href="/" label="Back to Home" primary />
           <CTA href="/dogenals" label="Protocol Wall" />
+          <CTA href="/security" label="Security" />
         </div>
       </div>
-    </main>
+    </SiteShell>
   );
 }

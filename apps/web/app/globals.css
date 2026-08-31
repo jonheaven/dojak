@@ -74,6 +74,47 @@ a {
   background: radial-gradient(ellipse 60% 50% at 50% 0%, var(--dojak-gold-muted) 0%, transparent 70%);
 }
 
+.site-marquee {
+  width: max-content;
+  animation: site-marquee 32s linear infinite;
+}
+
+@keyframes site-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes site-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.site-fade-up {
+  animation: site-fade-up 0.7s ease-out both;
+}
+
+.site-fade-up-delay {
+  animation: site-fade-up 0.7s ease-out 0.12s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-marquee,
+  .site-fade-up,
+  .site-fade-up-delay {
+    animation: none !important;
+  }
+}
+
 @layer components {
   .site-pill {
     @apply inline-flex items-center rounded-full border border-[#D4A017] bg-[#D4A017]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-900;
@@ -114,4 +155,27 @@ a {
   .site-link {
     @apply text-zinc-600 transition hover:text-zinc-950;
   }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.focus\:not-sr-only:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
 }
