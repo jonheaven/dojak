@@ -37,6 +37,8 @@ const REQUIRED_EXPORTS = [
   'coerceSignedPsdtToRawTxHex',
   'preparePsdtForMyDogeSign',
   'journalDlockerTx',
+  'journalIncineratorTx',
+  'createInscriptionIncineratorTransaction',
   'gatedMydogeGetJson',
   'invalidateMydogeUtxoCaches',
   'filterPaymentSpendableUtxos',

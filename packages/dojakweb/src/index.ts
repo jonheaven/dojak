@@ -376,6 +376,7 @@ export {
   subscribeWalletTxJournal,
   upsertWalletTxJournalEntry,
   journalDlockerTx,
+  journalIncineratorTx,
   walletTxActionLabel,
   walletTxDisplayChips,
   walletTxJournalBelongsToAddress,
@@ -703,6 +704,15 @@ export type {
   UnlockTxResult,
   TimeLockedTxResult,
 } from './lib/cltv-tools';
+
+// ÐIncinerator — ord circulating burn (valued OP_RETURN)
+export {
+  INCINERATOR_TAG,
+  MAX_INCINERATOR_BATCH,
+  buildIncineratorOpReturnScript,
+  createInscriptionIncineratorTransaction,
+} from './lib/incinerator-tools';
+export type { IncineratorUtxo, IncineratorTxResult } from './lib/incinerator-tools';
 
 // PSDT URI codec
 export {

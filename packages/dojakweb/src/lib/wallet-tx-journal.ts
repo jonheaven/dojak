@@ -22,6 +22,7 @@ export type DojakwebWalletTxProtocol =
   | 'dlotto'
   | 'dgames'
   | 'dlocker'
+  | 'incinerator'
   | 'dogepark'
   | 'dogetag'
   | 'unknown';
@@ -58,6 +59,7 @@ export const WALLET_TX_PROTOCOL_LABELS: Record<DojakwebWalletTxProtocol, string>
   dlotto: 'ÐLotto',
   dgames: 'ÐGames',
   dlocker: 'ÐLocker',
+  incinerator: 'ÐIncinerator',
   dogepark: 'DogePark',
   dogetag: 'ÐogeTag',
   unknown: 'Unknown',
@@ -77,6 +79,7 @@ const PROTOCOL_RANK: Record<DojakwebWalletTxProtocol, number> = {
   dlotto: 5,
   dgames: 5,
   dlocker: 6,
+  incinerator: 6,
   dogepark: 5,
 };
 
@@ -111,6 +114,7 @@ export function guessWalletTxOriginLabel(host: string, path: string): string {
   }
   if (h.includes('dogenals')) {
     if (p.includes('/lock')) return 'dogenals · ÐLocker';
+    if (p.includes('/incinerator') || p.includes('/burn')) return 'dogenals · ÐIncinerator';
     if (p.includes('alkane')) return 'dogenals · Ðalkanes';
     if (p.includes('dogepark')) return 'dogenals · DogePark';
     // Protocol (Ðunes / Treats) already has its own chip — don't restamp "dogenals · Ðunes".
@@ -356,6 +360,37 @@ export function journalDlockerTx(opts: {
       locktimeUnix: opts.locktimeUnix,
       vout: opts.vout,
       inscriptionId,
+    },
+  });
+}
+
+export function journalIncineratorTx(opts: {
+  txid: string;
+  address: string;
+  inscriptionIds: string[];
+  feeKoinu?: number;
+  burnedPostageKoinu?: number;
+}): DojakwebWalletTxEntry | null {
+  const ids = opts.inscriptionIds.map((id) => id.trim()).filter(Boolean);
+  const first = ids[0] || 'inscription';
+  const more = ids.length > 1 ? ` +${ids.length - 1}` : '';
+  const title = ids.length > 1 ? `Burn ${ids.length} inscriptions` : `Burn ${first.slice(0, 10)}…`;
+  return upsertWalletTxJournalEntry({
+    txid: opts.txid,
+    address: opts.address,
+    protocol: 'incinerator',
+    action: 'burn',
+    title,
+    summary: ids.join(', ') || undefined,
+    status: 'broadcasted',
+    originLabel: 'dogenals · ÐIncinerator',
+    metadata: {
+      actionLabel: 'Burn',
+      inscriptionId: first,
+      inscriptionIds: ids,
+      feeKoinu: opts.feeKoinu,
+      burnedPostageKoinu: opts.burnedPostageKoinu,
+      amountDisplay: more || first,
     },
   });
 }
