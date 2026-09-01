@@ -1,5 +1,12 @@
 import { bytesToHex, hexToBytes } from './hash16';
-import { encodeDsocialSignal, DSOCIAL_FLAG, parseDsocialSignal } from './dsocial';
+import {
+  encodeDsocialSignal,
+  DSOCIAL_FLAG,
+  DSOCIAL_MIN_LIKE_KOINU,
+  parseDsocialSignal,
+  planDsocialRevealPayments,
+  buildDsocialPostJson,
+} from './dsocial';
 
 describe('Ðocial OP_RETURN vectors (spec/protocols/dsocial/vectors/op-return-vectors.json)', () => {
   it('SOC-OR-001 engage like', () => {
@@ -37,5 +44,30 @@ describe('Ðocial OP_RETURN vectors (spec/protocols/dsocial/vectors/op-return-ve
       nonce: 7,
     });
     expect(bytesToHex(payload)).toBe('c3903a534f430102000300112233445566778899aabbccddeeff07000000');
+  });
+});
+
+describe('Ðocial UTXO tip outputs (spec §6.7)', () => {
+  it('plans attribution then mention, skips self and dupes', () => {
+    const planned = planDsocialRevealPayments({
+      senderAddress: 'DSender',
+      quotePayTo: 'DQuoted',
+      parentPayTo: 'DQuoted',
+      mentionPayTos: ['DQuoted', 'DMention', 'DSender'],
+    });
+    expect(planned).toEqual([
+      { address: 'DQuoted', satoshis: DSOCIAL_MIN_LIKE_KOINU, kind: 'attribution' },
+      { address: 'DMention', satoshis: DSOCIAL_MIN_LIKE_KOINU, kind: 'mention' },
+    ]);
+    const json = JSON.parse(
+      buildDsocialPostJson({
+        content: 'hi',
+        payTo: 'DMe',
+        quote: 'aa'.repeat(32) + 'i0',
+        mentions: ['DMention'],
+      }),
+    );
+    expect(json.op).toBe('quote');
+    expect(json.mentions).toEqual(['DMention']);
   });
 });

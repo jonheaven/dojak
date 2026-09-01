@@ -11,6 +11,8 @@ export const DSOCIAL_VERSION = 0x01;
 export const DSOCIAL_CONTENT_VERSION = '1.1';
 export const DSOCIAL_SIGNAL_BYTES = 30;
 export const DSOCIAL_MAGIC = utf8Bytes(DSOCIAL_MARKER);
+/** Spec §6.7 paid threshold floor (0.01 DOGE). */
+export const DSOCIAL_MIN_LIKE_KOINU = 1_000_000;
 
 export const DSOCIAL_KIND = {
   post: 0x01,
@@ -133,6 +135,8 @@ export type BuildDsocialPostOpts = {
   tags?: string[];
   mediaInscriptionId?: string;
   mediaMime?: string;
+  /** Address and/or `{64hex}i{n}` — discovery. Paid mentions are extra UTXOs. */
+  mentions?: string[];
 };
 
 /** Spec §5 content inscription JSON. */
@@ -149,6 +153,11 @@ export function buildDsocialPostJson(opts: BuildDsocialPostOpts): string {
   if (opts.parent) body.parent = opts.parent;
   if (opts.quote) body.quote = opts.quote;
   if (opts.repostOf) body.repost_of = opts.repostOf;
+  const mentions = (opts.mentions ?? [])
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 16);
+  if (mentions.length) body.mentions = mentions;
   if (opts.mediaInscriptionId) {
     body.media = [{ inscription_id: opts.mediaInscriptionId, mime: opts.mediaMime || 'application/octet-stream' }];
   }
@@ -176,4 +185,41 @@ export function parseDsocialSignal(bytes: Uint8Array): {
     targetHash16Hex: bytesToHex(bytes.slice(10, 26)),
     nonce: bytes[26] | (bytes[27] << 8) | (bytes[28] << 16) | (bytes[29] << 24),
   };
+}
+
+export type DsocialRevealPaymentKind = 'attribution' | 'mention';
+
+export type DsocialRevealPayment = {
+  address: string;
+  satoshis: number;
+  kind: DsocialRevealPaymentKind;
+};
+
+/**
+ * Extra reveal-tx outputs for quote/repost/parent + paid mentions (spec §6.7 / §8).
+ * Skips the sender (no self-tip) and de-dupes addresses; attribution wins over mention.
+ */
+export function planDsocialRevealPayments(opts: {
+  senderAddress?: string | null;
+  quotePayTo?: string | null;
+  parentPayTo?: string | null;
+  mentionPayTos?: string[];
+  minKoinu?: number;
+}): DsocialRevealPayment[] {
+  const min = Math.max(Math.floor(opts.minKoinu ?? DSOCIAL_MIN_LIKE_KOINU), DSOCIAL_MIN_LIKE_KOINU);
+  const sender = (opts.senderAddress || '').trim();
+  const seen = new Set<string>();
+  const out: DsocialRevealPayment[] = [];
+  const push = (address: string | null | undefined, kind: DsocialRevealPaymentKind) => {
+    const a = (address || '').trim();
+    if (!a || a === sender || seen.has(a)) return;
+    seen.add(a);
+    out.push({ address: a, satoshis: min, kind });
+  };
+  push(opts.quotePayTo, 'attribution');
+  push(opts.parentPayTo, 'attribution');
+  for (const m of (opts.mentionPayTos || []).slice(0, 16)) {
+    push(m, 'mention');
+  }
+  return out;
 }
