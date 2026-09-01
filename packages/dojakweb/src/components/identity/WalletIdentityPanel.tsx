@@ -815,12 +815,12 @@ export function WalletIdentityPanel({
             {busy ? t('modal.identity.broadcasting') : 'Register name'}
           </Btn>
           <a
-            href="https://dogetrix.com/dns"
+            href="https://dogecoin.dog/dns"
             target="_blank"
             rel="noreferrer"
             className="block text-center text-xs text-emerald-300/80 hover:text-emerald-200"
           >
-            Open DNS on dogetrix.com
+            Open DNS on dogecoin.dog
           </a>
         </div>
       )}
