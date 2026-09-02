@@ -29,6 +29,7 @@
     "prepare:github-package": "node scripts/prepare-github-package.mjs",
     "publish:github": "node scripts/prepare-github-package.mjs && npm publish --access public --prefix .publish-github",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts",
     "preview": "vite preview"
   },
   "peerDependencies": {
@@ -93,6 +94,7 @@
     "tailwindcss": "^4.2.2",
     "typescript": "^5.6.3",
     "vite": "^8.0.1",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.0"
   }
 }

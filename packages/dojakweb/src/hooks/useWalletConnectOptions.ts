@@ -6,6 +6,7 @@ import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import type { WalletType } from '../types/wallet';
 import { getInjectedDogeSoftProvider } from '../utils/dogesoft-provider';
+import { getInjectedMyDogeProvider } from '../utils/mydoge-provider';
 
 /** Install / download pages for wallets that are not injected yet. */
 export const WALLET_INSTALL_URLS: Partial<Record<ConnectKind, string>> = {
@@ -13,15 +14,18 @@ export const WALLET_INSTALL_URLS: Partial<Record<ConnectKind, string>> = {
   dogesoft: 'https://dogesoft.io/',
   ledger: 'https://www.ledger.com/',
   dogewatch: 'https://dogewatch.io/',
+  mydoge: 'https://www.mydoge.com/',
 };
 
 function isHardwareKind(type: ConnectKind): boolean {
   return type === 'ledger' || type === 'dogewatch';
 }
 
-/** Local browser + detected extensions + already-connected sessions. Hardware stays in Other until connected. */
+/** Default trading CTAs: MyDoge / Spooky / Ledger. Local browser is hot custody — Other unless already saved. */
 export function isQuickPathWalletTile(tile: WalletOptionTile): boolean {
-  if (tile.type === 'browser') return true;
+  if (tile.pinPrimary) return true;
+  if (tile.type === 'mydoge' || tile.type === 'spookydoge' || tile.type === 'ledger') return true;
+  if (tile.type === 'browser') return tile.connected || tile.isActive;
   if (tile.connected || tile.isActive) return true;
   if (isHardwareKind(tile.type)) return false;
   return tile.available;
@@ -42,7 +46,7 @@ export function partitionWalletTiles(tiles: WalletOptionTile[]): {
 
 export type ConnectKind = Extract<
   WalletType,
-  'dogesoft' | 'browser' | 'dojak' | 'ledger' | 'dogewatch'
+  'dogesoft' | 'browser' | 'dojak' | 'ledger' | 'dogewatch' | 'mydoge' | 'spookydoge'
 >;
 
 export type WalletOptionTile = {
@@ -56,6 +60,7 @@ export type WalletOptionTile = {
   connected: boolean;
   isActive: boolean;
   installUrl?: string;
+  pinPrimary?: boolean;
 };
 
 export type UseWalletConnectOptionsResult = {
@@ -87,6 +92,10 @@ function shortName(type: ConnectKind, t: (key: string) => string): string {
   switch (type) {
     case 'browser':
       return t('wallet.quickPicker.short.browser');
+    case 'mydoge':
+      return t('wallet.quickPicker.short.mydoge');
+    case 'spookydoge':
+      return t('wallet.quickPicker.short.spookydoge');
     case 'dojak':
       return t('wallet.quickPicker.short.dojak');
     case 'dogesoft':
@@ -120,6 +129,14 @@ export function useWalletConnectOptions(options?: {
     () => typeof window !== 'undefined' && !!getInjectedDogeSoftProvider(),
   );
   const dogeSoft = dogeSoftReady ? getInjectedDogeSoftProvider() : null;
+  const [myDogeReady, setMyDogeReady] = useState(
+    () => typeof window !== 'undefined' && !!getInjectedMyDogeProvider(),
+  );
+  const [spookyReady, setSpookyReady] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const provider = (window as Window & { dogecoin?: { isSpookyWallet?: boolean } }).dogecoin;
+    return Boolean(provider?.isSpookyWallet || (window as Window & { isSpookyWallet?: boolean }).isSpookyWallet);
+  });
 
   const connectedTypes = useMemo(() => {
     const set = new Set<WalletType>();
@@ -156,6 +173,25 @@ export function useWalletConnectOptions(options?: {
     return () => window.removeEventListener('dogesoft#initialized', onInit);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const syncMyDoge = () => setMyDogeReady(!!getInjectedMyDogeProvider());
+    const syncSpooky = () => {
+      const provider = (window as Window & { dogecoin?: { isSpookyWallet?: boolean } }).dogecoin;
+      setSpookyReady(
+        Boolean(provider?.isSpookyWallet || (window as Window & { isSpookyWallet?: boolean }).isSpookyWallet),
+      );
+    };
+    syncMyDoge();
+    syncSpooky();
+    window.addEventListener('load', syncMyDoge);
+    window.addEventListener('spookydoge#initialized', syncSpooky);
+    return () => {
+      window.removeEventListener('load', syncMyDoge);
+      window.removeEventListener('spookydoge#initialized', syncSpooky);
+    };
+  }, []);
+
   const tiles: WalletOptionTile[] = useMemo(() => {
     const browserTitle = t('wallet.options.browser.title');
     const browserSub = hasBrowserWallet
@@ -163,6 +199,55 @@ export function useWalletConnectOptions(options?: {
       : t('wallet.options.browser.subtitleNew');
 
     const list: WalletOptionTile[] = [
+      {
+        type: 'mydoge',
+        title: t('wallet.options.mydoge.title'),
+        shortTitle: shortName('mydoge', t),
+        subtitle: myDogeReady
+          ? t('wallet.options.mydoge.subtitleOk')
+          : t('wallet.options.mydoge.subtitleInstall'),
+        ariaLabel: `${t('wallet.options.mydoge.title')}. ${
+          myDogeReady ? t('wallet.options.mydoge.subtitleOk') : t('wallet.options.mydoge.subtitleInstall')
+        }`,
+        logo: '/mydoge.webp',
+        available: myDogeReady,
+        connected: connectedTypes.has('mydoge'),
+        isActive: walletType === 'mydoge',
+        installUrl: WALLET_INSTALL_URLS.mydoge,
+      },
+      {
+        type: 'spookydoge',
+        title: t('wallet.options.spookydoge.title'),
+        shortTitle: shortName('spookydoge', t),
+        subtitle: spookyReady
+          ? t('wallet.options.spookydoge.subtitleOk')
+          : t('wallet.options.spookydoge.subtitleInstall'),
+        ariaLabel: `${t('wallet.options.spookydoge.title')}. ${
+          spookyReady
+            ? t('wallet.options.spookydoge.subtitleOk')
+            : t('wallet.options.spookydoge.subtitleInstall')
+        }`,
+        logo: '/spookydoge.webp',
+        available: spookyReady,
+        connected: connectedTypes.has('spookydoge'),
+        isActive: walletType === 'spookydoge',
+      },
+      {
+        type: 'ledger',
+        title: t('wallet.options.ledger.title'),
+        shortTitle: shortName('ledger', t),
+        subtitle: usbPresent
+          ? t('wallet.options.ledger.subtitle')
+          : t('wallet.options.ledger.webusbRequired'),
+        ariaLabel: usbPresent
+          ? `${t('wallet.options.ledger.title')}. ${t('wallet.options.ledger.subtitle')}`
+          : `${t('wallet.options.ledger.title')}. ${t('wallet.options.ledger.webusbRequired')}`,
+        logo: '/ledger.svg',
+        available: usbPresent,
+        connected: connectedTypes.has('ledger'),
+        isActive: walletType === 'ledger',
+        installUrl: WALLET_INSTALL_URLS.ledger,
+      },
       {
         type: 'browser',
         title: browserTitle,
@@ -172,6 +257,7 @@ export function useWalletConnectOptions(options?: {
         available: true,
         connected: connectedTypes.has('browser'),
         isActive: walletType === 'browser',
+        pinPrimary: hasBrowserWallet,
       },
       {
         type: 'dojak',
@@ -222,22 +308,6 @@ export function useWalletConnectOptions(options?: {
         isActive: walletType === 'dogewatch',
         installUrl: WALLET_INSTALL_URLS.dogewatch,
       },
-      {
-        type: 'ledger',
-        title: t('wallet.options.ledger.title'),
-        shortTitle: shortName('ledger', t),
-        subtitle: usbPresent
-          ? t('wallet.options.ledger.subtitle')
-          : t('wallet.options.ledger.webusbRequired'),
-        ariaLabel: usbPresent
-          ? `${t('wallet.options.ledger.title')}. ${t('wallet.options.ledger.subtitle')}`
-          : `${t('wallet.options.ledger.title')}. ${t('wallet.options.ledger.webusbRequired')}`,
-        logo: '/ledger.svg',
-        available: usbPresent,
-        connected: connectedTypes.has('ledger'),
-        isActive: walletType === 'ledger',
-        installUrl: WALLET_INSTALL_URLS.ledger,
-      },
     ];
 
     return list;
@@ -246,7 +316,9 @@ export function useWalletConnectOptions(options?: {
     dojak,
     dogeSoft,
     hasBrowserWallet,
+    myDogeReady,
     serialPresent,
+    spookyReady,
     t,
     usbPresent,
     walletType,

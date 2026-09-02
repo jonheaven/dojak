@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { BrowserWallet, type BrowserWalletSaveOptions } from '../lib/browser-wallet';
+import { BrowserWallet, isPlaintextMigrationRequiredError, type BrowserWalletSaveOptions } from '../lib/browser-wallet';
 import type { SeedMaterial, WalletData } from '../types/wallet';
 import { walletDataApi } from '../utils/api';
 import { createDojakwebSessionSecretStore } from '../lib/dojakweb-biometric';
@@ -41,6 +41,9 @@ export interface UseBrowserWalletReturn {
 
 const BrowserWalletContext = createContext<UseBrowserWalletReturn | null>(null);
 const RESTORE_BLOCK_KEY = 'dojakweb_wallet_restore_blocked';
+export const BROWSER_WALLET_LOCKED_EVENT = 'dojakweb:browser-wallet-locked';
+const HIDE_LOCK_MS = 60_000;
+const IDLE_LOCK_MS = 15 * 60 * 1000;
 
 interface BrowserWalletProviderProps {
   children: React.ReactNode;
@@ -72,6 +75,8 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
   const indexerBalanceRef = useRef(0);
   /** Broadcasts not yet reflected by the indexer — keep UI snappy. */
   const pendingSpendsRef = useRef<Array<{ id: string; doge: number; at: number }>>([]);
+  const walletRef = useRef<WalletData | null>(null);
+  walletRef.current = wallet;
 
   const PENDING_TTL_MS = 15 * 60 * 1000;
 
@@ -125,8 +130,8 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
         const storage = new BrowserWallet();
         const current = localStorage.getItem('dojakweb_wallet_current');
 
-        // Encrypted wallets: stay unlocked for this browser tab/session after first unlock.
-        // Password is held in sessionStorage (or chrome.storage.session) — not localStorage.
+        // Encrypted wallets: stay unlocked for this tab only after first unlock.
+        // Password lives in chrome.storage.session when that API exists — never localStorage.
         if (current && (await storage.isEncrypted(current))) {
           let sessionSecret: string | null = null;
           try {
@@ -167,29 +172,19 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
           return;
         }
 
-        const loaded = await storage.loadWallet();
-        if (!loaded) {
+        // Legacy plaintext copies cannot be restored until the user sets a password.
+        if (BrowserWallet.hasPendingPlaintextMigration()) {
           return;
         }
-
-        setWallet(loaded);
-        setAddress(loaded.address);
-        setConnected(true);
-        setBalance(0);
-        indexerBalanceRef.current = 0;
-        pendingSpendsRef.current = [];
-        setBalanceVerified(false);
-        setBalanceError(null);
-        localStorage.removeItem(RESTORE_BLOCK_KEY);
-        try {
-          localStorage.setItem('wallet_type', 'browser');
-        } catch {
-          // Ignore localStorage failures during restore.
-        }
       } catch (error: any) {
-        if (!error?.message?.includes('encrypted')) {
-          console.error('[BROWSER WALLET] Restore error:', error);
+        if (
+          isPlaintextMigrationRequiredError(error) ||
+          error?.message?.includes('encrypted') ||
+          error?.message?.includes('Password required')
+        ) {
+          return;
         }
+        console.error('[BROWSER WALLET] Restore error:', error);
       }
     };
 
@@ -292,6 +287,69 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       }
     }
   }, []);
+
+  const lockSession = useCallback(async () => {
+    if (!walletRef.current?.privateKey) return;
+    setConnected(false);
+    setAddress(null);
+    setWallet(null);
+    setBalanceVerified(false);
+    try {
+      await createDojakwebSessionSecretStore().clearSecret();
+    } catch {
+      /* ignore */
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(BROWSER_WALLET_LOCKED_EVENT));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !connected || !wallet?.privateKey) {
+      return;
+    }
+
+    let hideTimer: number | null = null;
+    let idleTimer: number | null = null;
+
+    const clearHide = () => {
+      if (hideTimer !== null) {
+        window.clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+    };
+    const armIdle = () => {
+      if (idleTimer !== null) window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(() => {
+        void lockSession();
+      }, IDLE_LOCK_MS);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hideTimer = window.setTimeout(() => {
+          void lockSession();
+        }, HIDE_LOCK_MS);
+      } else {
+        clearHide();
+        armIdle();
+      }
+    };
+    const onActivity = () => armIdle();
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pointerdown', onActivity);
+    window.addEventListener('keydown', onActivity);
+    armIdle();
+
+    return () => {
+      clearHide();
+      if (idleTimer !== null) window.clearTimeout(idleTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pointerdown', onActivity);
+      window.removeEventListener('keydown', onActivity);
+    };
+  }, [connected, wallet?.privateKey, lockSession]);
 
   useEffect(() => {
     if (!connected || !address || typeof window === 'undefined') {
@@ -417,11 +475,6 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
         return null;
       }
 
-      const loaded = await storage.loadWallet(undefined, targetAddress);
-      if (loaded) {
-        await connect(loaded);
-        return loaded;
-      }
       return null;
     },
     [connect, wallet]

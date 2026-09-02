@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMyDogeWallet } from './useMyDogeWallet';
 import { useBrowserWallet } from './BrowserWalletContext';
-import { BrowserWallet, signDogecoinMessageWithWif } from '../lib/browser-wallet';
+import { BrowserWallet, isPlaintextMigrationRequiredError, signDogecoinMessageWithWif } from '../lib/browser-wallet';
 import { LedgerWallet } from '../lib/ledger-wallet';
 import { DogewatchWallet } from '../lib/dogewatch-wallet';
 import {
@@ -903,17 +903,13 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
               }
             }
           } catch {
-            /* fall through to unencrypted load */
+            /* no chrome.storage.session secret — stay locked */
           }
 
-          const loaded = await browser.loadWallet();
-          if (loaded) {
-            await browser.connect(loaded);
-            setWalletType(type);
-            localStorage.setItem('wallet_type', type);
-          }
+          return;
         } catch (error: any) {
           if (
+            isPlaintextMigrationRequiredError(error) ||
             error?.message?.includes('encrypted') ||
             error?.message?.includes('Password required')
           ) {
@@ -1591,9 +1587,6 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           }
         } catch {
           /* fall through */
-        }
-        if (!w?.privateKey) {
-          w = await browser.loadWallet(undefined, address ?? undefined);
         }
         if (!w?.privateKey) {
           throw new Error('Unlock your browser wallet to sign PSBTs.');

@@ -52,6 +52,72 @@ interface StoredWalletEntry extends Partial<WalletData> {
   encrypted?: boolean;
 }
 
+/** Thrown when a legacy plaintext seed/WIF is on disk and must be encrypted before use. */
+export const PLAINTEXT_MIGRATION_REQUIRED = 'PLAINTEXT_MIGRATION_REQUIRED';
+
+export const MIN_BROWSER_WALLET_PASSWORD_LENGTH = 8;
+
+export class PlaintextMigrationRequiredError extends Error {
+  readonly code = PLAINTEXT_MIGRATION_REQUIRED;
+  constructor(
+    message = 'Set a password to keep this wallet. Signing is locked until this browser copy is encrypted.',
+  ) {
+    super(message);
+    this.name = 'PlaintextMigrationRequiredError';
+  }
+}
+
+export function isPlaintextMigrationRequiredError(error: unknown): error is PlaintextMigrationRequiredError {
+  if (error instanceof PlaintextMigrationRequiredError) return true;
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: string; name?: string };
+  return candidate.code === PLAINTEXT_MIGRATION_REQUIRED || candidate.name === 'PlaintextMigrationRequiredError';
+}
+
+function requirePersistPassword(password: string | undefined): string {
+  const pw = password?.trim() ?? '';
+  if (!pw) {
+    throw new Error('A password is required to save this wallet.');
+  }
+  return pw;
+}
+
+function recordLooksLikeSecretBlob(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const rec = value as Record<string, unknown>;
+  return (
+    (typeof rec.privateKey === 'string' && rec.privateKey.length > 0) ||
+    (typeof rec.mnemonic === 'string' && rec.mnemonic.trim().length > 0)
+  );
+}
+
+function publicWalletListEntry(
+  wallet: Partial<WalletData> & { address: string; network: NetworkType },
+): StoredWalletEntry {
+  return {
+    address: wallet.address,
+    network: wallet.network,
+    nickname: wallet.nickname,
+    createdAt: wallet.createdAt,
+    accountIndex: wallet.accountIndex,
+    derivationPath: wallet.derivationPath,
+    seedFingerprint: wallet.seedFingerprint,
+    mnemonicWordCount: wallet.mnemonicWordCount,
+    walletSource: wallet.walletSource,
+    publicKey: wallet.publicKey,
+    encrypted: true,
+  };
+}
+
+function stripSecretsFromListEntry(entry: StoredWalletEntry): StoredWalletEntry {
+  const {
+    privateKey: _privateKey,
+    ...rest
+  } = entry as StoredWalletEntry & { mnemonic?: string };
+  delete (rest as { mnemonic?: string }).mnemonic;
+  return rest;
+}
+
 export interface BrowserWalletSpendableUtxo {
   txid: string;
   vout: number;
@@ -346,6 +412,49 @@ export class BrowserWallet {
     return `wallet_mnemonic_${address}`;
   }
 
+  static scanPlaintextSecretKeys(): string[] {
+    if (typeof localStorage === 'undefined') return [];
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (
+        key.startsWith(BrowserWallet.STORAGE_UNENCRYPTED_PREFIX) ||
+        key.startsWith('wallet_mnemonic_')
+      ) {
+        keys.push(key);
+      }
+    }
+    const legacy = localStorage.getItem(BrowserWallet.STORAGE_KEY);
+    if (legacy) {
+      try {
+        if (recordLooksLikeSecretBlob(JSON.parse(legacy))) {
+          keys.push(BrowserWallet.STORAGE_KEY);
+        }
+      } catch {
+        /* ignore malformed legacy blob */
+      }
+    }
+    return keys;
+  }
+
+  static hasPendingPlaintextMigration(): boolean {
+    if (BrowserWallet.scanPlaintextSecretKeys().length > 0) return true;
+    if (typeof localStorage === 'undefined') return false;
+    const listRaw = localStorage.getItem(BrowserWallet.STORAGE_WALLETS);
+    if (!listRaw) return false;
+    try {
+      const list = JSON.parse(listRaw) as StoredWalletEntry[];
+      return list.some((entry) => recordLooksLikeSecretBlob(entry));
+    } catch {
+      return false;
+    }
+  }
+
+  async hasPendingPlaintextMigration(): Promise<boolean> {
+    return BrowserWallet.hasPendingPlaintextMigration();
+  }
+
   static getDerivationPath(accountIndex = 0): string {
     return getDogecoinDerivationPath(accountIndex);
   }
@@ -454,6 +563,7 @@ export class BrowserWallet {
     password?: string,
     options?: BrowserWalletSaveOptions
   ): Promise<void> {
+    const persistPassword = requirePersistPassword(password);
 
     try {
       const seedMaterial = options?.seedMaterial
@@ -469,62 +579,27 @@ export class BrowserWallet {
       };
 
       const encryptedKey = BrowserWallet.encryptedKey(wallet.address);
-      const unencryptedKey = BrowserWallet.unencryptedKey(wallet.address);
-
-      if (password) {
-        const encOpts = options?.pbkdf2Iterations ? { pbkdf2Iterations: options.pbkdf2Iterations } : undefined;
-        const encrypted = await encryptJSON(walletToPersist, password, encOpts);
-        localStorage.setItem(
-          encryptedKey,
-          JSON.stringify({ encrypted, network: wallet.network } satisfies EncryptedWalletRecord)
-        );
-        localStorage.removeItem(unencryptedKey);
-        localStorage.removeItem(BrowserWallet.STORAGE_KEY);
-        localStorage.removeItem(BrowserWallet.STORAGE_ENCRYPTED_KEY);
-      } else {
-        localStorage.setItem(unencryptedKey, JSON.stringify(walletToPersist));
-        localStorage.removeItem(encryptedKey);
-        localStorage.setItem(BrowserWallet.STORAGE_KEY, JSON.stringify(walletToPersist));
-        localStorage.removeItem(BrowserWallet.STORAGE_ENCRYPTED_KEY);
-      }
+      const encOpts = options?.pbkdf2Iterations ? { pbkdf2Iterations: options.pbkdf2Iterations } : undefined;
+      const encrypted = await encryptJSON(walletToPersist, persistPassword, encOpts);
+      localStorage.setItem(
+        encryptedKey,
+        JSON.stringify({ encrypted, network: wallet.network } satisfies EncryptedWalletRecord)
+      );
+      this.wipePlaintextKeysForAddress(wallet.address);
 
       if (seedMaterial) {
-        if (password) {
-          await this.saveSeedMaterial(seedMaterial, seedFingerprint!, password, options?.pbkdf2Iterations);
-          localStorage.removeItem(BrowserWallet.legacyMnemonicKey(wallet.address));
-        } else {
-          localStorage.setItem(BrowserWallet.legacyMnemonicKey(wallet.address), seedMaterial.mnemonic);
-        }
+        await this.saveSeedMaterial(seedMaterial, seedFingerprint!, persistPassword, options?.pbkdf2Iterations);
       }
 
       const list = await this.readWalletList();
+      const listEntry = publicWalletListEntry(walletToPersist);
       const idx = list.findIndex((entry) => entry.address === wallet.address);
-      const listEntry: StoredWalletEntry = password
-        ? {
-            address: wallet.address,
-            network: wallet.network,
-            nickname: walletToPersist.nickname,
-            createdAt: walletToPersist.createdAt,
-            accountIndex: walletToPersist.accountIndex,
-            derivationPath: walletToPersist.derivationPath,
-            seedFingerprint: walletToPersist.seedFingerprint,
-            mnemonicWordCount: walletToPersist.mnemonicWordCount,
-            walletSource: walletToPersist.walletSource,
-            publicKey: walletToPersist.publicKey,
-            encrypted: true,
-          }
-        : {
-            ...walletToPersist,
-            encrypted: false,
-          };
-
       if (idx >= 0) {
         list[idx] = listEntry;
       } else {
         list.push(listEntry);
       }
-
-      localStorage.setItem(BrowserWallet.STORAGE_WALLETS, JSON.stringify(list));
+      this.persistSanitizedWalletList(list);
       localStorage.setItem(BrowserWallet.STORAGE_CURRENT, wallet.address);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -533,7 +608,6 @@ export class BrowserWallet {
   }
 
   async loadWallet(password?: string, address?: string): Promise<WalletData | null> {
-
     try {
       const targetAddress = address || localStorage.getItem(BrowserWallet.STORAGE_CURRENT);
       if (!targetAddress) {
@@ -552,15 +626,15 @@ export class BrowserWallet {
           return wallet;
         }
 
-        const walletData = localStorage.getItem(BrowserWallet.STORAGE_KEY);
-        if (!walletData) {
-          return null;
+        if (BrowserWallet.hasPendingPlaintextMigration()) {
+          if (!password) {
+            throw new PlaintextMigrationRequiredError();
+          }
+          const migrated = await this.migratePlaintextSecrets(password);
+          return migrated[0] ?? null;
         }
 
-        const parsed = JSON.parse(walletData) as WalletData;
-        const wallet = await this.finalizeLoadedWallet(parsed);
-        await this.saveWallet(wallet);
-        return wallet;
+        return null;
       }
 
       const encryptedRecord = localStorage.getItem(BrowserWallet.encryptedKey(targetAddress));
@@ -578,39 +652,84 @@ export class BrowserWallet {
         );
         if (decrypted.migrated) {
           await this.saveWallet(wallet, password);
+        } else {
+          this.wipePlaintextKeysForAddress(targetAddress);
         }
         return this.applyStoredMetadata(wallet, targetAddress);
       }
 
-      const unencryptedRecord = localStorage.getItem(BrowserWallet.unencryptedKey(targetAddress));
-      if (unencryptedRecord) {
-        const parsed = JSON.parse(unencryptedRecord) as WalletData;
-        const wallet = await this.finalizeLoadedWallet(parsed, undefined, targetAddress);
-        return this.applyStoredMetadata(wallet, targetAddress);
+      if (this.addressHasPlaintextSecrets(targetAddress)) {
+        if (!password) {
+          throw new PlaintextMigrationRequiredError();
+        }
+        const migrated = await this.migratePlaintextSecrets(password, { address: targetAddress });
+        const match = migrated.find((wallet) => wallet.address === targetAddress) ?? migrated[0];
+        if (match) {
+          return match;
+        }
       }
 
       const list = await this.readWalletList();
       const found = list.find((entry) => entry.address === targetAddress);
-      if (found && found.privateKey && !found.encrypted) {
-        return found as WalletData;
+      if (found && recordLooksLikeSecretBlob(found)) {
+        if (!password) {
+          throw new PlaintextMigrationRequiredError();
+        }
+        const migrated = await this.migratePlaintextSecrets(password, { address: targetAddress });
+        return migrated.find((wallet) => wallet.address === targetAddress) ?? migrated[0] ?? null;
       }
 
-      const legacyData = localStorage.getItem(BrowserWallet.STORAGE_KEY);
-      if (!legacyData) {
-        return null;
-      }
-
-      const wallet = await this.finalizeLoadedWallet(
-        JSON.parse(legacyData) as WalletData,
-        password,
-        targetAddress
-      );
-      await this.saveWallet(wallet, password);
-      return wallet;
+      return null;
     } catch (error) {
+      if (isPlaintextMigrationRequiredError(error)) throw error;
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to load wallet: ${message}`);
     }
+  }
+
+  async migratePlaintextSecrets(
+    password: string,
+    options?: BrowserWalletSaveOptions & { address?: string },
+  ): Promise<WalletData[]> {
+    const persistPassword = requirePersistPassword(password);
+    const targets = this.collectPlaintextMigrationTargets(options?.address);
+    const migrated: WalletData[] = [];
+
+    for (const target of targets) {
+      let wallet = target.wallet;
+      let seedMaterial = target.seedMaterial;
+
+      if (!wallet && seedMaterial) {
+        wallet = await BrowserWallet.importFromMnemonic(
+          seedMaterial.mnemonic,
+          seedMaterial.passphrase,
+          target.network ?? 'mainnet',
+          target.accountIndex ?? 0,
+        );
+      }
+
+      if (!wallet?.privateKey) {
+        continue;
+      }
+
+      if (seedMaterial) {
+        wallet = {
+          ...wallet,
+          seedFingerprint: wallet.seedFingerprint ?? (await BrowserWallet.computeSeedFingerprint(seedMaterial)),
+          mnemonicWordCount: wallet.mnemonicWordCount ?? seedMaterial.mnemonic.split(/\s+/).length,
+          walletSource: wallet.walletSource ?? 'mnemonic',
+        };
+      }
+
+      await this.saveWallet(wallet, persistPassword, {
+        seedMaterial,
+        pbkdf2Iterations: options?.pbkdf2Iterations,
+      });
+      migrated.push(wallet);
+    }
+
+    this.persistSanitizedWalletList(await this.readWalletList());
+    return migrated;
   }
 
   /** Prefer explicit password, else tab session unlock secret (stay unlocked until tab end). */
@@ -662,6 +781,10 @@ export class BrowserWallet {
       return null;
     }
 
+    if (!password) {
+      throw new PlaintextMigrationRequiredError();
+    }
+
     const seedMaterial = normalizeSeedMaterial({
       mnemonic: legacyMnemonic,
       passphrase: '',
@@ -675,12 +798,8 @@ export class BrowserWallet {
       mnemonicWordCount: seedMaterial.mnemonic.split(/\s+/).length,
       walletSource: listEntry?.walletSource ?? 'mnemonic',
     });
-
-    if (password) {
-      await this.saveSeedMaterial(seedMaterial, fingerprint, password);
-      localStorage.removeItem(BrowserWallet.legacyMnemonicKey(targetAddress));
-    }
-
+    await this.saveSeedMaterial(seedMaterial, fingerprint, password);
+    localStorage.removeItem(BrowserWallet.legacyMnemonicKey(targetAddress));
     return seedMaterial;
   }
 
@@ -797,16 +916,6 @@ export class BrowserWallet {
   async removeWallet(address?: string): Promise<void> {
 
     let walletAddress = address ?? localStorage.getItem(BrowserWallet.STORAGE_CURRENT);
-    if (!walletAddress) {
-      try {
-        const loaded = await this.loadWallet();
-        if (loaded) {
-          walletAddress = loaded.address;
-        }
-      } catch {
-        walletAddress = null;
-      }
-    }
 
     const list = await this.readWalletList();
     const removedEntry = walletAddress
@@ -846,7 +955,23 @@ export class BrowserWallet {
   }
 
   async listWallets(): Promise<WalletData[]> {
-    return (await this.readWalletList()) as WalletData[];
+    const list = await this.readWalletList();
+    let dirty = false;
+    const next = list.map((entry) => {
+      const hasOtherCopy =
+        Boolean(localStorage.getItem(BrowserWallet.encryptedKey(entry.address))) ||
+        Boolean(localStorage.getItem(BrowserWallet.unencryptedKey(entry.address))) ||
+        Boolean(localStorage.getItem(BrowserWallet.legacyMnemonicKey(entry.address)));
+      if (hasOtherCopy && recordLooksLikeSecretBlob(entry)) {
+        dirty = true;
+        return stripSecretsFromListEntry(entry);
+      }
+      return entry;
+    });
+    if (dirty) {
+      localStorage.setItem(BrowserWallet.STORAGE_WALLETS, JSON.stringify(next));
+    }
+    return next.map((entry) => stripSecretsFromListEntry(entry) as WalletData);
   }
 
   async selectWallet(address: string): Promise<WalletData | null> {
@@ -855,8 +980,9 @@ export class BrowserWallet {
     const found = list.find((entry) => entry.address === address) || null;
     if (found) {
       localStorage.setItem(BrowserWallet.STORAGE_CURRENT, found.address);
+      return stripSecretsFromListEntry(found) as WalletData;
     }
-    return found as WalletData | null;
+    return null;
   }
 
   async clearAllWallets(): Promise<void> {
@@ -892,23 +1018,8 @@ export class BrowserWallet {
     const list = await this.readWalletList();
     const idx = list.findIndex((entry) => entry.address === address);
     if (idx >= 0) {
-      list[idx] = { ...list[idx], nickname };
-      localStorage.setItem(BrowserWallet.STORAGE_WALLETS, JSON.stringify(list));
-    }
-
-    const raw = localStorage.getItem(BrowserWallet.unencryptedKey(address));
-    if (raw) {
-      try {
-        const wallet = JSON.parse(raw) as WalletData;
-        wallet.nickname = nickname;
-        localStorage.setItem(BrowserWallet.unencryptedKey(address), JSON.stringify(wallet));
-        const current = localStorage.getItem(BrowserWallet.STORAGE_CURRENT);
-        if (current === address) {
-          localStorage.setItem(BrowserWallet.STORAGE_KEY, JSON.stringify(wallet));
-        }
-      } catch {
-        // Ignore malformed unencrypted cache entries.
-      }
+      list[idx] = stripSecretsFromListEntry({ ...list[idx], nickname });
+      this.persistSanitizedWalletList(list);
     }
   }
 
@@ -931,10 +1042,154 @@ export class BrowserWallet {
     }
 
     try {
-      return JSON.parse(listRaw) as StoredWalletEntry[];
+      const parsed = JSON.parse(listRaw) as StoredWalletEntry[];
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
+  }
+
+  private persistSanitizedWalletList(list: StoredWalletEntry[]): void {
+    const sanitized = list.map((entry) => {
+      const hasEncrypted = Boolean(localStorage.getItem(BrowserWallet.encryptedKey(entry.address)));
+      if (hasEncrypted) {
+        return { ...stripSecretsFromListEntry(entry), encrypted: true };
+      }
+      // Keep legacy secret fields until migratePlaintextSecrets encrypts them.
+      return entry;
+    });
+    localStorage.setItem(BrowserWallet.STORAGE_WALLETS, JSON.stringify(sanitized));
+  }
+
+  private wipePlaintextKeysForAddress(address: string): void {
+    localStorage.removeItem(BrowserWallet.unencryptedKey(address));
+    localStorage.removeItem(BrowserWallet.legacyMnemonicKey(address));
+    localStorage.removeItem(BrowserWallet.STORAGE_KEY);
+    localStorage.removeItem(BrowserWallet.STORAGE_ENCRYPTED_KEY);
+  }
+
+  private addressHasPlaintextSecrets(address: string): boolean {
+    if (localStorage.getItem(BrowserWallet.unencryptedKey(address))) return true;
+    if (localStorage.getItem(BrowserWallet.legacyMnemonicKey(address))) return true;
+    const legacy = localStorage.getItem(BrowserWallet.STORAGE_KEY);
+    if (legacy) {
+      try {
+        const parsed = JSON.parse(legacy) as WalletData;
+        if (parsed.address === address && recordLooksLikeSecretBlob(parsed)) return true;
+      } catch {
+        /* ignore */
+      }
+    }
+    return false;
+  }
+
+  private collectPlaintextMigrationTargets(addressFilter?: string): Array<{
+    address: string;
+    wallet?: WalletData;
+    seedMaterial?: SeedMaterial;
+    network?: NetworkType;
+    accountIndex?: number;
+  }> {
+    const byAddress = new Map<
+      string,
+      {
+        address: string;
+        wallet?: WalletData;
+        seedMaterial?: SeedMaterial;
+        network?: NetworkType;
+        accountIndex?: number;
+      }
+    >();
+
+    const take = (address: string) => {
+      let row = byAddress.get(address);
+      if (!row) {
+        row = { address };
+        byAddress.set(address, row);
+      }
+      return row;
+    };
+
+    const considerAddress = (address: string) => !addressFilter || address === addressFilter;
+
+    for (const key of BrowserWallet.scanPlaintextSecretKeys()) {
+      if (key.startsWith(BrowserWallet.STORAGE_UNENCRYPTED_PREFIX)) {
+        const address = key.slice(BrowserWallet.STORAGE_UNENCRYPTED_PREFIX.length);
+        if (!considerAddress(address)) continue;
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        try {
+          const parsed = JSON.parse(raw) as WalletData & { mnemonic?: string };
+          const row = take(address);
+          if (parsed.privateKey) {
+            const { mnemonic: embeddedMnemonic, ...wallet } = parsed;
+            row.wallet = wallet;
+            if (typeof embeddedMnemonic === 'string' && embeddedMnemonic.trim()) {
+              row.seedMaterial = normalizeSeedMaterial({ mnemonic: embeddedMnemonic, passphrase: '' });
+            }
+          }
+          row.network = parsed.network ?? row.network;
+          row.accountIndex = parsed.accountIndex ?? row.accountIndex;
+        } catch {
+          /* ignore malformed plaintext wallet */
+        }
+        continue;
+      }
+
+      if (key.startsWith('wallet_mnemonic_')) {
+        const address = key.slice('wallet_mnemonic_'.length);
+        if (!considerAddress(address)) continue;
+        const mnemonic = localStorage.getItem(key);
+        if (!mnemonic?.trim()) continue;
+        const row = take(address);
+        row.seedMaterial = normalizeSeedMaterial({ mnemonic, passphrase: '' });
+        continue;
+      }
+
+      if (key === BrowserWallet.STORAGE_KEY) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        try {
+          const parsed = JSON.parse(raw) as WalletData & { mnemonic?: string };
+          if (!parsed.address || !considerAddress(parsed.address)) continue;
+          const row = take(parsed.address);
+          if (parsed.privateKey) {
+            const { mnemonic: embeddedMnemonic, ...wallet } = parsed;
+            row.wallet = wallet;
+            if (typeof embeddedMnemonic === 'string' && embeddedMnemonic.trim()) {
+              row.seedMaterial = normalizeSeedMaterial({ mnemonic: embeddedMnemonic, passphrase: '' });
+            }
+          }
+          row.network = parsed.network ?? row.network;
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    const listRaw = localStorage.getItem(BrowserWallet.STORAGE_WALLETS);
+    if (listRaw) {
+      try {
+        const list = JSON.parse(listRaw) as Array<StoredWalletEntry & { mnemonic?: string }>;
+        for (const entry of list) {
+          if (!entry?.address || !considerAddress(entry.address)) continue;
+          if (!recordLooksLikeSecretBlob(entry)) continue;
+          const row = take(entry.address);
+          if (typeof entry.privateKey === 'string' && entry.privateKey && !row.wallet) {
+            row.wallet = { ...(entry as WalletData) };
+          }
+          if (typeof entry.mnemonic === 'string' && entry.mnemonic.trim() && !row.seedMaterial) {
+            row.seedMaterial = normalizeSeedMaterial({ mnemonic: entry.mnemonic, passphrase: '' });
+          }
+          row.network = entry.network ?? row.network;
+          row.accountIndex = entry.accountIndex ?? row.accountIndex;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    return [...byAddress.values()];
   }
 
   private async getStoredWalletEntry(address: string): Promise<StoredWalletEntry | null> {
@@ -978,34 +1233,12 @@ export class BrowserWallet {
     const list = await this.readWalletList();
     const idx = list.findIndex((entry) => entry.address === address);
     if (idx >= 0) {
-      list[idx] = { ...list[idx], ...updates };
-      localStorage.setItem(BrowserWallet.STORAGE_WALLETS, JSON.stringify(list));
-    }
-
-    const unencryptedRaw = localStorage.getItem(BrowserWallet.unencryptedKey(address));
-    if (unencryptedRaw) {
-      try {
-        const wallet = JSON.parse(unencryptedRaw) as WalletData;
-        localStorage.setItem(
-          BrowserWallet.unencryptedKey(address),
-          JSON.stringify({ ...wallet, ...updates })
-        );
-      } catch {
-        // Ignore malformed cache entry.
-      }
-    }
-
-    const current = localStorage.getItem(BrowserWallet.STORAGE_CURRENT);
-    if (current === address) {
-      const currentRaw = localStorage.getItem(BrowserWallet.STORAGE_KEY);
-      if (currentRaw) {
-        try {
-          const wallet = JSON.parse(currentRaw) as WalletData;
-          localStorage.setItem(BrowserWallet.STORAGE_KEY, JSON.stringify({ ...wallet, ...updates }));
-        } catch {
-          // Ignore malformed current cache entry.
-        }
-      }
+      const { privateKey: _privateKey, ...safeUpdates } = updates as Partial<WalletData> & {
+        mnemonic?: string;
+      };
+      delete (safeUpdates as { mnemonic?: string }).mnemonic;
+      list[idx] = stripSecretsFromListEntry({ ...list[idx], ...safeUpdates });
+      this.persistSanitizedWalletList(list);
     }
   }
 
@@ -1042,6 +1275,9 @@ export class BrowserWallet {
     if (password) {
       await this.saveSeedMaterial(seedMaterial, fingerprint, password);
       localStorage.removeItem(BrowserWallet.legacyMnemonicKey(address));
+      this.wipePlaintextKeysForAddress(address);
+    } else {
+      throw new PlaintextMigrationRequiredError();
     }
 
     return hydrated;

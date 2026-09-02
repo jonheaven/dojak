@@ -3,6 +3,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.title.importWallet': 'Import wallet',
   'modal.title.revealPhrase': 'Your secret phrase:',
   'modal.title.setPassword': 'Set your wallet password',
+  'modal.title.migratePassword': 'Encrypt this wallet',
   'modal.title.linkX': 'Identity',
   'modal.title.sendDoge': 'Send DOGE',
   'modal.title.receiveDoge': 'Receive DOGE',
@@ -100,6 +101,10 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.password.biometricHint': 'Allow WebAuthn / USB security key quick unlock after you save (uses this same secret).',
   'modal.password.confirm': 'Confirm password',
   'modal.password.skip': 'Skip for now',
+  'modal.password.requiredHint':
+    'A password is required to save this wallet on this device. Secrets are encrypted with AES-GCM and never stored as plaintext.',
+  'modal.password.migrateHint':
+    'This browser still has an unencrypted wallet copy. Set a password to encrypt it. Until then, signing is locked.',
   'modal.password.set': 'Set password',
   'modal.password.setPin': 'Set PIN',
   'modal.password.setting': 'Setting…',
@@ -641,10 +646,13 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.toast.walletImportedZip': 'Wallet imported from ZIP! Set a password to secure it.',
   'modal.toast.importFailedPrefix': 'Import failed: ',
   'modal.toast.newWalletReady':
-    'Wallet ready — you can use the dApp now. Save your seed phrase when you can.',
+    'Write down your secret phrase, then set a password to save this wallet.',
   'modal.toast.newWalletBackupPhrase': 'New wallet created. Back up your secret phrase before continuing.',
   'modal.toast.walletSecured': 'Wallet secured and ready to use.',
   'modal.toast.walletReadyNoPw': 'Wallet ready to use. Add a password anytime for extra protection.',
+  'modal.toast.walletMigrated': 'Wallet encrypted. Plaintext copies were removed from this browser.',
+  'modal.toast.backupZipPasswordRequired':
+    'Unlock this wallet first — backups are encrypted with your wallet password.',
   'modal.toast.walletUnlocked': 'Wallet unlocked successfully.',
   'modal.toast.biometricEnabled': 'Biometric quick unlock enabled for this browser.',
   'modal.toast.biometricSkipped': 'Biometric enrollment was skipped or unavailable.',
@@ -681,6 +689,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.errors.importWallet': 'Unable to import wallet.',
   'modal.errors.passwordsNoMatch': 'Passwords do not match.',
   'modal.errors.enterPassword': 'Enter a password.',
+  'modal.errors.passwordTooShort': 'Password must be at least 8 characters.',
   'modal.errors.pinInvalid': 'PIN must be at least 6 digits (numbers only).',
   'modal.errors.savePassword': 'Unable to save password.',
   'modal.errors.continue': 'Unable to continue.',

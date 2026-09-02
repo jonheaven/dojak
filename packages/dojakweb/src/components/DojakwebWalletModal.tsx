@@ -112,8 +112,12 @@ import {
 import { encodeBase64PsdtToDogePsdtUri } from '../lib/psdt/codec';
 import { QRCodeSVG } from 'qrcode.react';
 import { WebAuthnAdapter } from '@dojak/biometrics';
-import { useBrowserWallet } from '../contexts/BrowserWalletContext';
-import { BrowserWallet } from '../lib/browser-wallet';
+import { useBrowserWallet, BROWSER_WALLET_LOCKED_EVENT } from '../contexts/BrowserWalletContext';
+import {
+  BrowserWallet,
+  isPlaintextMigrationRequiredError,
+  MIN_BROWSER_WALLET_PASSWORD_LENGTH,
+} from '../lib/browser-wallet';
 import { createDojakwebBiometricFacade, createDojakwebSessionSecretStore } from '../lib/dojakweb-biometric';
 import {
   readWalletLockPreferences,
@@ -699,6 +703,7 @@ export function DojakwebWalletModal({
   const [isEncryptedWallet, setIsEncryptedWallet] = useState(false);
   const [needsBackup, setNeedsBackup] = useState(false);
   const [showTemporaryBanner, setShowTemporaryBanner] = useState(false);
+  const [plaintextMigrationPending, setPlaintextMigrationPending] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [activePassword, setActivePassword] = useState<string | undefined>();
   const lockAfterSetPasswordRef = React.useRef(false);
@@ -709,6 +714,18 @@ export function DojakwebWalletModal({
   const [hdResumeNonce, setHdResumeNonce] = useState(0);
   const stepRef = React.useRef<WalletStep>(step);
   stepRef.current = step;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onLock = () => {
+      setActivePassword(undefined);
+      setUnlockPassword('');
+      setPassword('');
+      setConfirmPassword('');
+    };
+    window.addEventListener(BROWSER_WALLET_LOCKED_EVENT, onLock);
+    return () => window.removeEventListener(BROWSER_WALLET_LOCKED_EVENT, onLock);
+  }, []);
   const [savedLocalWallets, setSavedLocalWallets] = useState<WalletData[]>([]);
   const [selectedLocalWalletAddress, setSelectedLocalWalletAddress] = useState<string | null>(null);
   const [walletNameDraft, setWalletNameDraft] = useState('');
@@ -1267,14 +1284,12 @@ export function DojakwebWalletModal({
         return;
       }
     } else {
-      const hasPasswordFlag = getStoredPasswordFlag(currentWallet.address);
-      const walletHasPassword = hasPasswordFlag ? localStorage.getItem(hasPasswordFlag) === 'true' : false;
-      if (walletHasPassword && activePassword) {
-        encryptPassword = activePassword;
-      } else {
-        toast.warning(t('modal.toast.backupZipUnencryptedWarn'));
-        // Proceed without encryption (encryptPassword stays undefined)
-      }
+      toast.error(t('modal.toast.backupZipPasswordRequired'));
+      return;
+    }
+    if (!encryptPassword) {
+      toast.error(t('modal.toast.backupZipPasswordRequired'));
+      return;
     }
     // Load seed material so the mnemonic is included in the backup
     let mnemonic: string | undefined;
@@ -1379,14 +1394,7 @@ export function DojakwebWalletModal({
       return;
     }
 
-    // Plain JSON ZIP import: require password setup as a separate step.
-    await browser.saveWallet(
-      walletData,
-      undefined,
-      importedSeed ? { seedMaterial: importedSeed } : undefined
-    );
-    const backupKey = getBackupFlag(walletData.address);
-    if (backupKey) localStorage.setItem(backupKey, 'true');
+    // Plain JSON ZIP import: keep secrets in memory until a password is set.
     setStep('password');
     toast.success(t('modal.toast.walletImportedZip'));
   };
@@ -1559,6 +1567,13 @@ export function DojakwebWalletModal({
         return;
       }
 
+      if (BrowserWallet.hasPendingPlaintextMigration()) {
+        setPlaintextMigrationPending(true);
+        setIsEncryptedWallet(false);
+        if (!keepLocalBrowserWizard) setStep('password');
+        return;
+      }
+
       try {
         const loaded = await browser.loadWallet();
         if (loaded) {
@@ -1577,6 +1592,11 @@ export function DojakwebWalletModal({
           return;
         }
       } catch (nextError) {
+        if (isPlaintextMigrationRequiredError(nextError)) {
+          setPlaintextMigrationPending(true);
+          if (!keepLocalBrowserWizard) setStep('password');
+          return;
+        }
         setError(nextError instanceof Error ? nextError.message : t('modal.errors.loadWallet'));
       }
 
@@ -1617,26 +1637,8 @@ export function DojakwebWalletModal({
       setPendingWallet(created);
       setPendingSeed(seed);
       setShowSecretPhrase(true);
-
-      // Persist + connect immediately so the dApp is usable without extra steps.
-      // Recovery backup stays pending until phrase confirm, password/PIN, or ZIP.
-      const saved = await finalizeWallet(undefined, created, seed, undefined, {
-        afterStep: 'reveal',
-        markNeedsBackup: true,
-        toastKey: 'modal.toast.newWalletReady',
-      });
-      if (!saved) {
-        throw new Error(t('modal.errors.createWallet'));
-      }
-      try {
-        setActiveWallet('browser');
-      } catch {
-        try {
-          localStorage.setItem('wallet_type', 'browser');
-        } catch {
-          // Ignore localStorage failures.
-        }
-      }
+      setStep('reveal');
+      toast.success(t('modal.toast.newWalletBackupPhrase'), { duration: 5500 });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : t('modal.errors.createWallet'));
     } finally {
@@ -1670,53 +1672,38 @@ export function DojakwebWalletModal({
     const walletToPersist =
       walletOverride ??
       pendingWallet ??
-      (walletType === 'browser' ? (browser.wallet ?? (activeAddress ? await browser.loadWallet() : null)) : null);
+      (walletType === 'browser' && browser.wallet?.privateKey ? browser.wallet : null);
     if (!walletToPersist) return null;
-    const persistPassword = nextPassword?.trim() || undefined;
-    if (persistPassword) setActivePassword(persistPassword);
+    const persistPassword = nextPassword?.trim();
+    if (!persistPassword) {
+      throw new Error(t('modal.errors.enterPassword'));
+    }
+    setActivePassword(persistPassword);
     localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
     await browser.saveWallet(walletToPersist, persistPassword, {
       seedMaterial: seedOverride ?? pendingSeed ?? undefined,
       pbkdf2Iterations: saveOpts?.pbkdf2Iterations,
     });
     await browser.connect(walletToPersist);
-    // Keep unlocked for this browser tab after setting a password (until disconnect/tab end).
-    if (persistPassword) {
-      try {
-        await createDojakwebSessionSecretStore().saveSecret(persistPassword);
-      } catch {
-        /* best-effort session unlock */
-      }
+    // Keep unlocked in this tab's React state after setting a password.
+    try {
+      await createDojakwebSessionSecretStore().saveSecret(persistPassword);
+    } catch {
+      /* chrome.storage.session only; public site requires re-entry after refresh */
     }
     const passwordKey = getStoredPasswordFlag(walletToPersist.address);
     const bannerKey = getTemporaryBannerFlag(walletToPersist.address);
     const backupKey = getBackupFlag(walletToPersist.address);
     if (passwordKey) {
-      if (persistPassword) {
-        localStorage.setItem(passwordKey, 'true');
-      } else {
-        localStorage.removeItem(passwordKey);
-      }
+      localStorage.setItem(passwordKey, 'true');
     }
     if (bannerKey) {
-      if (persistPassword) {
-        localStorage.removeItem(bannerKey);
-        setShowTemporaryBanner(false);
-      } else {
-        localStorage.setItem(bannerKey, 'true');
-        setShowTemporaryBanner(true);
-      }
+      localStorage.removeItem(bannerKey);
+      setShowTemporaryBanner(false);
     }
-    // Password/PIN encrypts seed on-device — counts as a recovery backup.
-    if (persistPassword && backupKey) {
+    if (backupKey) {
       localStorage.setItem(backupKey, 'true');
       setNeedsBackup(false);
-    } else if (uiOpts?.markNeedsBackup && backupKey) {
-      localStorage.removeItem(backupKey);
-      setNeedsBackup(true);
-    } else if (backupKey) {
-      const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, walletToPersist.address);
-      setNeedsBackup(uiFlags.needsBackup);
     }
     setPendingWallet(walletToPersist);
     await refreshSavedLocalWallets();
@@ -1724,7 +1711,7 @@ export function DojakwebWalletModal({
     if (uiOpts?.toastKey === 'modal.toast.newWalletReady') {
       toast.success(t('modal.toast.newWalletReady'), { duration: 5500 });
     } else {
-      toast.success(persistPassword ? t('modal.toast.walletSecured') : t('modal.toast.walletReadyNoPw'), {
+      toast.success(t('modal.toast.walletSecured'), {
         duration: 5000,
       });
     }
@@ -1852,6 +1839,9 @@ export function DojakwebWalletModal({
         setError(t('modal.errors.pinInvalid'));
         return;
       }
+    } else if (password.trim().length < MIN_BROWSER_WALLET_PASSWORD_LENGTH) {
+      setError(t('modal.errors.passwordTooShort'));
+      return;
     } else if (password !== confirmPassword) {
       setError(t('modal.errors.passwordsNoMatch'));
       return;
@@ -1860,14 +1850,54 @@ export function DojakwebWalletModal({
     setError(null);
     try {
       const iterations = pbkdf2IterationsForSecretStrength(newSecretStrength);
-      const saved = await finalizeWallet(password, undefined, undefined, { pbkdf2Iterations: iterations });
-      const addr = saved?.address;
-      if (password.trim() && addr) {
-        writeWalletLockPreferences(addr, {
+      const secret = password.trim();
+      if (plaintextMigrationPending && !pendingWallet) {
+        const storage = new BrowserWallet();
+        const migrated = await storage.migratePlaintextSecrets(secret, { pbkdf2Iterations: iterations });
+        const loaded = migrated[0] ?? (await browser.loadWallet(secret));
+        if (!loaded?.privateKey) {
+          throw new Error(t('modal.errors.savePassword'));
+        }
+        await browser.connect(loaded);
+        setActivePassword(secret);
+        try {
+          await createDojakwebSessionSecretStore().saveSecret(secret);
+        } catch {
+          /* chrome.storage.session only */
+        }
+        writeWalletLockPreferences(loaded.address, {
           primary: newPrimarySecret,
           strength: newSecretStrength,
           biometricQuickUnlock: enableWebAuthnQuickUnlock,
         });
+        setPlaintextMigrationPending(false);
+        setIsEncryptedWallet(true);
+        localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
+        try {
+          setActiveWallet('browser');
+        } catch {
+          try {
+            localStorage.setItem('wallet_type', 'browser');
+          } catch {
+            /* ignore */
+          }
+        }
+        setStep('dashboard');
+        toast.success(t('modal.toast.walletMigrated'));
+      } else {
+        const saved = await finalizeWallet(secret, undefined, undefined, { pbkdf2Iterations: iterations });
+        const addr = saved?.address;
+        if (addr) {
+          writeWalletLockPreferences(addr, {
+            primary: newPrimarySecret,
+            strength: newSecretStrength,
+            biometricQuickUnlock: enableWebAuthnQuickUnlock,
+          });
+        }
+        if (BrowserWallet.hasPendingPlaintextMigration()) {
+          await new BrowserWallet().migratePlaintextSecrets(secret, { pbkdf2Iterations: iterations });
+        }
+        setPlaintextMigrationPending(false);
       }
       if (enableWebAuthnQuickUnlock && password.trim()) {
         try {
@@ -1889,18 +1919,6 @@ export function DojakwebWalletModal({
       }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : t('modal.errors.savePassword'));
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
-  const handleSkipPassword = async () => {
-    setIsBusy(true);
-    setError(null);
-    try {
-      await finalizeWallet();
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : t('modal.errors.continue'));
     } finally {
       setIsBusy(false);
     }
@@ -1990,12 +2008,9 @@ export function DojakwebWalletModal({
         // best-effort
       }
     } else {
-      const loaded = await browser.loadWallet(undefined, targetAddress);
-      if (!loaded) {
-        throw new Error(t('modal.throws.loadSelectedWallet'));
-      }
-      await browser.connect(loaded);
-      setWalletNameDraft(loaded.nickname?.trim() || '');
+      setPlaintextMigrationPending(true);
+      setStep('password');
+      return false;
     }
 
     const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, targetAddress);
@@ -2267,15 +2282,17 @@ export function DojakwebWalletModal({
     }
     setNeedsBackup(false);
     toast.success(t('modal.toast.backupConfirmed'), { duration: 5000 });
-    // Wallet is already live after turnkey create — never force password as a blocker.
-    if (connected || browser.connected) {
-      setStep('dashboard');
-      return;
-    }
     setStep('password');
   };
 
   const handleDismissBackupReveal = () => {
+    if (pendingWallet && !browser.connected) {
+      setPendingWallet(null);
+      setPendingSeed(null);
+      setShowSecretPhrase(false);
+      setStep('chooser');
+      return;
+    }
     if (connected || browser.connected) {
       setStep('dashboard');
       return;
@@ -3390,7 +3407,9 @@ export function DojakwebWalletModal({
                             : step === 'reveal'
                               ? t('modal.title.revealPhrase')
                               : step === 'password'
-                                ? t('modal.title.setPassword')
+                                ? plaintextMigrationPending
+                                  ? t('modal.title.migratePassword')
+                                  : t('modal.title.setPassword')
                                 : step === 'verification'
                                   ? t('modal.title.linkX')
                                   : step === 'send'
@@ -3909,6 +3928,11 @@ export function DojakwebWalletModal({
                         {walletSecretDecoyFields.map((decoy) => (
                           <input key={decoy.name} {...decoy} defaultValue="" />
                         ))}
+                        <p className="text-sm leading-6 text-white/65">
+                          {plaintextMigrationPending
+                            ? t('modal.password.migrateHint')
+                            : t('modal.password.requiredHint')}
+                        </p>
                         <div>
                           <span className="mb-2 block text-sm text-[#E5E5E5]">{t('modal.password.primaryLabel')}</span>
                           <div className="flex rounded-xl border border-white/10 bg-[#0A0A0A] p-1">
@@ -4039,10 +4063,7 @@ export function DojakwebWalletModal({
                           </>
                         )}
 
-                        <div className="flex items-center justify-between gap-3">
-                          <Button type="button" onClick={handleSkipPassword} className={cx('min-w-32', SECONDARY_BUTTON)}>
-                            {t('modal.password.skip')}
-                          </Button>
+                        <div className="flex items-center justify-end gap-3">
                           {newPrimarySecret === 'pin' ? null : (
                             <Button
                               type="submit"

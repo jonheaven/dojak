@@ -3,6 +3,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.title.importWallet': 'ウォレットをインポート',
   'modal.title.revealPhrase': 'あなたのシークレットフレーズ:',
   'modal.title.setPassword': 'ウォレットパスワードを設定',
+  'modal.title.migratePassword': 'このウォレットを暗号化',
   'modal.title.linkX': 'アイデンティティ',
   'modal.title.sendDoge': 'DOGE を送る',
   'modal.title.receiveDoge': 'DOGE を受け取る',
@@ -105,6 +106,10 @@ export const MODAL_JA_FLAT: Record<string, string> = {
     '保存後に WebAuthn / USB セキュリティキーでのクイック解除を許可（同じ秘密を使用）。',
   'modal.password.confirm': 'パスワードを確認',
   'modal.password.skip': '今はスキップ',
+  'modal.password.requiredHint':
+    'この端末にウォレットを保存するにはパスワードが必要です。秘密情報は AES-GCM で暗号化され、平文では保存しません。',
+  'modal.password.migrateHint':
+    'このブラウザに暗号化されていないウォレットコピーが残っています。パスワードを設定して暗号化してください。完了するまで署名はできません。',
   'modal.password.set': 'パスワードを設定',
   'modal.password.setPin': 'PIN を設定',
   'modal.password.setting': '設定中…',
@@ -637,11 +642,14 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.toast.walletImportedZip': 'ZIP からインポートしました。パスワードを設定して保護してください。',
   'modal.toast.importFailedPrefix': 'インポートに失敗: ',
   'modal.toast.newWalletReady':
-    'ウォレット準備完了 — すぐに dApp を使えます。できればシードフレーズも保存してください。',
+    'シークレットフレーズを控えてから、パスワードを設定してこのウォレットを保存してください。',
   'modal.toast.newWalletBackupPhrase': '新しいウォレットを作成しました。続行前にシークレットフレーズをバックアップしてください。',
   'modal.toast.walletSecured': 'ウォレットを保護しました。利用できます。',
   'modal.toast.walletReadyNoPw':
     'ウォレットの準備ができました。いつでもパスワードを追加して追加保護できます。',
+  'modal.toast.walletMigrated': 'ウォレットを暗号化しました。このブラウザから平文コピーを削除しました。',
+  'modal.toast.backupZipPasswordRequired':
+    '先にウォレットのロックを解除してください。バックアップはウォレットパスワードで暗号化されます。',
   'modal.toast.walletUnlocked': 'ウォレットのロックを解除しました。',
   'modal.toast.biometricEnabled': 'このブラウザで生体認証クイック解除を有効にしました。',
   'modal.toast.biometricSkipped': '生体認証の登録をスキップしたか、利用できませんでした。',
@@ -679,6 +687,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.errors.importWallet': 'ウォレットをインポートできませんでした。',
   'modal.errors.passwordsNoMatch': 'パスワードが一致しません。',
   'modal.errors.enterPassword': 'パスワードを入力してください。',
+  'modal.errors.passwordTooShort': 'パスワードは8文字以上にしてください。',
   'modal.errors.pinInvalid': 'PIN は6桁以上の数字のみにしてください。',
   'modal.errors.savePassword': 'パスワードを保存できませんでした。',
   'modal.errors.continue': '続行できませんでした。',

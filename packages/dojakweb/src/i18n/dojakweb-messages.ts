@@ -59,9 +59,9 @@ const en: MsgTree = {
     connectionModal: {
       eyebrow: 'Wallet connection',
       title: 'Choose a wallet',
-      subtitle: 'Pick how you want to sign Dogecoin transactions for this dApp.',
+      subtitle: 'Prefer MyDoge, Spooky, or Ledger for trading. Local browser wallet is a hot, site-origin wallet.',
       footer:
-        'Your keys never leave your device. Local browser wallets use encrypted storage; hardware wallets keep keys off-device.',
+        'Your keys never leave your device. Prefer MyDoge, Spooky, or Ledger for trading. Local browser wallet is hot, site-origin custody — not for sizeable holdings.',
       close: 'Close',
       categoryInternal: 'Internal',
       categoryExternal: 'External',
@@ -70,8 +70,8 @@ const en: MsgTree = {
     options: {
       browser: {
         title: 'Local Browser Wallet',
-        subtitleHas: 'Open your encrypted browser wallet, backup flows, or HD accounts.',
-        subtitleNew: 'Create or import a local browser wallet with secure encrypted storage.',
+        subtitleHas: 'Hot wallet on this site origin — encrypted on this device, not for sizeable holdings.',
+        subtitleNew: 'Hot wallet stored in this browser. Site-origin custody — not for sizeable holdings.',
         available: 'Wallet available',
         create: 'Create wallet',
       },
@@ -161,9 +161,9 @@ const ja: MsgTree = {
     connectionModal: {
       eyebrow: 'ウォレット接続',
       title: 'ウォレットを選択',
-      subtitle: 'この dApp の Dogecoin トランザクションに署名する方法を選びます。',
+      subtitle: '取引には MyDoge、Spooky、Ledger を推奨します。ローカルブラウザウォレットはホットで、このサイトオリジンに保管されます。',
       footer:
-        '秘密鍵がデバイス外に出ることはありません。ブラウザウォレットは暗号化ストレージを使用し、ハードウェアウォレットはオンデバイスで鍵を保持します。',
+        '秘密鍵がデバイス外に出ることはありません。取引には MyDoge / Spooky / Ledger を推奨します。ローカルブラウザウォレットはホットで、このサイトオリジンのカストディです。まとまった保有には向きません。',
       close: '閉じる',
       categoryInternal: '内蔵',
       categoryExternal: '拡張機能',
@@ -172,8 +172,8 @@ const ja: MsgTree = {
     options: {
       browser: {
         title: 'ローカルブラウザウォレット',
-        subtitleHas: '暗号化されたブラウザウォレット、バックアップ、HD アカウントを開きます。',
-        subtitleNew: '安全な暗号化ストレージでローカルウォレットを作成またはインポートします。',
+        subtitleHas: 'このサイトオリジンのホットウォレット — 端末内で暗号化。まとまった保有には向きません。',
+        subtitleNew: 'このブラウザに保存するホットウォレット。サイトオリジンのカストディで、まとまった保有には向きません。',
         available: 'ウォレットあり',
         create: 'ウォレット作成',
       },
