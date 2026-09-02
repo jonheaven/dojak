@@ -1,6 +1,10 @@
 /**
  * BurneÐ — spend Doginal carriers into a valued OP_RETURN (ord circulating burn).
  *
+ * Core: OP_RETURN is IsUnspendable and pruned from the UTXO set; dust rules skip
+ * unspendable outs so postage may die here. Reveal content is NOT erased from history.
+ * Vanity burn addresses are ordinary spendable UTXOs — do not use them.
+ *
  * Layout (required for satpoint assignment):
  *   vin 0..n-1  inscription UTXOs (postage stays in the burn output)
  *   vin n..     plain DOGE for the miner fee
