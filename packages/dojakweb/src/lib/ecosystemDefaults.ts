@@ -2,13 +2,14 @@
  * Ðogenals / Dojak ecosystem factory defaults for host apps.
  *
  * Featured (defaults — user can change in Wallet → Settings):
- * - **Bag**: MyDoge — DOGE balance, UTXOs, tx history, **era-1 Doginals / DRC-20**
- *   (dogex is not scanning classic Doginals; doggy.market is used for per-id metadata/preview)
- * - **Ðunes / Treats / Charms / Ðalkanes**: always dogex indexer (not gated by Wallet Data)
+ * - **Inscriptions / DRC-20**: **dogex** (`https://dogex.command.dog`, MyDoge-shaped `/inscriptions/:addr`)
+ * - **DOGE UTXOs / coin select**: MyDoge public `/utxos` until electrs is at tip
+ * - **Ðunes / Treats / Charms / Ðalkanes**: always dogex indexer
  * - **Chain ops**: command.dog first — broadcast / Core-backed status
  * - **Explorer links**: explorer.dogenals.com (Ðexplorer)
  *
- * Direction: migrate remaining reads to dogex when era-1 is indexed; until then Wallet Data = MyDoge for Doginals.
+ * MyDoge drops Doginals/DRC-20 display+send on 2026-09-17 (Maestro API dies 09-18).
+ * Dojak + dogex are the public path. Collection-owned markets are not the index.
  */
 import { ensureDefaultWalletDataProvider } from '../utils/api';
 import { ensureDefaultChainExplorer } from '../utils/dogeTxExplorer';

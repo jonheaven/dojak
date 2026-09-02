@@ -1540,7 +1540,7 @@ export function DojakwebWalletModal({
       setIsEncryptedWallet(encrypted);
 
       if (encrypted) {
-        // Tab session unlock: reuse password from sessionStorage without re-prompt.
+        // Tab session unlock: reuse in-memory / chrome.storage.session secret (never sessionStorage).
         try {
           const sessionSecret = await createDojakwebSessionSecretStore().getSecret();
           if (sessionSecret) {

@@ -1,6 +1,11 @@
 /**
  * Local Browser Wallet: decode a PSBT and optionally compare it to host-app claims.
  * Ground truth is always the PSBT — site copy is advisory until it matches.
+ *
+ * Intent model (do not treat "ok" as cryptographic authorization without claims):
+ *   verified   — host supplied claims and they match the decoded tx
+ *   decoded    — wallet decoded the PSBT; no independent host intent to compare
+ *   unverified — parse failure or hard mismatch vs claims
  */
 import * as bitcoin from 'bitcoinjs-lib';
 import { DOGE_NETWORK, shibesToDoge, tryParsePsdt } from './doginal-psdt';
@@ -38,6 +43,9 @@ export type PsbtDecodedOutput = {
   nonstandard: boolean;
 };
 
+/** Whether host intent was provided and matched the decoded PSBT. */
+export type PsbtIntentStatus = 'verified' | 'decoded' | 'unverified';
+
 export type PsbtAuditResult = {
   parseOk: boolean;
   parseError?: string;
@@ -49,8 +57,15 @@ export type PsbtAuditResult = {
   /** Human rows for the approval sheet (wallet-decoded, not host copy). */
   summaryRows: Array<{ label: string; value: string }>;
   mismatches: string[];
-  /** ok = claims match / no claims; warn = soft mismatch; critical = parse fail or hard mismatch */
+  /**
+   * ok = soft/no blocking issues; warn = soft mismatch; critical = parse fail or hard mismatch.
+   * When intent is `decoded`, ok means "decoded cleanly" — not "site claims verified".
+   */
   risk: 'ok' | 'warn' | 'critical';
+  /** Independent of risk styling — drives the approval copy. */
+  intent: PsbtIntentStatus;
+  /** True when the host passed at least one concrete claim constraint. */
+  hasClaims: boolean;
 };
 
 function claimValueKoinu(c: PsbtHostClaimOutput): number | undefined {
@@ -116,6 +131,61 @@ function outputMatchesClaim(out: PsbtDecodedOutput, claim: PsbtHostClaimOutput):
   return wantAddr != null || wantValue != null;
 }
 
+function claimsAreConcrete(claims?: PsbtHostClaims | null): boolean {
+  if (!claims) return false;
+  if (claims.allowedAddresses?.some((a) => Boolean(a?.trim()))) return true;
+  if (claims.outputs?.some((o) => Boolean(o.address?.trim()) || claimValueKoinu(o) != null)) {
+    return true;
+  }
+  if (typeof claims.minOutputs === 'number' || typeof claims.maxOutputs === 'number') return true;
+  if (typeof claims.maxFeeKoinu === 'number') return true;
+  return false;
+}
+
+/**
+ * Build host claims for an OpenOrdex-style marketplace buy so the wallet can
+ * flag unexpected destinations (diverted payment / change).
+ */
+export function buildMarketplaceBuyClaims(opts: {
+  buyerAddress: string;
+  /** Seller payment address from listing output 0 (when known). */
+  sellerPaymentAddress?: string | null;
+  /** Exact seller payout in koinu (listing price), when known. */
+  sellerPaymentKoinu?: number | null;
+  /** Extra allowed destinations (royalty, market fee, settlement). */
+  extraAllowedAddresses?: Array<string | null | undefined>;
+}): PsbtHostClaims {
+  const buyer = opts.buyerAddress.trim();
+  const allowed = new Set<string>();
+  if (buyer) allowed.add(buyer);
+  const seller = opts.sellerPaymentAddress?.trim();
+  if (seller) allowed.add(seller);
+  for (const a of opts.extraAllowedAddresses ?? []) {
+    const t = a?.trim();
+    if (t) allowed.add(t);
+  }
+  const outputs: PsbtHostClaimOutput[] = [];
+  if (seller) {
+    const claim: PsbtHostClaimOutput = { address: seller, role: 'seller payment' };
+    if (
+      typeof opts.sellerPaymentKoinu === 'number' &&
+      Number.isFinite(opts.sellerPaymentKoinu) &&
+      opts.sellerPaymentKoinu > 0
+    ) {
+      claim.valueKoinu = Math.round(opts.sellerPaymentKoinu);
+    }
+    outputs.push(claim);
+  }
+  if (buyer) {
+    outputs.push({ address: buyer, role: 'buyer receive / change' });
+  }
+  return {
+    allowedAddresses: [...allowed],
+    minOutputs: 2,
+    outputs: outputs.length ? outputs : undefined,
+  };
+}
+
 /**
  * Decode PSBT bytes and compare optional host claims.
  * Host narrative is never trusted over the decoded transaction.
@@ -124,6 +194,7 @@ export function auditPsbtForWalletApproval(
   psbtInput: string,
   claims?: PsbtHostClaims | null,
 ): PsbtAuditResult {
+  const hasClaims = claimsAreConcrete(claims);
   const psbt = tryParsePsdt(psbtInput);
   if (!psbt) {
     return {
@@ -136,6 +207,8 @@ export function auditPsbtForWalletApproval(
       summaryRows: [{ label: 'Decode', value: 'Failed — approve only if you fully trust this site' }],
       mismatches: ['PSBT could not be decoded by the wallet'],
       risk: 'critical',
+      intent: 'unverified',
+      hasClaims,
     };
   }
 
@@ -179,7 +252,7 @@ export function auditPsbtForWalletApproval(
   }
 
   const mismatches: string[] = [];
-  if (claims) {
+  if (claims && hasClaims) {
     if (typeof claims.minOutputs === 'number' && outputs.length < claims.minOutputs) {
       mismatches.push(`Site implied ≥${claims.minOutputs} outputs; PSBT has ${outputs.length}`);
     }
@@ -232,6 +305,18 @@ export function auditPsbtForWalletApproval(
     risk = hard ? 'critical' : 'warn';
   }
 
+  let intent: PsbtIntentStatus;
+  if (risk === 'critical') {
+    intent = 'unverified';
+  } else if (hasClaims && mismatches.length === 0) {
+    intent = 'verified';
+  } else if (!hasClaims) {
+    intent = 'decoded';
+  } else {
+    // Soft claim mismatches — still decoded, not cryptographically verified
+    intent = 'decoded';
+  }
+
   return {
     parseOk: true,
     inputCount: psbt.txInputs.length,
@@ -241,5 +326,7 @@ export function auditPsbtForWalletApproval(
     summaryRows,
     mismatches,
     risk,
+    intent,
+    hasClaims,
   };
 }

@@ -64,7 +64,7 @@ export const DoginalCard: React.FC<DoginalCardProps> = ({ doginal, onRefresh }) 
           <iframe
             srcDoc={displaySource.content}
             className="w-full h-48 border border-[#00FF88] rounded"
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts"
             title={`Doginal ${displaySource.id} HTML`}
           />
         );

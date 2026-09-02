@@ -25,9 +25,9 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
   const { config, setConfig, testConnection } = useConfig();
 
   const [selectedType, setSelectedType] = useState<ProviderType>(config.type);
-  const [walletDataProvider, setWalletDataProvider] = useState<WalletDataProviderType>(config.walletDataProvider || 'mydoge');
+  const [walletDataProvider, setWalletDataProvider] = useState<WalletDataProviderType>(config.walletDataProvider || 'dogex');
   const [walletDataProviderUrl, setWalletDataProviderUrl] = useState(() => {
-    const provider = config.walletDataProvider || 'mydoge';
+    const provider = config.walletDataProvider || 'dogex';
     return isDefaultWalletDataProviderUrl(provider, config.walletDataProviderUrl)
       ? ''
       : (config.walletDataProviderUrl || '');
@@ -50,7 +50,7 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
   useEffect(() => {
     if (isOpen) {
       setSelectedType(config.type);
-      const provider = config.walletDataProvider || 'mydoge';
+      const provider = config.walletDataProvider || 'dogex';
       setWalletDataProvider(provider);
       setWalletDataProviderUrl(
         isDefaultWalletDataProviderUrl(provider, config.walletDataProviderUrl)

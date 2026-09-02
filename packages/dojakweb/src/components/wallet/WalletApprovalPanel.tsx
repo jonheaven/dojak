@@ -172,19 +172,17 @@ export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelP
         {pending.psbtAudit ? (
           <div
             className={
-              pending.psbtAudit.risk === 'ok'
-                ? 'ds-wallet-approval__psbt-audit'
-                : pending.psbtAudit.risk === 'warn'
+              pending.psbtAudit.intent === 'unverified' || pending.psbtAudit.risk === 'critical'
+                ? 'ds-wallet-approval__psbt-audit ds-wallet-approval__psbt-audit--critical'
+                : pending.psbtAudit.intent === 'decoded' || pending.psbtAudit.risk === 'warn'
                   ? 'ds-wallet-approval__psbt-audit ds-wallet-approval__psbt-audit--warn'
-                  : 'ds-wallet-approval__psbt-audit ds-wallet-approval__psbt-audit--critical'
+                  : 'ds-wallet-approval__psbt-audit'
             }
           >
-            {pending.psbtAudit.risk !== 'ok' ? (
+            {pending.psbtAudit.intent === 'unverified' || pending.psbtAudit.risk === 'critical' ? (
               <div className="ds-wallet-approval__redflag" role="alert">
                 <p className="ds-wallet-approval__redflag-title">
-                  {pending.psbtAudit.risk === 'critical'
-                    ? 'Red flag — PSBT does not match site copy'
-                    : 'Warning — PSBT check found differences'}
+                  Unverified — PSBT does not match expected intent
                 </p>
                 <p className="ds-wallet-approval__redflag-body">
                   Trust the decoded transaction below, not the site description. Approve at your own
@@ -198,10 +196,29 @@ export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelP
                   </ul>
                 ) : null}
               </div>
-            ) : (
+            ) : pending.psbtAudit.intent === 'verified' ? (
               <p className="ds-wallet-approval__psbt-ok">
-                Wallet decoded this PSBT — amounts below are from the transaction bytes, not the site.
+                Verified intent — decoded PSBT matches the site&apos;s claimed destinations/amounts.
+                Values below are from the transaction bytes.
               </p>
+            ) : (
+              <div className="ds-wallet-approval__redflag" role="status">
+                <p className="ds-wallet-approval__redflag-title">
+                  Decoded only — no independent intent claims
+                </p>
+                <p className="ds-wallet-approval__redflag-body">
+                  The wallet decoded this PSBT, but the site did not supply verifiable claims. Review
+                  every output carefully before approving — this is not a cryptographic match against
+                  expected recipients.
+                </p>
+                {pending.psbtAudit.mismatches.length > 0 ? (
+                  <ul className="ds-wallet-approval__redflag-list">
+                    {pending.psbtAudit.mismatches.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
             )}
             <p className="ds-wallet-approval__section-label">Transaction (from PSBT)</p>
             <dl className="ds-wallet-approval__details ds-wallet-approval__details--psbt">

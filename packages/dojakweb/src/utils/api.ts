@@ -45,8 +45,8 @@ export interface WalletDataProviderConfig {
 }
 
 const WALLET_PROVIDER_STORAGE_KEY = 'dojakweb-wallet-data-provider';
-/** One-time migration: older hosts stamped commanddog; reset to MyDoge defaults once. */
-const WALLET_PROVIDER_DEFAULTS_MIGRATION_KEY = 'dojakweb-wallet-data-provider-defaults-v2';
+/** One-time migration: v2 stamped MyDoge; v3 stamps dogex after MyDoge drops Doginals (2026-09-17). */
+const WALLET_PROVIDER_DEFAULTS_MIGRATION_KEY = 'dojakweb-wallet-data-provider-defaults-v3';
 
 /** Fired on `window` after `setWalletDataProviderConfig` (same-tab; `storage` only fires in other tabs). */
 export const WALLET_DATA_PROVIDER_CHANGED_EVENT = 'dojakweb-wallet-data-provider-changed';
@@ -54,11 +54,11 @@ const DEFAULT_MYDOGE_PROVIDER_URL = 'https://api.mydoge.com';
 const DEFAULT_ELECTRS_PROVIDER_URL = 'https://electrs.command.dog';
 const INUBITS_WALLET_INSCRIPTIONS_PATH = '/api/wallet/inscriptions';
 
-/** Canonical factory defaults — MyDoge public API, no custom URL override. */
+/** Canonical factory defaults — dogex for inscriptions / DRC-20. UTXOs still use MyDoge or electrs. */
 export function getFactoryWalletDataProviderConfig(): WalletDataProviderConfig {
   return {
-    walletDataProvider: 'mydoge',
-    walletDataProviderUrl: DEFAULT_MYDOGE_PROVIDER_URL,
+    walletDataProvider: 'dogex',
+    walletDataProviderUrl: undefined,
     mergeInuBitsInscriptions: true,
   };
 }
@@ -512,9 +512,10 @@ export const setWalletDataProviderConfig = (
 };
 
 /**
- * Ensure factory defaults (MyDoge, no custom URL) for first-time / migrated hosts.
- * Older dogecoin.games builds forced `commanddog` into localStorage every load — flip once.
- * Safe to call on every app boot; runs migration at most once per browser profile.
+ * Ensure factory defaults (dogex indexer) for first-time / migrated hosts.
+ * v2 stamped MyDoge. v3 moves inscription/DRC-20 reads to dogex after MyDoge
+ * drops those assets (2026-09-17). Leaves electrs-only profiles alone.
+ * Safe to call on every app boot; runs at most once per browser profile.
  */
 export function ensureDefaultWalletDataProvider(): void {
   if (typeof window === 'undefined') return;
@@ -527,7 +528,7 @@ export function ensureDefaultWalletDataProvider(): void {
     const raw = window.localStorage.getItem(WALLET_PROVIDER_STORAGE_KEY);
     if (!raw) {
       setWalletDataProviderConfig({
-        walletDataProvider: 'mydoge',
+        walletDataProvider: 'dogex',
         walletDataProviderUrl: undefined,
         mergeInuBitsInscriptions: true,
       });
@@ -539,7 +540,7 @@ export function ensureDefaultWalletDataProvider(): void {
       parsed = JSON.parse(raw) as Partial<WalletDataProviderConfig>;
     } catch {
       setWalletDataProviderConfig({
-        walletDataProvider: 'mydoge',
+        walletDataProvider: 'dogex',
         walletDataProviderUrl: undefined,
         mergeInuBitsInscriptions: true,
       });
@@ -547,11 +548,11 @@ export function ensureDefaultWalletDataProvider(): void {
     }
 
     const provider = normalizeWalletDataProvider(parsed.walletDataProvider);
-    // Hosts commonly forced commanddog; reset those profiles to MyDoge defaults once.
-    // Leave dogex alone if the user explicitly chose it.
-    if (provider === 'commanddog' || !parsed.walletDataProvider) {
+    // MyDoge inscription API dies with Maestro (2026-09-18). Flip factory MyDoge
+    // and leftover commanddog stamps to dogex. Keep electrs if the user chose it.
+    if (provider !== 'electrs' && provider !== 'dogex') {
       setWalletDataProviderConfig({
-        walletDataProvider: 'mydoge',
+        walletDataProvider: 'dogex',
         walletDataProviderUrl: undefined,
         mergeInuBitsInscriptions: parsed.mergeInuBitsInscriptions !== false,
         indexerApiBase: parsed.indexerApiBase,
@@ -1068,11 +1069,18 @@ export const walletDataApi = {
       const data = await fetchJson(`${base}/v1/address/${encodeURIComponent(address)}`);
       return mapWalletInfo(address, data);
     }
-    const data = await fetchJson(getWalletEndpoint('/wallet/info?route=/address/', address));
+    // dogex indexes inscriptions, not the spendable DOGE bag.
+    const infoBase =
+      getWalletDataProviderConfig().walletDataProvider === 'dogex'
+        ? DEFAULT_MYDOGE_PROVIDER_URL
+        : getWalletProviderBaseUrl();
+    const data = await fetchJson(
+      `${infoBase.replace(/\/+$/, '')}/wallet/info?route=/address/${encodeURIComponent(address)}`,
+    );
     return mapWalletInfo(address, data);
   },
 
-  /** Resolve inscription id — MyDoge / doggy for era-1 metadata (not dogex). */
+  /** Resolve inscription id — dogex first when that is the wallet data provider. */
   fetchInscriptionById: async (inscriptionId: string): Promise<InscriptionLookupResult | null> => {
     const id = normalizeDoginalInscriptionId(inscriptionId);
     const candidates: string[] = [];
@@ -1110,8 +1118,8 @@ export const walletDataApi = {
   },
 
   fetchInscriptions: async (address: string): Promise<MyDogeInscription[]> => {
-    // Era-1 Doginals live on MyDoge (and optional InuBits merge) — dogex is not
-    // configured to scan classic Doginals, so never prefer the indexer for this list.
+    // electrs / commanddog have no inscription list — those stay on MyDoge until
+    // the 2026-09-17 cutoff. Default dogex uses `/inscriptions/:address`.
     if (usesMyDogeInscriptions()) {
       const fromMyDoge = await fetchInscriptionsFromMyDoge(address);
       const { mergeInuBitsInscriptions } = getWalletDataProviderConfig();
@@ -1362,9 +1370,10 @@ export const walletDataApi = {
       const memoKey = `utxos:electrs:${base}:${addr.toLowerCase()}`;
       return memoizeMydogeWork(memoKey, async () => fetchElectrsUtxos(base, addr));
     }
-    // command.dog product API does not expose MyDoge-style /utxos — use MyDoge for coin selection.
+    // dogex is the inscription index, not the UTXO set. Coin selection stays on
+    // MyDoge (DOGE still works there) or electrs when the user picked electrs.
     const base =
-      cfg.walletDataProvider === 'commanddog'
+      cfg.walletDataProvider === 'commanddog' || cfg.walletDataProvider === 'dogex'
         ? DEFAULT_MYDOGE_PROVIDER_URL
         : getWalletProviderBaseUrl();
     const memoKey = `utxos:${base}:${addr.toLowerCase()}`;

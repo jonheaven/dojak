@@ -616,10 +616,12 @@ export {
 export type { SendInscriptionPsbtDraft } from './lib/doginal-psdt';
 export {
   auditPsbtForWalletApproval,
+  buildMarketplaceBuyClaims,
   type PsbtHostClaims,
   type PsbtHostClaimOutput,
   type PsbtAuditResult,
   type PsbtDecodedOutput,
+  type PsbtIntentStatus,
 } from './lib/psbt-approval-audit';
 
 export {

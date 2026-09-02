@@ -7,6 +7,30 @@ import {
 } from '@dojak/biometrics';
 
 const SESSION_SECRET_KEY = 'dojakweb.biometric.session-secret';
+const LEGACY_SESSION_KEYS = [
+  SESSION_SECRET_KEY,
+  'dojak.biometric.session-secret',
+] as const;
+
+/** Tab-lifetime only on the public site (not readable via sessionStorage). */
+let memorySecret: string | null = null;
+
+function wipeLegacyWebStorage(): void {
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      for (const k of LEGACY_SESSION_KEYS) sessionStorage.removeItem(k);
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (typeof localStorage !== 'undefined') {
+      for (const k of LEGACY_SESSION_KEYS) localStorage.removeItem(k);
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 function getChromeSessionStorage():
   | {
@@ -25,42 +49,49 @@ function getChromeSessionStorage():
 
 /**
  * Session secret store isolated from the extension (`dojak.biometric.*`) keys.
- * Unlock password is held only in chrome.storage.session when that API exists
- * (browser extension). The public site has no sessionStorage fallback — the
- * user re-enters the password after refresh. Never write the password to
- * localStorage or sessionStorage.
+ * Extension: chrome.storage.session only.
+ * Public site: in-memory for the JS realm (survives SPA remounts, not full reload);
+ * never write the unlock password to localStorage or sessionStorage.
  */
 export function createDojakwebSessionSecretStore(): SessionSecretStore {
   const chromeSession = getChromeSessionStorage();
+  wipeLegacyWebStorage();
 
   return {
     async saveSecret(secret: string) {
-      if (!chromeSession) return;
-      try {
-        await chromeSession.set({ [SESSION_SECRET_KEY]: secret });
-      } catch {
-        /* public site / permission denied — require re-entry */
+      wipeLegacyWebStorage();
+      if (chromeSession) {
+        try {
+          await chromeSession.set({ [SESSION_SECRET_KEY]: secret });
+          memorySecret = null;
+          return;
+        } catch {
+          /* fall through to memory */
+        }
       }
+      memorySecret = secret;
     },
     async getSecret() {
-      if (!chromeSession) return null;
-      try {
-        const result = await chromeSession.get([SESSION_SECRET_KEY]);
-        return result?.[SESSION_SECRET_KEY] ?? null;
-      } catch {
-        return null;
+      if (chromeSession) {
+        try {
+          const result = await chromeSession.get([SESSION_SECRET_KEY]);
+          const fromChrome = result?.[SESSION_SECRET_KEY] ?? null;
+          if (fromChrome) return fromChrome;
+        } catch {
+          /* fall through */
+        }
       }
+      return memorySecret;
     },
     async clearSecret() {
+      memorySecret = null;
+      wipeLegacyWebStorage();
       if (chromeSession) {
         try {
           await chromeSession.remove([SESSION_SECRET_KEY]);
         } catch {
           /* ignore */
         }
-      }
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem(SESSION_SECRET_KEY);
       }
     },
   };

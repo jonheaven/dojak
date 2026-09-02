@@ -177,7 +177,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const setConfig = async (newConfig: ProviderConfig) => {
     setIsLoading(true);
     try {
-      const walletDataProvider = newConfig.walletDataProvider ?? config.walletDataProvider ?? 'mydoge';
+      const walletDataProvider = newConfig.walletDataProvider ?? config.walletDataProvider ?? 'dogex';
       // Prefer explicit URL; empty means use provider built-in (MyDoge default).
       const walletDataProviderUrl =
         newConfig.walletDataProviderUrl !== undefined
@@ -229,7 +229,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         case 'mydoge': {
           const base =
             activeConfig.walletDataProviderUrl ||
-            getDefaultWalletDataProviderUrl(activeConfig.walletDataProvider || 'mydoge');
+            getDefaultWalletDataProviderUrl(activeConfig.walletDataProvider || 'dogex');
           testUrl =
             activeConfig.walletDataProvider === 'commanddog'
               ? `${base.replace(/\/$/, '')}/health`

@@ -947,9 +947,16 @@ export async function signListingPSDT(
 
 // ── PSBT validation ───────────────────────────────────────────────────────────
 
+/** Listing seller must commit with SIGHASH_SINGLE|ANYONECANPAY (0x83). */
+const LISTING_REQUIRED_SIGHASH =
+  bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY;
+
 /**
  * Validate a seller's signed PSBT and extract the asking price (koinu).
  * Returns the price if valid, or null if invalid.
+ *
+ * Rejects listings whose sighash is not SIGHASH_SINGLE|ANYONECANPAY — other
+ * sighash types can let a crafted fill divert the buyer's payment/change.
  */
 export function validateSellerPSDT(
   psbtBase64: string,
@@ -966,6 +973,23 @@ export function validateSellerPSDT(
     const psbtUtxo = `${txidHex}:${input.index}`;
 
     if (expectedInscriptionUtxo && psbtUtxo !== expectedInscriptionUtxo) return null;
+
+    const inputData = psbt.data.inputs[0];
+    if (!inputData) return null;
+
+    if (
+      inputData.sighashType !== undefined &&
+      inputData.sighashType !== LISTING_REQUIRED_SIGHASH
+    ) {
+      return null;
+    }
+
+    const partialSigs = inputData.partialSig ?? [];
+    if (partialSigs.length === 0) return null;
+    for (const sig of partialSigs) {
+      const lastByte = sig.signature[sig.signature.length - 1];
+      if (lastByte !== LISTING_REQUIRED_SIGHASH) return null;
+    }
 
     // Seller PSBT is signed but must not be fully extractable yet (buyer adds inputs).
     try {
