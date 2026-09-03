@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, Watch, X } from 'lucide-react';
+import { AlertCircle, Cpu, HardDrive, LoaderCircle, Monitor, Usb, Watch, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import {
   useWalletConnectOptions,
@@ -87,6 +87,7 @@ export function WalletQuickPicker({
   const [flyoutStyle, setFlyoutStyle] = useState<React.CSSProperties | undefined>();
 
   const [showOther, setShowOther] = useState(false);
+  const [showHardware, setShowHardware] = useState(false);
 
   const {
     tiles,
@@ -166,7 +167,11 @@ export function WalletQuickPicker({
 
   if (!open || typeof document === 'undefined') return null;
 
-  const { primary, other } = partitionWalletTiles(tiles);
+  const { primary, other, hardware } = partitionWalletTiles(tiles);
+  const hwConnected = hardware.some((tile) => tile.connected);
+  const hwActive = hardware.some((tile) => tile.isActive);
+  const hwBusy = hardware.some((tile) => connectingType === tile.type);
+  const hwActiveOrConnected = hardware.find((tile) => tile.isActive) ?? hardware.find((tile) => tile.connected);
 
   const onTileClick = (tile: WalletOptionTile) => {
     if (!tile.available && tile.installUrl && tile.type !== 'browser') {
@@ -221,7 +226,7 @@ export function WalletQuickPicker({
             'ds-wallet-quick-picker__tile',
             tile.isActive && 'ds-wallet-quick-picker__tile--active',
             tile.connected && !tile.isActive && 'ds-wallet-quick-picker__tile--connected',
-            !tile.available && tile.type !== 'browser' && 'ds-wallet-quick-picker__tile--muted',
+            !tile.available && tile.type !== 'browser' && !asInstall && 'ds-wallet-quick-picker__tile--muted',
             variant === 'sheet' && 'ds-wallet-quick-picker__tile--row',
           )}
         >
@@ -310,8 +315,96 @@ export function WalletQuickPicker({
           variant === 'sheet' && 'ds-wallet-quick-picker__grid--list',
         )}
       >
-        {primary.map((tile) => renderTile(tile))}
+        {primary.map((tile) =>
+          renderTile(tile, {
+            asInstall: tile.type === 'dojak' || tile.type === 'dogesoft' || tile.type === 'spookydoge',
+          }),
+        )}
+        {hardware.length > 0 ? (
+          <div className="ds-wallet-quick-picker__cell">
+            <button
+              type="button"
+              title={t('wallet.quickPicker.hardwareHint')}
+              aria-label={t('wallet.connectionModal.categoryHardware')}
+              aria-expanded={showHardware}
+              aria-pressed={hwActive}
+              onClick={() => setShowHardware((v) => !v)}
+              className={cx(
+                'ds-wallet-quick-picker__tile',
+                hwActive && 'ds-wallet-quick-picker__tile--active',
+                hwConnected && !hwActive && 'ds-wallet-quick-picker__tile--connected',
+                variant === 'sheet' && 'ds-wallet-quick-picker__tile--row',
+              )}
+            >
+              <span className="ds-wallet-quick-picker__glyph">
+                <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-300 to-violet-500 text-zinc-950 shadow-inner">
+                  <HardDrive className="h-5 w-5" aria-hidden />
+                  <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-md border border-white/25 bg-zinc-900 text-sky-300">
+                    <Usb className="h-2.5 w-2.5" aria-hidden />
+                  </span>
+                </span>
+                {hwBusy ? (
+                  <span className="ds-wallet-quick-picker__busy">
+                    <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden />
+                  </span>
+                ) : null}
+                {hwConnected && !hwBusy ? (
+                  <span
+                    className={cx(
+                      'ds-wallet-quick-picker__dot',
+                      hwActive && 'ds-wallet-quick-picker__dot--active',
+                    )}
+                    aria-hidden
+                  />
+                ) : null}
+              </span>
+              {variant === 'sheet' ? (
+                <span className="ds-wallet-quick-picker__row-text">
+                  <span className="ds-wallet-quick-picker__row-title">
+                    {t('wallet.connectionModal.categoryHardware')}
+                  </span>
+                  <span className="ds-wallet-quick-picker__row-sub">
+                    {t('wallet.quickPicker.hardwareHint')}
+                  </span>
+                </span>
+              ) : null}
+            </button>
+            {hwActiveOrConnected && !hwBusy ? (
+              <button
+                type="button"
+                className="ds-wallet-quick-picker__disconnect"
+                aria-label={t('wallet.quickPicker.disconnectAria', {
+                  name: hwActiveOrConnected.shortTitle,
+                })}
+                title={t('wallet.quickPicker.disconnectAria', {
+                  name: hwActiveOrConnected.shortTitle,
+                })}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  void handleDisconnect(hwActiveOrConnected.type);
+                }}
+              >
+                <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
+
+      {showHardware && hardware.length > 0 ? (
+        <div className="ds-wallet-quick-picker__other-wrap">
+          <p className="ds-wallet-quick-picker__other-hint">{t('wallet.quickPicker.hardwareHint')}</p>
+          <div
+            className={cx(
+              'ds-wallet-quick-picker__grid',
+              variant === 'sheet' && 'ds-wallet-quick-picker__grid--list',
+            )}
+          >
+            {hardware.map((tile) => renderTile(tile, { asInstall: true }))}
+          </div>
+        </div>
+      ) : null}
 
       {other.length > 0 ? (
         <div className="ds-wallet-quick-picker__other-wrap">

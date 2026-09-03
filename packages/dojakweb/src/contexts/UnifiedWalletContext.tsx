@@ -522,6 +522,19 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         isActive: walletType === 'browser',
       },
       {
+        type: 'spookydoge' as const,
+        label: getWalletTypeLabel('spookydoge'),
+        connected: spookyConnected,
+        address: spookyState.address,
+        balance: spookyState.balance,
+        balanceVerified: spookyState.connected,
+        balanceRefreshing: false,
+        connecting: spookyState.connecting,
+        accountIndex: null,
+        derivationPath: null,
+        isActive: walletType === 'spookydoge',
+      },
+      {
         type: 'dogesoft' as const,
         label: getWalletTypeLabel('dogesoft'),
         connected: dogeSoftConnected,
@@ -608,6 +621,10 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     dogeSoftState.address,
     dogeSoftState.balance,
     dogeSoftState.connecting,
+    spookyConnected,
+    spookyState.address,
+    spookyState.balance,
+    spookyState.connecting,
     walletType,
   ]);
 
@@ -617,6 +634,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     }
     const isConnected =
       (type === 'browser' && browserConnected) ||
+      (type === 'spookydoge' && spookyConnected) ||
       (type === 'dogesoft' && dogeSoftConnected) ||
       (type === 'dojak' && dojakConnected) ||
       (type === 'ledger' && ledgerConnected) ||
@@ -630,7 +648,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     if (typeof window !== 'undefined') {
       localStorage.setItem('wallet_type', type);
     }
-  }, [browserConnected, dojakConnected, dogeSoftConnected, dogewatchConnected, ledgerConnected]);
+  }, [browserConnected, dojakConnected, dogeSoftConnected, dogewatchConnected, ledgerConnected, spookyConnected]);
 
   const disconnectWallet = useCallback(
     async (type: WalletType) => {
@@ -654,6 +672,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           'browser',
           'dojak',
           'dogesoft',
+          'spookydoge',
           'ledger',
           'dogewatch',
         ];
@@ -758,6 +777,36 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       }
 
       try {
+        if (type === 'spookydoge') {
+          const provider = getSpookyProvider();
+          if (!provider) {
+            throw new Error('Spooky Doge wallet not found');
+          }
+
+          setSpookyState((prev) => ({ ...prev, connecting: true }));
+          // Spooky Doge injects window.dogecoin and should expose isSpookyWallet=true.
+          // Prefer connect()/dedicated methods for best UX; request() remains fallback.
+          const response =
+            typeof provider.connect === 'function'
+              ? await provider.connect()
+              : await provider.request?.({ method: 'doge_requestAccounts' });
+
+          const accounts = extractAccounts(response);
+          if (!accounts?.length) {
+            throw new Error('No accounts returned from Spooky Doge');
+          }
+
+          setSpookyState({
+            connected: true,
+            address: accounts[0],
+            balance: 0,
+            connecting: false,
+          });
+          setWalletType(type);
+          localStorage.setItem('wallet_type', type);
+          return;
+        }
+
         if (type === 'dogesoft') {
           const provider = await waitForDogeSoftProvider();
           if (!provider) {

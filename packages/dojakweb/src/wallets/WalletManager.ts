@@ -104,9 +104,9 @@ export class WalletManager {
     return null;
   }
 
-  /** Connect by registered wallet id (`dojak` or `dogesoft`). */
+  /** Connect by registered wallet id (`dojak` or `dogesoft`). Spooky uses UnifiedWallet. */
   async connect(walletId: string): Promise<WalletConnection> {
-    if (walletId === 'mydoge' || walletId === 'spookydoge') {
+    if (walletId === 'mydoge') {
       throw new Error(unsupportedExtensionWalletMessage(walletId));
     }
     const adapter = this.getWallet(walletId);

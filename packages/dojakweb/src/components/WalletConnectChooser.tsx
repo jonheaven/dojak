@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertCircle, Cpu, LoaderCircle, Monitor, Usb, Watch } from 'lucide-react';
+import { AlertCircle, Cpu, HardDrive, LoaderCircle, Monitor, Usb, Watch } from 'lucide-react';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import {
   useWalletConnectOptions,
@@ -22,7 +22,7 @@ export type WalletConnectChooserProps = {
 };
 
 /**
- * Icon-grid wallet picker: MyDoge, Spooky, Ledger first; local browser is hot site-origin custody.
+ * Icon-grid wallet picker: Dojak, Doge Soft, Spooky first; one Hardware entry → Ledger / Doge Watch.
  * Shared by WalletSelectionModal and the phone-drawer intro.
  */
 export function WalletConnectChooser({
@@ -32,6 +32,7 @@ export function WalletConnectChooser({
 }: WalletConnectChooserProps) {
   const { t } = useDojakwebI18n();
   const [showOther, setShowOther] = useState(false);
+  const [showHardware, setShowHardware] = useState(false);
   const {
     tiles,
     connectingType,
@@ -42,7 +43,10 @@ export function WalletConnectChooser({
     onSelectBrowser,
     onConnected: () => onConnected?.(),
   });
-  const { primary, other } = partitionWalletTiles(tiles);
+  const { primary, other, hardware } = partitionWalletTiles(tiles);
+  const hwConnected = hardware.some((tile) => tile.connected);
+  const hwActive = hardware.some((tile) => tile.isActive);
+  const hwBusy = hardware.some((tile) => connectingType === tile.type);
 
   const iconTileBase =
     'relative flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-2xl border text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ds-accent-solid)]/55';
@@ -118,7 +122,7 @@ export function WalletConnectChooser({
             : tile.ariaLabel
         }
         className={`${iconTileBase} ${
-          (tile.available || tile.type === 'browser') && connectingType === null
+          (tile.available || tile.type === 'browser' || asInstall) && connectingType === null
             ? iconTileReady
             : iconTileMuted
         }`}
@@ -145,8 +149,47 @@ export function WalletConnectChooser({
       <div className="ds-wallet-options ds-wallet-options--icon-grid">
         <div className="flex flex-col items-center gap-4 py-1">
           <div className="flex w-full max-w-[20rem] flex-wrap items-center justify-center gap-3">
-            {primary.map((tile) => renderTileButton(tile))}
+            {primary.map((tile) =>
+              renderTileButton(tile, {
+                asInstall: tile.type === 'dojak' || tile.type === 'dogesoft' || tile.type === 'spookydoge',
+              }),
+            )}
+            {hardware.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setShowHardware((v) => !v)}
+                aria-expanded={showHardware}
+                aria-label={t('wallet.connectionModal.categoryHardware')}
+                title={t('wallet.quickPicker.hardwareHint')}
+                className={`${iconTileBase} ${iconTileReady} ${
+                  hwActive ? 'ring-2 ring-[color:var(--ds-accent-solid)]' : hwConnected ? 'ring-2 ring-emerald-400/70' : ''
+                }`}
+              >
+                <span className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-sky-300 to-violet-500 text-zinc-950 shadow-inner">
+                  <HardDrive className="h-6 w-6" aria-hidden="true" />
+                  <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-md border border-white/25 bg-zinc-900 text-sky-300 shadow-md">
+                    <Usb className="h-3 w-3" aria-hidden="true" />
+                  </span>
+                </span>
+                {hwBusy ? (
+                  <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/55">
+                    <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
           </div>
+
+          {showHardware && hardware.length > 0 ? (
+            <div className="flex w-full max-w-[20rem] flex-col items-center gap-2">
+              <p className="px-2 text-center text-[11px] leading-snug text-white/40">
+                {t('wallet.quickPicker.hardwareHint')}
+              </p>
+              <div className="flex w-full flex-wrap items-center justify-center gap-3">
+                {hardware.map((tile) => renderTileButton(tile, { asInstall: true }))}
+              </div>
+            </div>
+          ) : null}
 
           {other.length > 0 ? (
             <div className="flex w-full max-w-[20rem] flex-col items-center gap-2">

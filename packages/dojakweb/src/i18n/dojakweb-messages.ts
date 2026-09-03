@@ -43,7 +43,8 @@ const en: MsgTree = {
       openWallet: 'Open wallet',
       hint: 'Gold ring is the active wallet. Green is connected — tap to switch, × to disconnect.',
       other: 'Other',
-      otherHint: 'Install an extension or connect a hardware wallet. USB/serial permission is only requested when you tap one.',
+      otherHint: 'Local browser wallet (hot, site-origin custody). Prefer an extension or hardware for trading.',
+      hardwareHint: 'Ledger (WebUSB) or Doge Watch (Web Serial) — pick your device. USB/serial permission is only requested when you tap one.',
       getWallet: 'Get {name}',
       disconnectAria: 'Disconnect {name}',
       short: {
@@ -59,9 +60,9 @@ const en: MsgTree = {
     connectionModal: {
       eyebrow: 'Wallet connection',
       title: 'Choose a wallet',
-      subtitle: 'Prefer MyDoge, Spooky, or Ledger for trading. Local browser wallet is a hot, site-origin wallet.',
+      subtitle: 'Prefer Dojak, Doge Soft, or Spooky for trading. Local browser wallet is a hot, site-origin wallet.',
       footer:
-        'Your keys never leave your device. Prefer MyDoge, Spooky, or Ledger for trading. Local browser wallet is hot, site-origin custody — not for sizeable holdings.',
+        'Your keys never leave your device. Prefer Dojak, Doge Soft, Spooky, or Hardware for trading. Local browser wallet is hot, site-origin custody — not for sizeable holdings.',
       close: 'Close',
       categoryInternal: 'Internal',
       categoryExternal: 'External',
@@ -145,7 +146,8 @@ const ja: MsgTree = {
       openWallet: 'ウォレットを開く',
       hint: '金色の枠がアクティブ。緑は接続済み — タップで切替、× で切断。',
       other: 'その他',
-      otherHint: '拡張機能のインストールやハードウェア接続はここから。USB / シリアル許可はタップしたときだけ聞きます。',
+      otherHint: 'ローカルブラウザウォレット（ホット・このサイトオリジン）。取引には拡張機能かハードウェアを推奨します。',
+      hardwareHint: 'Ledger（WebUSB）または Doge Watch（Web Serial）— デバイスを選んでください。USB / シリアル許可はタップしたときだけ聞きます。',
       getWallet: '{name} を入手',
       disconnectAria: '{name} を切断',
       short: {
@@ -161,9 +163,9 @@ const ja: MsgTree = {
     connectionModal: {
       eyebrow: 'ウォレット接続',
       title: 'ウォレットを選択',
-      subtitle: '取引には MyDoge、Spooky、Ledger を推奨します。ローカルブラウザウォレットはホットで、このサイトオリジンに保管されます。',
+      subtitle: '取引には Dojak、Doge Soft、Spooky を推奨します。ローカルブラウザウォレットはホットで、このサイトオリジンに保管されます。',
       footer:
-        '秘密鍵がデバイス外に出ることはありません。取引には MyDoge / Spooky / Ledger を推奨します。ローカルブラウザウォレットはホットで、このサイトオリジンのカストディです。まとまった保有には向きません。',
+        '秘密鍵がデバイス外に出ることはありません。取引には Dojak / Doge Soft / Spooky / ハードウェアを推奨します。ローカルブラウザウォレットはホットで、このサイトオリジンのカストディです。まとまった保有には向きません。',
       close: '閉じる',
       categoryInternal: '内蔵',
       categoryExternal: '拡張機能',

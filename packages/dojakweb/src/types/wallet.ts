@@ -184,19 +184,20 @@ declare global {
 export type WalletType = 'browser' | 'mydoge' | 'spookydoge' | 'dogesoft' | 'dojak' | 'ledger' | 'dogewatch';
 
 /**
- * Browser extensions we actually connect.
- * `mydoge` / `spookydoge` remain on WalletType only so stale localStorage can be cleared.
+ * Browser extensions offered in the picker.
+ * MyDoge remains on WalletType + contexts (signing helpers, restore cleanup) but is
+ * hidden from UI and blocked from connect until we re-enable it.
  */
-export const SUPPORTED_EXTENSION_WALLET_TYPES = ['dojak', 'dogesoft'] as const;
+export const SUPPORTED_EXTENSION_WALLET_TYPES = ['dojak', 'dogesoft', 'spookydoge'] as const;
 
+/** MyDoge only — kept out of the picker; connect paths stay in the codebase. */
 export function isUnsupportedExtensionWallet(type: string | null | undefined): boolean {
-  return type === 'mydoge' || type === 'spookydoge';
+  return type === 'mydoge';
 }
 
 export function unsupportedExtensionWalletMessage(type?: string | null): string {
-  const name =
-    type === 'mydoge' ? 'MyDoge' : type === 'spookydoge' ? 'Spooky Doge' : 'This browser extension';
-  return `${name} is not supported. Connect Dojak or Doge Soft.`;
+  const name = type === 'mydoge' ? 'MyDoge' : 'This browser extension';
+  return `${name} is not available in the wallet picker. Connect Dojak, Doge Soft, or Spooky Doge.`;
 }
 
 export type WalletMode = 'dojak' | 'local_browser_wallet';
