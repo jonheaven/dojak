@@ -237,6 +237,8 @@ export {
   encodeDignalShortText,
   DMP_MARKER,
   buildDmpListEnvelope,
+  buildDmpListPayload,
+  hashPsdtBase64,
   WOW_MARKER,
   buildWowSendJson,
   DLOTTO_MARKER,
