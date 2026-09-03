@@ -13,7 +13,7 @@ export const HANDLE_BODY = /^[A-Za-z0-9_]{1,15}$/;
 
 export const COMMAND_DOG_API = 'https://api.command.dog';
 export const DOGEX_API = 'https://dogex.command.dog';
-export const DX_EXPLORER_TX = 'https://explorer.dogenals.com/tx';
+export const DX_EXPLORER_TX = 'https://doge.watch/explorer/tx';
 export const DX_ORIGIN = 'https://dogex.dog';
 
 const RESERVED_X_PATHS = new Set([

@@ -583,7 +583,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.settings.explorerTitle': 'Dogecoin Transaction Explorer',
   'modal.settings.explorer.dogenals': 'Ðexplorer',
   'modal.settings.explorer.dogenalsDesc':
-    'Default — explorer.dogenals.com (Ðogenals eco explorer)',
+    'Default — doge.watch/explorer',
   'modal.settings.explorer.sochain': 'SoChain',
   'modal.settings.explorer.sochainDesc': 'Opens public SoChain tx pages in the browser (no API)',
   'modal.settings.explorer.dogechain': 'DogeChain',

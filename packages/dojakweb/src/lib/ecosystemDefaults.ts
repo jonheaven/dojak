@@ -6,7 +6,7 @@
  * - **DOGE UTXOs / coin select**: MyDoge public `/utxos` until electrs is at tip
  * - **Ðunes / Treats / Charms / Ðalkanes**: always dogex indexer
  * - **Chain ops**: command.dog first — broadcast / Core-backed status
- * - **Explorer links**: explorer.dogenals.com (Ðexplorer)
+ * - **Explorer links**: doge.watch/explorer
  *
  * MyDoge drops Doginals/DRC-20 display+send on 2026-09-17 (Maestro API dies 09-18).
  * Dojak + dogex are the public path. Collection-owned markets are not the index.

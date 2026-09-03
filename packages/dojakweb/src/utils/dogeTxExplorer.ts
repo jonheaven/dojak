@@ -8,8 +8,8 @@ export const CHAIN_EXPLORER_CONFIG_KEY = 'dojakweb-chain-explorer-config';
 
 const CHANGED_EVENT = 'dojakweb-chain-explorer-changed';
 
-/** Canonical Ðexplorer (dogenals eco). */
-export const DOGENALS_EXPLORER_ORIGIN = 'https://explorer.dogenals.com';
+/** Canonical chain explorer (doge.watch). */
+export const DOGENALS_EXPLORER_ORIGIN = 'https://doge.watch/explorer';
 
 export function loadDogeTxExplorerPreference(): DogeTxExplorerId {
   if (typeof window === 'undefined') return 'dogenals';
@@ -78,7 +78,7 @@ export function dogeTxExplorerDisplayName(pref?: DogeTxExplorerId): string {
       return 'Blockchair';
     case 'dogenals':
     default:
-      return 'ÐExplorer';
+      return 'doge.watch';
   }
 }
 

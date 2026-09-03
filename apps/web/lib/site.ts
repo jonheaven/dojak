@@ -12,7 +12,7 @@ export const LINKS = {
   dogenalsCom: 'https://dogenals.com',
   drok: 'https://drok.lol',
   games: 'https://dogecoin.games',
-  explorer: 'https://explorer.dogenals.com',
+  explorer: 'https://doge.watch/explorer',
   githubSpec: 'https://github.com/jonheaven/dogenals',
   githubWallet: 'https://github.com/jonheaven/dojak',
   x: 'https://x.com/jontype',
