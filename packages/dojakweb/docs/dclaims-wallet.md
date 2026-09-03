@@ -43,7 +43,7 @@ Uses existing `extraRevealPayments` path (same as ÐLaunch buys).
 1. `/dclaims/deploy` lists wallet inscriptions via Dojakweb `walletDataApi` (fallback dogex `/api/doginals/address/:addr/inscriptions`).
 2. User picks parent → visual grid preview → **Sign & broadcast** (`createDclaimDeploy` + command.dog → Core) when local browser wallet is unlocked.
 3. Extension / no WIF → `POST command.dog /v1/dclaims/prepare` for payload + fee plan.
-4. `/dclaims/:parent` map loads parent image + `/api/dclaims/parent/:id/claims`. Flagship: `/doge-the-doge`.
+4. `/dclaims/:parent` map loads parent image + `/api/dclaims/parent/:id/claims`. Flagship: `/pwn-the-doge`.
 5. Selection → `createDclaim` / `signInscriptionTxs` + same-tx fee outputs + broadcast.
 
 **Broadcast:** dogenals `broadcastRawTx` prefers dogex `/api/tx/broadcast`, falls back to command.dog `/v1/tx/broadcast`.
