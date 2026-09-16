@@ -28,7 +28,7 @@ export function loadDogeTxExplorerPreference(): DogeTxExplorerId {
 const EXPLORER_DEFAULTS_MIGRATION_KEY = 'dojakweb-explorer-defaults-v1';
 
 /**
- * One-time: unset / legacy SoChain|DogeChain prefs → Ðexplorer.
+ * One-time: unset / legacy SoChain|DogeChain prefs → doge.watch.
  * Users who later pick SoChain keep that choice (migration flag stays set).
  */
 export function ensureDefaultChainExplorer(): void {

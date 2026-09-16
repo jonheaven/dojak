@@ -1632,7 +1632,7 @@ export const walletDataApi = {
       };
     });
 
-    // MyDoge often omits script hex — peek dogex raw for recent rows so Activity matches Ðexplorer.
+    // MyDoge often omits script hex — peek dogex raw for recent rows so Activity matches doge.watch.
     if (page === 1) {
       const bases = getIndexerFetchBases();
       const candidates = transactions.filter((t) => t.txid && !t.protocolHint).slice(0, 12);

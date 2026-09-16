@@ -581,7 +581,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.settings.rpcIbdWarn':
     'Initial block download still running — mempool and confirmation checks can lag until sync finishes.',
   'modal.settings.explorerTitle': 'Dogecoin Transaction Explorer',
-  'modal.settings.explorer.dogenals': 'Ðexplorer',
+  'modal.settings.explorer.dogenals': 'doge.watch',
   'modal.settings.explorer.dogenalsDesc':
     'Default — doge.watch/explorer',
   'modal.settings.explorer.sochain': 'SoChain',

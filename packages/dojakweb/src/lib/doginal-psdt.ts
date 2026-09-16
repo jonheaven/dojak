@@ -1571,9 +1571,9 @@ function sleepMs(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Tx explorer URL from Wallet → Settings preference (defaults to explorer.dogenals.com). */
+/** Tx explorer URL from Wallet → Settings preference (defaults to doge.watch/explorer). */
 export function sochainDogeTxUrl(txid: string): string {
-  // Kept name for callers; prefers Ðexplorer / user preference over hardcoded SoChain.
+  // Kept name for callers; prefers doge.watch / user preference over hardcoded SoChain.
   return dogeTxExplorerUrl(txid);
 }
 

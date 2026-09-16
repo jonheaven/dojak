@@ -383,7 +383,7 @@ export default function HomePage() {
           </div>
           <div className="mt-8 flex flex-wrap justify-center gap-2">
             {[
-              { href: LINKS.explorer, label: 'Ðexplorer' },
+              { href: LINKS.explorer, label: 'doge.watch' },
               { href: LINKS.dogenals, label: 'dogenals.org' },
               { href: LINKS.dogenalsCom, label: 'dogenals.com' },
               { href: '/dogenals', label: 'Protocol Wall' }

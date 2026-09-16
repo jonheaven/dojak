@@ -95,7 +95,7 @@ export default function PrivacyPage() {
                 to Dogecoin Core
               </li>
               <li>
-                <strong className="text-zinc-800">explorer.dogenals.com</strong> — optional transaction links you open
+                <strong className="text-zinc-800">doge.watch</strong> — optional transaction links you open
               </li>
               <li>
                 <strong className="text-zinc-800">Dogecoin L1</strong> — confirmed transactions are public forever

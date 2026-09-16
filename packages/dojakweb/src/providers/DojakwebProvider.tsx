@@ -42,7 +42,7 @@ export function DojakwebProvider({
   theme = 'dark',
   dxTrustedOrigins,
 }: DojakwebProviderProps) {
-  // Featured defaults: MyDoge bag, command.dog broadcast, Ðexplorer — user can override in Settings.
+  // Featured defaults: MyDoge bag, command.dog broadcast, doge.watch — user can override in Settings.
   useEffect(() => {
     ensureDojakwebEcosystemDefaults();
   }, []);

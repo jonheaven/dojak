@@ -85,7 +85,7 @@ export function SiteFooter() {
             </li>
             <li>
               <a href={LINKS.explorer} target="_blank" rel="noreferrer" className="hover:text-[#D4A017]">
-                Ðexplorer
+                doge.watch
               </a>
             </li>
             <li>

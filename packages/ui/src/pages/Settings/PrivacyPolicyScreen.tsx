@@ -65,7 +65,7 @@ export default function PrivacyPolicyScreen() {
             <ul style={{ marginLeft: spacing.medium, marginBottom: spacing.medium }}>
               <li><Text text="command.dog and dogex indexers for balances, Doginals, DRC-20, Dunes, and broadcast" /></li>
               <li><Text text="Ð𝕏 resolve/verify when you tip or link a profile on X" /></li>
-              <li><Text text="Explorer links you choose to open (explorer.dogenals.com)" /></li>
+              <li><Text text="Explorer links you choose to open (doge.watch)" /></li>
             </ul>
             <Text 
               text="These services may log your IP address and the addresses you query. Please review their respective privacy policies."

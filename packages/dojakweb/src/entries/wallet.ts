@@ -112,7 +112,7 @@ export {
   filterVisibleInscriptions,
 } from '../utils/hidden-inscriptions';
 
-/** Featured defaults: MyDoge bag + command.dog ops + explorer.dogenals.com (overrides still allowed). */
+/** Featured defaults: MyDoge bag + command.dog ops + doge.watch explorer (overrides still allowed). */
 export { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
 
 /** Host apps: push signed hex via wallet broadcast relay order (not host /api/tx-broadcast). */

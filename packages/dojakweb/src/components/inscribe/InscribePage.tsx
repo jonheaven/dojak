@@ -181,7 +181,7 @@ function guessContentType(file: File): string {
   return 'application/octet-stream';
 }
 
-/** Public explorer links — prefer Wallet Settings (Ðexplorer default); keep others open. */
+/** Public explorer links — prefer Wallet Settings (doge.watch default); keep others open. */
 function preferredPublicTxPageUrl(txid: string): string {
   return dogeTxExplorerUrl(txid);
 }
@@ -1840,14 +1840,14 @@ export const InscribePage: React.FC = () => {
                               >
                                 {prefName}
                               </a>
-                              {prefName !== 'Ðexplorer' ? (
+                              {prefName !== 'doge.watch' ? (
                                 <a
                                   href={dogenalsPublicTxUrl(st.txid)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-xs text-white/50 underline hover:text-white/80"
                                 >
-                                  Ðexplorer
+                                  doge.watch
                                 </a>
                               ) : null}
                               {prefName !== 'SoChain' ? (
