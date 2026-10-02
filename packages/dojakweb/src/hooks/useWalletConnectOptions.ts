@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { useBrowserWallet } from '../contexts/BrowserWalletContext';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
-import type { WalletType } from '../types/wallet';
+import { isPickerHiddenWallet, type WalletType } from '../types/wallet';
 import { getInjectedDogeSoftProvider } from '../utils/dogesoft-provider';
 import { getInjectedMyDogeProvider } from '../utils/mydoge-provider';
 
@@ -23,11 +23,11 @@ export function isHardwareKind(type: ConnectKind): boolean {
   return type === 'ledger' || type === 'dogewatch';
 }
 
-const PRIMARY_EXTENSION_ORDER: ConnectKind[] = ['dojak', 'dogesoft', 'spookydoge'];
+const PRIMARY_EXTENSION_ORDER: ConnectKind[] = ['dojak', 'dogesoft'];
 
 /** Featured extensions always primary; local browser only when saved/active; hardware is a separate group. */
 export function isQuickPathWalletTile(tile: WalletOptionTile): boolean {
-  if (tile.type === 'mydoge') return false;
+  if (isPickerHiddenWallet(tile.type)) return false;
   if (PRIMARY_EXTENSION_ORDER.includes(tile.type)) return true;
   if (tile.pinPrimary) return true;
   if (tile.type === 'browser') return tile.connected || tile.isActive;
@@ -48,7 +48,7 @@ export function partitionWalletTiles(tiles: WalletOptionTile[]): {
   other: WalletOptionTile[];
   hardware: WalletOptionTile[];
 } {
-  const visible = tiles.filter((tile) => tile.type !== 'mydoge');
+  const visible = tiles.filter((tile) => !isPickerHiddenWallet(tile.type));
   const hardware = visible.filter((tile) => isHardwareKind(tile.type));
   const rest = visible.filter((tile) => !isHardwareKind(tile.type));
   const primary: WalletOptionTile[] = [];

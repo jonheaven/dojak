@@ -60,9 +60,9 @@ const en: MsgTree = {
     connectionModal: {
       eyebrow: 'Wallet connection',
       title: 'Choose a wallet',
-      subtitle: 'Prefer Dojak, Doge Soft, or Spooky for trading. Local browser wallet is a hot, site-origin wallet.',
+      subtitle: 'Local Browser Wallet, Dojak, or Doge Soft. Local browser wallet is a hot, site-origin wallet.',
       footer:
-        'Your keys never leave your device. Prefer Dojak, Doge Soft, Spooky, or Hardware for trading. Local browser wallet is hot, site-origin custody — not for sizeable holdings.',
+        'Your keys never leave your device. Local Browser Wallet, Dojak, or Doge Soft. Local browser wallet is hot, site-origin custody — not for sizeable holdings.',
       close: 'Close',
       categoryInternal: 'Internal',
       categoryExternal: 'External',
@@ -163,9 +163,9 @@ const ja: MsgTree = {
     connectionModal: {
       eyebrow: 'ウォレット接続',
       title: 'ウォレットを選択',
-      subtitle: '取引には Dojak、Doge Soft、Spooky を推奨します。ローカルブラウザウォレットはホットで、このサイトオリジンに保管されます。',
+      subtitle: 'ローカルブラウザウォレット、Dojak、または Doge Soft。ローカルはホットで、このサイトオリジンに保管されます。',
       footer:
-        '秘密鍵がデバイス外に出ることはありません。取引には Dojak / Doge Soft / Spooky / ハードウェアを推奨します。ローカルブラウザウォレットはホットで、このサイトオリジンのカストディです。まとまった保有には向きません。',
+        '秘密鍵がデバイス外に出ることはありません。ローカルブラウザウォレット、Dojak、または Doge Soft。ローカルはホットで、このサイトオリジンのカストディです。まとまった保有には向きません。',
       close: '閉じる',
       categoryInternal: '内蔵',
       categoryExternal: '拡張機能',

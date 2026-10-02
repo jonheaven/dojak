@@ -1170,8 +1170,6 @@ export function DojakwebWalletModal({
   const localWallets = availableWallets.filter((wallet) => wallet.type === 'browser');
   const extensionWallets = availableWallets.filter(
     (wallet) =>
-      wallet.type === 'mydoge' ||
-      wallet.type === 'spookydoge' ||
       wallet.type === 'dogesoft' ||
       wallet.type === 'dojak',
   );
