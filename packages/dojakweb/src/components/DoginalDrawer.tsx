@@ -43,9 +43,9 @@ const DoginalDrawer: React.FC = () => {
       case 'dogetag':
         return '🐾 DogeTag:tx';
       case 'dogetag-witness':
-        return '🏷️ DogeTag:inscription';
+        return '🏷️ Text inscription';
       case 'dogetag-witness-transfer':
-        return '📦 DogeTag:inscription transfer';
+        return '📦 Text inscription transfer';
       default:
         return '🐕 Inscription';
     }
@@ -226,7 +226,7 @@ const DoginalDrawer: React.FC = () => {
           )}
 
           <Badge variant="outline" className="text-blue-300 border-blue-600/50 bg-blue-900/50">
-            🐾 DogeTag:tx ({drawerData.text?.length || 0} bytes)
+            🐾 Dogetag ({drawerData.text?.length || 0} bytes)
           </Badge>
         </div>
       );
@@ -237,15 +237,15 @@ const DoginalDrawer: React.FC = () => {
         <div className="text-center space-y-4">
           <div className="text-6xl">🏷️</div>
           <div className="text-3xl font-bold text-purple-400 mb-2">
-            DogeTag:inscription
+            Text inscription
           </div>
           <div className="text-text-secondary mb-4">
-            Longer message stored in witness data. It moves with the coin.
+            Longer text stored with the coin. This is not a dogetag.
           </div>
 
           {drawerData.text && (
             <div className="bg-bg-secondary rounded-lg p-4 max-w-md mx-auto">
-              <div className="text-sm text-text-secondary mb-2">DogeTag:inscription content</div>
+              <div className="text-sm text-text-secondary mb-2">Text</div>
               <div className="font-mono text-sm text-text-primary break-words whitespace-pre-wrap">
                 {drawerData.text}
               </div>

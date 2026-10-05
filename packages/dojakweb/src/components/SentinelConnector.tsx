@@ -205,15 +205,15 @@ export const SentinelConnector: React.FC<SentinelConnectorProps> = ({
         break;
 
       case "dogetag":
-        mint(evt.message || 'New DogeTag:tx created!', isPersonal, drawerData);
+        mint(evt.message || 'New dogetag created', isPersonal, drawerData);
         break;
 
       case "dogetag-witness":
-        mint(evt.message || 'New Dogetag minted!', isPersonal, drawerData);
+        mint(evt.message || 'New text inscription', isPersonal, drawerData);
         break;
 
       case "dogetag-witness-transfer":
-        transfer(evt.message || 'Dogetag transferred', isPersonal, drawerData);
+        transfer(evt.message || 'Text inscription transferred', isPersonal, drawerData);
         break;
 
       default:

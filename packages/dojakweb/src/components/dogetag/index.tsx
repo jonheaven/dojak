@@ -41,17 +41,17 @@ function DogetagBrand() {
         <p className="mt-2 max-w-[260px] text-xs leading-relaxed text-zinc-500">
           Carve your words into Dogecoin — forever.
           <br />
-          OP_RETURN for short graffiti, Doginals for longer text.
+          A dogetag is an 80-byte OP_RETURN. It stays with the transaction.
         </p>
       </div>
       <div className="w-full max-w-[260px] space-y-2 rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 text-xs text-zinc-500">
         <div className="flex items-start gap-2">
           <ChatBubbleLeftRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-400" />
-          <span><strong className="text-zinc-300">DogeTag:tx</strong> — 80 bytes, ~0.001 DOGE, stays with the tx</span>
+          <span><strong className="text-zinc-300">Dogetag</strong> — 80 bytes, stays with the tx</span>
         </div>
         <div className="flex items-start gap-2">
           <CubeIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
-          <span><strong className="text-zinc-300">DogeTag:inscription</strong> — up to 1390 bytes, moves with your coin (2 txs)</span>
+          <span><strong className="text-zinc-300">Text inscription</strong> — longer text, moves with the coin, not a dogetag</span>
         </div>
       </div>
     </div>
@@ -120,20 +120,19 @@ function AboutPanel({ onGoCreate }: { onGoCreate: () => void }) {
         <div className="space-y-3 text-sm text-zinc-400">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 shrink-0 rounded bg-blue-900/50 px-1.5 py-0.5 font-mono text-[10px] text-blue-300">
-              DogeTag:tx
+              Dogetag
             </span>
             <span>
               An OP_RETURN output in a standard Dogecoin transaction. Up to 80 UTF-8 bytes. Stays
-              with that transaction hash, non-transferable, cheap.
+              with that transaction hash.
             </span>
           </div>
           <div className="flex items-start gap-3">
             <span className="mt-0.5 shrink-0 rounded bg-emerald-900/50 px-1.5 py-0.5 font-mono text-[10px] text-emerald-300">
-              DogeTag:inscription
+              Text
             </span>
             <span>
-              Canonical Doginals P2SH commit-reveal. Two transactions, larger payload, moves with
-              the UTXO lineage. Indexable as a collectible.
+              A text inscription, not a dogetag. Two transactions, larger payload, moves with the coin.
             </span>
           </div>
         </div>
@@ -157,8 +156,8 @@ function FaqPanel() {
       a: '80 UTF-8 bytes = 80 ASCII chars, fewer with emoji/accents. Fits: your name, a URL, a short claim, a love letter.',
     },
     {
-      q: 'DogeTag:tx vs DogeTag:inscription?',
-      a: 'DogeTag:tx (OP_RETURN) is cheap, transaction-scoped, non-transferable. DogeTag:inscription (Doginals) is richer, moves with your UTXO, requires two transactions.',
+      q: 'Dogetag vs text inscription?',
+      a: 'A dogetag is an 80-byte OP_RETURN. It stays with the transaction. A text inscription is longer, takes two transactions, and moves with the coin. It is not a dogetag.',
     },
     {
       q: 'Can I include a tip?',
@@ -302,16 +301,16 @@ export const DogetagPage: React.FC<{
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
           <div className="mb-2 flex items-center gap-2">
             <ChatBubbleLeftRightIcon className="h-4 w-4 text-blue-400" />
-            <span className="text-sm font-semibold text-white">DogeTag:tx</span>
+            <span className="text-sm font-semibold text-white">Dogetag</span>
           </div>
-          <p className="text-xs text-zinc-500">80-byte OP_RETURN — cheap, instant, permanent graffiti on a transaction.</p>
+          <p className="text-xs text-zinc-500">80-byte OP_RETURN. It stays with the transaction.</p>
         </div>
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
           <div className="mb-2 flex items-center gap-2">
             <CubeIcon className="h-4 w-4 text-emerald-400" />
-            <span className="text-sm font-semibold text-white">DogeTag:inscription</span>
+            <span className="text-sm font-semibold text-white">Text inscription</span>
           </div>
-          <p className="text-xs text-zinc-500">Doginals commit-reveal — longer text that moves with your coin.</p>
+          <p className="text-xs text-zinc-500">Longer text that moves with the coin. Not a dogetag.</p>
         </div>
       </div>
     </div>

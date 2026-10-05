@@ -139,7 +139,7 @@ export const DogetagCreator: React.FC<DogetagCreatorProps> = ({
     : [];
 
   const hasProtectedInputMatch = selectedUtxoReview.some((u) => u.isProtected);
-  const dogetagKindLabel = inscriptionMode === 'op_return' ? 'DogeTag:tx' : 'DogeTag:inscription';
+  const dogetagKindLabel = inscriptionMode === 'op_return' ? 'Dogetag' : 'Text inscription';
 
   // Auto-update fee rate on component mount and check for first-time tutorial
   useEffect(() => {
@@ -199,7 +199,7 @@ export const DogetagCreator: React.FC<DogetagCreatorProps> = ({
   const getLimits = () => {
     return inscriptionMode === 'op_return'
       ? { maxBytes: 80, label: 'OP_RETURN (80 bytes max)' }
-      : { maxBytes: INSCRIPTION_MAX_CONTENT_BYTES, label: `DogeTag:inscription (${INSCRIPTION_MAX_CONTENT_BYTES} bytes max • 2 txs)` };
+      : { maxBytes: INSCRIPTION_MAX_CONTENT_BYTES, label: `Text inscription (${INSCRIPTION_MAX_CONTENT_BYTES} bytes max • 2 txs)` };
   };
 
   const handleMessageChange = (value: string) => {
@@ -227,7 +227,7 @@ export const DogetagCreator: React.FC<DogetagCreatorProps> = ({
 
     // Hard stop for Dogetag mode at the canonical single-partial ceiling
     if (inscriptionMode === 'witness' && byteLength > limits.maxBytes) {
-      setError(`DogeTag:inscription limit reached (${limits.maxBytes} bytes — use DogeTag:tx (OP_RETURN) mode)`);
+      setError(`Text inscription limit reached (${limits.maxBytes} bytes — a dogetag is the 80-byte OP_RETURN)`);
       return;
     }
 
@@ -240,7 +240,7 @@ export const DogetagCreator: React.FC<DogetagCreatorProps> = ({
     setShowModeSuggestion(false);
     setError(null);
     onInscriptionModeChange?.('witness');
-    toast.info('Switched to DogeTag:inscription mode for longer messages');
+    toast.info('Switched to a text inscription for the longer message');
   };
 
   const toggleTooltip = (mode: 'op_return' | 'witness' | 'bytes' | null) => {
@@ -249,14 +249,14 @@ export const DogetagCreator: React.FC<DogetagCreatorProps> = ({
 
   const getPhilosophicalLabel = () => {
     return inscriptionMode === 'op_return'
-      ? 'DogeTag:tx stays with the transaction.'
-      : 'DogeTag:inscription moves with the coin.';
+      ? 'A dogetag stays with the transaction.'
+      : 'A text inscription moves with the coin.';
   };
 
   const getTooltipContent = (mode: 'op_return' | 'witness') => {
     if (mode === 'op_return') {
       return {
-        title: 'DogeTag:tx',
+        title: 'Dogetag',
         content: `Short messages stored in an OP_RETURN output.
 
 They stay with the transaction and do not move with coins.
@@ -267,7 +267,7 @@ Max size: 80 bytes.`
       };
     } else {
       return {
-        title: 'DogeTag:inscription',
+        title: 'Text inscription',
         content: `Canonical Doginals inscription (P2SH commit-reveal).
 
 This is always 2 transactions: commit first, then reveal.
@@ -381,7 +381,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
         setRevealAttempts([]);
         setCommitConfirmations(0);
         setCurrentStep('inscription_commit');
-        toast.success('DogeTag:inscription signed! Broadcast the commit transaction below.');
+        toast.success('Text inscription signed. Broadcast the commit transaction below.');
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to build transaction';
@@ -892,9 +892,9 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
               <div className="space-y-4">
                 <div className="text-center">
                   <div className="text-6xl mb-4">🏷️</div>
-                  <h2 className="text-2xl font-bold text-text-primary mb-2">Two ways to put text on Dogecoin</h2>
+                  <h2 className="text-2xl font-bold text-text-primary mb-2">A dogetag is the short note</h2>
                   <p className="text-text-secondary mb-6">
-                    Dojakweb supports two message formats: short OP_RETURN notes and longer witness-carried messages.
+                    Dogetags are 80-byte OP_RETURN messages. Longer text is a text inscription and moves with the coin.
                   </p>
                 </div>
 
@@ -902,7 +902,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
                   <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-600/30">
                     <h3 className="font-semibold text-blue-300 mb-2 flex items-center">
                       <span className="text-lg mr-2">🐾</span>
-                      DogeTag:tx
+                      Dogetag
                     </h3>
                     <p className="text-sm text-text-secondary mb-2">
                       Short OP_RETURN messages. They stay with the transaction and do not move with coins.
@@ -915,7 +915,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
                   <div className="bg-purple-900/20 rounded-lg p-4 border border-purple-600/30">
                     <h3 className="font-semibold text-purple-300 mb-2 flex items-center">
                       <span className="text-lg mr-2">🐕</span>
-                      DogeTag:inscription
+                      Text inscription
                     </h3>
                     <p className="text-sm text-text-secondary mb-2">
                       Longer witness-carried messages. They move with the coin when it is spent.
@@ -928,8 +928,8 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
 
                 <div className="bg-emerald-900/20 rounded-lg p-3 border border-emerald-600/30">
                   <p className="text-sm text-emerald-200 text-center">
-                    <strong>The key difference:</strong> DogeTag:tx stays with the transaction.
-                    DogeTag:inscription moves with the coin.
+                    <strong>The key difference:</strong> a dogetag stays with the transaction.
+                    A text inscription moves with the coin.
                   </p>
                 </div>
               </div>
@@ -958,7 +958,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
             <h1 className="text-3xl font-bold text-text-primary">Create a DogeTag</h1>
           </div>
           <p className="text-text-secondary">
-            Create DogeTag:tx or DogeTag:inscription messages and see how Dogecoin text on-chain works.
+            Write an OP_RETURN dogetag, or a longer text inscription that moves with the coin.
           </p>
         </div>
 
@@ -1000,7 +1000,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
             {/* Mode Toggle */}
             <div className="bg-bg-secondary rounded-lg p-4 border border-border-primary">
               <label className="block text-sm font-medium text-text-secondary mb-3">
-                Inscription Mode
+                What you are writing
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="relative">
@@ -1021,8 +1021,8 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
                     <div className="flex items-center space-x-2">
                       <RadioIcon className="w-5 h-5" />
                       <div className="text-left">
-                        <div className="font-medium">DogeTag:tx</div>
-                        <div className="text-xs opacity-75">Short note • 80 bytes max • Stays with the transaction</div>
+                        <div className="font-medium">Dogetag</div>
+                        <div className="text-xs opacity-75">OP_RETURN • 80 bytes • stays with the transaction</div>
                       </div>
                     </div>
                       <span
@@ -1053,7 +1053,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
                           <InformationCircleIcon className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                           <div>
                             <div className="font-medium text-text-primary mb-2">
-                              DogeTag:tx
+                              Dogetag
                             </div>
                             <div className="text-sm text-text-secondary space-y-2">
                               <p>
@@ -1091,8 +1091,8 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
                       <div className="flex items-center space-x-2">
                         <CpuChipIcon className="w-5 h-5" />
                         <div className="text-left">
-                          <div className="font-medium">DogeTag:inscription</div>
-                          <div className="text-xs opacity-75">Doginal • 1390 bytes • 2 txs • local wallet</div>
+                          <div className="font-medium">Text inscription</div>
+                          <div className="text-xs opacity-75">Not a dogetag • moves with the coin • 2 txs</div>
                         </div>
                       </div>
                       <span
@@ -1123,11 +1123,11 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
                           <InformationCircleIcon className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
                           <div>
                             <div className="font-medium text-text-primary mb-2">
-                              DogeTag:inscription
+                              Text inscription
                             </div>
                             <div className="text-sm text-text-secondary space-y-2">
                               <p>
-                                This mode creates a canonical Doginals inscription using commit-reveal (2 transactions).
+                                This is a Doginals text inscription, not a dogetag. Commit, then reveal. It moves with the coin.
                               </p>
                               <p>
                                 <strong>Good for:</strong> longer text, provenance notes, and collectible-style inscriptions picked up by compatible Doginals indexers.
@@ -1159,17 +1159,17 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
                   <ExclamationCircleIcon className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                       <div className="text-sm text-yellow-200">
-                      <div className="font-medium mb-1">This message is too large for DogeTag:tx mode.</div>
+                      <div className="font-medium mb-1">This message is too large for a dogetag.</div>
                       <div className="text-xs opacity-90 mb-2">
-                        <strong>DogeTag:tx</strong> — short notes that stay with the transaction<br/>
-                        <strong>DogeTag:inscription</strong> — longer notes that move with the coin
+                        <strong>Dogetag</strong> — 80-byte OP_RETURN, stays with the transaction<br/>
+                        <strong>Text inscription</strong> — longer text that moves with the coin
                       </div>
                     </div>
                     <button
                       onClick={switchToWitnessMode}
                       className="px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-yellow-100 text-sm rounded transition-colors"
                     >
-                      Switch to DogeTag:inscription
+                      Switch to text inscription
                     </button>
                   </div>
                 </div>
@@ -1220,7 +1220,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
                     DogeTag size is measured in UTF-8 bytes, not characters. Emojis and non-English characters take more space.
                   </p>
                   <p className="mt-1">
-                    DogeTag:tx (OP_RETURN) = 80 bytes max. DogeTag:inscription = {INSCRIPTION_MAX_CONTENT_BYTES} bytes (2 txs).
+                    A dogetag is 80 bytes. A text inscription is {INSCRIPTION_MAX_CONTENT_BYTES} bytes across 2 transactions.
                   </p>
                   <p className="mt-1">
                     The counter updates live so you can sculpt your message precisely.
@@ -1623,7 +1623,7 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
             <div className="text-center">
               <h3 className="text-lg font-semibold text-text-primary">Step 2 of 2 — Broadcast Reveal</h3>
               <p className="text-sm text-text-secondary mt-1">
-                Reveals the inscription data and completes the DogeTag:inscription.
+                Reveals the text and completes the inscription.
               </p>
             </div>
 
@@ -1906,14 +1906,14 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
             <div className="px-4 pb-4 border-t border-border-primary">
               <div className="text-sm text-text-secondary space-y-3 pt-3 leading-relaxed">
                 <p>
-                  <span className="font-medium text-text-primary">DogeTag:tx</span>
+                  <span className="font-medium text-text-primary">Dogetag</span>
                   {' — '}
                   Short notes in OP_RETURN (80 bytes max). They stay with the transaction and never move.
                 </p>
                 <p>
-                  <span className="font-medium text-text-primary">DogeTag:inscription</span>
+                  <span className="font-medium text-text-primary">Text inscription</span>
                   {' — '}
-                  Canonical Doginals commit–reveal inscriptions (2 transactions, signed in this wallet). Up to{' '}
+                  Longer text on a coin (2 transactions, signed in this wallet). Not a dogetag. Up to{' '}
                   {INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI.
                 </p>
               </div>
