@@ -25,6 +25,7 @@ export type DojakwebWalletTxProtocol =
   | 'incinerator'
   | 'dogepark'
   | 'dogetag'
+  | 'yard'
   | 'unknown';
 
 export type DojakwebWalletTxEntry = {
@@ -62,6 +63,7 @@ export const WALLET_TX_PROTOCOL_LABELS: Record<DojakwebWalletTxProtocol, string>
   incinerator: 'BurneÐ',
   dogepark: 'DogePark',
   dogetag: 'ÐogeTag',
+  yard: 'YARD',
   unknown: 'Unknown',
 };
 
@@ -81,6 +83,7 @@ const PROTOCOL_RANK: Record<DojakwebWalletTxProtocol, number> = {
   dlocker: 6,
   incinerator: 6,
   dogepark: 5,
+  yard: 4,
 };
 
 function nowIso(): string {

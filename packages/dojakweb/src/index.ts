@@ -493,6 +493,22 @@ export { TreatsMintPanel, TreatsTransferPanel } from './components/treats/Treats
 export type { TreatsMintPanelProps, TreatsUiOp } from './components/treats/TreatsMintPanel';
 export { TreatsPage } from './components/treats/TreatsPage';
 
+export { YardLabPanel } from './components/yard/YardLabPanel';
+export type { YardLabPanelProps } from './components/yard/YardLabPanel';
+export {
+  decodeConsignmentAny,
+  encodeConsignmentJson,
+  summarizeConsignment,
+  openNotesFromConsignment,
+  protectOpenNotes,
+  listYardSeals,
+  signAndBroadcastYardTip,
+  signAndBroadcastYardBurn,
+  encodeYardCommitment,
+  decodeYardCommitment,
+} from './lib/yard';
+export type { YardConsignment, OpenNote, VerifySummary, YardSignResult, StoredYardSeal } from './lib/yard';
+
 export { DunesToolsPanel } from './components/dunes/DunesToolsPanel';
 export type { DunesToolsPanelProps, DunesToolsTxSuccess, DunesUiOp } from './components/dunes/DunesToolsPanel';
 export { DuneDeployModal } from './components/DuneDeployModal';
