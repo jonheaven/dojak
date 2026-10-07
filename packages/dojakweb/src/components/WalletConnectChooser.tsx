@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertCircle, Cpu, HardDrive, LoaderCircle, Monitor, Usb, Watch } from 'lucide-react';
+import { AlertCircle, Cpu, HardDrive, LoaderCircle, Monitor, Puzzle, Usb, Watch } from 'lucide-react';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import {
   useWalletConnectOptions,
@@ -22,7 +22,7 @@ export type WalletConnectChooserProps = {
 };
 
 /**
- * Icon-grid wallet picker: Dojak, Doge Soft, Spooky first; one Hardware entry → Ledger / Doge Watch.
+ * Three choices: Local first, then Extension (Dojak, Doge Soft, Spooky Doge), then Hardware.
  * Shared by WalletSelectionModal and the phone-drawer intro.
  */
 export function WalletConnectChooser({
@@ -32,6 +32,7 @@ export function WalletConnectChooser({
 }: WalletConnectChooserProps) {
   const { t } = useDojakwebI18n();
   const [showOther, setShowOther] = useState(false);
+  const [showExtensions, setShowExtensions] = useState(false);
   const [showHardware, setShowHardware] = useState(false);
   const {
     tiles,
@@ -43,7 +44,7 @@ export function WalletConnectChooser({
     onSelectBrowser,
     onConnected: () => onConnected?.(),
   });
-  const { primary, other, hardware } = partitionWalletTiles(tiles);
+  const { local, extensions, hardware, other } = partitionWalletTiles(tiles);
   const hwConnected = hardware.some((tile) => tile.connected);
   const hwActive = hardware.some((tile) => tile.isActive);
   const hwBusy = hardware.some((tile) => connectingType === tile.type);
@@ -101,9 +102,10 @@ export function WalletConnectChooser({
     void handleConnect(tile.type);
   };
 
-  const renderTileButton = (tile: WalletOptionTile, opts?: { asInstall?: boolean }) => {
+  const renderTileButton = (tile: WalletOptionTile, opts?: { asInstall?: boolean; feature?: boolean }) => {
     const busy = connectingType === tile.type;
     const asInstall = Boolean(opts?.asInstall && !tile.available && tile.installUrl);
+    const feature = Boolean(opts?.feature);
     const canClick = tile.type === 'browser' || tile.available || asInstall;
     return (
       <button
@@ -125,12 +127,18 @@ export function WalletConnectChooser({
           (tile.available || tile.type === 'browser' || asInstall) && connectingType === null
             ? iconTileReady
             : iconTileMuted
-        }`}
+        } ${feature ? 'h-auto w-full justify-start gap-3 px-3 py-2' : ''}`}
       >
         {renderGlyph(tile.type, tile.logo)}
         {busy ? (
           <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/55">
             <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
+          </span>
+        ) : null}
+        {feature ? (
+          <span className="ds-wallet-quick-picker__row-text">
+            <span className="ds-wallet-quick-picker__row-title">{tile.shortTitle}</span>
+            <span className="ds-wallet-quick-picker__row-sub">{tile.subtitle}</span>
           </span>
         ) : null}
       </button>
@@ -148,12 +156,33 @@ export function WalletConnectChooser({
 
       <div className="ds-wallet-options ds-wallet-options--icon-grid">
         <div className="flex flex-col items-center gap-4 py-1">
-          <div className="flex w-full max-w-[20rem] flex-wrap items-center justify-center gap-3">
-            {primary.map((tile) =>
-              renderTileButton(tile, {
-                asInstall: tile.type === 'dojak' || tile.type === 'dogesoft' || tile.type === 'spookydoge',
-              }),
-            )}
+          <div className="ds-wallet-quick-picker__choices w-full max-w-[20rem]">
+            {local ? renderTileButton(local, { feature: true }) : null}
+            {extensions.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setShowExtensions((v) => !v)}
+                aria-expanded={showExtensions}
+                aria-label={t('wallet.quickPicker.extension')}
+                title={t('wallet.quickPicker.extensionHint')}
+                className={`${iconTileBase} ${iconTileReady} h-auto w-full justify-start gap-3 px-3 py-2 ${
+                  extensions.some((tile) => tile.isActive) ? 'ring-2 ring-[color:var(--ds-accent-solid)]' : ''
+                }`}
+              >
+                <span className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-zinc-200 to-zinc-500 text-zinc-950 shadow-inner">
+                  <Puzzle className="h-6 w-6" aria-hidden="true" />
+                </span>
+                <span className="ds-wallet-quick-picker__row-text">
+                  <span className="ds-wallet-quick-picker__row-title">{t('wallet.quickPicker.extension')}</span>
+                  <span className="ds-wallet-quick-picker__row-sub">{t('wallet.quickPicker.extensionHint')}</span>
+                </span>
+              </button>
+            ) : null}
+            {showExtensions && extensions.length > 0 ? (
+              <div className="flex w-full flex-wrap items-center justify-center gap-3">
+                {extensions.map((tile) => renderTileButton(tile, { asInstall: true }))}
+              </div>
+            ) : null}
             {hardware.length > 0 ? (
               <button
                 type="button"
@@ -161,7 +190,7 @@ export function WalletConnectChooser({
                 aria-expanded={showHardware}
                 aria-label={t('wallet.connectionModal.categoryHardware')}
                 title={t('wallet.quickPicker.hardwareHint')}
-                className={`${iconTileBase} ${iconTileReady} ${
+                className={`${iconTileBase} ${iconTileReady} h-auto w-full justify-start gap-3 px-3 py-2 ${
                   hwActive ? 'ring-2 ring-[color:var(--ds-accent-solid)]' : hwConnected ? 'ring-2 ring-emerald-400/70' : ''
                 }`}
               >
@@ -176,6 +205,10 @@ export function WalletConnectChooser({
                     <LoaderCircle className="h-7 w-7 animate-spin text-white" aria-hidden="true" />
                   </span>
                 ) : null}
+                <span className="ds-wallet-quick-picker__row-text">
+                  <span className="ds-wallet-quick-picker__row-title">{t('wallet.connectionModal.categoryHardware')}</span>
+                  <span className="ds-wallet-quick-picker__row-sub">{t('wallet.quickPicker.hardwareChoice')}</span>
+                </span>
               </button>
             ) : null}
           </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AlertCircle, Cpu, HardDrive, LoaderCircle, Monitor, Usb, Watch, X } from 'lucide-react';
+import { AlertCircle, Cpu, HardDrive, LoaderCircle, Monitor, Puzzle, Usb, Watch, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import {
   useWalletConnectOptions,
@@ -87,6 +87,7 @@ export function WalletQuickPicker({
   const [flyoutStyle, setFlyoutStyle] = useState<React.CSSProperties | undefined>();
 
   const [showOther, setShowOther] = useState(false);
+  const [showExtensions, setShowExtensions] = useState(false);
   const [showHardware, setShowHardware] = useState(false);
 
   const {
@@ -167,7 +168,7 @@ export function WalletQuickPicker({
 
   if (!open || typeof document === 'undefined') return null;
 
-  const { primary, other, hardware } = partitionWalletTiles(tiles);
+  const { local, extensions, hardware, other } = partitionWalletTiles(tiles);
   const hwConnected = hardware.some((tile) => tile.connected);
   const hwActive = hardware.some((tile) => tile.isActive);
   const hwBusy = hardware.some((tile) => connectingType === tile.type);
@@ -200,9 +201,10 @@ export function WalletQuickPicker({
       </button>
     ) : null;
 
-  const renderTile = (tile: WalletOptionTile, opts?: { asInstall?: boolean }) => {
+  const renderTile = (tile: WalletOptionTile, opts?: { asInstall?: boolean; feature?: boolean }) => {
     const busy = connectingType === tile.type;
     const asInstall = Boolean(opts?.asInstall && !tile.available && tile.installUrl);
+    const feature = Boolean(opts?.feature);
     const disabled = asInstall
       ? anyConnecting && !busy
       : (!tile.available && tile.type !== 'browser') || (anyConnecting && !busy);
@@ -214,7 +216,7 @@ export function WalletQuickPicker({
           ? t('wallet.quickPicker.getWallet', { name: tile.shortTitle })
           : null;
     return (
-      <div key={tile.type} className="ds-wallet-quick-picker__cell">
+      <div key={tile.type} className={cx('ds-wallet-quick-picker__cell', feature && 'ds-wallet-quick-picker__cell--feature')}>
         <button
           type="button"
           disabled={disabled}
@@ -224,10 +226,12 @@ export function WalletQuickPicker({
           onClick={() => onTileClick(tile)}
           className={cx(
             'ds-wallet-quick-picker__tile',
+            (feature || variant === 'sheet') && 'ds-wallet-quick-picker__tile--row',
+            feature && 'ds-wallet-quick-picker__tile--feature',
+            feature && 'ds-wallet-quick-picker__tile--priority',
             tile.isActive && 'ds-wallet-quick-picker__tile--active',
             tile.connected && !tile.isActive && 'ds-wallet-quick-picker__tile--connected',
             !tile.available && tile.type !== 'browser' && !asInstall && 'ds-wallet-quick-picker__tile--muted',
-            variant === 'sheet' && 'ds-wallet-quick-picker__tile--row',
           )}
         >
           <span className="ds-wallet-quick-picker__glyph">
@@ -247,7 +251,7 @@ export function WalletQuickPicker({
               />
             ) : null}
           </span>
-          {variant === 'sheet' ? (
+          {feature || variant === 'sheet' ? (
             <span className="ds-wallet-quick-picker__row-text">
               <span className="ds-wallet-quick-picker__row-title">{tile.shortTitle}</span>
               <span className="ds-wallet-quick-picker__row-sub">
@@ -309,17 +313,54 @@ export function WalletQuickPicker({
         </div>
       ) : null}
 
-      <div
-        className={cx(
-          'ds-wallet-quick-picker__grid',
-          variant === 'sheet' && 'ds-wallet-quick-picker__grid--list',
-        )}
-      >
-        {primary.map((tile) =>
-          renderTile(tile, {
-            asInstall: tile.type === 'dojak' || tile.type === 'dogesoft' || tile.type === 'spookydoge',
-          }),
-        )}
+      <div className="ds-wallet-quick-picker__choices">
+        {local ? renderTile(local, { feature: true }) : null}
+        {extensions.length > 0 ? (
+          <div className="ds-wallet-quick-picker__cell">
+            <button
+              type="button"
+              title={t('wallet.quickPicker.extensionHint')}
+              aria-label={t('wallet.quickPicker.extension')}
+              aria-expanded={showExtensions}
+              aria-pressed={extensions.some((tile) => tile.isActive)}
+              onClick={() => setShowExtensions((v) => !v)}
+              className={cx(
+                'ds-wallet-quick-picker__tile ds-wallet-quick-picker__tile--row',
+                extensions.some((tile) => tile.isActive) && 'ds-wallet-quick-picker__tile--active',
+                extensions.some((tile) => tile.connected) &&
+                  !extensions.some((tile) => tile.isActive) &&
+                  'ds-wallet-quick-picker__tile--connected',
+              )}
+            >
+              <span className="ds-wallet-quick-picker__glyph">
+                <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-zinc-200 to-zinc-500 text-zinc-950 shadow-inner">
+                  <Puzzle className="h-5 w-5" aria-hidden />
+                </span>
+                {extensions.some((tile) => connectingType === tile.type) ? (
+                  <span className="ds-wallet-quick-picker__busy">
+                    <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden />
+                  </span>
+                ) : null}
+              </span>
+              <span className="ds-wallet-quick-picker__row-text">
+                <span className="ds-wallet-quick-picker__row-title">{t('wallet.quickPicker.extension')}</span>
+                <span className="ds-wallet-quick-picker__row-sub">{t('wallet.quickPicker.extensionHint')}</span>
+              </span>
+            </button>
+          </div>
+        ) : null}
+        {showExtensions && extensions.length > 0 ? (
+          <div className="ds-wallet-quick-picker__choice-panel">
+            <div
+              className={cx(
+                'ds-wallet-quick-picker__grid',
+                variant === 'sheet' && 'ds-wallet-quick-picker__grid--list',
+              )}
+            >
+              {extensions.map((tile) => renderTile(tile, { asInstall: true }))}
+            </div>
+          </div>
+        ) : null}
         {hardware.length > 0 ? (
           <div className="ds-wallet-quick-picker__cell">
             <button
@@ -330,10 +371,9 @@ export function WalletQuickPicker({
               aria-pressed={hwActive}
               onClick={() => setShowHardware((v) => !v)}
               className={cx(
-                'ds-wallet-quick-picker__tile',
+                'ds-wallet-quick-picker__tile ds-wallet-quick-picker__tile--row',
                 hwActive && 'ds-wallet-quick-picker__tile--active',
                 hwConnected && !hwActive && 'ds-wallet-quick-picker__tile--connected',
-                variant === 'sheet' && 'ds-wallet-quick-picker__tile--row',
               )}
             >
               <span className="ds-wallet-quick-picker__glyph">
@@ -358,16 +398,14 @@ export function WalletQuickPicker({
                   />
                 ) : null}
               </span>
-              {variant === 'sheet' ? (
-                <span className="ds-wallet-quick-picker__row-text">
-                  <span className="ds-wallet-quick-picker__row-title">
-                    {t('wallet.connectionModal.categoryHardware')}
-                  </span>
-                  <span className="ds-wallet-quick-picker__row-sub">
-                    {t('wallet.quickPicker.hardwareHint')}
-                  </span>
+              <span className="ds-wallet-quick-picker__row-text">
+                <span className="ds-wallet-quick-picker__row-title">
+                  {t('wallet.connectionModal.categoryHardware')}
                 </span>
-              ) : null}
+                <span className="ds-wallet-quick-picker__row-sub">
+                  {t('wallet.quickPicker.hardwareChoice')}
+                </span>
+              </span>
             </button>
             {hwActiveOrConnected && !hwBusy ? (
               <button

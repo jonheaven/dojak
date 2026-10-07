@@ -206,6 +206,24 @@
   font-size: 12px;
 }
 
+.ds-wallet-quick-picker__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ds-wallet-quick-picker__choice-panel {
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ds-wallet-quick-picker__tile--priority:not(.ds-wallet-quick-picker__tile--active):not(.ds-wallet-quick-picker__tile--connected) {
+  border-color: rgba(232, 212, 139, 0.55);
+  background: rgba(232, 212, 139, 0.1);
+}
+
 .ds-wallet-quick-picker__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

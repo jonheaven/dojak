@@ -23,42 +23,34 @@ export function isHardwareKind(type: ConnectKind): boolean {
   return type === 'ledger' || type === 'dogewatch';
 }
 
-const PRIMARY_EXTENSION_ORDER: ConnectKind[] = ['dojak', 'dogesoft'];
+/** Extension choice, in picker order. Local browser is separate and comes first. */
+export const EXTENSION_ORDER: ConnectKind[] = ['dojak', 'dogesoft', 'spookydoge'];
 
-/** Featured extensions always primary; local browser only when saved/active; hardware is a separate group. */
+/** Local is the main choice. Extensions and hardware are the other two groups. */
 export function isQuickPathWalletTile(tile: WalletOptionTile): boolean {
   if (isPickerHiddenWallet(tile.type)) return false;
-  if (PRIMARY_EXTENSION_ORDER.includes(tile.type)) return true;
-  if (tile.pinPrimary) return true;
-  if (tile.type === 'browser') return tile.connected || tile.isActive;
-  if (isHardwareKind(tile.type)) return false;
-  if (tile.connected || tile.isActive) return true;
-  return false;
-}
-
-function primarySortKey(type: ConnectKind): number {
-  const idx = PRIMARY_EXTENSION_ORDER.indexOf(type);
-  if (idx >= 0) return idx;
-  if (type === 'browser') return 50;
-  return 100;
+  return tile.type === 'browser' || EXTENSION_ORDER.includes(tile.type);
 }
 
 export function partitionWalletTiles(tiles: WalletOptionTile[]): {
-  primary: WalletOptionTile[];
-  other: WalletOptionTile[];
+  local: WalletOptionTile | null;
+  extensions: WalletOptionTile[];
   hardware: WalletOptionTile[];
+  other: WalletOptionTile[];
 } {
   const visible = tiles.filter((tile) => !isPickerHiddenWallet(tile.type));
+  const local = visible.find((tile) => tile.type === 'browser') ?? null;
+  const extensions = EXTENSION_ORDER.map((type) => visible.find((tile) => tile.type === type)).filter(
+    (tile): tile is WalletOptionTile => Boolean(tile),
+  );
   const hardware = visible.filter((tile) => isHardwareKind(tile.type));
-  const rest = visible.filter((tile) => !isHardwareKind(tile.type));
-  const primary: WalletOptionTile[] = [];
-  const other: WalletOptionTile[] = [];
-  for (const tile of rest) {
-    if (isQuickPathWalletTile(tile)) primary.push(tile);
-    else other.push(tile);
-  }
-  primary.sort((a, b) => primarySortKey(a.type) - primarySortKey(b.type));
-  return { primary, other, hardware };
+  const claimed = new Set<ConnectKind>([
+    ...(local ? [local.type] : []),
+    ...extensions.map((tile) => tile.type),
+    ...hardware.map((tile) => tile.type),
+  ]);
+  const other = visible.filter((tile) => !claimed.has(tile.type));
+  return { local, extensions, hardware, other };
 }
 
 export type ConnectKind = Extract<
@@ -216,8 +208,8 @@ export function useWalletConnectOptions(options?: {
       ? t('wallet.options.browser.subtitleHas')
       : t('wallet.options.browser.subtitleNew');
 
-    // Order: featured extensions → hardware → local browser.
-    // MyDoge is intentionally omitted from the picker (connect code remains in-repo).
+    // Picker groups these as Local, then Extension, then Hardware.
+    // MyDoge is intentionally omitted (connect code remains in-repo).
     const list: WalletOptionTile[] = [
       {
         type: 'dojak',
