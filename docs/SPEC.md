@@ -40,6 +40,12 @@ Encoders: `packages/core/src/modules/dogenals/` — re-exported from `@dojak/web
 | **Charms / Ðalkanes / ÐWatch** | Labs surfaces in `@dojak/web` |
 | **DRC-20** | Legacy read-only. No new deploys. |
 
+## Adjacent (not Dogenals) — YARD lab
+
+| Protocol | Marker | Wallet | Notes |
+| --- | --- | --- | --- |
+| **YARD** | OP_RETURN `YARD` + 40-byte commitment | Lab: protect seal UTXOs · verify `.yard` · tip/burn | **Not a Doginal.** Spec [jonheaven/yard](https://github.com/jonheaven/yard). UI: [dogecoin.dog/yard](https://dogecoin.dog/yard). See [YARD.md](YARD.md). |
+
 ## Deferred (do not ship as production)
 
 ÐAMM, ÐLend, full ÐSwap (ve/orderbook). Wallets SHOULD NOT surface these until Phase 2.

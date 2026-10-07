@@ -9,3 +9,4 @@ export * as walletServices from './background/service';
 export { default as storage } from './background/webapi/storage';
 
 export * from './modules/dogenals';
+export * from './yard';

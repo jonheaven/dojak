@@ -12,6 +12,8 @@ Brand name and logo remain reserved (see [LICENSE](LICENSE)). Code is MIT.
 
 See **[docs/SPEC.md](docs/SPEC.md)** for the protocol matrix (Ðunes, Treats, ÐMP, Ðocial, Ðignal, ÐLotto, Ð𝕏, DNS, …). Encoders live in `@dojak/core` (`src/modules/dogenals/`) and are re-exported from `@dojak/web`.
 
+**YARD** (separate from Doginals): lab docs **[docs/YARD.md](docs/YARD.md)** — sticky-note notes on DOGE. Public face is **[dogecoin.dog/yard](https://dogecoin.dog/yard)** (`dogenals/web-com` + `@dojak/web`).
+
 ## Architecture
 
 | Layer | Role |
