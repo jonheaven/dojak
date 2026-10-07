@@ -824,7 +824,7 @@ export interface BroadcastOpReturnParams {
   fromAddress: string;
   /**
    * Private key in WIF format.
-   * Available from `useBrowserWallet().wallet?.privateKey` after unlock.
+   * Load it for the sign call with `useBrowserWallet().getSigningWallet()`. It is not kept on React state.
    */
   privateKeyWIF: string;
   /**

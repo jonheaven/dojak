@@ -348,14 +348,14 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
   const executeMerge = async () => {
     if (!mergeEst) return;
     const plain = getPlainSelected();
-    if (!browser.wallet?.privateKey) {
+    if (!browser.unlocked) {
       toast.error(t('utxo.toast.walletLockedPanel'));
       return;
     }
     setMerging(true);
     try {
       await assertUtxosCurrentlyUnspent(plain.map((u) => ({ txid: u.txid, vout: u.vout })));
-      const { rawHex } = await buildAndSignMergeTx(plain, walletAddress, browser.wallet.privateKey);
+      const { rawHex } = await buildAndSignMergeTx(plain, walletAddress, (await browser.getSigningWallet()).privateKey);
       const txid = await broadcastUtxoTx(rawHex);
       setMergeTxid(txid);
       setSelected(new Set());
@@ -424,7 +424,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
 
   const executeSplit = async () => {
     if (!splitUtxo || !splitEst) return;
-    if (!browser.wallet?.privateKey) {
+    if (!browser.unlocked) {
       toast.error(t('utxo.toast.walletLockedPanel'));
       return;
     }
@@ -435,7 +435,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
         splitUtxo,
         splitEst.outputs,
         walletAddress,
-        browser.wallet.privateKey,
+        (await browser.getSigningWallet()).privateKey,
       );
       const txid = await broadcastUtxoTx(rawHex);
       setSplitTxid(txid);
@@ -466,7 +466,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
   };
 
   // ── Wallet locked warning ──────────────────────────────────────────────────
-  const walletLocked = !browser.wallet?.privateKey;
+  const walletLocked = !browser.unlocked;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (

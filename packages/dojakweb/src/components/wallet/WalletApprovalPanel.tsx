@@ -46,7 +46,7 @@ export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelP
   /** Sync guard — React state alone can miss a double-tap before re-render. */
   const approveLockRef = useRef(false);
 
-  const sessionReady = Boolean(browser.wallet?.privateKey?.trim() && browser.address);
+  const sessionReady = Boolean(browser.unlocked && browser.address);
 
   // Mark chassis so host CSS can lock scroll under the overlay.
   useEffect(() => {
@@ -101,13 +101,8 @@ export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelP
       if (!loaded?.privateKey) {
         throw new Error('Could not unlock wallet');
       }
+      await createDojakwebSessionSecretStore().saveSecret(secret);
       await browser.connect(loaded);
-      // Keep unlocked for this browser tab until disconnect or tab close.
-      try {
-        await createDojakwebSessionSecretStore().saveSecret(secret);
-      } catch {
-        /* best-effort session unlock */
-      }
       setUnlockPassword('');
     } catch (e) {
       setUnlockError(e instanceof Error ? e.message : 'Unlock failed');
@@ -126,8 +121,16 @@ export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelP
   const onApprove = useCallback(async () => {
     if (!pending) return;
     if (approveLockRef.current || pending.status === 'working') return;
-    const wif = browser.wallet?.privateKey?.trim();
     const address = browser.wallet?.address || browser.address;
+    let wif = '';
+    try {
+      if (address && browser.unlocked) {
+        wif = (await browser.getSigningWallet()).privateKey.trim();
+      }
+    } catch (e) {
+      setUnlockError(e instanceof Error ? e.message : 'Unlock your Local Browser Wallet first');
+      return;
+    }
     if (!wif || !address) {
       setUnlockError('Unlock your Local Browser Wallet first');
       return;
@@ -143,7 +146,7 @@ export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelP
       approveLockRef.current = false;
       setWalletApprovalWorking(false, msg);
     }
-  }, [pending, browser.wallet, browser.address]);
+  }, [pending, browser]);
 
   if (!pending) return null;
 

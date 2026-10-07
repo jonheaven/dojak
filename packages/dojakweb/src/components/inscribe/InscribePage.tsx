@@ -854,7 +854,7 @@ export const InscribePage: React.FC = () => {
       toast.error(recipientResolution.message);
       return;
     }
-    if (walletType !== 'browser' || !browser.wallet?.privateKey) {
+    if (walletType !== 'browser' || !browser.unlocked) {
       toast.error('Unlock your Dojakweb browser wallet to inscribe.');
       return;
     }
@@ -883,7 +883,7 @@ export const InscribePage: React.FC = () => {
         content: contentBuffer,
         contentType: ct,
         fromAddress: address,
-        privateKeyWIF: browser.wallet.privateKey,
+        privateKeyWIF: (await browser.getSigningWallet()).privateKey,
         feeRate: effectiveFeeRate,
         excludedOutpoints: [...extractProtectedOutpoints(inscriptions), ...stickySpendRejectOutpoints],
         inscriptionReceiveAddress:
@@ -1240,7 +1240,7 @@ export const InscribePage: React.FC = () => {
 
       const tryBrowser =
         walletType === 'browser' &&
-        Boolean(browser.wallet?.privateKey) &&
+        browser.unlocked &&
         st.kind !== 'commit' &&
         rawRbf;
 
@@ -1251,7 +1251,7 @@ export const InscribePage: React.FC = () => {
           content: contentBuffer,
           contentType,
           fromAddress: address,
-          privateKeyWIF: browser.wallet!.privateKey!,
+          privateKeyWIF: (await browser.getSigningWallet()).privateKey,
           targetFeeRateKoinuPerKb: Math.max(feeRate, est),
         });
         updatedStages[stageIndex] = {
@@ -1288,7 +1288,7 @@ export const InscribePage: React.FC = () => {
 
       let newPlan: DoginalChainResult;
       if (stageIndex < lastIdx) {
-        if (walletType !== 'browser' || !browser.wallet?.privateKey) {
+        if (walletType !== 'browser' || !browser.unlocked) {
           throw new Error(
             'Unlock the Dojakweb browser wallet so the app can re-sign downstream transactions against the new parent txid.',
           );
@@ -1299,7 +1299,7 @@ export const InscribePage: React.FC = () => {
           content: contentBuffer,
           contentType,
           fromAddress: address,
-          privateKeyWIF: browser.wallet.privateKey,
+          privateKeyWIF: (await browser.getSigningWallet()).privateKey,
           feeRate,
           excludedOutpoints: [...extractProtectedOutpoints(inscriptions), ...stickySpendRejectOutpoints],
           inscriptionReceiveAddress: plan.inscriptionReceiveAddress,

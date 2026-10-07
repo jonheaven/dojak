@@ -44,8 +44,7 @@ export const DuneDmtClaimModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
       setError('Connect the local browser wallet first.');
       return;
     }
-    const wif = browser.wallet?.privateKey;
-    if (!wif) {
+    if (!browser.unlocked) {
       setError('Unlock Local Browser Wallet to sign the claim inscription.');
       return;
     }
@@ -65,7 +64,7 @@ export const DuneDmtClaimModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
       const r = await signAndBroadcastInscription({
         text: JSON.stringify(payload),
         fromAddress: address,
-        privateKeyWIF: wif,
+        privateKeyWIF: (await browser.getSigningWallet()).privateKey,
         contentType: 'application/json',
         metaprotocol: 'dunes',
       });

@@ -109,6 +109,23 @@ function publicWalletListEntry(
   };
 }
 
+/** Address and metadata for React state. The signing key stays in the encrypted vault. */
+export function toPublicSessionWallet(wallet: WalletData): WalletData {
+  return {
+    address: wallet.address,
+    privateKey: '',
+    network: wallet.network,
+    nickname: wallet.nickname,
+    createdAt: wallet.createdAt,
+    accountIndex: wallet.accountIndex,
+    derivationPath: wallet.derivationPath,
+    seedFingerprint: wallet.seedFingerprint,
+    mnemonicWordCount: wallet.mnemonicWordCount,
+    walletSource: wallet.walletSource,
+    publicKey: wallet.publicKey,
+  };
+}
+
 function stripSecretsFromListEntry(entry: StoredWalletEntry): StoredWalletEntry {
   const {
     privateKey: _privateKey,

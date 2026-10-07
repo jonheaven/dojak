@@ -22,28 +22,24 @@ async function loadBrowserWalletForSigning(
   browser: UseBrowserWalletReturn,
   targetAddress?: string | null,
 ): Promise<DuneTxSigner | null> {
-  const active = browser.wallet;
-  if (active?.address && (!targetAddress || active.address === targetAddress)) {
-    if (active.privateKey) {
-      return { fromAddress: active.address, privateKeyWIF: active.privateKey };
+  const activeAddress = browser.wallet?.address ?? browser.address;
+  if (!browser.unlocked) {
+    if (activeAddress && (!targetAddress || activeAddress === targetAddress)) {
+      return { fromAddress: activeAddress };
     }
-    return { fromAddress: active.address };
+    return null;
   }
 
   try {
-    const loaded = await browser.loadWallet(undefined, targetAddress || undefined);
-    if (loaded?.address && loaded.privateKey) {
-      await browser.connect(loaded);
-      return { fromAddress: loaded.address, privateKeyWIF: loaded.privateKey };
-    }
-    if (loaded?.address) {
+    const loaded = await browser.getSigningWallet();
+    if (targetAddress && loaded.address !== targetAddress) {
       return { fromAddress: loaded.address };
     }
+    return { fromAddress: loaded.address, privateKeyWIF: loaded.privateKey };
   } catch {
-    // Encrypted / locked / unavailable browser wallet.
+    if (activeAddress) return { fromAddress: activeAddress };
+    return null;
   }
-
-  return null;
 }
 
 /**

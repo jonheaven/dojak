@@ -398,7 +398,7 @@ export function WalletSendFlow({
     setStatus('Signing & broadcasting…');
     setError(null);
     try {
-      const unlocked = Boolean(browser.wallet?.privateKey);
+      const unlocked = browser.unlocked;
       const idRaw = await sendTransaction(quote.recipient, quote.amountDoge, {
         // Review screen is the confirmation — don't open a second Approve sheet.
         skipApprovalUi: unlocked,

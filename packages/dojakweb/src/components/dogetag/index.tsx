@@ -252,9 +252,9 @@ export const DogetagPage: React.FC<{
       })),
     signPsbt: async (psbtHex: string) => signPSBTOnly(psbtHex),
     getPrivateKeyWIF: async () => {
-      if (walletType !== 'browser' || !browser.wallet?.privateKey)
+      if (walletType !== 'browser' || !browser.unlocked)
         throw new Error('Unlock your Dojakweb wallet before signing a Dogetag.');
-      return browser.wallet.privateKey;
+      return (await browser.getSigningWallet()).privateKey;
     },
     signOpReturn: async (params: {
       message: string;
@@ -263,12 +263,12 @@ export const DogetagPage: React.FC<{
       tip?: { address: string; satoshis: number };
       excludedOutpoints?: string[];
     }) => {
-      if (walletType !== 'browser' || !browser.wallet?.privateKey)
+      if (walletType !== 'browser' || !browser.unlocked)
         throw new Error('Unlock your Dojakweb wallet before signing DogeTag:tx (OP_RETURN).');
       return signOpReturnTransaction({
         message: params.message,
         fromAddress: params.fromAddress,
-        privateKeyWIF: browser.wallet.privateKey,
+        privateKeyWIF: (await browser.getSigningWallet()).privateKey,
         feeRate: params.feeRate,
         tip: params.tip,
         excludedOutpoints: params.excludedOutpoints ?? extractProtectedOutpoints(inscriptions),

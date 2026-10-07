@@ -1,18 +1,23 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { BrowserWallet, isPlaintextMigrationRequiredError, type BrowserWalletSaveOptions } from '../lib/browser-wallet';
+import { BrowserWallet, isPlaintextMigrationRequiredError, toPublicSessionWallet, type BrowserWalletSaveOptions } from '../lib/browser-wallet';
 import type { SeedMaterial, WalletData } from '../types/wallet';
 import { walletDataApi } from '../utils/api';
 import { createDojakwebSessionSecretStore } from '../lib/dojakweb-biometric';
 
 export interface UseBrowserWalletReturn {
   connected: boolean;
+  /** True after unlock. The signing key is not stored on `wallet`. */
+  unlocked: boolean;
   address: string | null;
   balance: number;
+  /** Public view only. Use `getSigningWallet()` at the moment of signing. */
   wallet: WalletData | null;
   connecting: boolean;
   connect: (wallet: WalletData) => Promise<void>;
+  /** Decrypt the vault for this call. Do not put the result in React state. */
+  getSigningWallet: () => Promise<WalletData>;
   disconnect: () => Promise<void>;
   createWallet: () => Promise<WalletData & { mnemonic?: string }>;
   importWallet: (privateKey: string) => Promise<WalletData>;
@@ -62,6 +67,7 @@ async function fetchBalanceForAddress(address: string, options?: { silent?: bool
 
 export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) {
   const [connected, setConnected] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [wallet, setWallet] = useState<WalletData | null>(null);
@@ -77,6 +83,8 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
   const pendingSpendsRef = useRef<Array<{ id: string; doge: number; at: number }>>([]);
   const walletRef = useRef<WalletData | null>(null);
   walletRef.current = wallet;
+  const unlockedRef = useRef(false);
+  unlockedRef.current = unlocked;
 
   const PENDING_TTL_MS = 15 * 60 * 1000;
 
@@ -241,7 +249,8 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       if (typeof window !== 'undefined') {
         localStorage.removeItem(RESTORE_BLOCK_KEY);
       }
-      setWallet(walletData);
+      setWallet(toPublicSessionWallet(walletData));
+      setUnlocked(Boolean(walletData.privateKey));
       setAddress(walletData.address);
       setConnected(true);
       if (typeof window !== 'undefined') {
@@ -270,6 +279,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
 
   const disconnect = useCallback(async () => {
     setConnected(false);
+    setUnlocked(false);
     setAddress(null);
     setBalance(0);
     indexerBalanceRef.current = 0;
@@ -289,8 +299,9 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
   }, []);
 
   const lockSession = useCallback(async () => {
-    if (!walletRef.current?.privateKey) return;
+    if (!unlockedRef.current) return;
     setConnected(false);
+    setUnlocked(false);
     setAddress(null);
     setWallet(null);
     setBalanceVerified(false);
@@ -305,7 +316,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !connected || !wallet?.privateKey) {
+    if (typeof window === 'undefined' || !connected || !unlocked) {
       return;
     }
 
@@ -349,7 +360,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       window.removeEventListener('pointerdown', onActivity);
       window.removeEventListener('keydown', onActivity);
     };
-  }, [connected, wallet?.privateKey, lockSession]);
+  }, [connected, unlocked, lockSession]);
 
   useEffect(() => {
     if (!connected || !address || typeof window === 'undefined') {
@@ -462,14 +473,13 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
             const loaded = await storage.loadWallet(sessionSecret, targetAddress);
             if (loaded?.privateKey) {
               await connect(loaded);
-              return loaded;
+              return toPublicSessionWallet(loaded);
             }
           }
         } catch {
           /* need unlock UI */
         }
-        // Stay on current session if already unlocked for this address.
-        if (wallet?.address === targetAddress && wallet.privateKey) {
+        if (unlocked && wallet?.address === targetAddress) {
           return wallet;
         }
         return null;
@@ -477,7 +487,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
 
       return null;
     },
-    [connect, wallet]
+    [connect, unlocked, wallet]
   );
 
   const switchAccount = useCallback(
@@ -485,10 +495,23 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       const storage = new BrowserWallet();
       const switched = await storage.switchAccount(accountIndex, password, address || undefined);
       await connect(switched);
-      return switched;
+      return toPublicSessionWallet(switched);
     },
     [address, connect]
   );
+
+  const getSigningWallet = useCallback(async (): Promise<WalletData> => {
+    const storage = new BrowserWallet();
+    const secret = await createDojakwebSessionSecretStore().getSecret();
+    if (!secret) {
+      throw new Error('Unlock your Local Browser Wallet to sign.');
+    }
+    const loaded = await storage.loadWallet(secret, address || undefined);
+    if (!loaded?.privateKey) {
+      throw new Error('Unlock your Local Browser Wallet to sign.');
+    }
+    return loaded;
+  }, [address]);
 
   const updateNickname = useCallback(
     async (targetAddress: string, nickname?: string) => {
@@ -504,11 +527,13 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
   const value = useMemo<UseBrowserWalletReturn>(
     () => ({
       connected,
+      unlocked,
       address,
       balance,
       wallet,
       connecting,
       connect,
+      getSigningWallet,
       disconnect,
       createWallet,
       importWallet,
@@ -531,11 +556,13 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
     }),
     [
       connected,
+      unlocked,
       address,
       balance,
       wallet,
       connecting,
       connect,
+      getSigningWallet,
       disconnect,
       createWallet,
       importWallet,
@@ -571,10 +598,12 @@ const notConnected = async () => {
 };
 const NULL_BROWSER_WALLET: UseBrowserWalletReturn = {
   connected: false,
+  unlocked: false,
   address: null,
   balance: 0,
   wallet: null,
   connecting: false,
+  getSigningWallet: notConnected as UseBrowserWalletReturn['getSigningWallet'],
   balanceError: null,
   balanceRefreshing: false,
   balanceVerified: false,

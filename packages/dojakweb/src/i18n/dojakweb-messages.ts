@@ -43,7 +43,10 @@ const en: MsgTree = {
       openWallet: 'Open wallet',
       hint: 'Gold ring is the active wallet. Green is connected — tap to switch, × to disconnect.',
       other: 'Other',
-      otherHint: 'Local browser wallet (hot, site-origin custody). Prefer an extension or hardware for trading.',
+      otherHint: 'More ways to connect.',
+      extension: 'Extension',
+      extensionHint: 'Dojak, Doge Soft, or Spooky Doge.',
+      hardwareChoice: 'Ledger or Doge Watch.',
       hardwareHint: 'Ledger (WebUSB) or Doge Watch (Web Serial) — pick your device. USB/serial permission is only requested when you tap one.',
       getWallet: 'Get {name}',
       disconnectAria: 'Disconnect {name}',
@@ -60,9 +63,9 @@ const en: MsgTree = {
     connectionModal: {
       eyebrow: 'Wallet connection',
       title: 'Choose a wallet',
-      subtitle: 'Local Browser Wallet, Dojak, or Doge Soft. Local browser wallet is a hot, site-origin wallet.',
+      subtitle: 'Local browser wallet first. Or use an extension (Dojak, Doge Soft, Spooky Doge) or hardware.',
       footer:
-        'Your keys never leave your device. Local Browser Wallet, Dojak, or Doge Soft. Local browser wallet is hot, site-origin custody — not for sizeable holdings.',
+        'Keys stay on this device. The local browser wallet is a hot wallet for this site: encrypted at rest, and this site can sign while the tab is unlocked. Not for sizeable holdings — use the Dojak extension for those.',
       close: 'Close',
       categoryInternal: 'Internal',
       categoryExternal: 'External',
@@ -71,8 +74,8 @@ const en: MsgTree = {
     options: {
       browser: {
         title: 'Local Browser Wallet',
-        subtitleHas: 'Hot wallet on this site origin — encrypted on this device, not for sizeable holdings.',
-        subtitleNew: 'Hot wallet stored in this browser. Site-origin custody — not for sizeable holdings.',
+        subtitleHas: 'Hot wallet on this site. Encrypted at rest. This site can sign while the tab is unlocked. Not for sizeable holdings.',
+        subtitleNew: 'Hot wallet created for this site only. This site can sign while the tab is unlocked. Not for sizeable holdings.',
         available: 'Wallet available',
         create: 'Create wallet',
       },
@@ -146,7 +149,10 @@ const ja: MsgTree = {
       openWallet: 'ウォレットを開く',
       hint: '金色の枠がアクティブ。緑は接続済み — タップで切替、× で切断。',
       other: 'その他',
-      otherHint: 'ローカルブラウザウォレット（ホット・このサイトオリジン）。取引には拡張機能かハードウェアを推奨します。',
+      otherHint: 'ほかの接続方法。',
+      extension: '拡張機能',
+      extensionHint: 'Dojak、Doge Soft、または Spooky Doge。',
+      hardwareChoice: 'Ledger または Doge Watch。',
       hardwareHint: 'Ledger（WebUSB）または Doge Watch（Web Serial）— デバイスを選んでください。USB / シリアル許可はタップしたときだけ聞きます。',
       getWallet: '{name} を入手',
       disconnectAria: '{name} を切断',
@@ -163,9 +169,9 @@ const ja: MsgTree = {
     connectionModal: {
       eyebrow: 'ウォレット接続',
       title: 'ウォレットを選択',
-      subtitle: 'ローカルブラウザウォレット、Dojak、または Doge Soft。ローカルはホットで、このサイトオリジンに保管されます。',
+      subtitle: 'まずはローカルブラウザウォレット。拡張機能（Dojak、Doge Soft、Spooky Doge）かハードウェアも使えます。',
       footer:
-        '秘密鍵がデバイス外に出ることはありません。ローカルブラウザウォレット、Dojak、または Doge Soft。ローカルはホットで、このサイトオリジンのカストディです。まとまった保有には向きません。',
+        '秘密鍵は端末内に留まります。ローカルブラウザウォレットはこのサイト専用のホットウォレットです。保存時は暗号化されますが、タブのロック解除中はこのサイトが署名できます。まとまった保有には向きません。その場合は Dojak 拡張機能を使ってください。',
       close: '閉じる',
       categoryInternal: '内蔵',
       categoryExternal: '拡張機能',
@@ -174,8 +180,8 @@ const ja: MsgTree = {
     options: {
       browser: {
         title: 'ローカルブラウザウォレット',
-        subtitleHas: 'このサイトオリジンのホットウォレット — 端末内で暗号化。まとまった保有には向きません。',
-        subtitleNew: 'このブラウザに保存するホットウォレット。サイトオリジンのカストディで、まとまった保有には向きません。',
+        subtitleHas: 'このサイトのホットウォレット。保存時は暗号化。タブのロック解除中はこのサイトが署名できます。まとまった保有には向きません。',
+        subtitleNew: 'このサイト専用のホットウォレット。タブのロック解除中はこのサイトが署名できます。まとまった保有には向きません。',
         available: 'ウォレットあり',
         create: 'ウォレット作成',
       },

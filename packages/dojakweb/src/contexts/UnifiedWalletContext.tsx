@@ -933,7 +933,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
         try {
           // Prefer an already-unlocked in-memory session (private key held after unlock).
-          if (browser.wallet?.privateKey && browser.connected) {
+          if (browser.unlocked && browser.connected) {
             setWalletType(type);
             localStorage.setItem('wallet_type', type);
             return;
@@ -1424,7 +1424,9 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         };
 
         // Send review UI already confirmed — skip second Approve when session is unlocked.
-        const sessionWif = browser.wallet?.privateKey;
+        const sessionWif = browser.unlocked
+          ? (await browser.getSigningWallet()).privateKey
+          : undefined;
         if (sendOptions?.skipApprovalUi && sessionWif && browser.address) {
           return (await runBrowserSend({
             privateKeyWif: sessionWif,
@@ -1472,7 +1474,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
       throw new Error('Transaction sending is not supported for the current wallet');
     },
-    [browser.address, browser.connected, browser.wallet, isInitialized, myDoge, walletType]
+    [browser, isInitialized, myDoge, walletType]
   );
 
   const signMessage = useCallback(
@@ -1785,14 +1787,13 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       }
 
       if (walletType === 'browser') {
-        const session = browser.wallet;
         warnIfUnexpectedSigningHostname('partial PSDT signing');
         const runSign = async (privateKeyWif: string) => {
           return signPartialPsdtWithWifToHex(psbtInput, privateKeyWif);
         };
         // Already inside requestWalletApproval (host dApp) — do not nest another panel.
         if (opts?.skipApprovalUi) {
-          const wif = session?.privateKey;
+          const wif = (await browser.getSigningWallet()).privateKey;
           if (!wif) throw new Error('Unlock your browser wallet to sign PSBTs.');
           const signed = await runSign(wif);
           console.log('[UnifiedWallet] signPSBTOnly:browser:result', {

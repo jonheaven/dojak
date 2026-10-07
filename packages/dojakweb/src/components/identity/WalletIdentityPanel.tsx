@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AtSymbolIcon, CheckBadgeIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { toast } from 'sonner';
+import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
 import { useDojakwebI18n } from '../../contexts/DojakwebLocaleContext';
 import {
   DN05_DOMAIN,
@@ -94,7 +95,6 @@ export type WalletIdentityPanelProps = {
   address: string | null;
   connected: boolean;
   isBrowserWallet: boolean;
-  privateKeyWif: string | null;
   inscriptions: MyDogeInscription[];
   seedDxHandle?: string;
   onBack: () => void;
@@ -106,7 +106,6 @@ export function WalletIdentityPanel({
   address,
   connected,
   isBrowserWallet,
-  privateKeyWif,
   inscriptions,
   seedDxHandle,
   onBack,
@@ -114,6 +113,7 @@ export function WalletIdentityPanel({
   onDxBindError,
 }: WalletIdentityPanelProps) {
   const { t } = useDojakwebI18n();
+  const browser = useBrowserWallet();
   const [tab, setTab] = useState<WalletIdentityTab>('dx');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -144,7 +144,7 @@ export function WalletIdentityPanel({
   const [mintAnother, setMintAnother] = useState(false);
   const [ownedSouvenirHtml, setOwnedSouvenirHtml] = useState<string | null>(null);
 
-  const canSign = Boolean(connected && address && isBrowserWallet && privateKeyWif);
+  const canSign = Boolean(connected && address && isBrowserWallet && browser.unlocked);
 
   const normalizedHandle = useMemo(() => {
     try {
@@ -270,7 +270,7 @@ export function WalletIdentityPanel({
   const n05TakenByOther = Boolean(nameTaken && address && nameTaken.address !== address);
 
   async function bindDx(op: 'register' | 'revoke') {
-    if (!canSign || !address || !privateKeyWif) {
+    if (!canSign || !address || !browser.unlocked) {
       setErr(t('modal.identity.needBrowser'));
       return;
     }
@@ -292,7 +292,7 @@ export function WalletIdentityPanel({
     try {
       const result = await publishDxOnChain({
         fromAddress: address,
-        privateKeyWIF: privateKeyWif,
+        privateKeyWIF: (await browser.getSigningWallet()).privateKey,
         op,
         handle: useHandle,
         tweetId: op === 'register' ? tweetId ?? undefined : undefined,
@@ -367,7 +367,7 @@ export function WalletIdentityPanel({
   }
 
   async function mintCard() {
-    if (!canSign || !address || !privateKeyWif || !dxMine?.txid) {
+    if (!canSign || !address || !browser.unlocked || !dxMine?.txid) {
       setErr(t('modal.identity.mintWait'));
       return;
     }
@@ -391,7 +391,7 @@ export function WalletIdentityPanel({
         content: buf,
         contentType: ct,
         fromAddress: address,
-        privateKeyWIF: privateKeyWif,
+        privateKeyWIF: (await browser.getSigningWallet()).privateKey,
         feeRate: 0,
         excludedOutpoints: extractProtectedOutpoints(inscriptions),
       });
@@ -409,7 +409,7 @@ export function WalletIdentityPanel({
   }
 
   async function claimN05(op: 'set' | 'clear') {
-    if (!canSign || !address || !privateKeyWif) {
+    if (!canSign || !address || !browser.unlocked) {
       setErr(t('modal.identity.needBrowser'));
       return;
     }
@@ -431,7 +431,7 @@ export function WalletIdentityPanel({
     try {
       const result = await publishDn05OnChain({
         fromAddress: address,
-        privateKeyWIF: privateKeyWif,
+        privateKeyWIF: (await browser.getSigningWallet()).privateKey,
         op,
         name: claimName,
         pubkey: op === 'set' ? n05Pubkey : undefined,
@@ -447,7 +447,7 @@ export function WalletIdentityPanel({
   }
 
   async function claimDns() {
-    if (!canSign || !address || !privateKeyWif) {
+    if (!canSign || !address || !browser.unlocked) {
       setErr(t('modal.identity.needBrowser'));
       return;
     }
@@ -461,7 +461,7 @@ export function WalletIdentityPanel({
     try {
       const result = await publishDnsOnChain({
         fromAddress: address,
-        privateKeyWIF: privateKeyWif,
+        privateKeyWIF: (await browser.getSigningWallet()).privateKey,
         op: 'register',
         name,
         records: {
@@ -532,7 +532,7 @@ export function WalletIdentityPanel({
 
       {!connected || !address ? (
         <p className="text-sm text-amber-200">{t('modal.verification.needWallet')}</p>
-      ) : !isBrowserWallet || !privateKeyWif ? (
+      ) : !isBrowserWallet || !browser.unlocked ? (
         <p className="text-sm text-amber-200">{t('modal.identity.needBrowser')}</p>
       ) : null}
 

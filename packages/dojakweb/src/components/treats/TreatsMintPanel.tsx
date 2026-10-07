@@ -234,7 +234,7 @@ export function TreatsMintPanel({
       setError(address ? 'Fix form fields before broadcasting.' : 'Connect your Dojakweb wallet first.');
       return;
     }
-    if (wallet.walletType !== 'browser' || !browser.wallet?.privateKey) {
+    if (wallet.walletType !== 'browser' || !browser.unlocked) {
       setError('Unlock your local Dojakweb browser wallet to sign ÐogeTreats OP_RETURN transactions.');
       return;
     }
@@ -265,7 +265,7 @@ export function TreatsMintPanel({
         op: op as TreatsOpKind,
         tick,
         fromAddress: address,
-        privateKeyWIF: browser.wallet.privateKey,
+        privateKeyWIF: (await browser.getSigningWallet()).privateKey,
         recipientAddress: dustRecipient,
         payloadJson: json,
         max: op === 'deploy' ? max : undefined,

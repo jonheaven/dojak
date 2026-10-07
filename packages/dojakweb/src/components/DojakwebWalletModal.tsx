@@ -117,6 +117,7 @@ import {
   BrowserWallet,
   isPlaintextMigrationRequiredError,
   MIN_BROWSER_WALLET_PASSWORD_LENGTH,
+  toPublicSessionWallet,
 } from '../lib/browser-wallet';
 import { createDojakwebBiometricFacade, createDojakwebSessionSecretStore } from '../lib/dojakweb-biometric';
 import {
@@ -705,7 +706,6 @@ export function DojakwebWalletModal({
   const [showTemporaryBanner, setShowTemporaryBanner] = useState(false);
   const [plaintextMigrationPending, setPlaintextMigrationPending] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
-  const [activePassword, setActivePassword] = useState<string | undefined>();
   const lockAfterSetPasswordRef = React.useRef(false);
   /** Resume HD switch/add after unlock when tab session secret is missing. */
   const pendingHdActionRef = React.useRef<
@@ -718,10 +718,11 @@ export function DojakwebWalletModal({
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onLock = () => {
-      setActivePassword(undefined);
       setUnlockPassword('');
       setPassword('');
       setConfirmPassword('');
+      setPendingSeed(null);
+      setPendingWallet((current) => (current?.privateKey ? toPublicSessionWallet(current) : current));
     };
     window.addEventListener(BROWSER_WALLET_LOCKED_EVENT, onLock);
     return () => window.removeEventListener(BROWSER_WALLET_LOCKED_EVENT, onLock);
@@ -825,7 +826,7 @@ export function DojakwebWalletModal({
 
   const publishProfileBind = useCallback(
     async (role: 'pfp' | 'pfa', mediaInscriptionId: string) => {
-      if (!activeAddress || walletType !== 'browser' || !browser.wallet?.privateKey) {
+      if (!activeAddress || walletType !== 'browser' || !browser.unlocked) {
         toast.error(
           t('modal.toast.dpfpPublishNeedBrowser') ||
             'Unlock Local Browser Wallet to publish on-chain. Local profile was still set.',
@@ -841,7 +842,7 @@ export function DojakwebWalletModal({
           op: 'set',
           mediaInscriptionId,
           fromAddress: activeAddress,
-          privateKeyWIF: browser.wallet.privateKey,
+          privateKeyWIF: (await browser.getSigningWallet()).privateKey,
           feeRate: 0,
           excludedOutpoints: extractProtectedOutpoints(inscriptions),
           onProgress: (msg) => toast.loading(msg, { id: toastId }),
@@ -858,7 +859,7 @@ export function DojakwebWalletModal({
         toast.error(msg, { id: toastId });
       }
     },
-    [activeAddress, browser.wallet?.privateKey, inscriptions, t, walletType],
+    [activeAddress, browser, inscriptions, t, walletType],
   );
   const activeWalletName =
     walletType === 'browser'
@@ -1275,8 +1276,9 @@ export function DojakwebWalletModal({
     let encryptPassword: string | undefined;
     const isEncrypted = await new BrowserWallet().isEncrypted(currentWallet.address);
     if (isEncrypted) {
-      if (activePassword) {
-        encryptPassword = activePassword;
+      const sessionPassword = await resolveBrowserSessionPassword();
+      if (sessionPassword) {
+        encryptPassword = sessionPassword;
       } else {
         toast.error(t('modal.toast.backupNeedSessionPw'));
         return;
@@ -1447,7 +1449,7 @@ export function DojakwebWalletModal({
 
       // Fully unlocked = session holds private key (not just address/balance UI).
       const browserSessionActive = Boolean(
-        browser.connected && browser.address && browser.wallet?.privateKey,
+        browser.connected && browser.address && browser.unlocked,
       );
 
       if (!browserSessionActive) {
@@ -1545,7 +1547,6 @@ export function DojakwebWalletModal({
             const loaded = await browser.loadWallet(sessionSecret, current ?? undefined);
             if (loaded?.privateKey) {
               await browser.connect(loaded);
-              setActivePassword(sessionSecret);
               const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, loaded.address);
               setNeedsBackup(uiFlags.needsBackup);
               setShowTemporaryBanner(uiFlags.showTemporaryBanner);
@@ -1606,8 +1607,8 @@ export function DojakwebWalletModal({
     address,
     browser.address,
     browser.connected,
-    // Re-run when private key lands (unlock / session restore) so we leave unlock UI.
-    browser.wallet?.privateKey,
+    // Re-run when the tab unlocks so we leave the unlock UI.
+    browser.unlocked,
     browser.hasWallet,
     browser.loadWallet,
     browser.connect,
@@ -1667,28 +1668,29 @@ export function DojakwebWalletModal({
       toastKey?: string;
     },
   ): Promise<WalletData | null> => {
-    const walletToPersist =
-      walletOverride ??
-      pendingWallet ??
-      (walletType === 'browser' && browser.wallet?.privateKey ? browser.wallet : null);
-    if (!walletToPersist) return null;
+    let walletToPersist = walletOverride ?? null;
+    if (!walletToPersist?.privateKey && pendingWallet?.privateKey) {
+      walletToPersist = pendingWallet;
+    }
+    if (!walletToPersist?.privateKey && browser.unlocked) {
+      walletToPersist = await browser.getSigningWallet();
+    }
+    if (!walletToPersist?.privateKey) return null;
     const persistPassword = nextPassword?.trim();
     if (!persistPassword) {
       throw new Error(t('modal.errors.enterPassword'));
     }
-    setActivePassword(persistPassword);
     localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
     await browser.saveWallet(walletToPersist, persistPassword, {
       seedMaterial: seedOverride ?? pendingSeed ?? undefined,
       pbkdf2Iterations: saveOpts?.pbkdf2Iterations,
     });
-    await browser.connect(walletToPersist);
-    // Keep unlocked in this tab's React state after setting a password.
     try {
       await createDojakwebSessionSecretStore().saveSecret(persistPassword);
     } catch {
-      /* chrome.storage.session only; public site requires re-entry after refresh */
+      /* vault is saved; signing needs this secret in the tab session */
     }
+    await browser.connect(walletToPersist);
     const passwordKey = getStoredPasswordFlag(walletToPersist.address);
     const bannerKey = getTemporaryBannerFlag(walletToPersist.address);
     const backupKey = getBackupFlag(walletToPersist.address);
@@ -1703,9 +1705,11 @@ export function DojakwebWalletModal({
       localStorage.setItem(backupKey, 'true');
       setNeedsBackup(false);
     }
-    setPendingWallet(walletToPersist);
+    const nextStep = uiOpts?.afterStep ?? 'dashboard';
+    if (nextStep === 'dashboard') setPendingSeed(null);
+    setPendingWallet(toPublicSessionWallet(walletToPersist));
     await refreshSavedLocalWallets();
-    setStep(uiOpts?.afterStep ?? 'dashboard');
+    setStep(nextStep);
     if (uiOpts?.toastKey === 'modal.toast.newWalletReady') {
       toast.success(t('modal.toast.newWalletReady'), { duration: 5500 });
     } else {
@@ -1721,7 +1725,7 @@ export function DojakwebWalletModal({
       await browser.disconnect();
       onClose();
     }
-    return walletToPersist;
+    return toPublicSessionWallet(walletToPersist);
   };
 
   const handleUnlockWallet = async () => {
@@ -1735,6 +1739,7 @@ export function DojakwebWalletModal({
           if (!loaded) {
             throw new Error(t('modal.throws.unlockWrong'));
           }
+          await createDojakwebSessionSecretStore().saveSecret(secret);
           await browser.connect(loaded);
           unlockedRef.current = loaded;
         }, t('modal.unlock.biometricReason'));
@@ -1750,7 +1755,6 @@ export function DojakwebWalletModal({
         if (!sessionSecret) {
           throw new Error(t('modal.toast.unlockFailed'));
         }
-        setActivePassword(sessionSecret);
         setUnlockPassword('');
         setShowTemporaryBanner(false);
         localStorage.removeItem(BROWSER_WALLET_RESTORE_BLOCK_KEY);
@@ -1786,15 +1790,10 @@ export function DojakwebWalletModal({
       if (!loaded) {
         throw new Error(t('modal.throws.unlockWrong'));
       }
+      await createDojakwebSessionSecretStore().saveSecret(secret);
       await browser.connect(loaded);
       setWalletNameDraft(loaded.nickname?.trim() || '');
-      setActivePassword(secret);
       setUnlockPassword('');
-      try {
-        await createDojakwebSessionSecretStore().saveSecret(secret);
-      } catch {
-        // Session store is best-effort; in-memory password still enables HD account switching.
-      }
       const uiFlags = syncSeedGroupUiFlags(localSeedWalletGroups, loaded.address);
       setNeedsBackup(uiFlags.needsBackup);
       setShowTemporaryBanner(uiFlags.showTemporaryBanner);
@@ -1856,13 +1855,8 @@ export function DojakwebWalletModal({
         if (!loaded?.privateKey) {
           throw new Error(t('modal.errors.savePassword'));
         }
+        await createDojakwebSessionSecretStore().saveSecret(secret);
         await browser.connect(loaded);
-        setActivePassword(secret);
-        try {
-          await createDojakwebSessionSecretStore().saveSecret(secret);
-        } catch {
-          /* chrome.storage.session only */
-        }
         writeWalletLockPreferences(loaded.address, {
           primary: newPrimarySecret,
           strength: newSecretStrength,
@@ -1923,24 +1917,12 @@ export function DojakwebWalletModal({
   };
 
   const resolveBrowserSessionPassword = useCallback(async (): Promise<string | undefined> => {
-    if (activePassword) return activePassword;
     try {
-      const session = await createDojakwebSessionSecretStore().getSecret();
-      if (session) {
-        setActivePassword(session);
-        return session;
-      }
+      return (await createDojakwebSessionSecretStore().getSecret()) ?? undefined;
     } catch {
-      // Ignore session read failures.
+      return undefined;
     }
-    return undefined;
-  }, [activePassword]);
-
-  /** Keep React unlock state in sync with tab session (refresh / remount). */
-  useEffect(() => {
-    if (!isOpen || !isBrowserWallet || activePassword) return;
-    void resolveBrowserSessionPassword();
-  }, [isOpen, isBrowserWallet, activePassword, resolveBrowserSessionPassword]);
+  }, []);
 
   const beginUnlockForHdAction = useCallback(
     async (action: { type: 'switch'; address: string } | { type: 'add' }) => {
@@ -1964,21 +1946,10 @@ export function DojakwebWalletModal({
     [activeAddress, browser.wallet?.address, selectedLocalWalletAddress, t],
   );
 
-  /**
-   * Listing / send / cancel must not call `loadWallet(undefined)` on an encrypted vault.
-   * UI can look "unlocked" via in-memory `browser.wallet` or tab session secret while
-   * React `activePassword` is still undefined (e.g. after refresh / vendor remount).
-   */
+  /** Decrypt only for this call. The signing key is not kept on React state. */
   const loadUnlockedBrowserWallet = useCallback(async () => {
-    const mem = browser.wallet;
-    if (mem?.privateKey) return mem;
-    const pw = await resolveBrowserSessionPassword();
-    const loaded = await browser.loadWallet(pw, activeAddress ?? undefined);
-    if (!loaded?.privateKey) {
-      throw new Error(t('modal.throws.walletLocked'));
-    }
-    return loaded;
-  }, [activeAddress, browser, resolveBrowserSessionPassword, t]);
+    return browser.getSigningWallet();
+  }, [browser]);
 
   const connectSavedLocalWallet = async (targetAddress: string, sessionPassword?: string) => {
     const storage = new BrowserWallet();
@@ -1997,14 +1968,9 @@ export function DojakwebWalletModal({
         await beginUnlockForHdAction({ type: 'switch', address: targetAddress });
         return false;
       }
+      await createDojakwebSessionSecretStore().saveSecret(sessionPassword);
       await browser.connect(loaded);
       setWalletNameDraft(loaded.nickname?.trim() || '');
-      setActivePassword(sessionPassword);
-      try {
-        await createDojakwebSessionSecretStore().saveSecret(sessionPassword);
-      } catch {
-        // best-effort
-      }
     } else {
       setPlaintextMigrationPending(true);
       setStep('password');
@@ -2178,7 +2144,7 @@ export function DojakwebWalletModal({
     try {
       setHideBalance(false);
       setUnlockPassword('');
-      setActivePassword(undefined);
+      setPendingSeed(null);
       try {
         await createDojakwebSessionSecretStore().clearSecret();
       } catch {
@@ -2242,7 +2208,7 @@ export function DojakwebWalletModal({
 
   const handleBackupNow = async (pw?: string) => {
     if (!activeAddress) return;
-    const passwordToUse = pw ?? activePassword;
+    const passwordToUse = pw ?? (await resolveBrowserSessionPassword());
     try {
       const seed = await browser.loadSeedMaterial(passwordToUse, activeAddress);
       if (!seed?.mnemonic) {
@@ -2263,7 +2229,7 @@ export function DojakwebWalletModal({
 
   const handleRevealWithPassword = async () => {
     if (!revealPassword.trim()) return;
-    setActivePassword(revealPassword);
+    await createDojakwebSessionSecretStore().saveSecret(revealPassword.trim());
     await handleBackupNow(revealPassword);
   };
 
@@ -2292,6 +2258,8 @@ export function DojakwebWalletModal({
       return;
     }
     if (connected || browser.connected) {
+      setPendingSeed(null);
+      setPendingWallet((current) => (current?.privateKey ? toPublicSessionWallet(current) : current));
       setStep('dashboard');
       return;
     }
@@ -2667,8 +2635,8 @@ export function DojakwebWalletModal({
   useEffect(() => {
     if (isOpen) {
       // Prefer staying on dashboard when local browser session already holds the key.
-      const unlocked = Boolean(browser.wallet?.privateKey && browser.address);
-      const targetStep = initialStep === 'verification' ? 'verification' : unlocked ? 'dashboard' : initialStep;
+      const sessionOpen = Boolean(browser.unlocked && browser.address);
+      const targetStep = initialStep === 'verification' ? 'verification' : sessionOpen ? 'dashboard' : initialStep;
       setStep(targetStep);
       setSettingsTab(initialSettingsTab);
       if (initialDashboardTab) setTab(initialDashboardTab);
@@ -2689,7 +2657,7 @@ export function DojakwebWalletModal({
     initialStep,
     initialSettingsTab,
     openNonce,
-    browser.wallet?.privateKey,
+    browser.unlocked,
     browser.address,
     initialDashboardTab,
     initialAssetType,
@@ -6261,7 +6229,6 @@ export function DojakwebWalletModal({
                         address={activeAddress}
                         connected={connected}
                         isBrowserWallet={isBrowserWallet}
-                        privateKeyWif={isBrowserWallet ? browser.wallet?.privateKey ?? null : null}
                         inscriptions={inscriptions}
                         seedDxHandle={dxSeedHandle}
                         onBack={() => setStep('dashboard')}
