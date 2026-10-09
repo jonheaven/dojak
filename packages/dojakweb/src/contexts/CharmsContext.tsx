@@ -118,31 +118,18 @@ export function CharmsProvider({ children }: CharmsProviderProps) {
       amount: bigint;
       destAddress: string;
     }) => {
-      try {
-        setIsBeamingInProgress(true);
-        // TODO: Call charmsService.beamAsset()
-        console.log('Initiating beam:', params);
-      } catch (error) {
-        console.error('Beam failed:', error);
-        setCharmsError(`Beam failed: ${error}`);
-        toast.error('Beam operation failed');
-      } finally {
-        setIsBeamingInProgress(false);
-      }
+      void params;
+      setIsBeamingInProgress(false);
+      setCharmsError('Charms beam is not available');
+      toast.error('Charms beam is not available');
     },
     [],
   );
 
   const cancelBeam = useCallback(async (beamId: string) => {
-    try {
-      // TODO: Cancel beam operation
-      console.log('Cancelling beam:', beamId);
-      setActiveBeams((beams) => beams.filter((b) => b.beamId !== beamId));
-    } catch (error) {
-      console.error('Failed to cancel beam:', error);
-      setCharmsError(`Failed to cancel beam: ${error}`);
-      toast.error('Failed to cancel beam');
-    }
+    void beamId;
+    setCharmsError('Charms beam is not available');
+    toast.error('Charms beam is not available');
   }, []);
 
   const value = useMemo<CharmsContextType>(
