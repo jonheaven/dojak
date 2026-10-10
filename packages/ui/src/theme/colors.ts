@@ -101,12 +101,12 @@ const lightThemeColors = {
 
 const darkThemeColors = {
   // Dark theme - black background, white text
-  background: '#000000',
+  background: '#0b0b0c',
   surface: '#1a1a1a',
-  card: 'rgba(47, 27, 20, 0.88)',
-  text: '#ffffff',
-  textSecondary: '#C9822A',
-  textDim: '#C9822A',
+  card: '#141210',
+  text: '#f4efe3',
+  textSecondary: '#b7b0a1',
+  textDim: '#8a8478',
   border: 'rgba(255,255,255,0.04)',
   border2: 'rgba(255, 255, 255, 0.1)',
   line: 'rgba(255,255,255,0.15)',

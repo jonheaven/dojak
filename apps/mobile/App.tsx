@@ -161,11 +161,13 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <View style={styles.lockContainer}>
-          <Text style={styles.title}>Set mobile lock password</Text>
+          <Text style={styles.kicker}>DOJAK</Text>
+          <Text style={styles.title}>Create a lock</Text>
+          <Text style={styles.subtitle}>This password stays on the phone and unlocks the wallet.</Text>
           <TextInput
             secureTextEntry
-            placeholder="Create password"
-            placeholderTextColor="#8b8b8b"
+            placeholder="At least 6 characters"
+            placeholderTextColor="#8a8478"
             style={styles.input}
             value={passwordInput}
             onChangeText={setPasswordInput}
@@ -183,7 +185,7 @@ export default function App() {
               setIsSettingUpPassword(false);
               setLockError('');
             }}>
-            <Text style={styles.primaryButtonText}>Save Password</Text>
+            <Text style={styles.primaryButtonText}>Continue</Text>
           </TouchableOpacity>
           {lockError ? <Text style={styles.errorText}>{lockError}</Text> : null}
         </View>
@@ -195,17 +197,19 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <View style={styles.lockContainer}>
-          <Text style={styles.title}>Unlock Dojak Wallet</Text>
+          <Text style={styles.kicker}>DOJAK</Text>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Unlock to see your Dogecoin.</Text>
           <TextInput
             secureTextEntry
-            placeholder="Enter password"
-            placeholderTextColor="#8b8b8b"
+            placeholder="Password"
+            placeholderTextColor="#8a8478"
             style={styles.input}
             value={passwordInput}
             onChangeText={setPasswordInput}
           />
           <TouchableOpacity style={styles.primaryButton} onPress={() => void unlockWithPassword(passwordInput)}>
-            <Text style={styles.primaryButtonText}>Unlock with Password</Text>
+            <Text style={styles.primaryButtonText}>Unlock</Text>
           </TouchableOpacity>
           {biometricEnabled ? (
             <TouchableOpacity
@@ -218,7 +222,7 @@ export default function App() {
                   setLockError(result.errorMessage || 'Biometric unlock failed.');
                 }
               }}>
-              <Text style={styles.secondaryButtonText}>Unlock with Biometrics</Text>
+              <Text style={styles.secondaryButtonText}>Unlock with Face ID or fingerprint</Text>
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity
@@ -254,47 +258,69 @@ export default function App() {
 const styles = StyleSheet.create({
   lockContainer: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#0b0b0c',
     paddingHorizontal: 24,
     justifyContent: 'center'
   },
-  title: {
-    color: '#fff',
-    fontSize: 24,
+  kicker: {
+    color: '#c2a633',
+    fontSize: 11,
     fontWeight: '700',
-    marginBottom: 16
+    letterSpacing: 2.4,
+    marginBottom: 8
+  },
+  title: {
+    color: '#f4efe3',
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    marginBottom: 8
+  },
+  subtitle: {
+    color: 'rgba(190,185,170,0.72)',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20
   },
   input: {
     borderWidth: 1,
-    borderColor: '#2b2b2b',
-    borderRadius: 10,
-    color: '#fff',
-    padding: 12,
-    marginBottom: 12
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    color: '#f4efe3',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 12,
+    fontSize: 16
   },
   primaryButton: {
-    backgroundColor: '#3f7cff',
-    borderRadius: 10,
-    paddingVertical: 12,
+    backgroundColor: '#e8d48b',
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 10
   },
   primaryButtonText: {
-    color: '#fff',
-    fontWeight: '700'
+    color: '#161109',
+    fontWeight: '800',
+    fontSize: 15
   },
   secondaryButton: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 10,
-    paddingVertical: 12,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 10
   },
   secondaryButtonText: {
-    color: '#fff'
+    color: '#f4efe3',
+    fontWeight: '700'
   },
   errorText: {
-    color: '#ff7b7b',
-    marginTop: 6
+    color: '#f05266',
+    marginTop: 6,
+    fontSize: 13
   }
 });

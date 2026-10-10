@@ -44,7 +44,7 @@ function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: Icon
         }
       }}
     >
-      <Icon size={20} icon={icon} color={isActive ? 'white' : 'white_muted'} />
+      <Icon size={20} icon={icon} color={isActive ? 'gold' : 'white_muted'} />
       <BaseView style={{ position: 'relative' }}>
         {tabName === 'discover' && hasNewBanner && (
           <BaseView

@@ -11,14 +11,14 @@ export const AppDimensions = (props) => {
     if (extensionIsInTab) {
       return '100vw';
     }
-    return isSidePanel ? '100vw' : '800px';
-  }, [extensionIsInTab, isSidePanel]);
+    return '100%';
+  }, [extensionIsInTab]);
 
   const height = useMemo(() => {
     if (extensionIsInTab) {
       return '100vh';
     }
-    return isSidePanel ? '100vh' : '600px';
+    return isSidePanel || extensionIsInTab ? '100%' : '600px';
   }, [extensionIsInTab, isSidePanel]);
 
   return (

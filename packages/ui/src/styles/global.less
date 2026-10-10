@@ -140,19 +140,7 @@ div {
   margin-top: -3px !important;
 }
 
-/* === DOJAK FROG GOD THEME 2025 - 100% STABLE === */
-
-/* Extension popup layout - 800x600 dimensions for testing */
-.app, .popup-container, .main-container {
-  width: 800px !important;
-  height: 600px !important;
-  margin: 0 auto !important;
-  padding: 0 !important;
-  box-sizing: border-box !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  background: transparent !important;
-}
+/* Shared chrome. Popup width comes from popup.html (400px). Side panel is full width. */
 
 /* Theme-aware CSS custom properties */
 :root {
@@ -189,12 +177,12 @@ div {
 
 /* Dark theme */
 [data-theme="dark"] {
-  --theme-background: #000000;
+  --theme-background: #0b0b0c;
   --theme-surface: #1a1a1a;
-  --theme-card: rgba(47, 27, 20, 0.88);
-  --theme-text: #ffffff;
-  --theme-text-secondary: #C9822A;
-  --theme-text-dim: #C9822A;
+  --theme-card: #141210;
+  --theme-text: #f4efe3;
+  --theme-text-secondary: #b7b0a1;
+  --theme-text-dim: #8a8478;
   --theme-border: rgba(255,255,255,0.04);
   --theme-border2: rgba(255, 255, 255, 0.1);
   --theme-line: rgba(255,255,255,0.15);
@@ -248,20 +236,20 @@ html,
 .wallet-card,
 .tab-content {
   background: var(--theme-card) !important;
-  border: 1px solid var(--theme-primary) !important;
+  border: 1px solid var(--theme-border) !important;
   backdrop-filter: blur(10px);
 }
 
-/* Primary buttons - theme-aware yellow-gold */
+/* Primary buttons */
 .primary-btn,
 .confirm-btn,
 .stake-button,
 .send-button,
 .buy-button {
-  background: linear-gradient(90deg, var(--theme-primary), #F4A460) !important;
-  color: var(--theme-background) !important;
+  background: linear-gradient(180deg, #f3e6bf 0%, #e8d48b 45%, #c2a633 100%) !important;
+  color: #161109 !important;
   font-weight: 700 !important;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28) !important;
   border: none !important;
 }
 
@@ -283,8 +271,7 @@ html,
 
 .primary-btn:hover,
 .confirm-btn:hover {
-  background: linear-gradient(90deg, #FFE55C, #FFA500) !important;
-  box-shadow: 0 0 30px rgba(255, 215, 0, 0.8) !important;
+  filter: brightness(1.05);
 }
 
 /* Active tab indicator */
@@ -301,9 +288,12 @@ html,
   color: var(--theme-success) !important;
 }
 
-/* Headers & titles */
-h1, h2, h3, .title {
-  color: #FFE55C !important;
+/* Dark chrome: titles stay cream. Gold is reserved for the balance hero and primary actions. */
+[data-theme='dark'] h1,
+[data-theme='dark'] h2,
+[data-theme='dark'] h3,
+[data-theme='dark'] .title {
+  color: #f4efe3;
 }
 
 /* Thinner header styling */
@@ -329,17 +319,18 @@ h1, h2, h3, .title {
   transform: translateY(-50%) !important;
 }
 
-/* Onboarding / Welcome screen full bleed */
+/* Onboarding fills the surface it is opened in. */
 .onboarding-container, .welcome-screen, .create-wallet-screen {
-  width: 800px !important;
-  height: 600px !important;
-  padding: 60px 24px 40px !important;
+  width: 100% !important;
+  min-height: 100% !important;
+  padding: 32px 24px 28px !important;
   background: transparent !important;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .dojak-logo {
@@ -361,8 +352,7 @@ h1, h2, h3, .title {
 
 .welcome-title {
   font-size: 29px !important;
-  color: #FFE55C !important;
-  text-shadow: 0 0 15px var(--theme-primary);
+  color: #f4efe3 !important;
 }
 
 /* Welcome screen logo - intrinsic size */
@@ -378,15 +368,9 @@ img[alt*="dojak"] {
 [data-theme='dark'] .dojak-logo img {
   filter: invert(1) hue-rotate(180deg) drop-shadow(0 0 20px var(--theme-primary));
 }
-:root {
-  --dojak-popup-width: 402px;
-}
-
 body {
-  width: var(--dojak-popup-width);
-  max-width: var(--dojak-popup-width);
-  max-height: 600px;
-  overflow-y: auto;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
@@ -394,7 +378,11 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-#root {
-  max-width: var(--dojak-popup-width);
-  margin: 0 auto;
+html.dojak-side-panel,
+html.dojak-side-panel body,
+html.dojak-side-panel #root {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  height: 100%;
 }
