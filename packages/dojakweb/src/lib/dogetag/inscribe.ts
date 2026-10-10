@@ -139,7 +139,7 @@ function buildInscriptionChunks(content: Buffer, contentType: string): ScriptChu
 function buildTaggedInscriptionChunks(
   content: Buffer,
   contentType: string,
-  opts?: { parents?: Buffer[]; metaprotocol?: string; metadata?: Buffer },
+  opts?: { parents?: Buffer[]; delegates?: Buffer[]; metaprotocol?: string; metadata?: Buffer },
 ): ScriptChunk[] {
   const parts: Buffer[] = [];
   let rem = content;
@@ -157,6 +157,12 @@ function buildTaggedInscriptionChunks(
     for (const p of opts.parents) {
       chunks.push(bufToChunk(Buffer.from([3])));
       chunks.push(bufToChunk(p));
+    }
+  }
+  if (opts?.delegates?.length) {
+    for (const d of opts.delegates) {
+      chunks.push(bufToChunk(Buffer.from([11])));
+      chunks.push(bufToChunk(d));
     }
   }
   if (opts?.metadata?.length) {
@@ -392,8 +398,10 @@ export interface RevealPaymentOutput {
 }
 
 export interface SignInscriptionParams {
-  /** Plain text / JSON string to inscribe. */
-  text: string;
+  /** Plain text / JSON string to inscribe. Omit when `contentBytes` is set. */
+  text?: string;
+  /** Raw body bytes (PNG and other non-UTF-8 content). Wins over `text`. */
+  contentBytes?: Buffer | Uint8Array;
   /** Sender's Dogecoin address (funds and change). */
   fromAddress: string;
   /** WIF private key from the local Dojakweb browser wallet. */
@@ -419,6 +427,11 @@ export interface SignInscriptionParams {
    * fields so dogex records parent-child provenance (required for Ðclaims).
    */
   parents?: string[];
+  /**
+   * Delegate inscription ids (envelope tag 11). The copy renders as that
+   * inscription and stays independently spendable.
+   */
+  delegates?: string[];
   /** Metaprotocol string (envelope tag 7), e.g. `dclaims`. */
   metaprotocol?: string;
   /** Optional metadata bytes (envelope tag 5). */
@@ -472,7 +485,8 @@ export async function signInscriptionTxs(
   params: SignInscriptionParams,
 ): Promise<SignedInscriptionPair> {
   const {
-    text,
+    text = '',
+    contentBytes,
     fromAddress,
     privateKeyWIF,
     feeRate: requestedFeeRate = 0,
@@ -481,6 +495,7 @@ export async function signInscriptionTxs(
     contentType: contentTypeRaw,
     extraRevealPayments = [],
     parents: parentIds = [],
+    delegates: delegateIds = [],
     metaprotocol,
     metadata,
   } = params;
@@ -490,7 +505,9 @@ export async function signInscriptionTxs(
   });
 
   // ── Input validation ────────────────────────────────────────────────────────
-  const contentBuf = Buffer.from(text, 'utf8');
+  const contentBuf = contentBytes?.length
+    ? Buffer.from(contentBytes)
+    : Buffer.from(text, 'utf8');
   if (!contentBuf.length) throw new Error('Inscription text cannot be empty.');
   if (contentBuf.length > INSCRIPTION_MAX_CONTENT_BYTES) {
     throw new Error(
@@ -524,11 +541,16 @@ export async function signInscriptionTxs(
 
   // ── Plan the inscription ─────────────────────────────────────────────────────
   const useTagged =
-    parentIds.length > 0 || Boolean(metaprotocol?.trim()) || Boolean(metadata?.length);
+    parentIds.length > 0 ||
+    delegateIds.length > 0 ||
+    Boolean(metaprotocol?.trim()) ||
+    Boolean(metadata?.length);
   const parentBytes = parentIds.map((id) => inscriptionIdToParentBytes(id));
+  const delegateBytes = delegateIds.map((id) => inscriptionIdToParentBytes(id));
   const allChunks = useTagged
     ? buildTaggedInscriptionChunks(contentBuf, contentType, {
         parents: parentBytes,
+        delegates: delegateBytes,
         metaprotocol: metaprotocol?.trim() || undefined,
         metadata: metadata ? Buffer.from(metadata) : undefined,
       })
