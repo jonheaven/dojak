@@ -1015,6 +1015,47 @@ export class WalletController extends BaseController {
     return preferenceService.getChainType();
   };
 
+  /**
+   * Coins that are safe to spend as plain DOGE. Doginals, Dunes, and DRC-20 carriers stay put.
+   * If the indexer is 50 or more blocks behind, refuse rather than guess.
+   */
+  plainDogeUtxos = async () => {
+    const account = preferenceService.getCurrentAccount();
+    if (!account) throw new Error('no current account');
+    const addressType = AddressType.P2PKH;
+    try {
+      const indexer = getDogIndexerClient();
+      const health = await indexer.health();
+      if (Number.isFinite(health.lagBlocks) && health.lagBlocks >= 50) {
+        throw new Error(
+          `Indexer is ${health.lagBlocks} blocks behind. Plain DOGE sends are paused so a Doginal is not spent by mistake.`
+        );
+      }
+      const cardinals = await indexer.getCardinalUTXOs(account.address);
+      if (cardinals.length > 0) {
+        return cardinals.map((coin) => ({
+          txid: coin.txid,
+          vout: coin.vout,
+          satoshis: coin.koinu,
+          scriptPk: coin.scriptPubKey,
+          addressType,
+          pubkey: account.pubkey,
+          inscriptions: [],
+          atomicals: []
+        }));
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.startsWith('Indexer is ')) throw error;
+    }
+    const all = await this.getDOGEUtxos();
+    const plain = all.filter((coin) => !coin.inscriptions || coin.inscriptions.length === 0);
+    if (all.length > 0 && plain.length === 0) {
+      throw new Error('Every coin holds a Doginal. Plain DOGE sends will not spend those. Use Dogs to send one.');
+    }
+    return plain;
+  };
+
   getDOGEUtxos = async () => {
     // getDOGEAccount
     const account = preferenceService.getCurrentAccount();
@@ -1060,7 +1101,7 @@ export class WalletController extends BaseController {
     const networkType = this.getNetworkType();
 
     if (!btcUtxos) {
-      btcUtxos = await this.getDOGEUtxos();
+      btcUtxos = await this.plainDogeUtxos();
     }
 
     if (btcUtxos.length == 0) {
@@ -1120,6 +1161,17 @@ export class WalletController extends BaseController {
   /** Doginal coin under 0.01 DOGE. At or above that, a send can spend it as a fee coin. */
   private static readonly DOGINAL_FEE_FLOOR = 1_000_000;
   private static readonly DOGINAL_POSTAGE = 100_000;
+
+  resolvePopupName = async (input: string) => {
+    const raw = input.trim();
+    if (!raw) throw new Error('Enter an address or a .doge name.');
+    if (/^D[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(raw)) return raw;
+    const name = raw.replace(/^@/, '').toLowerCase();
+    const withSuffix = name.includes('.') ? name : `${name}.doge`;
+    const hit = await getDogIndexerClient().resolveDNS(withSuffix);
+    if (!hit?.address) throw new Error(`No address on file for ${withSuffix}.`);
+    return hit.address;
+  };
 
   listPopupDoginals = async () => {
     const account = preferenceService.getCurrentAccount();

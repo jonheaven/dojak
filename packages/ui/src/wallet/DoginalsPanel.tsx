@@ -45,6 +45,7 @@ export function DoginalsPanel(props: {
 }) {
   const wallet = useWalletCore();
   const [slice, setSlice] = useState<Slice>('dogs');
+  const [sort, setSort] = useState<'num' | 'az' | 'safe'>('num');
   const [dogs, setDogs] = useState<PopupDoginal[]>([]);
   const [drc20, setDrc20] = useState<PopupDrc20[]>([]);
   const [dunes, setDunes] = useState<PopupDune[]>([]);
@@ -170,8 +171,25 @@ export function DoginalsPanel(props: {
         dogs.length === 0 ? (
           <p className="dj-empty">{loaded ? 'No Doginals on this address.' : 'Loading Doginals…'}</p>
         ) : (
+          <div className="dj-seg-row">
+            <button type="button" className={`dj-seg${sort === 'num' ? ' is-on' : ''}`} onClick={() => setSort('num')}>
+              # 
+            </button>
+            <button type="button" className={`dj-seg${sort === 'az' ? ' is-on' : ''}`} onClick={() => setSort('az')}>
+              A–Z
+            </button>
+            <button type="button" className={`dj-seg${sort === 'safe' ? ' is-on' : ''}`} onClick={() => setSort('safe')}>
+              Protected
+            </button>
+          </div>
           <div className="dj-dog-grid">
-            {dogs.map((item) => (
+            {[...dogs]
+              .sort((a, b) => {
+                if (sort === 'az') return a.id.localeCompare(b.id);
+                if (sort === 'safe') return Number(b.protected) - Number(a.protected);
+                return (a.number ?? 0) - (b.number ?? 0);
+              })
+              .map((item) => (
               <button key={item.id} type="button" className="dj-dog-card" onClick={() => setSelected(item)}>
                 <Media item={item} />
                 <span className="dj-dog-meta">{item.protected ? 'Protected' : 'Protect'}</span>

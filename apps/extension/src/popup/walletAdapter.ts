@@ -29,6 +29,9 @@ type WalletProxy = {
   listPopupInscriptionForSale: (params: { inscriptionId: string; priceDoge: number }) => Promise<unknown>;
   getConnectedSites: () => Promise<import('@dojak/ui').ConnectedSiteRow[]>;
   removeConnectedSite: (origin: string) => Promise<void>;
+  resolvePopupName: (input: string) => Promise<string>;
+  getAutoLockTimeId: () => Promise<number>;
+  setAutoLockTimeId: (timeId: number) => Promise<void>;
 };
 
 function createWalletProxy(): WalletProxy {
@@ -155,6 +158,9 @@ export function createPopupAdapter(): WalletCoreAdapter & {
     },
     getConnectedSites: () => wallet.getConnectedSites(),
     removeConnectedSite: (origin: string) => wallet.removeConnectedSite(origin),
+    resolveName: (input: string) => wallet.resolvePopupName(input),
+    getAutoLock: async () => Number(await wallet.getAutoLockTimeId()),
+    setAutoLock: (timeId: number) => wallet.setAutoLockTimeId(timeId),
     logout: async () => {
       await Promise.all([storage.set(BALANCE_KEY, 0), storage.set(TXS_KEY, [])]);
     },

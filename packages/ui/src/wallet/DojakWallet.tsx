@@ -34,6 +34,7 @@ export function DojakWallet() {
   const [toast, setToast] = useState<{ message: string; tone: 'ok' | 'error' } | null>(null);
   const [dogPeek, setDogPeek] = useState<PopupDoginal[]>([]);
   const [sites, setSites] = useState<ConnectedSiteRow[]>([]);
+  const [autoLock, setAutoLock] = useState(5);
 
   const pushToast = (message: string, tone: 'ok' | 'error' = 'ok') => {
     setToast({ message, tone });
@@ -66,6 +67,10 @@ export function DojakWallet() {
     ]);
     setDogPeek(peek.slice(0, 3));
     setSites(connectedSites.filter((site) => site.origin));
+    if (walletCore.getAutoLock) {
+      const lockId = await walletCore.getAutoLock().catch(() => 5);
+      if (Number.isFinite(lockId)) setAutoLock(lockId);
+    }
   };
 
   useEffect(() => {
@@ -127,11 +132,20 @@ export function DojakWallet() {
       return;
     }
 
+    let recipient = sendTo.trim();
+    if (walletCore.resolveName && !/^D/.test(recipient)) {
+      try {
+        recipient = await walletCore.resolveName(recipient);
+      } catch (resolveError) {
+        setError(resolveError instanceof Error ? resolveError.message : 'Could not resolve that name');
+        return;
+      }
+    }
     const isAddressValid = walletCore.validateAddress
-      ? await walletCore.validateAddress(sendTo.trim())
-      : isValidAddress(sendTo.trim());
+      ? await walletCore.validateAddress(recipient)
+      : isValidAddress(recipient);
     if (!isAddressValid) {
-      setError('That does not look like a Dogecoin address');
+      setError('That does not look like a Dogecoin address or a .doge name');
       return;
     }
     if (!Number.isFinite(dogeAmount) || dogeAmount <= 0) {
@@ -147,7 +161,7 @@ export function DojakWallet() {
       setIsSending(true);
       setStatus('Submitting…');
       const response = await walletCore.sendDogecoin({
-        to: sendTo.trim(),
+        to: recipient,
         amount: Number(dogeAmount.toFixed(8)),
         feeRate
       });
@@ -318,14 +332,14 @@ export function DojakWallet() {
                   className="dj-input"
                   value={sendTo}
                   onChange={(event) => setSendTo(event.target.value)}
-                  placeholder="D…"
+                  placeholder="D… or name.doge"
                   autoCapitalize="off"
                   autoCorrect="off"
                   spellCheck={false}
                 />
               </label>
               <div>
-                <p className="dj-section-label">Network fee</p>
+                <p className="dj-section-label">Network fee · miners only</p>
                 <div className="dj-fee-row">
                   {FEE_OPTIONS.map((option) => (
                     <button
@@ -364,6 +378,24 @@ export function DojakWallet() {
                     .join(', ') || '—'}
                 </p>
               </div>
+              <label className="dj-field" style={{ marginTop: 14 }}>
+                Auto-lock
+                <select
+                  className="dj-input"
+                  value={autoLock}
+                  onChange={(event) => {
+                    const timeId = Number(event.target.value);
+                    setAutoLock(timeId);
+                    void walletCore.setAutoLock?.(timeId);
+                  }}
+                >
+                  <option value={3}>5 min</option>
+                  <option value={4}>10 min</option>
+                  <option value={5}>30 min</option>
+                  <option value={6}>1 hour</option>
+                  <option value={7}>4 hours</option>
+                </select>
+              </label>
               <p className="dj-section-label" style={{ marginTop: 14 }}>
                 Connected sites
               </p>

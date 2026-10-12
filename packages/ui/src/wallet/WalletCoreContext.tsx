@@ -58,6 +58,9 @@ export type WalletCoreAdapter = {
   listDoginalForSale?: (inscriptionId: string, priceDoge: number) => Promise<unknown>;
   getConnectedSites?: () => Promise<ConnectedSiteRow[]>;
   removeConnectedSite?: (origin: string) => Promise<void>;
+  resolveName?: (input: string) => Promise<string>;
+  getAutoLock?: () => Promise<number>;
+  setAutoLock?: (timeId: number) => Promise<void>;
 };
 
 const WalletCoreContext = createContext<WalletCoreAdapter>({});
