@@ -36,6 +36,11 @@ export interface WalletDataProviderConfig {
    */
   mergeInuBitsInscriptions: boolean;
   /**
+   * When not false (default on), merge a page of Spooky Doge indexer Doginals and any DRC-20
+   * tickers the primary list missed. Reads only — never a broadcast path.
+   */
+  mergeSpookyIndex?: boolean;
+  /**
    * When true, hide text/* and application/json inscriptions from the NFT grid
    * (lotto tickets, protocols, plain text). Default false.
    */
@@ -939,6 +944,42 @@ function mapInubitsRowToMyDoge(row: InubitsWalletInscriptionRow, walletAddress: 
   };
 }
 
+async function withSpookyInscriptions(
+  address: string,
+  primary: MyDogeInscription[],
+): Promise<MyDogeInscription[]> {
+  if (getWalletDataProviderConfig().mergeSpookyIndex === false) return primary;
+  try {
+    const { fetchSpookyWalletInscriptions } = await import('../lib/spooky-indexer');
+    const extra = await fetchSpookyWalletInscriptions(address);
+    return mergeInscriptionListsById(primary, extra);
+  } catch (e) {
+    console.warn('[walletDataApi] Spooky inscription merge failed', e);
+    return primary;
+  }
+}
+
+async function withSpookyDrc20(address: string, primary: DRC20Token[]): Promise<DRC20Token[]> {
+  if (getWalletDataProviderConfig().mergeSpookyIndex === false) return primary;
+  try {
+    const { fetchSpookyDrc20Holdings } = await import('../lib/spooky-indexer');
+    const extra = await fetchSpookyDrc20Holdings(address);
+    const seen = new Set(primary.map((t) => t.ticker.toLowerCase()));
+    const added = extra
+      .filter((t) => t.ticker && !seen.has(t.ticker.toLowerCase()))
+      .map((t) => ({
+        ticker: t.ticker,
+        balance: t.balance,
+        transferable: t.transferable,
+        available: t.available,
+      }));
+    return added.length ? [...primary, ...added] : primary;
+  } catch (e) {
+    console.warn('[walletDataApi] Spooky DRC-20 merge failed', e);
+    return primary;
+  }
+}
+
 function mergeInscriptionListsById(primary: MyDogeInscription[], secondary: MyDogeInscription[]): MyDogeInscription[] {
   const byId = new Map<string, MyDogeInscription>();
   for (const p of primary) {
@@ -1114,6 +1155,31 @@ export const walletDataApi = {
         continue;
       }
     }
+    const located = String(best?.output || best?.location || '').includes(':');
+    if (!located && getWalletDataProviderConfig().mergeSpookyIndex !== false) {
+      try {
+        const { fetchSpookyInscription } = await import('../lib/spooky-indexer');
+        const spooky = await fetchSpookyInscription(id);
+        if (spooky?.output) {
+          return {
+            ...(best || {}),
+            inscriptionId: spooky.inscriptionId,
+            inscriptionNumber: spooky.inscriptionNumber ?? best?.inscriptionNumber ?? 0,
+            contentType: spooky.contentType || best?.contentType || '',
+            content: spooky.contentUrl,
+            preview: spooky.contentUrl,
+            genesisTransaction: spooky.inscriptionId.slice(0, 64),
+            output: spooky.output,
+            location: spooky.output,
+            address: spooky.owner || best?.address || '',
+            height: spooky.blockHeight ?? best?.height ?? 0,
+            outputValue: String(spooky.outputValueKoinu ?? best?.outputValue ?? ''),
+          };
+        }
+      } catch {
+        /* spooky is a cross-check */
+      }
+    }
     return best;
   },
 
@@ -1123,27 +1189,27 @@ export const walletDataApi = {
     if (usesMyDogeInscriptions()) {
       const fromMyDoge = await fetchInscriptionsFromMyDoge(address);
       const { mergeInuBitsInscriptions } = getWalletDataProviderConfig();
-      if (mergeInuBitsInscriptions === false) return fromMyDoge;
+      if (mergeInuBitsInscriptions === false) return withSpookyInscriptions(address, fromMyDoge);
       try {
         const fromInu = await fetchInubitsWalletInscriptions(address);
-        return mergeInscriptionListsById(fromMyDoge, fromInu);
+        return withSpookyInscriptions(address, mergeInscriptionListsById(fromMyDoge, fromInu));
       } catch (e) {
         console.warn('[walletDataApi] InuBits inscription merge failed', e);
-        return fromMyDoge;
+        return withSpookyInscriptions(address, fromMyDoge);
       }
     }
     const data = await fetchJson(getWalletEndpoint('/inscriptions/', address));
     const primary = extractArray(data) as MyDogeInscription[];
     const { mergeInuBitsInscriptions } = getWalletDataProviderConfig();
     if (mergeInuBitsInscriptions === false) {
-      return primary;
+      return withSpookyInscriptions(address, primary);
     }
     try {
       const fromInu = await fetchInubitsWalletInscriptions(address);
-      return mergeInscriptionListsById(primary, fromInu);
+      return withSpookyInscriptions(address, mergeInscriptionListsById(primary, fromInu));
     } catch (e) {
       console.warn('[walletDataApi] InuBits inscription merge failed', e);
-      return primary;
+      return withSpookyInscriptions(address, primary);
     }
   },
 
@@ -1156,19 +1222,19 @@ export const walletDataApi = {
         const base = typeof window !== 'undefined' ? window.location.origin : 'https://indexer.command.dog';
         const indexerBase = `${base}/__indexer`;
         const res = await fetch(`${indexerBase}/v1/drc20/${encodeURIComponent(address)}`);
-        if (!res.ok) return [];
+        if (!res.ok) return withSpookyDrc20(address, []);
         const payload = await res.json() as any;
         const balances: any[] = Array.isArray(payload?.balances) ? payload.balances
           : Array.isArray(payload) ? payload
           : [];
-        return balances.map((b: any) => ({
+        return withSpookyDrc20(address, balances.map((b: any) => ({
           ticker: b.ticker ?? b.tick ?? 'UNKNOWN',
           balance: String(b.overallBalance ?? b.balance ?? b.amount ?? '0'),
           transferable: String(b.transferableBalance ?? b.transferable ?? '0'),
           available: String(b.availableBalance ?? b.available ?? '0'),
           inscriptionId: b.inscriptionId,
           content: b.content,
-        }));
+        })));
       } catch {
         return [];
       }
@@ -1180,14 +1246,14 @@ export const walletDataApi = {
     const data = await fetchJson(drc20Url) as DRC20ApiResponse | any;
     const balances = extractArray(data);
 
-    return balances.map((balance: any) => ({
+    return withSpookyDrc20(address, balances.map((balance: any) => ({
       ticker: balance.ticker ?? balance.tick ?? 'UNKNOWN',
       balance: String(balance.overallBalance ?? balance.balance ?? balance.amount ?? '0'),
       transferable: String(balance.transferableBalance ?? balance.transferable ?? balance.availableBalance ?? '0'),
       available: String(balance.availableBalance ?? balance.available ?? balance.transferableBalance ?? '0'),
       inscriptionId: balance.inscriptionId,
       content: balance.content,
-    }));
+    })));
   },
 
   /** ÐogeTreats (`p:"dt"`) balances from dogex / indexer read API. */

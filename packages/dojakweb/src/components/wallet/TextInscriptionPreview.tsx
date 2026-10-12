@@ -14,6 +14,7 @@ import {
 } from '../../utils/inscription-text';
 
 import { doggyMarketInscriptionCdnContentUrl } from '../../lib/doggy-market-inscription';
+import { spookyInscriptionContentUrl } from '../../lib/spooky-indexer';
 import { mydogeInscriptionContentUrl } from '../../lib/inscription-media';
 
 type InscriptionLike = {
@@ -64,6 +65,7 @@ function contentFallbackUrls(inscriptionId?: string, primary?: string | null): s
   push(proxiedContentUrl(primary));
   if (id) {
     push(doggyMarketInscriptionCdnContentUrl(id));
+    push(spookyInscriptionContentUrl(id));
     push(mydogeInscriptionContentUrl(id));
   }
   if (typeof window !== 'undefined' && id) {

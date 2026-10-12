@@ -6,6 +6,7 @@
  */
 
 import { doggyMarketInscriptionCdnContentUrl } from '../doggy-market-inscription';
+import { spookyInscriptionContentUrl } from '../spooky-indexer';
 import { dogexCdnContentUrl, walletDataApi, type MyDogeInscription } from '../../utils/api';
 import { isHtmlInscription, loadInscriptionTextBody } from '../../utils/inscription-text';
 import { isDxSouvenirHtml } from './displayHtml';
@@ -31,6 +32,7 @@ function contentUrls(item: Pick<MyDogeInscription, 'inscriptionId' | 'content' |
   if (id) {
     try {
       push(doggyMarketInscriptionCdnContentUrl(id));
+      push(spookyInscriptionContentUrl(id));
     } catch {
       /* ignore */
     }

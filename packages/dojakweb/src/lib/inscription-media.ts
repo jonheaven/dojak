@@ -3,6 +3,7 @@
  * Doggy CDN + MyDoge stay up when Cloudflare 530s /api/indexer.
  */
 import { doggyMarketInscriptionCdnContentUrl } from './doggy-market-inscription';
+import { spookyInscriptionContentUrl } from './spooky-indexer';
 import { normalizeDoginalInscriptionId } from '../utils/api';
 
 export function mydogeInscriptionContentUrl(inscriptionId: string): string {
@@ -41,6 +42,7 @@ function rewriteRelativeContent(raw: string, inscriptionId: string): string | nu
       const rest = u.pathname.slice(idx + '/content/'.length).split(/[/?#]/)[0];
       if (rest && (u.hostname === 'localhost' || u.hostname.endsWith('.dog') || u.pathname.startsWith('/content/'))) {
         if (u.hostname.includes('mydoge.com')) return mydogeInscriptionContentUrl(rest);
+        if (u.hostname.includes('spookydoge.xyz')) return spookyInscriptionContentUrl(rest);
         if (u.hostname.includes('doggy.market')) return doggyMarketInscriptionCdnContentUrl(rest);
         if (isOurIndexerUrl(t) || u.hostname === (typeof window !== 'undefined' ? window.location.hostname : '')) {
           return doggyMarketInscriptionCdnContentUrl(rest || id);
@@ -53,7 +55,7 @@ function rewriteRelativeContent(raw: string, inscriptionId: string): string | nu
   return null;
 }
 
-/** Ordered src list: provider URL (if not dogex), Doggy CDN, MyDoge, same-origin doggy proxy last. */
+/** Ordered src list: provider URL (if not dogex), Doggy CDN, Spooky CDN, MyDoge, same-origin doggy proxy last. */
 export function inscriptionContentCandidates(opts: {
   inscriptionId?: string | null;
   content?: string | null;
@@ -86,6 +88,7 @@ export function inscriptionContentCandidates(opts: {
   consider(opts.preview);
   if (id) {
     push(doggyMarketInscriptionCdnContentUrl(id));
+    push(spookyInscriptionContentUrl(id));
     push(mydogeInscriptionContentUrl(id));
     push(sameOriginDoggyContentUrl(id));
   }

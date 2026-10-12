@@ -8,6 +8,7 @@ import {
   fetchDoggyMarketInscription,
   type DoggyMarketInscriptionMeta,
 } from '../../lib/doggy-market-inscription';
+import { fetchSpookyInscription, spookyInscriptionContentUrl, type SpookyInscription } from '../../lib/spooky-indexer';
 import { inscriptionContentCandidates, inscriptionContentPrimary } from '../../lib/inscription-media';
 import { InscriptionMediaImg } from './InscriptionMediaImg';
 import {
@@ -50,6 +51,7 @@ export function InscriptionInspectModal({
 }) {
   const [mounted, setMounted] = useState(false);
   const [doggy, setDoggy] = useState<DoggyMarketInscriptionMeta | null>(null);
+  const [spooky, setSpooky] = useState<SpookyInscription | null>(null);
   const [html, setHtml] = useState<string | null>(null);
   const [textBody, setTextBody] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -61,6 +63,7 @@ export function InscriptionInspectModal({
   useEffect(() => {
     if (!open || !item) {
       setDoggy(null);
+      setSpooky(null);
       setHtml(null);
       setTextBody(null);
       return;
@@ -68,8 +71,9 @@ export function InscriptionInspectModal({
     const ac = new AbortController();
     setLoading(true);
     void (async () => {
-      const [meta, body] = await Promise.all([
+      const [meta, spookyMeta, body] = await Promise.all([
         fetchDoggyMarketInscription(item.inscriptionId, ac.signal),
+        fetchSpookyInscription(item.inscriptionId, ac.signal),
         isHtmlInscription(item.contentType) || isTextishInscription(item.contentType) || isWasmInscription(item.contentType)
           ? loadInscriptionTextBody({
               contentBody: item.contentBody,
@@ -86,6 +90,7 @@ export function InscriptionInspectModal({
       ]);
       if (ac.signal.aborted) return;
       setDoggy(meta);
+      setSpooky(spookyMeta);
       if (body && isHtmlInscription(item.contentType)) setHtml(body);
       else if (body) setTextBody(body);
       setLoading(false);
@@ -199,6 +204,18 @@ export function InscriptionInspectModal({
                 <dd className="truncate font-mono text-white/80">{utxo}</dd>
               </>
             ) : null}
+            {spooky?.satpointOffset != null ? (
+              <>
+                <dt className="text-white/40">Sat offset</dt>
+                <dd className="font-mono text-white/80">{spooky.satpointOffset}</dd>
+              </>
+            ) : null}
+            {spooky?.output && spooky.output.replace(/\s/g, '').toLowerCase() !== (utxo || '').replace(/\s/g, '').toLowerCase() ? (
+              <>
+                <dt className="text-white/40">Spooky UTXO</dt>
+                <dd className="truncate font-mono text-amber-200/90">{spooky.output}</dd>
+              </>
+            ) : null}
             {doggy?.blockHeight ? (
               <>
                 <dt className="text-white/40">Block</dt>
@@ -234,6 +251,14 @@ export function InscriptionInspectModal({
               className="rounded-full border border-amber-400/35 px-3 py-1 font-semibold text-amber-200 hover:bg-amber-400/10"
             >
               doggy.market
+            </a>
+            <a
+              href={spookyInscriptionContentUrl(item.inscriptionId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-white/15 px-3 py-1 text-white/70 hover:bg-white/5"
+            >
+              Spooky
             </a>
             {src ? (
               <a
