@@ -37,35 +37,52 @@ export interface DNSResolutionResult {
   avatar?: string;
 }
 
+/** Same allowlist as dogex `indexer/protocol_dns.rs`. */
+const DNS_NAMESPACES = new Set([
+  'doge',
+  'dogecoin',
+  'shibe',
+  'shib',
+  'wow',
+  'very',
+  'such',
+  'much',
+  'excite',
+  'woof',
+  'bark',
+  'tail',
+  'paws',
+  'paw',
+  'moon',
+  'kabosu',
+  'cheems',
+  'inu',
+  'cook',
+  'doggo',
+  'boop',
+  'zoomies',
+  'smol',
+  'snoot',
+  'pupper',
+  'official'
+]);
+
+const DNS_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+
 /**
- * Check if a string is a valid .doge DNS name
+ * Check if a string is a valid Dogecoin DNS name (`label.namespace`).
+ * A bare label is not enough — include the namespace, for example `jon.doge`.
  */
 export function isDNSName(input: string): boolean {
   if (!input || typeof input !== 'string') {
     return false;
   }
 
-  const trimmed = input.trim().toLowerCase();
-  
-  // Must end with .doge
-  if (!trimmed.endsWith('.doge')) {
-    return false;
-  }
-
-  // Remove .doge suffix and check the name part
-  const namePart = trimmed.slice(0, -5); // Remove '.doge'
-
-  if (!namePart || namePart.length === 0) {
-    return false;
-  }
-
-  // Name part rules:
-  // - Alphanumeric and hyphens allowed
-  // - Cannot start or end with hyphen
-  // - Minimum 1 character, max 63 characters
-  const nameRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
-  
-  return nameRegex.test(namePart);
+  const parts = input.trim().toLowerCase().split('.');
+  if (parts.length !== 2) return false;
+  const [label, namespace] = parts;
+  if (!label || !namespace || !DNS_NAMESPACES.has(namespace)) return false;
+  return DNS_LABEL.test(label);
 }
 
 /**

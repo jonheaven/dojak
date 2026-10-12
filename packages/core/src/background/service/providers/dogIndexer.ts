@@ -16,6 +16,7 @@ import { DuneBalance, DuneInfo, Inscription, RarityTier } from '@dojak/core/type
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const DEFAULT_INDEXER_URL = 'http://localhost:8080';
+export const DOGEX_DNS_ORIGIN = 'https://dogex.command.dog';
 export const INDEXER_TIMEOUT_MS = 15_000;
 
 // ─── Raw response shapes from dog indexer (snake_case) ───────────────────────
@@ -350,6 +351,23 @@ function mapDogemap(raw: RawDogemapEntry): IndexerDogemapEntry {
 
 // ─── Client ───────────────────────────────────────────────────────────────────
 
+function mapDogexDns(raw: unknown): IndexerDNSRecord {
+  const row = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const records = (row.records && typeof row.records === 'object' ? row.records : {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : '');
+  const pay = str(row.payAddress) || str(records.address) || str(row.owner);
+  return {
+    name: str(row.name),
+    address: pay || null,
+    ownerInscriptionId: str(row.inscriptionId) || str(row.inscription_id),
+    height: typeof row.height === 'number' ? row.height : 0,
+    timestamp: typeof row.timestamp === 'number' ? row.timestamp : 0,
+    url: str(records.url) || undefined,
+    avatar: str(records.avatar) || undefined,
+    content: str(records.content) || undefined
+  };
+}
+
 export class DogIndexerClient {
   private http: AxiosInstance;
   readonly baseUrl: string;
@@ -532,19 +550,29 @@ export class DogIndexerClient {
       .map((r) => r.value);
   }
 
-  // ── DNS (.doge names) ──────────────────────────────────────────────────────
+  // ── DNS (dogex /api/dns — every supported namespace) ───────────────────────
 
   /**
-   * Resolve a .doge name to an address.
-   * Tries GET /dns/{name} first; falls back to searching inscriptions
-   * with metaprotocol=dns and parsing their content.
+   * Resolve a Dogecoin name (`jon.doge`, `name.wow`, …) through dogex.
+   * Pay address is the configured record, otherwise the inscription holder.
    */
   async resolveDNS(name: string): Promise<IndexerDNSRecord | null> {
     const normalised = name.trim().toLowerCase();
-
-    // Attempt dedicated /dns/ endpoint (may exist depending on dog server version)
+    const full = normalised.includes('.') ? normalised : `${normalised}.doge`;
     try {
-      const { data } = await this.http.get<RawDNSEntry>(`/dns/${encodeURIComponent(normalised)}`);
+      const { data } = await axios.get(`${DOGEX_DNS_ORIGIN}/api/dns/resolve/${encodeURIComponent(full)}`, {
+        timeout: INDEXER_TIMEOUT_MS,
+        headers: { Accept: 'application/json' }
+      });
+      const rec = data?.record;
+      if (rec) return mapDogexDns(rec);
+      return null;
+    } catch {
+      // Older local dog servers still expose /dns/{name}.
+    }
+
+    try {
+      const { data } = await this.http.get<RawDNSEntry>(`/dns/${encodeURIComponent(full)}`);
       return {
         name: data.name,
         address: data.config.address || null,
@@ -579,7 +607,7 @@ export class DogIndexerClient {
             parsed = contentRes.data;
           }
           const recordName = (parsed.name || '').trim().toLowerCase();
-          if (recordName === normalised) {
+          if (recordName === full) {
             return {
               name: recordName,
               address: parsed.address || null,
@@ -600,6 +628,18 @@ export class DogIndexerClient {
     }
 
     return null;
+  }
+
+  /** Names whose register inscription is held by this address. */
+  async listDnsByAddress(address: string): Promise<IndexerDNSRecord[]> {
+    const a = address.trim();
+    if (!a) return [];
+    const { data } = await axios.get(`${DOGEX_DNS_ORIGIN}/api/dns/address/${encodeURIComponent(a)}`, {
+      timeout: INDEXER_TIMEOUT_MS,
+      headers: { Accept: 'application/json' }
+    });
+    const names = Array.isArray(data?.names) ? data.names : [];
+    return names.map((row: unknown) => mapDogexDns(row)).filter((row: IndexerDNSRecord) => row.name);
   }
 
   // ── Dogemaps ───────────────────────────────────────────────────────────────

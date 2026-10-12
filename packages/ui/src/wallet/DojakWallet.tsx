@@ -6,7 +6,7 @@ import { getUiType, shortAddress } from '../utils';
 import { useWalletCore, WalletTransaction } from './WalletCoreContext';
 import { DoginalsPanel } from './DoginalsPanel';
 import { FEE_OPTIONS, FeePreset, WALLET_TABS, WalletTab } from './walletTypes';
-import { ConnectedSiteRow, PopupDoginal } from './WalletCoreContext';
+import { ConnectedSiteRow, PopupDnsName, PopupDoginal } from './WalletCoreContext';
 import { formatDoge, formatUsd, relativeTime } from './walletFormat';
 import './dojak-wallet.css';
 
@@ -33,6 +33,7 @@ export function DojakWallet() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; tone: 'ok' | 'error' } | null>(null);
   const [dogPeek, setDogPeek] = useState<PopupDoginal[]>([]);
+  const [dnsNames, setDnsNames] = useState<PopupDnsName[]>([]);
   const [sites, setSites] = useState<ConnectedSiteRow[]>([]);
   const [autoLock, setAutoLock] = useState(5);
 
@@ -61,11 +62,13 @@ export function DojakWallet() {
     if (nextRate && Number.isFinite(nextRate) && nextRate > 0) setUsdRate(nextRate);
     if (nextAccounts?.length) setConnectedAccounts(nextAccounts);
     if (nextVersion) setVersion(nextVersion);
-    const [peek, connectedSites] = await Promise.all([
+    const [peek, connectedSites, names] = await Promise.all([
       walletCore.listDoginals?.().catch(() => [] as PopupDoginal[]) ?? [],
-      walletCore.getConnectedSites?.().catch(() => [] as ConnectedSiteRow[]) ?? []
+      walletCore.getConnectedSites?.().catch(() => [] as ConnectedSiteRow[]) ?? [],
+      walletCore.listDns?.().catch(() => [] as PopupDnsName[]) ?? []
     ]);
     setDogPeek(peek.slice(0, 3));
+    setDnsNames(names);
     setSites(connectedSites.filter((site) => site.origin));
     if (walletCore.getAutoLock) {
       const lockId = await walletCore.getAutoLock().catch(() => 5);
@@ -145,7 +148,7 @@ export function DojakWallet() {
       ? await walletCore.validateAddress(recipient)
       : isValidAddress(recipient);
     if (!isAddressValid) {
-      setError('That does not look like a Dogecoin address or a .doge name');
+      setError('That does not look like a Dogecoin address or a DNS name');
       return;
     }
     if (!Number.isFinite(dogeAmount) || dogeAmount <= 0) {
@@ -246,6 +249,28 @@ export function DojakWallet() {
                 )}
               </section>
 
+              {dnsNames.length > 0 ? (
+                <section className="dj-panel">
+                  <p className="dj-section-label">Names you hold</p>
+                  {dnsNames.map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      className="dj-tx"
+                      onClick={() => {
+                        void walletCore.copyText?.(item.name);
+                        pushToast(`Copied ${item.name}`);
+                      }}
+                    >
+                      <div className="dj-tx-copy">
+                        <p className="dj-tx-title">{item.name}</p>
+                        <p className="dj-tx-meta">{shortAddress(item.address, 8)}</p>
+                      </div>
+                    </button>
+                  ))}
+                </section>
+              ) : null}
+
               {dogPeek.length > 0 ? (
                 <button type="button" className="dj-dog-grid" onClick={() => setActiveTab('doginals')}>
                   {dogPeek.map((item) => (
@@ -332,7 +357,7 @@ export function DojakWallet() {
                   className="dj-input"
                   value={sendTo}
                   onChange={(event) => setSendTo(event.target.value)}
-                  placeholder="D… or name.doge"
+                  placeholder="D… or jon.doge"
                   autoCapitalize="off"
                   autoCorrect="off"
                   spellCheck={false}

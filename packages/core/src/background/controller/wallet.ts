@@ -1209,13 +1209,23 @@ export class WalletController extends BaseController {
 
   resolvePopupName = async (input: string) => {
     const raw = input.trim();
-    if (!raw) throw new Error('Enter an address or a .doge name.');
+    if (!raw) throw new Error('Enter an address or a DNS name.');
     if (/^D[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(raw)) return raw;
     const name = raw.replace(/^@/, '').toLowerCase();
     const withSuffix = name.includes('.') ? name : `${name}.doge`;
     const hit = await getDogIndexerClient().resolveDNS(withSuffix);
     if (!hit?.address) throw new Error(`No address on file for ${withSuffix}.`);
     return hit.address;
+  };
+
+  listPopupDns = async () => {
+    const account = preferenceService.getCurrentAccount();
+    if (!account?.address) return [];
+    const rows = await getDogIndexerClient().listDnsByAddress(account.address);
+    return rows
+      .filter((row) => row.name && row.address)
+      .slice(0, 24)
+      .map((row) => ({ name: row.name, address: row.address as string }));
   };
 
   listPopupDoginals = async () => {
@@ -1324,6 +1334,7 @@ export class WalletController extends BaseController {
     to: string;
     feeRate?: number;
   }) => {
+    const dest = /^D[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(to.trim()) ? to.trim() : await this.resolvePopupName(to);
     const { account, utxo } = await this.inscriptionCoin(inscriptionId);
     if (utxo.satoshis >= WalletController.DOGINAL_FEE_FLOOR) {
       const cushion = Math.max(WalletController.DOGINAL_POSTAGE, 400 * feeRate);
@@ -1331,7 +1342,7 @@ export class WalletController extends BaseController {
         throw new Error('This Doginal coin is too small to move and pay the fee.');
       }
       const signedLarge = await this.sendDOGE({
-        to,
+        to: dest,
         amount: WalletController.DOGINAL_POSTAGE,
         feeRate,
         enableRBF: false,
@@ -1351,7 +1362,7 @@ export class WalletController extends BaseController {
     }
     const addressType = AddressType.P2PKH;
     const signed = await this.sendDOGE({
-      to,
+      to: dest,
       amount: utxo.satoshis,
       feeRate,
       enableRBF: false,

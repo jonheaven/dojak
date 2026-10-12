@@ -935,26 +935,19 @@ export class WalletApiService {
     return {
       resolve: async (name: string) => {
         try {
-          // Use provider manager for failover support
-          return await this.providerManager.executeWithFailover(
-            async (client) => {
-              // Try the dojaker API first
-              if (isLocalIndexer(this.currentEndpoint)) {
-                try {
-                  const response = await client.get(`/dns/resolve/${name}`);
-                  return response;
-                } catch (indexerError) {
-                  console.warn('[WalletAPI] Dojaker DNS resolve failed, falling back:', indexerError);
-                  throw indexerError;
-                }
-              }
-
-              // Fallback to other providers - this might not be implemented
-              console.log('[WalletAPI] DNS resolve - using fallback provider');
-              return null;
-            },
-            ['dogecoin']
-          );
+          const rec = await dogIndexerResolveDNS(name);
+          if (!rec?.address) return null;
+          return {
+            name: rec.name,
+            address: rec.address,
+            avatar: rec.avatar,
+            config: {
+              address: rec.address,
+              url: rec.url,
+              avatar: rec.avatar,
+              content: rec.content
+            }
+          };
         } catch (error) {
           console.error('[WalletAPI] DNS resolve error:', error);
           return null;
@@ -963,26 +956,17 @@ export class WalletApiService {
 
       reverseResolve: async (address: string) => {
         try {
-          // Use provider manager for failover support
-          return await this.providerManager.executeWithFailover(
-            async (client) => {
-              // Try the dojaker API first
-              if (isLocalIndexer(this.currentEndpoint)) {
-                try {
-                  const response = await client.get(`/dns/reverse/${address}`);
-                  return response;
-                } catch (indexerError) {
-                  console.warn('[WalletAPI] Dojaker DNS reverse resolve failed, falling back:', indexerError);
-                  throw indexerError;
-                }
-              }
-
-              // Fallback to other providers - this might not be implemented
-              console.log('[WalletAPI] DNS reverse resolve - using fallback provider');
-              return { domains: [] };
-            },
-            ['dogecoin']
-          );
+          const rows = await getDogIndexerClient().listDnsByAddress(address);
+          return {
+            domains: rows.map((rec) => ({
+              name: rec.name,
+              address: rec.address || '',
+              avatar: rec.avatar,
+              timestamp: rec.timestamp,
+              block: rec.height,
+              inscriptionId: rec.ownerInscriptionId
+            }))
+          };
         } catch (error) {
           console.error('[WalletAPI] DNS reverse resolve error:', error);
           return { domains: [] };
@@ -991,26 +975,8 @@ export class WalletApiService {
 
       getAvatar: async (name: string) => {
         try {
-          // Use provider manager for failover support
-          return await this.providerManager.executeWithFailover(
-            async (client) => {
-              // Try the dojaker API first
-              if (isLocalIndexer(this.currentEndpoint)) {
-                try {
-                  const response = await client.get(`/dns/avatar/${name}`);
-                  return response.data?.avatar;
-                } catch (indexerError) {
-                  console.warn('[WalletAPI] Dojaker DNS avatar failed, falling back:', indexerError);
-                  throw indexerError;
-                }
-              }
-
-              // Fallback to other providers
-              console.log('[WalletAPI] DNS avatar - using fallback provider');
-              return null;
-            },
-            ['dogecoin']
-          );
+          const rec = await dogIndexerResolveDNS(name);
+          return rec?.avatar || null;
         } catch (error) {
           console.error('[WalletAPI] DNS avatar error:', error);
           return null;
@@ -1019,26 +985,14 @@ export class WalletApiService {
 
       getConfig: async (name: string) => {
         try {
-          // Use provider manager for failover support
-          return await this.providerManager.executeWithFailover(
-            async (client) => {
-              // Try the dojaker API first
-              if (isLocalIndexer(this.currentEndpoint)) {
-                try {
-                  const response = await client.get(`/dns/config/${name}`);
-                  return response;
-                } catch (indexerError) {
-                  console.warn('[WalletAPI] Dojaker DNS config failed, falling back:', indexerError);
-                  throw indexerError;
-                }
-              }
-
-              // Fallback to other providers
-              console.log('[WalletAPI] DNS config - using fallback provider');
-              return null;
-            },
-            ['dogecoin']
-          );
+          const rec = await dogIndexerResolveDNS(name);
+          if (!rec) return null;
+          return {
+            address: rec.address,
+            url: rec.url,
+            avatar: rec.avatar,
+            content: rec.content
+          };
         } catch (error) {
           console.error('[WalletAPI] DNS config error:', error);
           return null;

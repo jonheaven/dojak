@@ -40,6 +40,8 @@ export type PopupDune = { name: string; amount: string; divisibility: number };
 
 export type ConnectedSiteRow = { origin: string; name?: string; icon?: string };
 
+export type PopupDnsName = { name: string; address: string };
+
 export type WalletCoreAdapter = {
   getBalance?: () => Promise<DogecoinBalanceV2 | null>;
   getAddress?: () => Promise<string>;
@@ -59,6 +61,7 @@ export type WalletCoreAdapter = {
   getConnectedSites?: () => Promise<ConnectedSiteRow[]>;
   removeConnectedSite?: (origin: string) => Promise<void>;
   resolveName?: (input: string) => Promise<string>;
+  listDns?: () => Promise<PopupDnsName[]>;
   getAutoLock?: () => Promise<number>;
   setAutoLock?: (timeId: number) => Promise<void>;
 };
