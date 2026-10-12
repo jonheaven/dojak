@@ -37,6 +37,7 @@ import {
   pickDogeSoftTxid,
   waitForDogeSoftProvider,
 } from '../utils/dogesoft-provider';
+import { getInjectedSpookyProvider, SPOOKY_INIT_EVENTS } from '../utils/spooky-provider';
 import type {
   DmpIntentParams,
   DmpIntentType,
@@ -139,26 +140,7 @@ const DOGEWATCH_INITIAL_STATE: DogewatchState = {
   walletId: null,
 };
 
-const getSpookyHint = (): boolean => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  return Boolean((window as any).isSpookyWallet || (window as any).__DOJAKWEB_FLAGS?.isSpookyWallet);
-};
-
-const getSpookyProvider = () => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  const provider = window.dogecoin as any;
-  if (!provider) {
-    return null;
-  }
-  if (provider.isSpookyWallet === true || getSpookyHint()) {
-    return provider;
-  }
-  return null;
-};
+const getSpookyProvider = () => getInjectedSpookyProvider();
 
 const getDojakProvider = () => {
   if (typeof window === 'undefined') {
@@ -246,6 +228,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   const [walletType, setWalletType] = useState<WalletType | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [spookyState, setSpookyState] = useState<SpookyState>(SPOOKY_INITIAL_STATE);
+  const [spookySeen, setSpookySeen] = useState(false);
   const [dogeSoftState, setDogeSoftState] = useState<DogeSoftState>(DOGESOFT_INITIAL_STATE);
   const [dojakState, setDojakState] = useState<DojakState>(DOJAK_INITIAL_STATE);
   const [ledgerState, setLedgerState] = useState<LedgerState>(LEDGER_INITIAL_STATE);
@@ -291,7 +274,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       provider?.removeListener?.('accountsChanged', handleAccountsChanged);
       spookyListenersRef.current = false;
     };
-  }, [walletType]);
+  }, [walletType, spookySeen]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -300,14 +283,17 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     // Some injected wallets initialize asynchronously and may emit one of these custom events.
     const onSpookyInit = () => {
       if (getSpookyProvider()) {
-        setSpookyState((prev) => ({ ...prev }));
+        setSpookySeen(true);
       }
     };
-    window.addEventListener('dogecoin#initialized', onSpookyInit as EventListener);
-    window.addEventListener('spookydoge#initialized', onSpookyInit as EventListener);
+    onSpookyInit();
+    for (const name of SPOOKY_INIT_EVENTS) {
+      window.addEventListener(name, onSpookyInit as EventListener);
+    }
     return () => {
-      window.removeEventListener('dogecoin#initialized', onSpookyInit as EventListener);
-      window.removeEventListener('spookydoge#initialized', onSpookyInit as EventListener);
+      for (const name of SPOOKY_INIT_EVENTS) {
+        window.removeEventListener(name, onSpookyInit as EventListener);
+      }
     };
   }, []);
 
@@ -791,6 +777,13 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
               ? await provider.connect()
               : await provider.request?.({ method: 'doge_requestAccounts' });
 
+          const rejected =
+            response && typeof response === 'object' && 'error' in (response as object)
+              ? String((response as { error?: unknown }).error || '')
+              : '';
+          if (rejected) {
+            throw new Error(rejected);
+          }
           const accounts = extractAccounts(response);
           if (!accounts?.length) {
             throw new Error('No accounts returned from Spooky Doge');

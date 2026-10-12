@@ -10,6 +10,7 @@ import {
   type WalletOptionTile,
 } from '../hooks/useWalletConnectOptions';
 import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
+import { getInjectedSpookyProvider } from '../utils/spooky-provider';
 
 export type { ConnectKind };
 
@@ -95,6 +96,10 @@ export function WalletConnectChooser({
   };
 
   const onTileClick = (tile: WalletOptionTile) => {
+    if (tile.type === 'spookydoge' && getInjectedSpookyProvider()) {
+      void handleConnect(tile.type);
+      return;
+    }
     if (!tile.available && tile.installUrl && tile.type !== 'browser') {
       window.open(tile.installUrl, '_blank', 'noopener,noreferrer');
       return;

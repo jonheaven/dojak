@@ -102,7 +102,7 @@ function ConnectAnotherSection({
   onSelectBrowserFlow?: () => void;
   onConnectedAnother?: () => void;
 }) {
-  const { tiles, connectingType, anyConnecting, handleSelect } = useWalletConnectOptions({
+  const { tiles, connectingType, anyConnecting, connectionError, handleSelect } = useWalletConnectOptions({
     onSelectBrowser: () => onSelectBrowserFlow?.(),
     onConnected: () => onConnectedAnother?.(),
   });
@@ -125,13 +125,13 @@ function ConnectAnotherSection({
             <button
               key={tile.type}
               type="button"
-              disabled={isBusy || anyConnecting || (!tile.available && tile.type !== 'browser')}
+              disabled={isBusy || anyConnecting || (!tile.available && tile.type !== 'browser' && tile.type !== 'spookydoge' && tile.type !== 'dojak' && tile.type !== 'dogesoft')}
               title={tile.title}
               aria-label={tile.ariaLabel}
               onClick={() => void handleSelect(tile.type)}
               className={cx(
                 'relative flex h-12 w-12 items-center justify-center rounded-xl border transition',
-                tile.available || tile.type === 'browser'
+                tile.available || tile.type === 'browser' || tile.type === 'spookydoge' || tile.type === 'dojak' || tile.type === 'dogesoft'
                   ? 'border-white/15 bg-white/[0.05] hover:border-white/30 hover:bg-white/[0.1]'
                   : 'cursor-not-allowed border-white/[0.08] bg-white/[0.02] opacity-40',
                 (isBusy || anyConnecting) && 'cursor-wait opacity-70',
@@ -147,6 +147,11 @@ function ConnectAnotherSection({
           );
         })}
       </div>
+      {connectionError ? (
+        <p className="px-0.5 text-[11px] leading-relaxed text-red-300" role="alert">
+          {connectionError}
+        </p>
+      ) : null}
     </section>
   );
 }

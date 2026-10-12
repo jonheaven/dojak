@@ -1,5 +1,6 @@
 import { WalletAdapter, WalletConnection, DRC20Token, WalletInscription } from './types';
 import { walletDataApi } from '../utils/api';
+import { getInjectedSpookyProvider } from '../utils/spooky-provider';
 
 /**
  * Spooky Doge provider injected by Spook Society's extension as `window.dogecoin`.
@@ -36,12 +37,8 @@ type SpookyDogeProvider = {
   removeListener?: (event: string, callback: (data?: any) => void) => void;
 };
 
-const getInjectedSpookyDoge = (): SpookyDogeProvider | null => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  return ((window as any).dogecoin ?? null) as SpookyDogeProvider | null;
-};
+const getInjectedSpookyDoge = (): SpookyDogeProvider | null =>
+  (getInjectedSpookyProvider() as SpookyDogeProvider | null);
 
 export class SpookyDogeAdapter implements WalletAdapter {
   readonly id = 'spookydoge';

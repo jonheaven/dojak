@@ -7,6 +7,7 @@ import { useDojakwebI18n } from '../contexts/DojakwebLocaleContext';
 import { isPickerHiddenWallet, type WalletType } from '../types/wallet';
 import { getInjectedDogeSoftProvider } from '../utils/dogesoft-provider';
 import { getInjectedMyDogeProvider } from '../utils/mydoge-provider';
+import { getInjectedSpookyProvider, SPOOKY_INIT_EVENTS } from '../utils/spooky-provider';
 
 /** Install / download pages for wallets that are not injected yet. */
 export const WALLET_INSTALL_URLS: Partial<Record<ConnectKind, string>> = {
@@ -142,11 +143,7 @@ export function useWalletConnectOptions(options?: {
   const [, setMyDogeReady] = useState(
     () => typeof window !== 'undefined' && !!getInjectedMyDogeProvider(),
   );
-  const [spookyReady, setSpookyReady] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const provider = (window as Window & { dogecoin?: { isSpookyWallet?: boolean } }).dogecoin;
-    return Boolean(provider?.isSpookyWallet || (window as Window & { isSpookyWallet?: boolean }).isSpookyWallet);
-  });
+  const [spookyReady, setSpookyReady] = useState(() => !!getInjectedSpookyProvider());
 
   const connectedTypes = useMemo(() => {
     const set = new Set<WalletType>();
@@ -186,19 +183,20 @@ export function useWalletConnectOptions(options?: {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const syncMyDoge = () => setMyDogeReady(!!getInjectedMyDogeProvider());
-    const syncSpooky = () => {
-      const provider = (window as Window & { dogecoin?: { isSpookyWallet?: boolean } }).dogecoin;
-      setSpookyReady(
-        Boolean(provider?.isSpookyWallet || (window as Window & { isSpookyWallet?: boolean }).isSpookyWallet),
-      );
-    };
+    const syncSpooky = () => setSpookyReady(!!getInjectedSpookyProvider());
     syncMyDoge();
     syncSpooky();
     window.addEventListener('load', syncMyDoge);
-    window.addEventListener('spookydoge#initialized', syncSpooky);
+    window.addEventListener('load', syncSpooky);
+    for (const name of SPOOKY_INIT_EVENTS) {
+      window.addEventListener(name, syncSpooky);
+    }
     return () => {
       window.removeEventListener('load', syncMyDoge);
-      window.removeEventListener('spookydoge#initialized', syncSpooky);
+      window.removeEventListener('load', syncSpooky);
+      for (const name of SPOOKY_INIT_EVENTS) {
+        window.removeEventListener(name, syncSpooky);
+      }
     };
   }, []);
 

@@ -676,6 +676,7 @@ export function DojakwebWalletModal({
     signMessage,
     availableWallets,
     setActiveWallet,
+    connect,
     switchAccount,
     accountIndex: unifiedAccountIndex,
   } = useUnifiedWallet();
@@ -1172,7 +1173,8 @@ export function DojakwebWalletModal({
   const extensionWallets = availableWallets.filter(
     (wallet) =>
       wallet.type === 'dogesoft' ||
-      wallet.type === 'dojak',
+      wallet.type === 'dojak' ||
+      (wallet.type === 'spookydoge' && wallet.connected),
   );
   const hardwareWallets = availableWallets.filter(
     (wallet) => wallet.type === 'ledger' || wallet.type === 'dogewatch'
@@ -3117,9 +3119,19 @@ export function DojakwebWalletModal({
         await handleConnectSavedLocalWallet(targetAddress);
       }}
       onAddHdAccount={handleAddBrowserAccount}
-      onSelectWalletType={(type) => {
-        setActiveWallet(type);
-        setStep('dashboard');
+      onSelectWalletType={async (type) => {
+        try {
+          const wallet = availableWallets.find((w) => w.type === type);
+          if (!wallet?.connected) {
+            await connect(type);
+          } else {
+            setActiveWallet(type);
+          }
+          setStep('dashboard');
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : 'Unable to switch wallet.';
+          toast.error(message);
+        }
       }}
       onLedgerAccountDelta={handleLedgerAccountDelta}
       enableConnectAnother
