@@ -269,7 +269,7 @@ export function DojakWallet() {
 
         {activeTab === 'doginals' && (
           <View style={styles.panel}>
-            <Text style={styles.empty}>Doginals, Protect, and connected sites are in the Chrome wallet.</Text>
+            <Text style={styles.empty}>Doginals and connected sites are in the Chrome wallet.</Text>
           </View>
         )}
 

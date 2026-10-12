@@ -45,7 +45,7 @@ export function DoginalsPanel(props: {
 }) {
   const wallet = useWalletCore();
   const [slice, setSlice] = useState<Slice>('dogs');
-  const [sort, setSort] = useState<'num' | 'az' | 'safe'>('num');
+  const [sort, setSort] = useState<'num' | 'az'>('num');
   const [dogs, setDogs] = useState<PopupDoginal[]>([]);
   const [drc20, setDrc20] = useState<PopupDrc20[]>([]);
   const [dunes, setDunes] = useState<PopupDune[]>([]);
@@ -94,26 +94,9 @@ export function DoginalsPanel(props: {
           Back to Doginals
         </button>
         <Media item={selected} large />
-        <p className="dj-section-label">
-          {selected.protected ? 'Protected · under 0.01 DOGE' : 'Unprotected · 0.01 DOGE or more'}
-        </p>
         <p className="dj-tx-meta">
-          #{selected.number ?? '—'} · {doge} DOGE · {selected.contentType || 'unknown'}
+          #{selected.number ?? '—'} · sits on {doge} DOGE · {selected.contentType || 'unknown'}
         </p>
-        <button
-          type="button"
-          className="dj-primary"
-          disabled={busy || selected.protected}
-          onClick={() =>
-            void run(async () => {
-              const result = await wallet.protectDoginal?.(selected.id);
-              if (!result) throw new Error('Protect is not available in this build.');
-              return result.already ? 'Already on a coin under 0.01 DOGE.' : `Protected. ${result.txid}`;
-            })
-          }
-        >
-          {selected.protected ? 'Protected' : 'Protect'}
-        </button>
         <form
           className="dj-main"
           onSubmit={(event: FormEvent) => {
@@ -171,31 +154,26 @@ export function DoginalsPanel(props: {
         dogs.length === 0 ? (
           <p className="dj-empty">{loaded ? 'No Doginals on this address.' : 'Loading Doginals…'}</p>
         ) : (
+          <>
           <div className="dj-seg-row">
             <button type="button" className={`dj-seg${sort === 'num' ? ' is-on' : ''}`} onClick={() => setSort('num')}>
-              # 
+              #
             </button>
             <button type="button" className={`dj-seg${sort === 'az' ? ' is-on' : ''}`} onClick={() => setSort('az')}>
               A–Z
             </button>
-            <button type="button" className={`dj-seg${sort === 'safe' ? ' is-on' : ''}`} onClick={() => setSort('safe')}>
-              Protected
-            </button>
           </div>
           <div className="dj-dog-grid">
             {[...dogs]
-              .sort((a, b) => {
-                if (sort === 'az') return a.id.localeCompare(b.id);
-                if (sort === 'safe') return Number(b.protected) - Number(a.protected);
-                return (a.number ?? 0) - (b.number ?? 0);
-              })
+              .sort((a, b) => (sort === 'az' ? a.id.localeCompare(b.id) : (a.number ?? 0) - (b.number ?? 0)))
               .map((item) => (
               <button key={item.id} type="button" className="dj-dog-card" onClick={() => setSelected(item)}>
                 <Media item={item} />
-                <span className="dj-dog-meta">{item.protected ? 'Protected' : 'Protect'}</span>
+                <span className="dj-dog-meta">#{item.number ?? '—'}</span>
               </button>
             ))}
           </div>
+          </>
         )
       ) : (
         <div className="dj-panel">
@@ -225,7 +203,7 @@ export function DoginalsPanel(props: {
             </div>
           ))}
           <p className="dj-tx-meta">
-            A pending DRC-20 transfer shows up here as a Doginal. Protect it, then send it. Dune sends with many
+            A pending DRC-20 transfer shows up here as a Doginal you can send. Dune sends with many
             recipients stay on dogecoin.dog, where the edict builder already matches the indexer.
           </p>
         </div>

@@ -1049,12 +1049,41 @@ export class WalletController extends BaseController {
       if (message.startsWith('Indexer is ')) throw error;
     }
     const all = await this.getDOGEUtxos();
-    const plain = all.filter((coin) => !coin.inscriptions || coin.inscriptions.length === 0);
-    if (all.length > 0 && plain.length === 0) {
-      throw new Error('Every coin holds a Doginal. Plain DOGE sends will not spend those. Use Dogs to send one.');
-    }
-    return plain;
+    return all.filter((coin) => !coin.inscriptions || coin.inscriptions.length === 0);
   };
+
+  /** Smallest inscription coin with enough loose DOGE to pay `minSatoshis` and still leave postage. */
+  private async coinWithLooseDoge(minSatoshis: number) {
+    const account = preferenceService.getCurrentAccount();
+    if (!account) return null;
+    const indexer = getDogIndexerClient();
+    const rows = await indexer.getAddressInscriptions(account.address);
+    const candidates = rows
+      .filter(
+        (row) =>
+          (row.offset || 0) === 0 &&
+          (row.outputValue || 0) >= minSatoshis + WalletController.DOGINAL_POSTAGE
+      )
+      .sort((a, b) => (a.outputValue || 0) - (b.outputValue || 0));
+    for (const row of candidates) {
+      if (!row.output) continue;
+      const output = await indexer.getOutput(row.output);
+      if (output.spent) continue;
+      if (output.duneBalances && Object.keys(output.duneBalances).length > 0) continue;
+      if ((output.inscriptionIds?.length || 0) > 1) continue;
+      return {
+        txid: output.txid,
+        vout: output.vout,
+        satoshis: output.koinu,
+        scriptPk: output.scriptPubKey,
+        addressType: AddressType.P2PKH,
+        pubkey: account.pubkey,
+        inscriptions: [{ inscriptionId: row.inscriptionId }],
+        atomicals: [] as never[]
+      };
+    }
+    return null;
+  }
 
   getDOGEUtxos = async () => {
     // getDOGEAccount
@@ -1100,8 +1129,24 @@ export class WalletController extends BaseController {
 
     const networkType = this.getNetworkType();
 
+    let tos: { address: string; satoshis: number }[] = [{ address: to, satoshis: amount }];
     if (!btcUtxos) {
-      btcUtxos = await this.plainDogeUtxos();
+      const plain = await this.plainDogeUtxos();
+      const plainSum = plain.reduce((sum, coin) => sum + Number(coin.satoshis || 0), 0);
+      const cushion = Math.max(WalletController.DOGINAL_POSTAGE, 400 * feeRate);
+      if (plainSum >= amount + cushion) {
+        btcUtxos = plain;
+      } else {
+        const peeled = await this.coinWithLooseDoge(amount + cushion);
+        if (!peeled) {
+          throw new Error('Not enough DOGE that can move without taking a Doginal with it.');
+        }
+        btcUtxos = [peeled];
+        tos = [
+          { address: account.address, satoshis: WalletController.DOGINAL_POSTAGE },
+          { address: to, satoshis: amount }
+        ];
+      }
     }
 
     if (btcUtxos.length == 0) {
@@ -1119,7 +1164,7 @@ export class WalletController extends BaseController {
 
     const { psbt, toSignInputs } = await sendBtc({
       btcUtxos,
-      tos: [{ address: to, satoshis: amount }],
+      tos,
       networkType,
       changeAddress: account.address,
       feeRate,
@@ -1281,7 +1326,22 @@ export class WalletController extends BaseController {
   }) => {
     const { account, utxo } = await this.inscriptionCoin(inscriptionId);
     if (utxo.satoshis >= WalletController.DOGINAL_FEE_FLOOR) {
-      throw new Error('Protect this Doginal first. Coins of 0.01 DOGE or more can be spent as fees.');
+      const cushion = Math.max(WalletController.DOGINAL_POSTAGE, 400 * feeRate);
+      if (utxo.satoshis < WalletController.DOGINAL_POSTAGE + cushion) {
+        throw new Error('This Doginal coin is too small to move and pay the fee.');
+      }
+      const signedLarge = await this.sendDOGE({
+        to,
+        amount: WalletController.DOGINAL_POSTAGE,
+        feeRate,
+        enableRBF: false,
+        btcUtxos: [utxo]
+      });
+      if (!signedLarge?.rawtx || signedLarge.rawtx.length < 20) {
+        throw new Error('Could not sign the send. Unlock Dojak and try again.');
+      }
+      const largeTxid = await this.broadcastViaCommandDog(signedLarge.rawtx);
+      return { txid: largeTxid };
     }
     const indexer = getDogIndexerClient();
     const cardinals = await indexer.getCardinalUTXOs(account.address);
