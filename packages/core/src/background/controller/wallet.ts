@@ -12,6 +12,7 @@ import {
   sessionService,
   walletApiService
 } from '@dojak/core/background/service';
+import { getDogIndexerClient } from '@dojak/core/background/service/providers/dogIndexer';
 import { psbtFromString } from '@dojak/core/background/utils/psbt-utils';
 import {
   ADDRESS_TYPES,
@@ -1114,6 +1115,160 @@ export class WalletController extends BaseController {
     }
     const txid = await this.broadcastViaCommandDog(signed.rawtx);
     return { txid, rawtx: signed.rawtx, fee: signed.fee };
+  };
+
+  /** Doginal coin under 0.01 DOGE. At or above that, a send can spend it as a fee coin. */
+  private static readonly DOGINAL_FEE_FLOOR = 1_000_000;
+  private static readonly DOGINAL_POSTAGE = 100_000;
+
+  listPopupDoginals = async () => {
+    const account = preferenceService.getCurrentAccount();
+    if (!account) return [];
+    const rows = await getDogIndexerClient().getAddressInscriptions(account.address);
+    return rows.slice(0, 48).map((row) => ({
+      id: row.inscriptionId,
+      contentType: row.contentType || '',
+      contentUrl: row.content || '',
+      outputValue: row.outputValue || 0,
+      offset: row.offset || 0,
+      number: row.inscriptionNumber,
+      protected: (row.outputValue || 0) > 0 && (row.outputValue || 0) < WalletController.DOGINAL_FEE_FLOOR
+    }));
+  };
+
+  listPopupTokens = async () => {
+    const account = preferenceService.getCurrentAccount();
+    if (!account) return { drc20: [], dunes: [] };
+    const dunesPage = await this.getDunesList(account.address, 1, 40);
+    let drc20: { ticker: string; available: string; transferable: string }[] = [];
+    try {
+      const summary = await walletApiService.drc20.getAddressTokenSummary(account.address, '0', 40);
+      const raw = Array.isArray(summary)
+        ? summary
+        : Array.isArray(summary?.list)
+          ? summary.list
+          : Array.isArray(summary?.detail)
+            ? summary.detail
+            : [];
+      drc20 = raw.map((row: Record<string, unknown>) => ({
+        ticker: String(row.ticker || row.tick || ''),
+        available: String(row.availableBalance ?? row.available ?? row.overallBalance ?? '0'),
+        transferable: String(row.transferableBalance ?? row.transferable ?? '0')
+      })).filter((row) => row.ticker);
+    } catch {
+      drc20 = [];
+    }
+    const dunes = (dunesPage?.list || []).map((row: { spacedDune?: string; dune?: string; amount?: string; divisibility?: number }) => ({
+      name: row.spacedDune || row.dune || '',
+      amount: String(row.amount ?? '0'),
+      divisibility: row.divisibility ?? 0
+    })).filter((row) => row.name);
+    return { drc20, dunes };
+  };
+
+  private async inscriptionCoin(inscriptionId: string) {
+    const account = preferenceService.getCurrentAccount();
+    if (!account) throw new Error('Unlock Dojak first.');
+    const indexer = getDogIndexerClient();
+    const info = await indexer.getInscription(inscriptionId);
+    if (!info.output) throw new Error('This inscription has no coin yet.');
+    if ((info.offset || 0) !== 0) {
+      throw new Error('This inscription is not at the start of its coin. Move it from dogecoin.dog so the sat stays put.');
+    }
+    const output = await indexer.getOutput(info.output);
+    if (output.spent) throw new Error('That coin is already spent. Refresh and try again.');
+    const addressType = AddressType.P2PKH;
+    return {
+      account,
+      info,
+      utxo: {
+        txid: output.txid,
+        vout: output.vout,
+        satoshis: output.koinu,
+        scriptPk: output.scriptPubKey,
+        addressType,
+        pubkey: account.pubkey,
+        inscriptions: [{ inscriptionId }],
+        atomicals: []
+      }
+    };
+  }
+
+  /**
+   * Keep the doginal on a coin under 0.01 DOGE and send the rest back as a fee coin.
+   * Spends only that inscription coin, so the sat at offset 0 lands on the postage output.
+   */
+  protectInscription = async ({ inscriptionId, feeRate = 2 }: { inscriptionId: string; feeRate?: number }) => {
+    const { account, utxo } = await this.inscriptionCoin(inscriptionId);
+    if (utxo.satoshis > 0 && utxo.satoshis < WalletController.DOGINAL_FEE_FLOOR) {
+      return { already: true, satoshis: utxo.satoshis, txid: null as string | null };
+    }
+    const signed = await this.sendDOGE({
+      to: account.address,
+      amount: WalletController.DOGINAL_POSTAGE,
+      feeRate,
+      enableRBF: false,
+      btcUtxos: [utxo]
+    });
+    if (!signed?.rawtx || signed.rawtx.length < 20) {
+      throw new Error('Could not sign Protect. Unlock Dojak and try again.');
+    }
+    const txid = await this.broadcastViaCommandDog(signed.rawtx);
+    return { already: false, satoshis: WalletController.DOGINAL_POSTAGE, txid };
+  };
+
+  /** Send a doginal that is already on a coin under 0.01 DOGE. Fee comes from a separate fee coin. */
+  sendPopupInscription = async ({
+    inscriptionId,
+    to,
+    feeRate = 2
+  }: {
+    inscriptionId: string;
+    to: string;
+    feeRate?: number;
+  }) => {
+    const { account, utxo } = await this.inscriptionCoin(inscriptionId);
+    if (utxo.satoshis >= WalletController.DOGINAL_FEE_FLOOR) {
+      throw new Error('Protect this Doginal first. Coins of 0.01 DOGE or more can be spent as fees.');
+    }
+    const indexer = getDogIndexerClient();
+    const cardinals = await indexer.getCardinalUTXOs(account.address);
+    const feeCoin = cardinals.find((coin) => coin.koinu >= WalletController.DOGINAL_FEE_FLOOR && !coin.spent);
+    if (!feeCoin) {
+      throw new Error('Need a fee coin of at least 0.01 DOGE that does not hold a Doginal or Dune.');
+    }
+    const addressType = AddressType.P2PKH;
+    const signed = await this.sendDOGE({
+      to,
+      amount: utxo.satoshis,
+      feeRate,
+      enableRBF: false,
+      btcUtxos: [
+        utxo,
+        {
+          txid: feeCoin.txid,
+          vout: feeCoin.vout,
+          satoshis: feeCoin.koinu,
+          scriptPk: feeCoin.scriptPubKey,
+          addressType,
+          pubkey: account.pubkey,
+          inscriptions: [],
+          atomicals: []
+        }
+      ]
+    });
+    if (!signed?.rawtx || signed.rawtx.length < 20) {
+      throw new Error('Could not sign the send. Unlock Dojak and try again.');
+    }
+    const txid = await this.broadcastViaCommandDog(signed.rawtx);
+    return { txid };
+  };
+
+  listPopupInscriptionForSale = async ({ inscriptionId, priceDoge }: { inscriptionId: string; priceDoge: number }) => {
+    const account = preferenceService.getCurrentAccount();
+    if (!account) throw new Error('Unlock Dojak first.');
+    if (!Number.isFinite(priceDoge) || priceDoge <= 0) throw new Error('Enter a price in DOGE.');
+    return this.createMarketplaceListing(inscriptionId, priceDoge, account.address);
   };
 
   broadcastViaCommandDog = async (rawHex: string): Promise<string> => {

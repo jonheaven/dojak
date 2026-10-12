@@ -25,6 +25,21 @@ export type WalletTransaction = {
   status?: 'pending' | 'confirmed' | 'failed';
 };
 
+export type PopupDoginal = {
+  id: string;
+  contentType: string;
+  contentUrl: string;
+  outputValue: number;
+  offset: number;
+  number?: number;
+  protected: boolean;
+};
+
+export type PopupDrc20 = { ticker: string; available: string; transferable: string };
+export type PopupDune = { name: string; amount: string; divisibility: number };
+
+export type ConnectedSiteRow = { origin: string; name?: string; icon?: string };
+
 export type WalletCoreAdapter = {
   getBalance?: () => Promise<DogecoinBalanceV2 | null>;
   getAddress?: () => Promise<string>;
@@ -36,6 +51,13 @@ export type WalletCoreAdapter = {
   getConnectedAccounts?: () => Promise<string[]>;
   getVersion?: () => Promise<string>;
   logout?: () => Promise<void>;
+  listDoginals?: () => Promise<PopupDoginal[]>;
+  listTokens?: () => Promise<{ drc20: PopupDrc20[]; dunes: PopupDune[] }>;
+  protectDoginal?: (inscriptionId: string) => Promise<{ already: boolean; txid: string | null }>;
+  sendDoginal?: (inscriptionId: string, to: string) => Promise<{ txid: string }>;
+  listDoginalForSale?: (inscriptionId: string, priceDoge: number) => Promise<unknown>;
+  getConnectedSites?: () => Promise<ConnectedSiteRow[]>;
+  removeConnectedSite?: (origin: string) => Promise<void>;
 };
 
 const WalletCoreContext = createContext<WalletCoreAdapter>({});

@@ -4,7 +4,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { isValidAddress } from '../utils/bitcoin-utils';
 import { getUiType, shortAddress } from '../utils';
 import { useWalletCore, WalletTransaction } from './WalletCoreContext';
+import { DoginalsPanel } from './DoginalsPanel';
 import { FEE_OPTIONS, FeePreset, WALLET_TABS, WalletTab } from './walletTypes';
+import { ConnectedSiteRow, PopupDoginal } from './WalletCoreContext';
 import { formatDoge, formatUsd, relativeTime } from './walletFormat';
 import './dojak-wallet.css';
 
@@ -30,6 +32,8 @@ export function DojakWallet() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; tone: 'ok' | 'error' } | null>(null);
+  const [dogPeek, setDogPeek] = useState<PopupDoginal[]>([]);
+  const [sites, setSites] = useState<ConnectedSiteRow[]>([]);
 
   const pushToast = (message: string, tone: 'ok' | 'error' = 'ok') => {
     setToast({ message, tone });
@@ -56,6 +60,12 @@ export function DojakWallet() {
     if (nextRate && Number.isFinite(nextRate) && nextRate > 0) setUsdRate(nextRate);
     if (nextAccounts?.length) setConnectedAccounts(nextAccounts);
     if (nextVersion) setVersion(nextVersion);
+    const [peek, connectedSites] = await Promise.all([
+      walletCore.listDoginals?.().catch(() => [] as PopupDoginal[]) ?? [],
+      walletCore.getConnectedSites?.().catch(() => [] as ConnectedSiteRow[]) ?? []
+    ]);
+    setDogPeek(peek.slice(0, 3));
+    setSites(connectedSites.filter((site) => site.origin));
   };
 
   useEffect(() => {
@@ -221,7 +231,30 @@ export function DojakWallet() {
                   ))
                 )}
               </section>
+
+              {dogPeek.length > 0 ? (
+                <button type="button" className="dj-dog-grid" onClick={() => setActiveTab('doginals')}>
+                  {dogPeek.map((item) => (
+                    <span key={item.id} className="dj-dog-card">
+                      {item.contentType.startsWith('image/') && item.contentUrl ? (
+                        <img src={item.contentUrl} alt="" />
+                      ) : (
+                        <span className="dj-dog-fallback">Doginal</span>
+                      )}
+                    </span>
+                  ))}
+                </button>
+              ) : null}
             </>
+          )}
+
+          {activeTab === 'doginals' && (
+            <DoginalsPanel
+              onStatus={(message, tone) => {
+                setStatus(message);
+                pushToast(message, tone ?? 'ok');
+              }}
+            />
           )}
 
           {activeTab === 'receive' && (
@@ -331,6 +364,25 @@ export function DojakWallet() {
                     .join(', ') || '—'}
                 </p>
               </div>
+              <p className="dj-section-label" style={{ marginTop: 14 }}>
+                Connected sites
+              </p>
+              {sites.length === 0 ? <p className="dj-empty">No sites are connected.</p> : null}
+              {sites.map((site) => (
+                <div className="dj-site" key={site.origin}>
+                  <span title={site.origin}>{site.name || site.origin}</span>
+                  <button
+                    type="button"
+                    className="dj-ghost"
+                    style={{ width: 'auto', height: 32, padding: '0 10px' }}
+                    onClick={() =>
+                      void walletCore.removeConnectedSite?.(site.origin).then(() => refreshWallet())
+                    }
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
               <button type="button" className="dj-ghost" style={{ marginTop: 12 }} onClick={() => void refreshWallet()}>
                 Refresh balance
               </button>

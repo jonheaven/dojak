@@ -22,6 +22,13 @@ type WalletProxy = {
   }) => Promise<{ txid: string; rawtx?: string; fee?: number }>;
   publishDxRegister: (params: { handle: string; tweetId: string; feeRate?: number }) => Promise<{ txid: string }>;
   getAddressHistory?: (params: { address: string; start: number; limit: number }) => Promise<{ list?: WalletTransaction[] }>;
+  listPopupDoginals: () => Promise<import('@dojak/ui').PopupDoginal[]>;
+  listPopupTokens: () => Promise<{ drc20: import('@dojak/ui').PopupDrc20[]; dunes: import('@dojak/ui').PopupDune[] }>;
+  protectInscription: (params: { inscriptionId: string; feeRate?: number }) => Promise<{ already: boolean; txid: string | null }>;
+  sendPopupInscription: (params: { inscriptionId: string; to: string; feeRate?: number }) => Promise<{ txid: string }>;
+  listPopupInscriptionForSale: (params: { inscriptionId: string; priceDoge: number }) => Promise<unknown>;
+  getConnectedSites: () => Promise<import('@dojak/ui').ConnectedSiteRow[]>;
+  removeConnectedSite: (origin: string) => Promise<void>;
 };
 
 function createWalletProxy(): WalletProxy {
@@ -129,6 +136,25 @@ export function createPopupAdapter(): WalletCoreAdapter & {
       if (!unlocked) throw new Error('Unlock Dojak to publish the Ð𝕏 bind.');
       return wallet.publishDxRegister({ handle, tweetId, feeRate: 2 });
     },
+    listDoginals: () => wallet.listPopupDoginals(),
+    listTokens: () => wallet.listPopupTokens(),
+    protectDoginal: async (inscriptionId: string) => {
+      const unlocked = await wallet.isUnlocked().catch(() => false);
+      if (!unlocked) throw new Error('Unlock Dojak to protect a Doginal.');
+      return wallet.protectInscription({ inscriptionId, feeRate: 2 });
+    },
+    sendDoginal: async (inscriptionId: string, to: string) => {
+      const unlocked = await wallet.isUnlocked().catch(() => false);
+      if (!unlocked) throw new Error('Unlock Dojak to send a Doginal.');
+      return wallet.sendPopupInscription({ inscriptionId, to, feeRate: 2 });
+    },
+    listDoginalForSale: async (inscriptionId: string, priceDoge: number) => {
+      const unlocked = await wallet.isUnlocked().catch(() => false);
+      if (!unlocked) throw new Error('Unlock Dojak to list a Doginal.');
+      return wallet.listPopupInscriptionForSale({ inscriptionId, priceDoge });
+    },
+    getConnectedSites: () => wallet.getConnectedSites(),
+    removeConnectedSite: (origin: string) => wallet.removeConnectedSite(origin),
     logout: async () => {
       await Promise.all([storage.set(BALANCE_KEY, 0), storage.set(TXS_KEY, [])]);
     },

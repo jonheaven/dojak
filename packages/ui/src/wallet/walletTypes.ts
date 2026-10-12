@@ -1,9 +1,10 @@
-export type WalletTab = 'home' | 'receive' | 'send' | 'settings';
+export type WalletTab = 'home' | 'doginals' | 'receive' | 'send' | 'settings';
 
 export type FeePreset = 'low' | 'medium' | 'high' | 'custom';
 
 export const WALLET_TABS: { key: WalletTab; label: string }[] = [
   { key: 'home', label: 'Home' },
+  { key: 'doginals', label: 'Dogs' },
   { key: 'receive', label: 'Receive' },
   { key: 'send', label: 'Send' },
   { key: 'settings', label: 'Settings' }
