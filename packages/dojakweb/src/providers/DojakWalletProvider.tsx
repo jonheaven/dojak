@@ -12,6 +12,10 @@ import { DataProvider } from './DataProvider';
 import { DojakwebDxTrustedOriginsProvider } from '../contexts/DojakwebDxContext';
 import { DxHostBridge } from '../components/DxHostBridge';
 import { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
+import {
+  setDojakwebUnlockPersistence,
+  type DojakwebUnlockPersistence,
+} from '../lib/dojakweb-biometric';
 
 export interface DojakWalletProviderProps {
   children: React.ReactNode;
@@ -19,6 +23,12 @@ export interface DojakWalletProviderProps {
   fxRatesUrl?: string;
   theme?: DojakwebTheme;
   dxTrustedOrigins?: readonly string[];
+  /**
+   * `memory` (default): local-wallet unlock dies on refresh.
+   * `tab`: keep the unlock for this tab so a refresh does not ask for the password again.
+   * Closing the tab ends it. Disconnect still locks immediately.
+   */
+  unlockPersistence?: DojakwebUnlockPersistence;
 }
 
 /**
@@ -29,7 +39,10 @@ export function DojakWalletProvider({
   fxRatesUrl,
   theme = 'dark',
   dxTrustedOrigins,
+  unlockPersistence = 'memory',
 }: DojakWalletProviderProps) {
+  setDojakwebUnlockPersistence(unlockPersistence);
+
   useEffect(() => {
     ensureDojakwebEcosystemDefaults();
   }, []);

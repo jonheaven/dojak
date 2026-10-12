@@ -12,8 +12,45 @@ const LEGACY_SESSION_KEYS = [
   'dojak.biometric.session-secret',
 ] as const;
 
-/** Tab-lifetime only on the public site (not readable via sessionStorage). */
+/** In-memory unlock secret. Survives SPA remounts, not a full reload. */
 let memorySecret: string | null = null;
+
+/**
+ * `memory` (default): unlock dies on refresh. Used by dogenals and the public wallet.
+ * `tab`: also write sessionStorage so a game host can keep the player in across refresh.
+ * The secret still dies when the tab closes. Never localStorage.
+ */
+export type DojakwebUnlockPersistence = 'memory' | 'tab';
+
+const TAB_UNLOCK_KEY = 'dojakweb.tab-unlock-secret';
+let unlockPersistence: DojakwebUnlockPersistence = 'memory';
+
+export function setDojakwebUnlockPersistence(mode: DojakwebUnlockPersistence): void {
+  unlockPersistence = mode === 'tab' ? 'tab' : 'memory';
+}
+
+export function dojakwebUnlockPersistsForTab(): boolean {
+  return unlockPersistence === 'tab';
+}
+
+function readTabUnlockSecret(): string | null {
+  if (unlockPersistence !== 'tab' || typeof sessionStorage === 'undefined') return null;
+  try {
+    return sessionStorage.getItem(TAB_UNLOCK_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeTabUnlockSecret(secret: string | null): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    if (secret && unlockPersistence === 'tab') sessionStorage.setItem(TAB_UNLOCK_KEY, secret);
+    else sessionStorage.removeItem(TAB_UNLOCK_KEY);
+  } catch {
+    /* private-mode quota */
+  }
+}
 
 function wipeLegacyWebStorage(): void {
   try {
@@ -50,8 +87,9 @@ function getChromeSessionStorage():
 /**
  * Session secret store isolated from the extension (`dojak.biometric.*`) keys.
  * Extension: chrome.storage.session only.
- * Public site: in-memory for the JS realm (survives SPA remounts, not full reload);
- * never write the unlock password to localStorage or sessionStorage.
+ * Public site: in-memory for the JS realm (survives SPA remounts, not full reload).
+ * Game hosts may opt into `tab` persistence (sessionStorage) via DojakWalletProvider.
+ * Never write the unlock password to localStorage.
  */
 export function createDojakwebSessionSecretStore(): SessionSecretStore {
   const chromeSession = getChromeSessionStorage();
@@ -60,6 +98,7 @@ export function createDojakwebSessionSecretStore(): SessionSecretStore {
   return {
     async saveSecret(secret: string) {
       wipeLegacyWebStorage();
+      writeTabUnlockSecret(secret);
       if (chromeSession) {
         try {
           await chromeSession.set({ [SESSION_SECRET_KEY]: secret });
@@ -81,10 +120,11 @@ export function createDojakwebSessionSecretStore(): SessionSecretStore {
           /* fall through */
         }
       }
-      return memorySecret;
+      return memorySecret ?? readTabUnlockSecret();
     },
     async clearSecret() {
       memorySecret = null;
+      writeTabUnlockSecret(null);
       wipeLegacyWebStorage();
       if (chromeSession) {
         try {

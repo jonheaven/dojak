@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { BrowserWallet, isPlaintextMigrationRequiredError, toPublicSessionWallet, type BrowserWalletSaveOptions } from '../lib/browser-wallet';
 import type { SeedMaterial, WalletData } from '../types/wallet';
 import { walletDataApi } from '../utils/api';
-import { createDojakwebSessionSecretStore } from '../lib/dojakweb-biometric';
+import { createDojakwebSessionSecretStore, dojakwebUnlockPersistsForTab } from '../lib/dojakweb-biometric';
 
 export interface UseBrowserWalletReturn {
   connected: boolean;
@@ -158,6 +158,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
             setWallet(loaded);
             setAddress(loaded.address);
             setConnected(true);
+            setUnlocked(Boolean(loaded.privateKey));
             setBalance(0);
             indexerBalanceRef.current = 0;
             pendingSpendsRef.current = [];
@@ -317,6 +318,11 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
 
   useEffect(() => {
     if (typeof window === 'undefined' || !connected || !unlocked) {
+      return;
+    }
+    // Game hosts keep the unlock for the tab. A refresh or a short alt-tab
+    // should not dump the player back to the password screen.
+    if (dojakwebUnlockPersistsForTab()) {
       return;
     }
 
