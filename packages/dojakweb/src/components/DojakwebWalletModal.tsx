@@ -91,14 +91,19 @@ import {
   type SendInscriptionPsbtDraft,
   shibesToDoge,
   dogeToShibes,
-  DUMMY_UTXO_VALUE,
-  selectUtxos,
+  selectFeeUtxosForInscriptionSend,
   buildDummyUtxoPSDT,
   buildBuyPSDT,
   signAndFinalizeBuyPSDT,
   signAndFinalizeSimplePSDT,
   validateSellerPSDT,
 } from '../lib/doginal-psdt';
+import {
+  isInputsSpentBroadcastError,
+  markOutpointsSpent,
+  recordPaymentBroadcast,
+} from '../lib/mempoolSpendOverlay';
+import { filterUtxosByRpcGetTxOutIfConfigured, rpcGetTxOutSpendable } from '../lib/utxo-tools';
 import { publishListingToNostr, publishListingToNostrWithDiagnostics, publishListingCancelToNostr, type NostrPublishRelayResult } from '../services/nostr';
 import {
   saveListing,
@@ -2892,11 +2897,24 @@ export function DojakwebWalletModal({
     setInscriptionSendDraft(null);
     try {
       const insData = await getInscriptionData(selectedInscription.inscriptionId, selectedInscription);
+      const [insTxid, insVoutStr] = String(insData.output).split(':');
+      const insVout = parseInt(insVoutStr, 10);
+      if (!insTxid || !Number.isFinite(insVout)) {
+        throw new Error('Inscription output is missing a spendable outpoint.');
+      }
+      const inscriptionStillFree = await rpcGetTxOutSpendable({ txid: insTxid, vout: insVout });
+      if (inscriptionStillFree === false) {
+        throw new Error(
+          'This inscription is already spent or sitting in a pending mempool send. ' +
+            'Do not rebuild/retry — wait for that transaction to confirm (or check your recent tx history).',
+        );
+      }
+
       const payerUtxos = await getAddressUtxos(activeAddress);
-      const paymentUtxos = payerUtxos
-        .filter((u) => u.value > DUMMY_UTXO_VALUE)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 3);
+      const liveFeeUtxos = await filterUtxosByRpcGetTxOutIfConfigured(
+        payerUtxos.filter((u) => `${u.txid}:${u.vout}` !== `${insTxid}:${insVout}`),
+      );
+      const paymentUtxos = selectFeeUtxosForInscriptionSend(liveFeeUtxos);
 
       if (paymentUtxos.length === 0) throw new Error(t('modal.throws.noPaymentUtxos'));
 
@@ -2916,7 +2934,7 @@ export function DojakwebWalletModal({
   };
 
   const handleConfirmSendInscription = async () => {
-    if (!inscriptionSendDraft || !selectedInscription) return;
+    if (!inscriptionSendDraft || !selectedInscription || !activeAddress) return;
     setInscriptionSendBusy(true);
     setInscriptionSendError(null);
     try {
@@ -2924,10 +2942,50 @@ export function DojakwebWalletModal({
 
       const txHex = await signAndFinalizeSimplePSDT(inscriptionSendDraft.psbtBase64, w.privateKey);
       const txid = await broadcastOrdinalTx(txHex);
+      const spent = inscriptionSendDraft.inputs.map((row) => {
+        const [txidIn, voutStr] = row.outpoint.split(':');
+        return { txid: txidIn, vout: parseInt(voutStr, 10) };
+      });
+      const changeOut = inscriptionSendDraft.outputs.find((o) => o.role === 'change');
+      const changeVout = changeOut
+        ? inscriptionSendDraft.outputs.findIndex((o) => o.role === 'change')
+        : -1;
+      recordPaymentBroadcast({
+        address: activeAddress,
+        txid,
+        spent,
+        change:
+          changeOut && changeVout >= 0
+            ? { vout: changeVout, value: changeOut.valueShib }
+            : null,
+      });
       setInscriptionSendTxid(txid);
       setInscriptionSendDraft(null);
       toast.success(t('modal.toast.inscriptionSent', { txShort: txid.slice(0, 12) }));
     } catch (e: any) {
+      if (isInputsSpentBroadcastError(e) && inscriptionSendDraft) {
+        const spent = inscriptionSendDraft.inputs.map((row) => {
+          const [txidIn, voutStr] = row.outpoint.split(':');
+          return { txid: txidIn, vout: parseInt(voutStr, 10) };
+        });
+        markOutpointsSpent(activeAddress, spent);
+        const ins = inscriptionSendDraft.inputs.find((row) => row.role === 'inscription');
+        if (ins) {
+          const [txidIn, voutStr] = ins.outpoint.split(':');
+          const stillFree = await rpcGetTxOutSpendable({
+            txid: txidIn,
+            vout: parseInt(voutStr, 10),
+          });
+          if (stillFree === false) {
+            setInscriptionSendDraft(null);
+            setInscriptionSendError(
+              'This inscription is already in a pending mempool transfer (txn-mempool-conflict). ' +
+                'The earlier send likely succeeded — wait for confirmation instead of clicking Confirm again.',
+            );
+            return;
+          }
+        }
+      }
       setInscriptionSendError(e?.message ?? String(e));
     } finally {
       setInscriptionSendBusy(false);
@@ -3133,12 +3191,12 @@ export function DojakwebWalletModal({
       // Extract inscription output value from the saved signed PSBT
       const inscriptionOutputValue = getInscriptionValueFromPsdt(listing.signedPsbtBase64);
 
-      // Payment UTXOs for fee (non-inscription UTXOs)
+      // Payment UTXOs for fee (non-inscription UTXOs) — smallest sufficient, not top-3 largest.
       const payerUtxos = await getAddressUtxos(activeAddress);
-      const paymentUtxos = payerUtxos
-        .filter(u => u.value > DUMMY_UTXO_VALUE)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 3);
+      const liveFeeUtxos = await filterUtxosByRpcGetTxOutIfConfigured(
+        payerUtxos.filter((u) => `${u.txid}:${u.vout}` !== listing.inscriptionUtxo),
+      );
+      const paymentUtxos = selectFeeUtxosForInscriptionSend(liveFeeUtxos);
 
       if (paymentUtxos.length === 0) {
         throw new Error(t('modal.throws.cancelNeedFunds'));

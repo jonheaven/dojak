@@ -639,6 +639,7 @@ export {
   shibesToDoge,
   dogeToShibes,
   selectUtxos,
+  selectFeeUtxosForInscriptionSend,
   calculateFee,
   resolveBuyFeeRateKoinuPerByte,
   DEFAULT_FEE_RATE,

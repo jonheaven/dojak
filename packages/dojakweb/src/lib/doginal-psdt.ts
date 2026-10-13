@@ -849,6 +849,43 @@ export function selectUtxos(
   return selected;
 }
 
+/**
+ * Fee-only coin select for inscription transfers (1 inscription vin + fee vins →
+ * recipient + change). Prefer the smallest single UTXO that covers the fee;
+ * otherwise accumulate smallest-first. Never grab “top 3 largest” — that was
+ * sweeping 100+ DOGE of change into every send.
+ */
+export function selectFeeUtxosForInscriptionSend(
+  utxos: OrdUtxo[],
+  feeRate = DEFAULT_FEE_RATE,
+): OrdUtxo[] {
+  const candidates = utxos
+    .filter((u) => u.value > DUMMY_UTXO_VALUE)
+    .sort((a, b) => a.value - b.value);
+
+  if (candidates.length === 0) {
+    throw new Error('No spendable DOGE UTXOs available to pay the network fee.');
+  }
+
+  // 1 inscription + 1 fee input; recipient counted in vouts, change via includeChange.
+  const feeForOne = calculateFee(2, 1, feeRate, true);
+  const single = candidates.find((u) => u.value >= feeForOne);
+  if (single) return [single];
+
+  const selected: OrdUtxo[] = [];
+  let total = 0;
+  for (const u of candidates) {
+    selected.push(u);
+    total += u.value;
+    const fee = calculateFee(1 + selected.length, 1, feeRate, true);
+    if (total >= fee) return selected;
+  }
+  const need = calculateFee(1 + Math.max(selected.length, 1), 1, feeRate, true);
+  throw new Error(
+    `Not enough spendable DOGE for the network fee.\nHave: ${shibesToDoge(total)} DOGE\nNeed ~${shibesToDoge(need)} DOGE`,
+  );
+}
+
 // ── Async signer compatible with bitcoinjs‑lib v7 ────────────────────────────
 
 async function makeAsyncSigner(privateKeyWif: string): Promise<bitcoin.SignerAsync> {
