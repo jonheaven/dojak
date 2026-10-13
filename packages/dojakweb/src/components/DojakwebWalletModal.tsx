@@ -100,7 +100,9 @@ import {
   validateSellerPSDT,
 } from '../lib/doginal-psdt';
 import {
+  isBroadcastStuck,
   isInputsSpentBroadcastError,
+  listLocalChangeBroadcasts,
   markOutpointsSpent,
   recordPaymentBroadcast,
 } from '../lib/mempoolSpendOverlay';
@@ -141,6 +143,7 @@ import { toast } from 'sonner';
 import type { SeedMaterial, WalletData, WalletType } from '../types/wallet';
 import {
   walletDataApi,
+  fetchCommandDogTxStatus,
   getWalletDataProviderConfig,
   setWalletDataProviderConfig,
   getIndexerApiBase,
@@ -764,6 +767,9 @@ export function DojakwebWalletModal({
   const [dlockedOutpoints, setDlockedOutpoints] = useState<Set<string>>(new Set());
   const [spendableBreak, setSpendableBreak] = useState<SpendableBalanceBreakdown | null>(null);
   const [spendableBreakBusy, setSpendableBreakBusy] = useState(false);
+  const [pendingBoostTxid, setPendingBoostTxid] = useState<string | null>(null);
+  /** CPFP card stays hidden until a send has sat in the mempool. */
+  const [showStuckBoostCard, setShowStuckBoostCard] = useState(false);
   /** Full-viewport Coins & UTXOs (outside narrow drawer). */
   const [utxoManagerOpen, setUtxoManagerOpen] = useState(false);
 
@@ -2879,6 +2885,54 @@ export function DojakwebWalletModal({
     };
   }, [step, activeAddress, connected, balance, balanceVerified]);
 
+  // Offer a speed-up only after a send has been unconfirmed for a while.
+  useEffect(() => {
+    if (!activeAddress) {
+      setPendingBoostTxid(null);
+      setShowStuckBoostCard(false);
+      return;
+    }
+    let cancelled = false;
+    let timer = 0;
+
+    const scan = async () => {
+      const rows = listLocalChangeBroadcasts(activeAddress);
+      let offer: string | null = null;
+      let retry = false;
+      for (const row of rows) {
+        if (!isBroadcastStuck(activeAddress, row.txid)) {
+          retry = true;
+          continue;
+        }
+        const st = await fetchCommandDogTxStatus(row.txid);
+        if (cancelled) return;
+        if (!st) {
+          retry = true;
+          continue;
+        }
+        if (st.in_block || (st.confirmations ?? 0) > 0 || st.known === false || st.in_mempool === false) {
+          continue;
+        }
+        offer = row.txid;
+        break;
+      }
+      if (cancelled) return;
+      setPendingBoostTxid(offer);
+      setShowStuckBoostCard(Boolean(offer));
+      if (retry || offer) {
+        timer = window.setTimeout(() => {
+          void scan();
+        }, 30_000);
+      }
+    };
+
+    void scan();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [activeAddress]);
+
   const openSendInscription = (inscription: MyDogeInscription) => {
 
     setSelectedInscription(inscription);
@@ -4435,9 +4489,12 @@ export function DojakwebWalletModal({
                                         </button>
                                       </p>
                                     ) : null}
-                                    {spendableBreak && spendableBreak.localHoldDoge > 0.001 ? (
+                                    {showStuckBoostCard ? (
                                       <div className="mx-auto mt-2 max-w-sm text-left">
-                                        <PendingChangeBoost onBoost={handleBoostPendingSend} />
+                                        <PendingChangeBoost
+                                          defaultTxid={pendingBoostTxid}
+                                          onBoost={handleBoostPendingSend}
+                                        />
                                       </div>
                                     ) : null}
                                   </div>
@@ -6021,10 +6078,6 @@ export function DojakwebWalletModal({
                             >
                               {t('modal.sendInscription.viewExplorer')}
                             </a>
-                            <PendingChangeBoost
-                              defaultTxid={inscriptionSendTxid}
-                              onBoost={handleBoostPendingSend}
-                            />
                           </div>
                         ) : inscriptionSendDraft ? (
                           <>
@@ -6116,8 +6169,11 @@ export function DojakwebWalletModal({
                                 {inscriptionSendError}
                               </div>
                             )}
-                            {inscriptionSendError ? (
-                              <PendingChangeBoost onBoost={handleBoostPendingSend} />
+                            {showStuckBoostCard && isInputsSpentBroadcastError(inscriptionSendError) ? (
+                              <PendingChangeBoost
+                                defaultTxid={pendingBoostTxid}
+                                onBoost={handleBoostPendingSend}
+                              />
                             ) : null}
                           </>
                         ) : (
@@ -6163,8 +6219,11 @@ export function DojakwebWalletModal({
                                 {inscriptionSendError}
                               </div>
                             )}
-                            {inscriptionSendError ? (
-                              <PendingChangeBoost onBoost={handleBoostPendingSend} />
+                            {showStuckBoostCard && isInputsSpentBroadcastError(inscriptionSendError) ? (
+                              <PendingChangeBoost
+                                defaultTxid={pendingBoostTxid}
+                                onBoost={handleBoostPendingSend}
+                              />
                             ) : null}
                           </>
                         )}

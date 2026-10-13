@@ -265,6 +265,53 @@ export function clearMempoolOverlayForAddress(address: string): void {
   }
 }
 
+/** Quiet time before a still-unconfirmed send is offered a CPFP speed-up. */
+export const STUCK_BOOST_AFTER_MS = 15 * 60 * 1000;
+
+/**
+ * When we first saw this broadcast locally.
+ * A specific txid uses its change output time. With no txid, the oldest hold on the address.
+ */
+export function broadcastTrackedAt(address: string, txid?: string | null): number | null {
+  const bag = getBag(address);
+  const id = txid?.trim().toLowerCase() ?? '';
+  const finite = (values: number[]) => values.filter((n) => Number.isFinite(n));
+  if (/^[0-9a-f]{64}$/.test(id)) {
+    const times = finite(
+      bag.change.filter((c) => c.txid.trim().toLowerCase() === id).map((c) => c.createdAt),
+    );
+    return times.length ? Math.min(...times) : null;
+  }
+  const times = finite([
+    ...Object.values(bag.spent),
+    ...bag.change.map((c) => c.createdAt),
+  ]);
+  return times.length ? Math.min(...times) : null;
+}
+
+/** True once this send has been unconfirmed locally for `STUCK_BOOST_AFTER_MS`. */
+export function isBroadcastStuck(address: string, txid?: string | null, now = Date.now()): boolean {
+  const at = broadcastTrackedAt(address, txid);
+  if (at == null) return false;
+  return now - at >= STUCK_BOOST_AFTER_MS;
+}
+
+/** Change outputs we broadcast, newest first. */
+export function listLocalChangeBroadcasts(
+  address: string,
+): Array<{ txid: string; createdAt: number }> {
+  const byTx = new Map<string, number>();
+  for (const row of getBag(address).change) {
+    const id = row.txid.trim().toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(id)) continue;
+    const prev = byTx.get(id);
+    if (prev == null || row.createdAt < prev) byTx.set(id, row.createdAt);
+  }
+  return [...byTx.entries()]
+    .map(([txid, createdAt]) => ({ txid, createdAt }))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
 export function isInputsSpentBroadcastError(err: unknown): boolean {
   const m = err instanceof Error ? err.message : String(err ?? '');
   const lower = m.toLowerCase();
