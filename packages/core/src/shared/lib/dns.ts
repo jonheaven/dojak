@@ -37,36 +37,6 @@ export interface DNSResolutionResult {
   avatar?: string;
 }
 
-/** Same allowlist as dogex `indexer/protocol_dns.rs`. */
-const DNS_NAMESPACES = new Set([
-  'doge',
-  'dogecoin',
-  'shibe',
-  'shib',
-  'wow',
-  'very',
-  'such',
-  'much',
-  'excite',
-  'woof',
-  'bark',
-  'tail',
-  'paws',
-  'paw',
-  'moon',
-  'kabosu',
-  'cheems',
-  'inu',
-  'cook',
-  'doggo',
-  'boop',
-  'zoomies',
-  'smol',
-  'snoot',
-  'pupper',
-  'official'
-]);
-
 const DNS_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
 /**
@@ -81,8 +51,7 @@ export function isDNSName(input: string): boolean {
   const parts = input.trim().toLowerCase().split('.');
   if (parts.length !== 2) return false;
   const [label, namespace] = parts;
-  if (!label || !namespace || !DNS_NAMESPACES.has(namespace)) return false;
-  return DNS_LABEL.test(label);
+  if (!label || !namespace || !DNS_LABEL.test(label) || !DNS_LABEL.test(namespace)) return false;
 }
 
 /**

@@ -11,34 +11,6 @@ export const DNS_MARKER = 'dns';
 export const DNS_HERO_NAMESPACE = 'doge';
 
 const LABEL_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
-const NAMESPACES = new Set([
-  'doge',
-  'dogecoin',
-  'shibe',
-  'shib',
-  'wow',
-  'very',
-  'such',
-  'much',
-  'excite',
-  'woof',
-  'bark',
-  'tail',
-  'paws',
-  'paw',
-  'moon',
-  'kabosu',
-  'cheems',
-  'inu',
-  'cook',
-  'doggo',
-  'boop',
-  'zoomies',
-  'smol',
-  'snoot',
-  'pupper',
-  'official',
-]);
 const RESERVED = new Set([
   'www',
   'mail',
@@ -71,7 +43,7 @@ export function normalizeDnsName(raw: string, defaultNs = DNS_HERO_NAMESPACE): s
   const parts = full.split('.');
   if (parts.length !== 2) return null;
   const [label, ns] = parts;
-  if (!label || !ns || RESERVED.has(label) || !LABEL_RE.test(label) || !NAMESPACES.has(ns)) {
+  if (!label || !ns || RESERVED.has(label) || !LABEL_RE.test(label) || !LABEL_RE.test(ns)) {
     return null;
   }
   return `${label}.${ns}`;
