@@ -9,11 +9,12 @@ import {
   broadcastSignedTransaction,
   fetchSpendableUtxosConservativeForAddress,
   filterPaymentSpendableUtxos,
-  MIN_FEE_RATE_KOINU_PER_BYTE,
   type NormalisedUtxo,
 } from '../broadcast/dogecoinTxBroadcast';
 import { buildOpReturnLockingScript } from '../tx/opReturn';
 import { SOFT_DUST_KOINU } from '../dogecoin/softDust';
+import { enforceBroadcastFeeRateKoinuPerByte } from '../fees/dogecoinFeePolicy';
+import { selectSmallestSufficient } from '../fees/selectSmallestSufficient';
 import {
   commitmentPayloadForOp,
   decodeConsignmentAny,
@@ -111,18 +112,20 @@ async function selectInputs(opts: {
         u.tx_output_n === opts.seal.vout
       ) && !excluded.includes(`${u.tx_hash.toLowerCase()}:${u.tx_output_n}`),
   );
-  const selected: NormalisedUtxo[] = [
-    { ...sealUtxo, value: opts.seal.value || sealUtxo.value },
-  ];
-  let sum = selected[0].value;
-  const feePad = 2_000_000; // 0.02 Ð pad for fees
-  const target = opts.needKoinu + feePad;
-  for (const u of funding.sort((a, b) => b.value - a.value)) {
-    if (sum >= target) break;
-    selected.push(u);
-    sum += u.value;
-  }
-  if (sum < opts.needKoinu + 100_000) {
+  const sealNorm: NormalisedUtxo = { ...sealUtxo, value: opts.seal.value || sealUtxo.value };
+  const feeRate = await enforceBroadcastFeeRateKoinuPerByte({ context: 'yard.selectInputs' });
+  const feeFor = (nIn: number) => {
+    const nOut = 1 + (opts.needKoinu > 0 ? 1 : 0) + 1;
+    const estSize = 10 + 148 * Math.max(1, nIn) + 34 * nOut + 50;
+    return Math.max(Math.ceil(estSize * feeRate), 100_000);
+  };
+  const selected = selectSmallestSufficient(
+    funding,
+    (n) => opts.needKoinu + feeFor(n),
+    { reserved: [sealNorm] },
+  );
+  const sum = selected.reduce((s, u) => s + u.value, 0);
+  if (sum < opts.needKoinu + feeFor(selected.length)) {
     throw new Error(`insufficient funds: have ${sum}, need ~${opts.needKoinu} + fees`);
   }
   return selected;
@@ -137,7 +140,10 @@ async function signYardL1(opts: {
   sealKoinu?: number;
   feeRate?: number;
 }): Promise<{ rawHex: string; feeSatoshis: number; txid: string }> {
-  const feeRate = opts.feeRate ?? MIN_FEE_RATE_KOINU_PER_BYTE;
+  const feeRate = await enforceBroadcastFeeRateKoinuPerByte({
+    requestedKoinuPerByte: opts.feeRate,
+    context: 'signYardL1',
+  });
   const sealKoinu = opts.sealAddress ? opts.sealKoinu ?? DEFAULT_SEAL_KOINU : 0;
   if (sealKoinu > 0 && sealKoinu < SOFT_DUST_KOINU) {
     throw new Error('seal below 0.01 DOGE soft dust');

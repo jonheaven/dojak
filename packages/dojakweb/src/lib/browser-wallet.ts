@@ -8,7 +8,6 @@
 
 import {
   DogeMemoryWallet,
-  coinSelectP2PKH,
   createP2PKHTransaction,
   getP2PKHAddressFromPublicKey,
   decodePrivateKeyFromWIF,
@@ -22,6 +21,8 @@ import { decryptJSON, encryptJSON } from './secureStorage';
 import { warnIfUnexpectedSigningHostname } from '../services/dmp';
 import { buildOpReturnLockingScript, estimateOpReturnOutputsTxWeight } from './tx/opReturn';
 import { assertValidDogecoinAddress } from './dogecoinAddressValidate';
+import { SOFT_DUST_KOINU, assertPlainPaymentKoinu } from './dogecoin/softDust';
+import { selectP2PKHPaymentInputs } from './fees/selectP2PKHPaymentInputs';
 import { fixCoinSelectP2PKHFee } from './fixCoinSelectP2PKHFee';
 import {
   signPartialPsdtWithWifToHex,
@@ -1345,6 +1346,7 @@ export class BrowserWallet {
       Math.floor(options.minConfirmations ?? DEFAULT_MIN_CONFIRMATIONS)
     );
     const sendValue = normalizeDogeAmountToKoinu(amountDoge);
+    assertPlainPaymentKoinu('Amount', sendValue);
 
     let opReturnPayload: Buffer | undefined;
     const opReturnHex = options.opReturnHex?.trim();
@@ -1380,22 +1382,21 @@ export class BrowserWallet {
 
     const opReturnWeight = opReturnPayload ? estimateOpReturnOutputsTxWeight([opReturnPayload]) : 0;
 
-    const selected = coinSelectP2PKH(
-      wallet.address,
-      feeRate,
+    const paymentInputs = selectP2PKHPaymentInputs(
       spendableUtxos.map((utxo) => ({
         txid: utxo.txid,
         vout: utxo.vout,
         value: utxo.value,
       })),
-      [{ address: normalizedRecipient, value: sendValue }]
+      sendValue,
+      feeRate,
     );
 
-    // doge-sdk coinSelectP2PKH underpays (change ≈ marginal output cost only).
+    // Size the fee from the whole transaction. Change under 0.01 Ð is absorbed.
     let fixed = fixCoinSelectP2PKHFee({
       changeAddress: wallet.address,
       feeRateKoinuPerByte: feeRate,
-      inputs: selected.inputs,
+      inputs: paymentInputs,
       payments: [{ address: normalizedRecipient, value: sendValue }],
     });
 
@@ -1403,7 +1404,7 @@ export class BrowserWallet {
     if (opReturnWeight > 0) {
       const extraFee = opReturnWeight * feeRate;
       const changeOut = fixed.change > 0 ? fixed.outputs[fixed.outputs.length - 1] : null;
-      if (changeOut && changeOut.address === wallet.address && changeOut.value - extraFee >= 100_000) {
+      if (changeOut && changeOut.address === wallet.address && changeOut.value - extraFee >= SOFT_DUST_KOINU) {
         const newChange = changeOut.value - extraFee;
         fixed = {
           ...fixed,

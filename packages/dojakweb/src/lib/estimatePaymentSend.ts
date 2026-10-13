@@ -1,13 +1,12 @@
 /**
  * Pre-sign fee / coin-select quote for plain DOGE payments.
  */
-import { coinSelectP2PKH } from 'doge-sdk';
 import { assertValidDogecoinAddress } from './dogecoinAddressValidate';
+import { SOFT_DUST_KOINU, assertPlainPaymentKoinu } from './dogecoin/softDust';
 import { fixCoinSelectP2PKHFee } from './fixCoinSelectP2PKHFee';
+import { selectP2PKHPaymentInputs } from './fees/selectP2PKHPaymentInputs';
 import { getPaymentUtxosForSend } from './paymentUtxos';
 import { resolveRequestedOrPreferredFeeRateKoinuPerByte } from './fees/txFeePreference';
-
-const DUST_KOINU = 100_000; // 0.001 DOGE
 
 export type PaymentSendQuote = {
   recipient: string;
@@ -44,9 +43,7 @@ export async function estimatePaymentSend(params: {
     throw new Error('Enter a valid DOGE amount.');
   }
   const amountKoinu = toKoinu(amountDoge);
-  if (amountKoinu < DUST_KOINU) {
-    throw new Error('Amount is below the network dust limit (0.001 DOGE).');
-  }
+  assertPlainPaymentKoinu('Amount', amountKoinu);
 
   const utxos = await getPaymentUtxosForSend(params.fromAddress);
   if (!utxos.length) {
@@ -67,31 +64,17 @@ export async function estimatePaymentSend(params: {
     'estimatePaymentSend',
   );
 
-  let selected: ReturnType<typeof coinSelectP2PKH>;
-  try {
-    selected = coinSelectP2PKH(
-      params.fromAddress,
-      FEE_RATE,
-      utxos.map((u) => ({ txid: u.txid, vout: u.vout, value: u.value })),
-      [{ address: recipient, value: amountKoinu }],
-    );
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (/insufficient/i.test(msg)) {
-      throw new Error(
-        `Not enough spendable DOGE for ${toDoge(amountKoinu)} Ð plus network fee. Spendable right now: ${toDoge(spendableKoinu)} Ð. Try a smaller amount or tap Max.`,
-      );
-    }
-    throw e;
-  }
-
-  // doge-sdk underpays on-chain; recompute change from full size×rate fee.
+  const paymentInputs = selectP2PKHPaymentInputs(
+    utxos.map((u) => ({ txid: u.txid, vout: u.vout, value: u.value })),
+    amountKoinu,
+    FEE_RATE,
+  );
   let fixed: ReturnType<typeof fixCoinSelectP2PKHFee>;
   try {
     fixed = fixCoinSelectP2PKHFee({
       changeAddress: params.fromAddress,
       feeRateKoinuPerByte: FEE_RATE,
-      inputs: selected.inputs,
+      inputs: paymentInputs,
       payments: [{ address: recipient, value: amountKoinu }],
     });
   } catch (e) {
@@ -128,11 +111,11 @@ export async function estimateMaxSendableDoge(fromAddress: string): Promise<numb
   const utxos = await getPaymentUtxosForSend(fromAddress);
   const spendable = utxos.reduce((s, u) => s + u.value, 0);
   const feeRate = await resolveRequestedOrPreferredFeeRateKoinuPerByte(null, 'estimateMaxSendable');
-  if (spendable <= DUST_KOINU + feeRate * 250) return 0;
+  if (spendable <= SOFT_DUST_KOINU + feeRate * 250) return 0;
 
   // Rough first pass: leave headroom for ~2-in / 2-out tx
   let hi = spendable - feeRate * 400;
-  if (hi < DUST_KOINU) return 0;
+  if (hi < SOFT_DUST_KOINU) return 0;
 
   try {
     const q = await estimatePaymentSend({
@@ -147,7 +130,7 @@ export async function estimateMaxSendableDoge(fromAddress: string): Promise<numb
     // Shrink until coin select works
     for (let attempt = 0; attempt < 8; attempt++) {
       hi = Math.floor(hi * 0.92);
-      if (hi < DUST_KOINU) return 0;
+      if (hi < SOFT_DUST_KOINU) return 0;
       try {
         await estimatePaymentSend({
           fromAddress,

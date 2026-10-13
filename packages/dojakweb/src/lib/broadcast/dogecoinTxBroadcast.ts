@@ -32,6 +32,7 @@ import {
   enforceBroadcastFeeRateKoinuPerByte,
   INCLUSION_FLOOR_KOINU_PER_BYTE,
 } from '../fees/dogecoinFeePolicy';
+import { selectSmallestSufficient } from '../fees/selectSmallestSufficient';
 
 export type { DogetagTip } from '../tx/types';
 
@@ -74,6 +75,24 @@ function filterExcludedUtxos(
   const excludedSet = new Set(excludedOutpoints.map((o) => o.trim().toLowerCase()).filter(Boolean));
   const spendable = utxos.filter((u) => !excludedSet.has(normalizeOutpointKey(u.tx_hash, u.tx_output_n)));
   return { spendable, excludedCount: utxos.length - spendable.length };
+}
+
+/** Fee + tip. Change under 0.01 Ð is discarded by the caller, so the target is not padded up to a larger coin. */
+function selectOpReturnInputs(
+  spendable: NormalisedUtxo[],
+  feeRate: number,
+  baseSize: number,
+  perInputSize: number,
+  tipSats: number,
+  minFee: number,
+  softExtra: number,
+): { selected: NormalisedUtxo[]; totalSats: number; feeSatoshis: number } {
+  const feeFor = (n: number) =>
+    Math.max(minFee, Math.ceil((baseSize + perInputSize * Math.max(1, n)) * feeRate)) + softExtra;
+  const selected = selectSmallestSufficient(spendable, (n) => feeFor(n) + tipSats);
+  const totalSats = selected.reduce((sum, u) => sum + u.value, 0);
+  const feeSatoshis = feeFor(selected.length);
+  return { selected, totalSats, feeSatoshis };
 }
 
 /**
@@ -923,20 +942,22 @@ export async function estimateOpReturnFee(
 
   // tx size estimate: 10 overhead + 148/input + 34 change + OP_RETURN output(s) + optional tip output
   const opReturnOutputsWeight = estimateOpReturnOutputsTxWeight(payloads);
-  const singleInputSize = 10 + 148 + 34 + opReturnOutputsWeight + tipOutputSize;
-  // feeRate is koinu/byte (default 1000) — do not divide by 1000 (that is for koinu/kB APIs).
+  const baseSize = 10 + 34 + opReturnOutputsWeight + tipOutputSize;
+  const perInputSize = 148;
+  // feeRate is koinu/byte — do not divide by 1000 (that is for koinu/kB APIs).
   const softExtra = softDustFeePenaltyKoinu(tipSats > 0 ? [tipSats] : []);
-  const feeSatoshis = Math.max(HARD_DUST_KOINU, Math.ceil(singleInputSize * feeRate)) + softExtra;
+  const picked = selectOpReturnInputs(
+    spendable,
+    feeRate,
+    baseSize,
+    perInputSize,
+    tipSats,
+    HARD_DUST_KOINU,
+    softExtra,
+  );
+  const { selected, feeSatoshis } = picked;
+  const total = picked.totalSats;
   const totalNeeded = feeSatoshis + tipSats;
-
-  const sorted = [...spendable].sort((a, b) => b.value - a.value);
-  const selected: typeof sorted = [];
-  let total = 0;
-  for (const u of sorted) {
-    selected.push(u);
-    total += u.value;
-    if (total >= totalNeeded + SOFT_DUST_KOINU) break;
-  }
 
   if (!Number.isFinite(total) || total < totalNeeded) {
     throw new Error(
@@ -1042,28 +1063,18 @@ export async function signOpReturnTransaction(
   const tipOutputs = tip && tipSats > 0 ? [tipSats] : [];
   const softDustExtra = () => softDustFeePenaltyKoinu([...tipOutputs, /* change assumed soft-dust-safe or discarded */]);
 
-  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate)) + softDustExtra();
-
-  const sorted = [...spendableUtxos].sort((a, b) => b.value - a.value);
-  const selected: NormalisedUtxo[] = [];
-  let totalSats = 0;
-  const needed = () => feeSatoshis + tipSats + SOFT_DUST_KOINU; // fee + tip + soft-dust-safe change guard
-
-  for (const utxo of sorted) {
-    const sats = utxo.value;
-    if (!Number.isFinite(sats) || sats <= 0) {
-      console.warn('[dojakweb:doge-tx] skipping malformed UTXO', utxo);
-      continue;
-    }
-
-    selected.push(utxo);
-    totalSats += sats;
-
-    feeSatoshis =
-      Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize * selected.length) * feeRate)) + softDustExtra();
-
-    if (totalSats >= needed()) break;
-  }
+  const picked = selectOpReturnInputs(
+    spendableUtxos,
+    feeRate,
+    baseSize,
+    perInputSize,
+    tipSats,
+    MIN_FEE,
+    softDustExtra(),
+  );
+  const { selected, totalSats } = picked;
+  let feeSatoshis = picked.feeSatoshis;
+  const needed = () => feeSatoshis + tipSats;
 
   console.log('[dojakweb:doge-tx] coin selection', {
     selectedCount: selected.length,
@@ -1171,8 +1182,9 @@ export interface BuiltOpReturnPSDT {
  * extension wallet (MyDoge, Dojak) via their signPSBT API.
  *
  * Performs the same coin selection as signOpReturnTransaction. The returned
- * PSBT has each input's nonWitnessUtxo populated (raw previous-tx hex fetched
- * from Blockchair) so the wallet can verify the amounts before signing.
+ * PSBT has each input's nonWitnessUtxo populated (raw previous-tx hex from
+ * command.dog, then the other getTxHex fallbacks) so the wallet can verify
+ * the amounts before signing.
  */
 export async function buildOpReturnPSDT(
   message:     string,
@@ -1224,21 +1236,17 @@ export async function buildOpReturnPSDT(
   const MIN_FEE = HARD_DUST_KOINU;
   const softExtra = () => softDustFeePenaltyKoinu(tipSats > 0 ? [tipSats] : []);
 
-  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate)) + softExtra();
-  const sorted = [...spendableUtxos].sort((a, b) => b.value - a.value);
-  const selected: NormalisedUtxo[] = [];
-  let totalSats = 0;
-  const needed = () => feeSatoshis + tipSats + SOFT_DUST_KOINU;
-
-  for (const utxo of sorted) {
-    const sats = utxo.value;
-    if (!Number.isFinite(sats) || sats <= 0) continue;
-    selected.push(utxo);
-    totalSats += sats;
-    feeSatoshis =
-      Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize * selected.length) * feeRate)) + softExtra();
-    if (totalSats >= needed()) break;
-  }
+  const picked = selectOpReturnInputs(
+    spendableUtxos,
+    feeRate,
+    baseSize,
+    perInputSize,
+    tipSats,
+    MIN_FEE,
+    softExtra(),
+  );
+  const { selected, totalSats } = picked;
+  let feeSatoshis = picked.feeSatoshis;
 
   if (!Number.isFinite(totalSats) || totalSats < feeSatoshis + tipSats) {
     throw new Error(
@@ -1255,16 +1263,8 @@ export async function buildOpReturnPSDT(
   }
 
   // --- Fetch raw previous-tx hex for nonWitnessUtxo (required for P2PKH PSBT) ---
-  const rawTxHexes = await Promise.all(
-    selected.map(async (u) => {
-      const res = await fetch(`https://api.blockchair.com/dogecoin/raw/transaction/${u.tx_hash}`);
-      if (!res.ok) throw new Error(`Could not fetch raw tx for UTXO ${u.tx_hash}`);
-      const data = await res.json();
-      const hex = data?.data?.[u.tx_hash]?.raw_transaction as string | undefined;
-      if (!hex) throw new Error(`Raw transaction hex missing for ${u.tx_hash}`);
-      return hex;
-    }),
-  );
+  const { getTxHex } = await import('../doginal-psdt');
+  const rawTxHexes = await Promise.all(selected.map((u) => getTxHex(u.tx_hash)));
 
   // --- Build PSBT ---
   // Dynamic import keeps bitcoinjs-lib out of the initial bundle for this module.

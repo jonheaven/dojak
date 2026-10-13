@@ -105,6 +105,8 @@ import {
   recordPaymentBroadcast,
 } from '../lib/mempoolSpendOverlay';
 import { filterUtxosByRpcGetTxOutIfConfigured, rpcGetTxOutSpendable } from '../lib/utxo-tools';
+import { boostParentWithCpfp, cacheParentChange } from '../lib/broadcast/cpfpBoost';
+import { PendingChangeBoost } from './wallet/PendingChangeBoost';
 import { publishListingToNostr, publishListingToNostrWithDiagnostics, publishListingCancelToNostr, type NostrPublishRelayResult } from '../services/nostr';
 import {
   saveListing,
@@ -2936,6 +2938,16 @@ export function DojakwebWalletModal({
     }
   };
 
+  const handleBoostPendingSend = async (parentTxid: string) => {
+    if (!activeAddress) throw new Error('Unlock Dojak in this browser first.');
+    const w = await loadUnlockedBrowserWallet();
+    return boostParentWithCpfp({
+      parentTxid,
+      fromAddress: activeAddress,
+      privateKeyWIF: w.privateKey,
+    });
+  };
+
   const handleConfirmSendInscription = async () => {
     if (!inscriptionSendDraft || !selectedInscription || !activeAddress) return;
     setInscriptionSendBusy(true);
@@ -2972,6 +2984,13 @@ export function DojakwebWalletModal({
           return { txid: txidIn, vout: parseInt(voutStr, 10) };
         });
         markOutpointsSpent(activeAddress, spent);
+        const raw = e?.message ?? String(e);
+        const pendingParent = raw.match(/mempool tx:?\s*([0-9a-f]{64})/i)?.[1];
+        if (pendingParent) {
+          void cacheParentChange(activeAddress, pendingParent).catch(() => {
+            /* change stays unspendable until the user pastes the txid */
+          });
+        }
         const ins = inscriptionSendDraft.inputs.find((row) => row.role === 'inscription');
         if (ins) {
           const [txidIn, voutStr] = ins.outpoint.split(':');
@@ -4406,6 +4425,11 @@ export function DojakwebWalletModal({
                                           Manage
                                         </button>
                                       </p>
+                                    ) : null}
+                                    {spendableBreak && spendableBreak.localHoldDoge > 0.001 ? (
+                                      <div className="mx-auto mt-2 max-w-sm text-left">
+                                        <PendingChangeBoost onBoost={handleBoostPendingSend} />
+                                      </div>
                                     ) : null}
                                   </div>
                                 ) : null}
@@ -5988,6 +6012,10 @@ export function DojakwebWalletModal({
                             >
                               {t('modal.sendInscription.viewExplorer')}
                             </a>
+                            <PendingChangeBoost
+                              defaultTxid={inscriptionSendTxid}
+                              onBoost={handleBoostPendingSend}
+                            />
                           </div>
                         ) : inscriptionSendDraft ? (
                           <>
@@ -6079,6 +6107,9 @@ export function DojakwebWalletModal({
                                 {inscriptionSendError}
                               </div>
                             )}
+                            {inscriptionSendError ? (
+                              <PendingChangeBoost onBoost={handleBoostPendingSend} />
+                            ) : null}
                           </>
                         ) : (
                           <>
@@ -6123,6 +6154,9 @@ export function DojakwebWalletModal({
                                 {inscriptionSendError}
                               </div>
                             )}
+                            {inscriptionSendError ? (
+                              <PendingChangeBoost onBoost={handleBoostPendingSend} />
+                            ) : null}
                           </>
                         )}
 

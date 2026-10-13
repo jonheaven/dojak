@@ -30,6 +30,7 @@ import {
   softDustFeePenaltyKoinu,
 } from '../dogecoin/softDust';
 import { enforceBroadcastFeeRateKoinuPerKb } from '../fees/dogecoinFeePolicy';
+import { selectSmallestSufficient } from '../fees/selectSmallestSufficient';
 
 const MAX_CHUNK_LEN = 240;
 const MAX_PAYLOAD_LEN = 1500;
@@ -44,6 +45,14 @@ const SIGHASH_ALL = 0x01;
 const DUST_SATS = SOFT_DUST_KOINU;
 /** BIP-125 opt-in: inputs must use nSequence ≤ 0xfffffffd so fee bumps (RBF) are possible. */
 const RBF_SEQUENCE = 0xfffffffd;
+
+function fundFromPool(
+  pool: readonly NormalisedUtxo[],
+  cost: (walletInputs: number) => number,
+): { selected: NormalisedUtxo[]; sum: number } {
+  const selected = selectSmallestSufficient(pool, cost);
+  return { selected, sum: selected.reduce((s, u) => s + u.value, 0) };
+}
 
 interface ScriptChunk {
   buf?: Buffer;
@@ -440,16 +449,12 @@ export async function signDoginalInscriptionChain(params: SignDoginalChainParams
           'No spendable UTXOs from the wallet data provider. Wait a minute and try again, or check Coins & UTXOs / Release local holds.',
         );
       }
-      const sorted = [...pool].sort((a, b) => b.value - a.value);
-      const selected: NormalisedUtxo[] = [];
-      let totalSats = 0;
-      for (const u of sorted) {
-        if (!Number.isFinite(u.value) || u.value <= 0) continue;
-        selected.push(u);
-        totalSats += u.value;
-        const cFee = feeFor(estimateCommitBytes(selected.length), feeRate);
-        if (totalSats >= cFee + p2shAmount + DUST_SATS) break;
-      }
+      const funded = fundFromPool(pool, (n) => {
+        const cFee = feeFor(estimateCommitBytes(Math.max(1, n)), feeRate);
+        return cFee + p2shAmount;
+      });
+      const selected = funded.selected;
+      const totalSats = funded.sum;
       const commitFee = feeFor(estimateCommitBytes(selected.length), feeRate);
       if (totalSats < commitFee + p2shAmount) {
         throw new Error(
@@ -482,22 +487,18 @@ export async function signDoginalInscriptionChain(params: SignDoginalChainParams
     } else {
       if (!carry) throw new Error('Internal: missing carry for link tx');
 
-      const sorted = [...pool].sort((a, b) => b.value - a.value);
       let selected: NormalisedUtxo[] = [];
       let linkTx: bitcoin.Transaction | null = null;
       let linkFee = 0;
 
       for (let tries = 0; tries < 40; tries++) {
-        let sumW = 0;
-        selected = [];
-        linkFee = feeFor(estimateLinkBytes(0, carry.partial, carry.lockScript), feeRate);
-        for (const u of sorted) {
-          if (!Number.isFinite(u.value) || u.value <= 0) continue;
-          selected.push(u);
-          sumW += u.value;
-          linkFee = feeFor(estimateLinkBytes(selected.length, carry.partial, carry.lockScript), feeRate);
-          if (carry.value + sumW >= p2shAmount + linkFee + DUST_SATS) break;
-        }
+        const funded = fundFromPool(pool, (n) => {
+          const feeN = feeFor(estimateLinkBytes(n, carry!.partial, carry!.lockScript), feeRate);
+          return p2shAmount + feeN + DUST_SATS - carry!.value;
+        });
+        selected = funded.selected;
+        const sumW = funded.sum;
+        linkFee = feeFor(estimateLinkBytes(selected.length, carry.partial, carry.lockScript), feeRate);
         if (carry.value + sumW < p2shAmount + linkFee) {
           throw new Error('Insufficient funds for inscription link transaction.');
         }
@@ -539,32 +540,15 @@ export async function signDoginalInscriptionChain(params: SignDoginalChainParams
 
   if (!carry) throw new Error('Internal: no carry before final reveal');
 
-  const sorted = [...pool].sort((a, b) => b.value - a.value);
   let selected: NormalisedUtxo[] = [];
   let finalTx: bitcoin.Transaction | null = null;
   let finalFee = 0;
 
   for (let tries = 0; tries < 40; tries++) {
-    let sumW = 0;
-    selected = [];
-    finalFee = feeFor(
-      estimateFinalRevealTxBytes(
-        0,
-        carry.partial,
-        carry.lockScript,
-        inscriptionScriptPubKey,
-        changeScriptPubKey,
-        true,
-      ),
-      feeRate,
-    );
-    for (const u of sorted) {
-      if (!Number.isFinite(u.value) || u.value <= 0) continue;
-      selected.push(u);
-      sumW += u.value;
-      finalFee = feeFor(
+    const funded = fundFromPool(pool, (n) => {
+      const feeN = feeFor(
         estimateFinalRevealTxBytes(
-          selected.length,
+          n,
           carry.partial,
           carry.lockScript,
           inscriptionScriptPubKey,
@@ -573,8 +557,21 @@ export async function signDoginalInscriptionChain(params: SignDoginalChainParams
         ),
         feeRate,
       );
-      if (carry.value + sumW >= INSCRIPTION_DEST_AMOUNT + finalFee + DUST_SATS) break;
-    }
+      return INSCRIPTION_DEST_AMOUNT + feeN + DUST_SATS - carry.value;
+    });
+    selected = funded.selected;
+    const sumW = funded.sum;
+    finalFee = feeFor(
+      estimateFinalRevealTxBytes(
+        selected.length,
+        carry.partial,
+        carry.lockScript,
+        inscriptionScriptPubKey,
+        changeScriptPubKey,
+        true,
+      ),
+      feeRate,
+    );
     if (carry.value + sumW < INSCRIPTION_DEST_AMOUNT + finalFee) {
       throw new Error('Insufficient funds for final inscription reveal.');
     }
@@ -883,22 +880,18 @@ export async function resignDoginalChainTailAfterBumpedStage(params: {
       changeScriptPubKey,
     );
 
-    const sorted = [...pool].sort((a, b) => b.value - a.value);
     let selected: NormalisedUtxo[] = [];
     let linkTx: bitcoin.Transaction | null = null;
     let linkFee = 0;
 
     for (let tries = 0; tries < 40; tries++) {
-      let sumW = 0;
-      selected = [];
-      linkFee = feeFor(estimateLinkBytes(0, carry.partial, carry.lockScript), feeRate);
-      for (const u of sorted) {
-        if (!Number.isFinite(u.value) || u.value <= 0) continue;
-        selected.push(u);
-        sumW += u.value;
-        linkFee = feeFor(estimateLinkBytes(selected.length, carry.partial, carry.lockScript), feeRate);
-        if (carry.value + sumW >= p2shAmount + linkFee + DUST_SATS) break;
-      }
+      const funded = fundFromPool(pool, (n) => {
+        const feeN = feeFor(estimateLinkBytes(n, carry.partial, carry.lockScript), feeRate);
+        return p2shAmount + feeN + DUST_SATS - carry.value;
+      });
+      selected = funded.selected;
+      const sumW = funded.sum;
+      linkFee = feeFor(estimateLinkBytes(selected.length, carry.partial, carry.lockScript), feeRate);
       if (carry.value + sumW < p2shAmount + linkFee) {
         throw new Error('Insufficient funds to re-sign inscription link after fee bump.');
       }
@@ -943,32 +936,15 @@ export async function resignDoginalChainTailAfterBumpedStage(params: {
     carry = { txid: linkTxid, vout: 0, value: p2shAmount, lockScript, partial, p2shScript };
   }
 
-  const sorted = [...pool].sort((a, b) => b.value - a.value);
   let selected: NormalisedUtxo[] = [];
   let finalTx: bitcoin.Transaction | null = null;
   let finalFee = 0;
 
   for (let tries = 0; tries < 40; tries++) {
-    let sumW = 0;
-    selected = [];
-    finalFee = feeFor(
-      estimateFinalRevealTxBytes(
-        0,
-        carry.partial,
-        carry.lockScript,
-        inscriptionScriptPubKey,
-        changeScriptPubKey,
-        true,
-      ),
-      feeRate,
-    );
-    for (const u of sorted) {
-      if (!Number.isFinite(u.value) || u.value <= 0) continue;
-      selected.push(u);
-      sumW += u.value;
-      finalFee = feeFor(
+    const funded = fundFromPool(pool, (n) => {
+      const feeN = feeFor(
         estimateFinalRevealTxBytes(
-          selected.length,
+          n,
           carry.partial,
           carry.lockScript,
           inscriptionScriptPubKey,
@@ -977,8 +953,21 @@ export async function resignDoginalChainTailAfterBumpedStage(params: {
         ),
         feeRate,
       );
-      if (carry.value + sumW >= INSCRIPTION_DEST_AMOUNT + finalFee + DUST_SATS) break;
-    }
+      return INSCRIPTION_DEST_AMOUNT + feeN + DUST_SATS - carry.value;
+    });
+    selected = funded.selected;
+    const sumW = funded.sum;
+    finalFee = feeFor(
+      estimateFinalRevealTxBytes(
+        selected.length,
+        carry.partial,
+        carry.lockScript,
+        inscriptionScriptPubKey,
+        changeScriptPubKey,
+        true,
+      ),
+      feeRate,
+    );
     if (carry.value + sumW < INSCRIPTION_DEST_AMOUNT + finalFee) {
       throw new Error('Insufficient funds to re-sign final reveal after fee bump.');
     }

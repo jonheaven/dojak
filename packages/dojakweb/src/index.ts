@@ -263,7 +263,7 @@ export type {
   BuiltOpReturnPSDT,
 } from './lib/broadcast/dogecoinTxBroadcast';
 
-export { boostParentWithCpfp } from './lib/broadcast/cpfpBoost';
+export { boostParentWithCpfp, cacheParentChange } from './lib/broadcast/cpfpBoost';
 export type { CpfpBoostParams, CpfpBoostResult } from './lib/broadcast/cpfpBoost';
 
 export {

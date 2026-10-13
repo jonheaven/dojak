@@ -263,6 +263,13 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.sendInscription.review': 'Review transaction',
   'modal.sendInscription.reviewBusy': 'Building preview…',
   'modal.sendInscription.confirmSend': 'Confirm & send',
+  'modal.cpfp.title': 'This send is already in the mempool',
+  'modal.cpfp.body':
+    'Do not send the inscription again. Paste the pending txid. We spend your unconfirmed change at the live fee so miners include the parent too.',
+  'modal.cpfp.txidLabel': 'Pending txid',
+  'modal.cpfp.action': 'Speed up with change (CPFP)',
+  'modal.cpfp.busy': 'Broadcasting the child…',
+  'modal.cpfp.done': 'Child {tx} is in the mempool. Wait for the parent and child to confirm together.',
   'modal.listing.signedBannerBeforePrice': '✓ Listing PSDT signed for ',
   'modal.listing.signedBannerAfterPrice': '',
   'modal.listing.signedNostrSuffix': ' · Published to Nostr order book',

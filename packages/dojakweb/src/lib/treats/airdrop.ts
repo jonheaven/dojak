@@ -3,7 +3,6 @@ import {
   broadcastSignedTransaction,
   fetchSpendableUtxosConservativeForAddress,
   filterPaymentSpendableUtxos,
-  MIN_FEE_RATE_KOINU_PER_BYTE,
   txidFromRawHex,
   type NormalisedUtxo,
 } from '../broadcast/dogecoinTxBroadcast';
@@ -16,6 +15,8 @@ import {
   TREATS_DUST_KOINU,
 } from './constants';
 import { buildTreatsTransferJson } from './buildJson';
+import { discardSoftDustChangeKoinu } from '../dogecoin/softDust';
+import { selectSmallestSufficient } from '../fees/selectSmallestSufficient';
 import { planTreatsAirdropOutputs, TREATS_PAIRED_DUST_OUTPUT_WEIGHT } from './outputPlan';
 
 const DOGE_NETWORK = {
@@ -129,18 +130,14 @@ async function planTreatsAirdropTx(params: {
   const MIN_FEE = 100_000;
   const pairedDust = TREATS_DUST_KOINU * params.pairs.length;
 
-  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate));
-  const sorted = [...spendable].sort((a, b) => b.value - a.value);
-  const selected: NormalisedUtxo[] = [];
-  let totalSats = 0;
-  const needed = () => feeSatoshis + pairedDust + jobFeeValue + 100_000;
-
-  for (const utxo of sorted) {
-    selected.push(utxo);
-    totalSats += utxo.value;
-    feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize * selected.length) * feeRate));
-    if (totalSats >= needed()) break;
-  }
+  const feeFor = (n: number) =>
+    Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize * Math.max(1, n)) * feeRate));
+  const selected = selectSmallestSufficient(
+    spendable,
+    (n) => feeFor(n) + pairedDust + jobFeeValue,
+  );
+  const totalSats = selected.reduce((sum, u) => sum + u.value, 0);
+  let feeSatoshis = feeFor(selected.length);
 
   const totalNeeded = feeSatoshis + pairedDust + jobFeeValue;
   if (totalSats < totalNeeded) {
@@ -150,7 +147,8 @@ async function planTreatsAirdropTx(params: {
     );
   }
 
-  const changeAmount = totalSats - feeSatoshis - pairedDust - jobFeeValue;
+  let changeAmount = discardSoftDustChangeKoinu(totalSats - feeSatoshis - pairedDust - jobFeeValue);
+  feeSatoshis = totalSats - pairedDust - jobFeeValue - changeAmount;
   const planned = planTreatsAirdropOutputs({
     pairs: params.pairs,
     changeAddress: params.fromAddress,

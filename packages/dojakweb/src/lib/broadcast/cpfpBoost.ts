@@ -13,6 +13,7 @@ import { getTxHex } from '../doginal-psdt';
 import { enforceBroadcastFeeRateKoinuPerByte } from '../fees/dogecoinFeePolicy';
 import { HARD_DUST_KOINU } from '../dogecoin/softDust';
 import { fetchCommandDogTxStatus } from '../../utils/api';
+import { recordPaymentBroadcast } from '../mempoolSpendOverlay';
 
 const TX_OVERHEAD = 10;
 const P2PKH_IN = 148;
@@ -130,6 +131,28 @@ function pickChangeOut(
 }
 
 /**
+ * Record the parent's change output in the session overlay so the wallet can
+ * spend-chain it. Indexers omit unconfirmed change; without this the UI only
+ * holds the old inputs.
+ */
+export async function cacheParentChange(address: string, parentTxid: string): Promise<{
+  vout: number;
+  valueKoinu: number;
+}> {
+  const txid = parentTxid.trim().toLowerCase();
+  const parentHex = await getTxHex(txid);
+  const decoded = decodeParent(parentHex);
+  const change = pickChangeOut(decoded.outs, address);
+  recordPaymentBroadcast({
+    address,
+    txid,
+    spent: [],
+    change: { vout: change.n, value: change.valueKoinu },
+  });
+  return { vout: change.n, valueKoinu: change.valueKoinu };
+}
+
+/**
  * Build, sign, and broadcast a CPFP child that spends parent change.
  */
 export async function boostParentWithCpfp(params: CpfpBoostParams): Promise<CpfpBoostResult> {
@@ -144,6 +167,12 @@ export async function boostParentWithCpfp(params: CpfpBoostParams): Promise<Cpfp
   const parentHex = await getTxHex(parentTxid);
   const decoded = decodeParent(parentHex);
   const change = pickChangeOut(decoded.outs, params.fromAddress, params.changeVout);
+  recordPaymentBroadcast({
+    address: params.fromAddress,
+    txid: parentTxid,
+    spent: [],
+    change: { vout: change.n, value: change.valueKoinu },
+  });
   const parentFee = await parentFeeKoinu(parentHex, decoded.outs);
   const parentSize = decoded.size > 0 ? decoded.size : Math.ceil(parentHex.length / 2);
 
@@ -174,9 +203,17 @@ export async function boostParentWithCpfp(params: CpfpBoostParams): Promise<Cpfp
   const rawHex = signedTx.toHex();
   const childTxid = await broadcastSignedTransaction(rawHex);
   const computed = await txidFromRawHex(rawHex).catch(() => childTxid);
+  const broadcastTxid = computed || childTxid;
+
+  recordPaymentBroadcast({
+    address: params.fromAddress,
+    txid: broadcastTxid,
+    spent: [{ txid: parentTxid, vout: change.n }],
+    change: sendValue > 0 ? { vout: 0, value: sendValue } : null,
+  });
 
   return {
-    childTxid: computed || childTxid,
+    childTxid: broadcastTxid,
     parentTxid,
     changeVout: change.n,
     childFeeKoinu: childFee,

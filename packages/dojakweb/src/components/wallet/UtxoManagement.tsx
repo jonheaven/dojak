@@ -46,6 +46,7 @@ import {
   estimateSplitFee,
   calcEqualSplitOutputs,
   planSplitOutputs,
+  resolveMergeFeeRateKoinuPerByte,
   DUST_LIMIT,
   type UtxoListSource,
   type ManagedUtxoDune,
@@ -390,13 +391,14 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
     setShowSplit(true);
   };
 
-  const calcSplitEst = () => {
+  const calcSplitEst = async () => {
     if (!splitUtxo) return;
     try {
+      const feeRate = await resolveMergeFeeRateKoinuPerByte();
       let outputs: number[];
       if (splitMode === 'equal') {
-        outputs = calcEqualSplitOutputs(splitUtxo, splitCount);
-        const fee = estimateSplitFee(outputs.length, outputs);
+        outputs = calcEqualSplitOutputs(splitUtxo, splitCount, feeRate);
+        const fee = estimateSplitFee(outputs.length, outputs, feeRate);
         setSplitEst({
           feeSatoshis: fee,
           outputs,
@@ -409,7 +411,7 @@ export const UtxoManagement: React.FC<UtxoManagementProps> = ({
           toast.error(t('utxo.toast.dustMinimum', { doge: (DUST_LIMIT / 1e8).toFixed(3) }));
           return;
         }
-        const plan = planSplitOutputs(splitUtxo.value, outputs);
+        const plan = planSplitOutputs(splitUtxo.value, outputs, feeRate);
         setSplitEst({
           feeSatoshis: plan.feeSatoshis,
           outputs: plan.outputs,

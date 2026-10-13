@@ -8,8 +8,10 @@
  * Recompute change from inputs − payments − size×rate after coin select.
  */
 import { getStandardP2PKHTxSize } from 'doge-sdk';
+import { SOFT_DUST_KOINU } from './dogecoin/softDust';
 
-const DUST_KOINU = 100_000; // 0.001 DOGE — Core-aligned dust
+/** Change below this is absorbed into the fee. 0.001–0.00999999 Ð is soft dust and will not mine cleanly. */
+const CHANGE_KEEP_KOINU = SOFT_DUST_KOINU;
 
 export type P2PKHPaymentOutput = { address: string; value: number };
 
@@ -48,7 +50,7 @@ export function fixCoinSelectP2PKHFee<T extends P2PKHUtxo>(params: {
   let fee = getStandardP2PKHTxSize(nIn, nPay + 1, 0) * feeRate;
   let change = inputSum - paySum - fee;
 
-  if (change >= DUST_KOINU) {
+  if (change >= CHANGE_KEEP_KOINU) {
     change = Math.floor(change);
     // Keep fee as the exact residual so input − output always matches.
     fee = inputSum - paySum - change;

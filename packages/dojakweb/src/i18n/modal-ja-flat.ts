@@ -264,6 +264,13 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.sendInscription.review': '取引を確認',
   'modal.sendInscription.reviewBusy': 'プレビュー作成中…',
   'modal.sendInscription.confirmSend': '確定して送信',
+  'modal.cpfp.title': 'この送金はすでにメモリプールにあります',
+  'modal.cpfp.body':
+    'inscription を再送しないでください。保留中の txid を貼り付けます。未確定のお釣りを現行の手数料で使い、親取引も一緒に取り込ませます。',
+  'modal.cpfp.txidLabel': '保留中の txid',
+  'modal.cpfp.action': 'お釣りで加速（CPFP）',
+  'modal.cpfp.busy': '子取引をブロードキャスト中…',
+  'modal.cpfp.done': '子取引 {tx} をメモリプールに入れました。親と子が一緒に確定するまで待ってください。',
   'modal.listing.signedBannerBeforePrice': '✓ ',
   'modal.listing.signedBannerAfterPrice': ' の出品用 PSDT に署名しました',
   'modal.listing.signedNostrSuffix': ' · Nostr オーダーブックに公開済み',

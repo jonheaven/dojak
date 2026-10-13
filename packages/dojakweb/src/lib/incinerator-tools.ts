@@ -15,6 +15,8 @@
  */
 import * as bitcoin from 'bitcoinjs-lib';
 import { SOFT_DUST_KOINU, mineableFeeKoinu } from './dogecoin/softDust';
+import { enforceBroadcastFeeRateKoinuPerByte } from './fees/dogecoinFeePolicy';
+import { selectSmallestSufficient } from './fees/selectSmallestSufficient';
 import { DOGE_NETWORK, getTxHex } from './doginal-psdt';
 
 /** UTF-8 `ÐI` — product tag (not required for the indexer burn). */
@@ -58,10 +60,12 @@ function planBurnFee(params: {
   inputCount: number;
   availableFeeKoinu: number;
   opReturnScriptLen: number;
+  feeRateKoinuPerKb: number;
 }): { fee: number; change: number; hasChange: boolean } {
-  const { inputCount, availableFeeKoinu, opReturnScriptLen } = params;
+  const { inputCount, availableFeeKoinu, opReturnScriptLen, feeRateKoinuPerKb } = params;
   const feeWithChange = mineableFeeKoinu({
     vsize: estimateBurnVsize(inputCount, true, opReturnScriptLen),
+    feeRateKoinuPerKb,
     outputValuesKoinu: [SOFT_DUST_KOINU],
   });
   const change = availableFeeKoinu - feeWithChange;
@@ -70,6 +74,7 @@ function planBurnFee(params: {
   }
   const feeNoChange = mineableFeeKoinu({
     vsize: estimateBurnVsize(inputCount, false, opReturnScriptLen),
+    feeRateKoinuPerKb,
     outputValuesKoinu: [],
   });
   return { fee: feeNoChange, change: 0, hasChange: false };
@@ -108,27 +113,25 @@ export async function createInscriptionIncineratorTransaction(params: {
   const opReturnScript = buildIncineratorOpReturnScript();
   const opReturnScriptLen = opReturnScript.length;
 
-  const spendableFee = [...params.feeUtxos]
-    .filter((u) => u.value > 0 && !inscriptionUtxos.some((ins) => sameOutpoint(ins, u)))
-    .sort((a, b) => b.value - a.value);
-
-  const selectedFee: IncineratorUtxo[] = [];
-  let feeTotal = 0;
+  const feeRatePerByte = await enforceBroadcastFeeRateKoinuPerByte({ context: 'incinerator' });
+  const feeRateKoinuPerKb = feeRatePerByte * 1000;
+  const spendableFee = params.feeUtxos.filter(
+    (u) => u.value > 0 && !inscriptionUtxos.some((ins) => sameOutpoint(ins, u)),
+  );
+  const selectedFee = selectSmallestSufficient(spendableFee, (n) =>
+    mineableFeeKoinu({
+      vsize: estimateBurnVsize(inscriptionUtxos.length + Math.max(1, n), false, opReturnScriptLen),
+      feeRateKoinuPerKb,
+      outputValuesKoinu: [],
+    }),
+  );
+  const feeTotal = selectedFee.reduce((sum, u) => sum + u.value, 0);
   let plan = planBurnFee({
-    inputCount: inscriptionUtxos.length,
-    availableFeeKoinu: 0,
+    inputCount: inscriptionUtxos.length + selectedFee.length,
+    availableFeeKoinu: feeTotal,
     opReturnScriptLen,
+    feeRateKoinuPerKb,
   });
-  for (const u of spendableFee) {
-    selectedFee.push(u);
-    feeTotal += u.value;
-    plan = planBurnFee({
-      inputCount: inscriptionUtxos.length + selectedFee.length,
-      availableFeeKoinu: feeTotal,
-      opReturnScriptLen,
-    });
-    if (feeTotal >= plan.fee) break;
-  }
   if (feeTotal < plan.fee) {
     throw new Error(
       `Not enough plain DOGE to pay the burn fee. Need ~${(plan.fee / 1e8).toFixed(4)} DOGE besides the inscription postage (postage is destroyed in OP_RETURN).`,

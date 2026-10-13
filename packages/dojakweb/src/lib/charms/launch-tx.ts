@@ -7,10 +7,19 @@ import * as bitcoin from 'bitcoinjs-lib';
 import type { NormalisedUtxo } from '../broadcast/dogecoinTxBroadcast';
 import { DOGE_NETWORK } from '../dogetag/dogecoinAddress';
 
-/** Pick the largest inscription-safe UTXO by value. */
+/**
+ * One funding input for a Charms prove. Prefer the smallest coin that clears
+ * 10 DOGE so a launch does not lock a 50 DOGE UTXO when a smaller one can pay.
+ * If nothing clears the floor, use the largest coin we have.
+ */
+const CHARMS_FUNDING_FLOOR_KOINU = 1_000_000_000;
+
 export function pickFundingUtxo(utxos: NormalisedUtxo[]): NormalisedUtxo | null {
-  if (!utxos.length) return null;
-  return [...utxos].sort((a, b) => b.value - a.value)[0] ?? null;
+  const sorted = utxos
+    .filter((u) => Number.isFinite(u.value) && u.value > 0)
+    .sort((a, b) => a.value - b.value);
+  if (!sorted.length) return null;
+  return sorted.find((u) => u.value >= CHARMS_FUNDING_FLOOR_KOINU) ?? sorted[sorted.length - 1]!;
 }
 
 /** Wire reveal input[0] to the commit txid (bitcoinjs stores tx hash reversed). */

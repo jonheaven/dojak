@@ -33,8 +33,10 @@ import {
   softDustFeePenaltyKoinu,
 } from './dogecoin/softDust';
 import { DOGE_NETWORK, getTxHex } from './doginal-psdt';
+import { enforceBroadcastFeeRateKoinuPerByte } from './fees/dogecoinFeePolicy';
+import { selectSmallestSufficient } from './fees/selectSmallestSufficient';
 import { mergePaymentUtxos } from './mempoolSpendOverlay';
-import { DUST_LIMIT, FEE_RATE_KOINU_PER_BYTE } from './utxo-tools';
+import { DUST_LIMIT } from './utxo-tools';
 
 // ── Lock record (persisted in localStorage) ────────────────────────────────────
 
@@ -173,12 +175,14 @@ function planLockFee(params: {
   /** Koins available to pay the fee (and the lock amount when `availableIncludesLock`). */
   availableKoinu: number;
   availableIncludesLock: boolean;
+  feeRateKoinuPerKb: number;
 }): { fee: number; change: number; hasChange: boolean } {
-  const { inputCount, lockAmountKoinu, availableKoinu, availableIncludesLock } = params;
+  const { inputCount, lockAmountKoinu, availableKoinu, availableIncludesLock, feeRateKoinuPerKb } = params;
   const forFee = availableIncludesLock ? availableKoinu - lockAmountKoinu : availableKoinu;
 
   const feeWithChange = mineableFeeKoinu({
     vsize: estimateLockVsize(inputCount, 3),
+    feeRateKoinuPerKb,
     outputValuesKoinu: [lockAmountKoinu, SOFT_DUST_KOINU],
   });
   const change = forFee - feeWithChange;
@@ -188,6 +192,7 @@ function planLockFee(params: {
 
   const feeNoChange = mineableFeeKoinu({
     vsize: estimateLockVsize(inputCount, 2),
+    feeRateKoinuPerKb,
     outputValuesKoinu: [lockAmountKoinu],
   });
   return { fee: feeNoChange, change: 0, hasChange: false };
@@ -198,8 +203,12 @@ function estimateUnlockSize(p2pkhInputCount: number, outputCount: number): numbe
   return 10 + 295 + p2pkhInputCount * 148 + outputCount * 34;
 }
 
-function estimateUnlockByteFee(p2pkhInputCount: number, outputCount: number): number {
-  return Math.max(HARD_DUST_KOINU, estimateUnlockSize(p2pkhInputCount, outputCount) * FEE_RATE_KOINU_PER_BYTE);
+function estimateUnlockByteFee(
+  p2pkhInputCount: number,
+  outputCount: number,
+  feeRateKoinuPerByte: number,
+): number {
+  return Math.max(HARD_DUST_KOINU, estimateUnlockSize(p2pkhInputCount, outputCount) * feeRateKoinuPerByte);
 }
 
 function resolveUnlockRedeemScript(
@@ -240,15 +249,16 @@ async function selectUnlockFeeUtxos(ownerAddress: string): Promise<UtxoInput[]> 
     ownerAddress,
     safe.map((u) => ({ txid: u.tx_hash, vout: u.tx_output_n, value: u.value })),
   );
-  return merged.filter((u) => u.value > DUST_LIMIT).sort((a, b) => b.value - a.value);
+  return merged.filter((u) => u.value > DUST_LIMIT).sort((a, b) => a.value - b.value);
 }
 
 function combinedUnlockFit(
   lockValue: number,
   extra: number,
   p2pkhInputs: number,
+  feeRateKoinuPerByte: number,
 ): { ok: true; fee: number; output: number } | { ok: false } {
-  const byteFee = estimateUnlockByteFee(p2pkhInputs, 1);
+  const byteFee = estimateUnlockByteFee(p2pkhInputs, 1, feeRateKoinuPerByte);
   const outputNoPenalty = lockValue + extra - byteFee;
   if (outputNoPenalty >= SOFT_DUST_KOINU) {
     return { ok: true, fee: byteFee, output: outputNoPenalty };
@@ -263,14 +273,15 @@ function inscriptionUnlockFit(
   lockValue: number,
   extra: number,
   p2pkhInputs: number,
+  feeRateKoinuPerByte: number,
 ): { ok: true; fee: number; change: number } | { ok: false } {
   const postagePenalty = lockValue > 0 && lockValue < SOFT_DUST_KOINU ? SOFT_DUST_KOINU : 0;
-  const feeWithChange = estimateUnlockByteFee(p2pkhInputs, 2) + postagePenalty;
+  const feeWithChange = estimateUnlockByteFee(p2pkhInputs, 2, feeRateKoinuPerByte) + postagePenalty;
   const change = extra - feeWithChange;
   if (change >= SOFT_DUST_KOINU) {
     return { ok: true, fee: feeWithChange, change };
   }
-  const feeNoChange = estimateUnlockByteFee(p2pkhInputs, 1) + postagePenalty;
+  const feeNoChange = estimateUnlockByteFee(p2pkhInputs, 1, feeRateKoinuPerByte) + postagePenalty;
   if (extra >= feeNoChange) return { ok: true, fee: feeNoChange, change: 0 };
   return { ok: false };
 }
@@ -324,28 +335,26 @@ export async function createTimeLockedTransaction(params: {
   const pubkeyHash = Buffer.from(decoded.hash);
   const announceScript = buildCltvAnnounceScript(locktimeUnix, pubkeyHash);
 
-  // Greedy UTXO selection (largest first, skip dust)
-  // Outputs: lock + OP_RETURN announce (+ optional change ≥ 0.01 Ð).
-  const spendable = [...utxos].filter((u) => u.value > DUST_LIMIT).sort((a, b) => b.value - a.value);
-  const selected: UtxoInput[] = [];
-  let total = 0;
-  let plan = planLockFee({
-    inputCount: 1,
-    lockAmountKoinu: amountKoinu,
-    availableKoinu: 0,
-    availableIncludesLock: true,
-  });
-  for (const u of spendable) {
-    selected.push(u);
-    total += u.value;
-    plan = planLockFee({
-      inputCount: selected.length,
-      lockAmountKoinu: amountKoinu,
-      availableKoinu: total,
-      availableIncludesLock: true,
+  // Smallest coin that covers the lock + live fee. Skip dust.
+  const feeRatePerByte = await enforceBroadcastFeeRateKoinuPerByte({ context: 'cltv-lock' });
+  const feeRateKoinuPerKb = feeRatePerByte * 1000;
+  const spendable = utxos.filter((u) => u.value > DUST_LIMIT);
+  const selected = selectSmallestSufficient(spendable, (n) => {
+    const fee = mineableFeeKoinu({
+      vsize: estimateLockVsize(Math.max(1, n), 2),
+      feeRateKoinuPerKb,
+      outputValuesKoinu: [amountKoinu],
     });
-    if (total >= amountKoinu + plan.fee) break;
-  }
+    return amountKoinu + fee;
+  });
+  const total = selected.reduce((sum, u) => sum + u.value, 0);
+  let plan = planLockFee({
+    inputCount: Math.max(1, selected.length),
+    lockAmountKoinu: amountKoinu,
+    availableKoinu: total,
+    availableIncludesLock: true,
+    feeRateKoinuPerKb,
+  });
 
   if (selected.length === 0) {
     throw new Error('No spendable UTXOs available');
@@ -413,30 +422,27 @@ export async function createTimeLockedInscriptionTransaction(params: {
   const pubkeyHash = Buffer.from(decoded.hash);
   const announceScript = buildCltvAnnounceScript(locktimeUnix, pubkeyHash);
 
-  // Select fee UTXOs (skip dust and the inscription UTXO itself)
-  const spendableFee = [...feeUtxos]
-    .filter((u) => u.value > DUST_LIMIT && !(u.txid === inscriptionUtxo.txid && u.vout === inscriptionUtxo.vout))
-    .sort((a, b) => b.value - a.value);
-
-  const selectedFee: UtxoInput[] = [];
-  let feeTotal = 0;
-  let plan = planLockFee({
-    inputCount: 1,
-    lockAmountKoinu: inscriptionUtxo.value,
-    availableKoinu: 0,
-    availableIncludesLock: false,
-  });
-  for (const u of spendableFee) {
-    selectedFee.push(u);
-    feeTotal += u.value;
-    plan = planLockFee({
-      inputCount: 1 + selectedFee.length,
-      lockAmountKoinu: inscriptionUtxo.value,
-      availableKoinu: feeTotal,
-      availableIncludesLock: false,
+  const feeRatePerByte = await enforceBroadcastFeeRateKoinuPerByte({ context: 'cltv-lock-inscription' });
+  const feeRateKoinuPerKb = feeRatePerByte * 1000;
+  const spendableFee = feeUtxos.filter(
+    (u) => u.value > DUST_LIMIT && !(u.txid === inscriptionUtxo.txid && u.vout === inscriptionUtxo.vout),
+  );
+  const selectedFee = selectSmallestSufficient(spendableFee, (n) => {
+    const fee = mineableFeeKoinu({
+      vsize: estimateLockVsize(1 + Math.max(1, n), 2),
+      feeRateKoinuPerKb,
+      outputValuesKoinu: [inscriptionUtxo.value],
     });
-    if (feeTotal >= plan.fee) break;
-  }
+    return fee;
+  });
+  const feeTotal = selectedFee.reduce((sum, u) => sum + u.value, 0);
+  let plan = planLockFee({
+    inputCount: 1 + selectedFee.length,
+    lockAmountKoinu: inscriptionUtxo.value,
+    availableKoinu: feeTotal,
+    availableIncludesLock: false,
+    feeRateKoinuPerKb,
+  });
 
   if (feeTotal < plan.fee) {
     throw new Error(
@@ -527,29 +533,34 @@ export async function createUnlockTransaction(params: {
   let fee = 0;
   let outputAmount = 0;
   let changeAmount = 0;
+  const feeRatePerByte = await enforceBroadcastFeeRateKoinuPerByte({ context: 'cltv-unlock' });
 
-  const selfFunded = !preserveInscription ? combinedUnlockFit(lockValue, 0, 0) : { ok: false as const };
+  const selfFunded = !preserveInscription
+    ? combinedUnlockFit(lockValue, 0, 0, feeRatePerByte)
+    : { ok: false as const };
   if (selfFunded.ok) {
     fee = selfFunded.fee;
     outputAmount = selfFunded.output;
   } else {
     const pool = await selectUnlockFeeUtxos(ownerAddress);
-    const takeNext = (): boolean => {
-      const next = pool.find(
+    const takeNext = (fits: (extraAfter: number, inputCount: number) => boolean): boolean => {
+      const available = pool.filter(
         (u) =>
           !(u.txid === record.txid && u.vout === record.vout) &&
           !selected.some((s) => s.txid === u.txid && s.vout === u.vout),
       );
-      if (!next) return false;
+      if (!available.length) return false;
+      const alone = available.find((u) => fits(extra + u.value, selected.length + 1));
+      const next = alone ?? available[0]!;
       selected.push(next);
       extra += next.value;
       return true;
     };
 
     if (preserveInscription) {
-      let ins = inscriptionUnlockFit(lockValue, extra, selected.length);
-      while (!ins.ok && takeNext()) {
-        ins = inscriptionUnlockFit(lockValue, extra, selected.length);
+      let ins = inscriptionUnlockFit(lockValue, extra, selected.length, feeRatePerByte);
+      while (!ins.ok && takeNext((ex, n) => inscriptionUnlockFit(lockValue, ex, n, feeRatePerByte).ok)) {
+        ins = inscriptionUnlockFit(lockValue, extra, selected.length, feeRatePerByte);
       }
       if (!ins.ok) {
         throw new Error(
@@ -560,9 +571,9 @@ export async function createUnlockTransaction(params: {
       outputAmount = lockValue;
       changeAmount = ins.change;
     } else {
-      let comb = combinedUnlockFit(lockValue, extra, selected.length);
-      while (!comb.ok && takeNext()) {
-        comb = combinedUnlockFit(lockValue, extra, selected.length);
+      let comb = combinedUnlockFit(lockValue, extra, selected.length, feeRatePerByte);
+      while (!comb.ok && takeNext((ex, n) => combinedUnlockFit(lockValue, ex, n, feeRatePerByte).ok)) {
+        comb = combinedUnlockFit(lockValue, extra, selected.length, feeRatePerByte);
       }
       if (!comb.ok) {
         throw new Error(

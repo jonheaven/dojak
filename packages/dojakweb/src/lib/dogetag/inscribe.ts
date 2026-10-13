@@ -24,6 +24,7 @@ import * as secp from '@noble/secp256k1';
 import { DogeMemoryWallet, createP2PKHTransaction, decodePrivateKeyFromWIF } from 'doge-sdk';
 import { fetchSpendableUtxosConservativeForAddress, filterPaymentSpendableUtxos } from '../broadcast/dogecoinTxBroadcast';
 import { enforceBroadcastFeeRateKoinuPerKb } from '../fees/dogecoinFeePolicy';
+import { selectSmallestSufficient } from '../fees/selectSmallestSufficient';
 import {
   HARD_DUST_KOINU,
   SOFT_DUST_KOINU,
@@ -610,20 +611,14 @@ export async function signInscriptionTxs(
     throw new Error('No spendable UTXOs remain after excluding protected and inscription-likely outputs.');
   }
 
-  const sorted   = [...spendable].sort((a, b) => b.value - a.value);
-  const selected: NormUtxo[] = [];
-  let totalSats = 0;
-
-  for (const u of sorted) {
-    if (!Number.isFinite(u.value) || u.value <= 0) continue;
-    selected.push(u);
-    totalSats += u.value;
+  const selected = selectSmallestSufficient(spendable, (n) => {
     const cFee = commitFeeFromEstimate(
-      estimateCommitTxVbytes(selected.length, p2shScript, changeScriptPubKey),
+      estimateCommitTxVbytes(Math.max(1, n), p2shScript, changeScriptPubKey),
       feeRate,
     );
-    if (totalSats >= cFee + p2shAmount + SOFT_DUST_KOINU) break; // soft-dust-safe change guard
-  }
+    return cFee + p2shAmount;
+  });
+  const totalSats = selected.reduce((sum, u) => sum + u.value, 0);
 
   const commitFee = commitFeeFromEstimate(
     estimateCommitTxVbytes(selected.length, p2shScript, changeScriptPubKey),

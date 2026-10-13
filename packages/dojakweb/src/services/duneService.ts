@@ -38,6 +38,7 @@ import {
   mineableFeeKoinu,
   assertHardDustKoinu,
 } from '../lib/dogecoin/softDust';
+import { selectSmallestSufficient } from '../lib/fees/selectSmallestSufficient';
 import {
   mergePaymentUtxos,
   recordPaymentBroadcast,
@@ -163,12 +164,16 @@ function selectCoins(
   mustInclude: NormalisedUtxo[] = [],
 ): CoinSelection {
   const mustKeys = new Set(mustInclude.map(outpointKey));
-  const sorted = [...utxos]
-    .filter((u) => !mustKeys.has(outpointKey(u)))
-    .sort((a, b) => b.value - a.value);
-  const selected: NormalisedUtxo[] = [...mustInclude];
-  let totalSats = mustInclude.reduce((s, u) => s + u.value, 0);
-  // Assume change exists for size estimate; soft-dust on fixed outs only until we know change.
+  const selected = selectSmallestSufficient(
+    utxos.filter((u) => !mustKeys.has(outpointKey(u))),
+    (n) => {
+      const count = Math.max(1, mustInclude.length + n);
+      const fee = calcFee(count, outputCount, opReturnBytes, feeRate, fixedOutputValues);
+      return fee + requiredOutputSats;
+    },
+    { reserved: mustInclude },
+  );
+  const totalSats = selected.reduce((s, u) => s + u.value, 0);
   let fee = calcFee(
     Math.max(1, selected.length),
     outputCount,
@@ -176,22 +181,6 @@ function selectCoins(
     feeRate,
     fixedOutputValues,
   );
-
-  const tryFinish = () => {
-    fee = calcFee(selected.length, outputCount, opReturnBytes, feeRate, fixedOutputValues);
-    const needed = fee + requiredOutputSats + SOFT_DUST_KOINU;
-    return totalSats >= needed;
-  };
-
-  if (!tryFinish()) {
-    for (const utxo of sorted) {
-      selected.push(utxo);
-      totalSats += utxo.value;
-      if (tryFinish()) break;
-    }
-  } else {
-    fee = calcFee(selected.length, outputCount, opReturnBytes, feeRate, fixedOutputValues);
-  }
 
   let needed = fee + requiredOutputSats;
   if (totalSats < needed) {

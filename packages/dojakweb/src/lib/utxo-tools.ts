@@ -478,6 +478,7 @@ const SPLIT_FEE_SLACK_KOINU = 10_000;
 export function planSplitOutputs(
   inputValue: number,
   requested: number[],
+  feeRateKoinuPerByte = FEE_RATE_KOINU_PER_BYTE,
 ): { outputs: number[]; feeSatoshis: number; changeSatoshis: number } {
   if (requested.length < 2) {
     throw new Error('Split must produce at least 2 outputs.');
@@ -497,7 +498,7 @@ export function planSplitOutputs(
   let change = Math.max(0, inputValue - requestedSum - DUST_LIMIT);
   for (let i = 0; i < 4; i++) {
     const changeHint = Math.max(change, DUST_LIMIT);
-    const fee = estimateSplitFee(requested.length + 1, [...requested, changeHint]);
+    const fee = estimateSplitFee(requested.length + 1, [...requested, changeHint], feeRateKoinuPerByte);
     change = inputValue - requestedSum - fee;
   }
 
@@ -512,7 +513,7 @@ export function planSplitOutputs(
     return { outputs, feeSatoshis, changeSatoshis: change };
   }
 
-  const policyFee = estimateSplitFee(requested.length, requested);
+  const policyFee = estimateSplitFee(requested.length, requested, feeRateKoinuPerByte);
   const leftover = inputValue - requestedSum;
   if (leftover < policyFee) {
     throw new Error(
@@ -530,10 +531,18 @@ export function planSplitOutputs(
 }
 
 /** Divide a UTXO value into N equal chunks (minus fee). Returns amounts in satoshis. */
-export function calcEqualSplitOutputs(utxo: ManagedUtxo, count: number): number[] {
+export function calcEqualSplitOutputs(
+  utxo: ManagedUtxo,
+  count: number,
+  feeRateKoinuPerByte = FEE_RATE_KOINU_PER_BYTE,
+): number[] {
   if (count < 2) throw new Error('Need at least 2 outputs for a split');
   // Soft-dust-safe plain splits — each out ≥ 0.01 Ð so the split itself mines.
-  const fee = estimateSplitFee(count, Array.from({ length: count }, () => SOFT_DUST_KOINU));
+  const fee = estimateSplitFee(
+    count,
+    Array.from({ length: count }, () => SOFT_DUST_KOINU),
+    feeRateKoinuPerByte,
+  );
   const spendable = utxo.value - fee;
   if (spendable < count * SOFT_DUST_KOINU) {
     throw new Error(

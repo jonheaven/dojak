@@ -30,6 +30,8 @@ import {
   buildLaunchCurveSellScript,
   parseSpacedDune,
 } from '../lib/dunestone';
+import { SOFT_DUST_KOINU, discardSoftDustChangeKoinu, softDustFeePenaltyKoinu } from '../lib/dogecoin/softDust';
+import { selectSmallestSufficient } from '../lib/fees/selectSmallestSufficient';
 import { resolveRequestedOrPreferredFeeRateKoinuPerByte } from '../lib/fees/txFeePreference';
 
 const MIN_FEE_KOINU = 100_000;
@@ -183,27 +185,46 @@ function estimateSize(inputCount: number, outputCount: number, opReturnScriptByt
   );
 }
 
+function feeForLaunch(params: {
+  inputCount: number;
+  outputCount: number;
+  opReturnScriptBytes: number;
+  feeRate: number;
+  outputValues: number[];
+}): number {
+  const sizeFee = Math.max(
+    MIN_FEE_KOINU,
+    Math.ceil(estimateSize(params.inputCount, params.outputCount, params.opReturnScriptBytes) * params.feeRate),
+  );
+  return sizeFee + softDustFeePenaltyKoinu(params.outputValues);
+}
+
 function selectCoins(
   utxos: NormalisedUtxo[],
   requiredOutputKoinu: number,
-  outputCountWithChange: number,
+  outputCountNoChange: number,
   opReturnScriptBytes: number,
   feeRate: number,
+  outputValues: number[],
 ): NormalisedUtxo[] {
-  const sorted = [...utxos].sort((a, b) => b.value - a.value);
-  const selected: NormalisedUtxo[] = [];
-  let total = 0;
-  let fee = MIN_FEE_KOINU;
-
-  for (const utxo of sorted) {
-    selected.push(utxo);
-    total += utxo.value;
-    fee = Math.max(
-      MIN_FEE_KOINU,
-      Math.ceil(estimateSize(selected.length, outputCountWithChange, opReturnScriptBytes) * feeRate),
-    );
-    if (total >= requiredOutputKoinu + fee + POSTAGE_KOINU) break;
-  }
+  const selected = selectSmallestSufficient(utxos, (n) => {
+    const fee = feeForLaunch({
+      inputCount: Math.max(1, n),
+      outputCount: outputCountNoChange,
+      opReturnScriptBytes,
+      feeRate,
+      outputValues,
+    });
+    return requiredOutputKoinu + fee;
+  });
+  const total = selected.reduce((sum, utxo) => sum + utxo.value, 0);
+  const fee = feeForLaunch({
+    inputCount: Math.max(1, selected.length),
+    outputCount: outputCountNoChange,
+    opReturnScriptBytes,
+    feeRate,
+    outputValues,
+  });
 
   if (total < requiredOutputKoinu + fee) {
     throw new Error(
@@ -233,27 +254,33 @@ function planWalletFundedTx(params: {
   feeRate: number;
 }): PlannedTx {
   const required = params.extraOutputs.reduce((sum, output) => sum + output.value, 0);
-  const outputCountWithChange = 1 + params.extraOutputs.length + 1;
+  const outputValues = params.extraOutputs.map((output) => output.value);
+  const outputCountNoChange = 1 + params.extraOutputs.length;
   const selected = selectCoins(
     params.utxos,
     required,
-    outputCountWithChange,
+    outputCountNoChange,
     params.opReturnScript.length,
     params.feeRate,
+    outputValues,
   );
   const total = selected.reduce((sum, utxo) => sum + utxo.value, 0);
-  const feeSatoshis = Math.max(
-    MIN_FEE_KOINU,
-    Math.ceil(estimateSize(selected.length, outputCountWithChange, params.opReturnScript.length) * params.feeRate),
-  );
-  const changeSatoshis = total - required - feeSatoshis;
-  if (changeSatoshis < 0) throw new Error('Fee calculation produced negative change');
+  const sizeFee = feeForLaunch({
+    inputCount: Math.max(1, selected.length),
+    outputCount: outputCountNoChange + 1,
+    opReturnScriptBytes: params.opReturnScript.length,
+    feeRate: params.feeRate,
+    outputValues: [...outputValues, SOFT_DUST_KOINU],
+  });
+  let changeSatoshis = discardSoftDustChangeKoinu(total - required - sizeFee);
+  if (total - required - changeSatoshis < 0) throw new Error('Fee calculation produced negative change');
+  const feeSatoshis = total - required - changeSatoshis;
 
   const outputs: PlannedTx['outputs'] = [
     { value: 0, script: params.opReturnScript },
     ...params.extraOutputs,
   ];
-  if (changeSatoshis >= POSTAGE_KOINU) {
+  if (changeSatoshis >= SOFT_DUST_KOINU) {
     outputs.push({ address: params.fromAddress, value: changeSatoshis });
   }
 

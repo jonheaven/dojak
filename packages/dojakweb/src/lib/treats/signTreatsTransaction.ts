@@ -3,13 +3,14 @@ import {
   broadcastSignedTransaction,
   fetchSpendableUtxosConservativeForAddress,
   filterPaymentSpendableUtxos,
-  MIN_FEE_RATE_KOINU_PER_BYTE,
   type NormalisedUtxo,
 } from '../broadcast/dogecoinTxBroadcast';
 import { coerceSignedPsdtToRawTxHex, getTxHex } from '../doginal-psdt';
 import { estimateOpReturnOutputsTxWeight } from '../tx/opReturn';
 import { TREATS_DUST_KOINU, type TreatsOpKind } from './constants';
 import { treatsPayloadBytes } from './buildJson';
+import { discardSoftDustChangeKoinu } from '../dogecoin/softDust';
+import { selectSmallestSufficient } from '../fees/selectSmallestSufficient';
 import { planTreatsOperationOutputs, TREATS_PAIRED_DUST_OUTPUT_WEIGHT } from './outputPlan';
 
 function payloadBytesFromParams(params: SignTreatsParams): Uint8Array | null {
@@ -168,21 +169,11 @@ async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> 
   const perInputSize = 148;
   const MIN_FEE = 100_000;
 
-  let feeSatoshis = Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize) * feeRate));
-  const sorted = [...spendableUtxos].sort((a, b) => b.value - a.value);
-  const selected: NormalisedUtxo[] = [];
-  let totalSats = 0;
-  const needed = () => feeSatoshis + pairedDust + 100_000;
-
-  for (const utxo of sorted) {
-    selected.push(utxo);
-    totalSats += utxo.value;
-    feeSatoshis = Math.max(
-      MIN_FEE,
-      Math.ceil((baseSize + perInputSize * selected.length) * feeRate),
-    );
-    if (totalSats >= needed()) break;
-  }
+  const feeFor = (n: number) =>
+    Math.max(MIN_FEE, Math.ceil((baseSize + perInputSize * Math.max(1, n)) * feeRate));
+  const selected = selectSmallestSufficient(spendableUtxos, (n) => feeFor(n) + pairedDust);
+  const totalSats = selected.reduce((sum, u) => sum + u.value, 0);
+  let feeSatoshis = feeFor(selected.length);
 
   const totalNeeded = feeSatoshis + pairedDust;
   if (totalSats < totalNeeded) {
@@ -192,10 +183,13 @@ async function planTreatsTx(params: SignTreatsParams): Promise<PlannedTreatsTx> 
     );
   }
 
-  const changeAmount = totalSats - feeSatoshis - pairedDust;
+  let changeAmount = totalSats - feeSatoshis - pairedDust;
   if (!Number.isFinite(changeAmount) || changeAmount < 0) {
     throw new Error('Fee calculation produced invalid change');
   }
+  const keptChange = discardSoftDustChangeKoinu(changeAmount);
+  if (keptChange < changeAmount) feeSatoshis += changeAmount - keptChange;
+  changeAmount = keptChange;
 
   const planned = planTreatsOperationOutputs({
     payload,

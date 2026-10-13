@@ -18,7 +18,7 @@
 import * as bitcoin from 'bitcoinjs-lib';
 import * as secp from '@noble/secp256k1';
 import { decodePrivateKeyFromWIF } from 'doge-sdk';
-import { browserRpcProxyAbsoluteUrl, rpcViaProxy } from './rpc-proxy-client';
+import { browserRpcProxyAbsoluteUrl, rpcViaProxy, rpcViaProxyDetailed } from './rpc-proxy-client';
 import { broadcastUtxoTx } from './utxo-tools';
 import {
   fetchSpendableUtxosConservativeForAddress,
@@ -29,6 +29,7 @@ import { mergePaymentUtxos } from './mempoolSpendOverlay';
 import { dogeTxExplorerUrl } from '../utils/dogeTxExplorer';
 import { loadWalletTxJournal, upsertWalletTxJournalEntry } from './wallet-tx-journal';
 import { SOFT_DUST_KOINU, softDustFeePenaltyKoinu } from './dogecoin/softDust';
+import { selectSmallestSufficient } from './fees/selectSmallestSufficient';
 
 // ── Dogecoin network params for bitcoinjs-lib ────────────────────────────────
 export const DOGE_NETWORK: bitcoin.Network = {
@@ -557,6 +558,26 @@ function loadTatumApiKey(): string {
   }
 }
 
+function hexFromRpcBody(result: unknown): string | null {
+  if (typeof result === 'string' && /^[0-9a-fA-F]+$/.test(result) && result.length >= 20) return result;
+  if (result && typeof result === 'object' && 'hex' in result) {
+    const hex = (result as { hex?: unknown }).hex;
+    if (typeof hex === 'string' && /^[0-9a-fA-F]+$/.test(hex) && hex.length >= 20) return hex;
+  }
+  return null;
+}
+
+/** Mempool and confirmed txs from Core via command.dog. Electrs is not on this path. */
+async function fetchTxHexFromCommandDog(txid: string): Promise<string | null> {
+  try {
+    const r = await rpcViaProxyDetailed<unknown>('getrawtransaction', [txid, false]);
+    if (!r.ok) return null;
+    return hexFromRpcBody(r.result);
+  } catch {
+    return null;
+  }
+}
+
 async function fetchTxHexFromTatum(txid: string): Promise<string | null> {
   const apiKey = loadTatumApiKey();
   if (!apiKey) return null;
@@ -591,7 +612,10 @@ export async function getTxHex(txid: string): Promise<string> {
   if (inflightExisting) return inflightExisting;
 
   const inflight = (async () => {
-    const hex = (await fetchTxHexFromTatum(txid)) ?? (await fetchTxHexFromBlockchair(txid));
+    const hex =
+      (await fetchTxHexFromCommandDog(txid)) ??
+      (await fetchTxHexFromTatum(txid)) ??
+      (await fetchTxHexFromBlockchair(txid));
     if (!hex) throw new Error(`Tx ${txid} not found (tried Tatum and Blockchair — add a Tatum API key in Settings if missing)`);
     txHexCache[txid] = hex;
     delete txHexInflight[txid];
@@ -823,23 +847,11 @@ export function selectUtxos(
   vouts: number,
   feeRate = DEFAULT_FEE_RATE,
 ): OrdUtxo[] {
-  const selected: OrdUtxo[] = [];
-  let total = 0;
-
-  const sorted = utxos
-    // Exclude 0.001 DOGE UTXOs — canonical Doginals inscription carrier value.
-    // These are reserved as dummy slots in the buy flow and must never be spent as fee inputs.
-    // `getAddressUtxos` already strips locked/0.001-DOGE UTXOs; this is a defence-in-depth guard.
-    .filter(u => u.value > DUMMY_UTXO_VALUE)
-    .sort((a, b) => b.value - a.value);
-
-  for (const u of sorted) {
-    selected.push(u);
-    total += u.value;
-    const needed = amount + DUMMY_UTXO_VALUE
-      + calculateFee(vins + selected.length, vouts, feeRate);
-    if (total >= needed) break;
-  }
+  const selected = selectSmallestSufficient(
+    utxos.filter((u) => u.value > DUMMY_UTXO_VALUE),
+    (n) => amount + DUMMY_UTXO_VALUE + calculateFee(vins + Math.max(1, n), vouts, feeRate),
+  );
+  const total = selected.reduce((sum, u) => sum + u.value, 0);
 
   if (total < amount) {
     throw new Error(
@@ -859,28 +871,18 @@ export function selectFeeUtxosForInscriptionSend(
   utxos: OrdUtxo[],
   feeRate = DEFAULT_FEE_RATE,
 ): OrdUtxo[] {
-  const candidates = utxos
-    .filter((u) => u.value > DUMMY_UTXO_VALUE)
-    .sort((a, b) => a.value - b.value);
-
+  const candidates = utxos.filter((u) => u.value > DUMMY_UTXO_VALUE);
   if (candidates.length === 0) {
     throw new Error('No spendable DOGE UTXOs available to pay the network fee.');
   }
 
-  // 1 inscription + 1 fee input; recipient counted in vouts, change via includeChange.
-  const feeForOne = calculateFee(2, 1, feeRate, true);
-  const single = candidates.find((u) => u.value >= feeForOne);
-  if (single) return [single];
-
-  const selected: OrdUtxo[] = [];
-  let total = 0;
-  for (const u of candidates) {
-    selected.push(u);
-    total += u.value;
-    const fee = calculateFee(1 + selected.length, 1, feeRate, true);
-    if (total >= fee) return selected;
-  }
+  // 1 inscription + fee inputs; recipient counted in vouts, change via includeChange.
+  const selected = selectSmallestSufficient(candidates, (n) =>
+    calculateFee(1 + Math.max(1, n), 1, feeRate, true),
+  );
+  const total = selected.reduce((sum, u) => sum + u.value, 0);
   const need = calculateFee(1 + Math.max(selected.length, 1), 1, feeRate, true);
+  if (total >= need) return selected;
   throw new Error(
     `Not enough spendable DOGE for the network fee.\nHave: ${shibesToDoge(total)} DOGE\nNeed ~${shibesToDoge(need)} DOGE`,
   );
@@ -1563,31 +1565,24 @@ export async function buildBuyPSDTSimple(params: {
       value: await getPrevoutValueShibes(u.txid, u.vout),
     })),
   );
-  // Smallest UTXO = dummy slot; largest-first for payment (fewer inputs = lower fee).
+  // Smallest UTXO = dummy slot. Payment coins are smallest-sufficient (fee included).
   const sortedAsc = [...withChainValues].sort((a, b) => a.value - b.value);
   const dummyUtxo = sortedAsc[0];
-  const paymentCandidates = [...sortedAsc.slice(1)].sort((a, b) => b.value - a.value);
+  const paymentCandidates = sortedAsc.slice(1);
 
-  // ── Greedy coin selection ──────────────────────────────────────────────────
-  // Pick the minimum set of payment UTXOs to cover: price + new-dummy output + fee.
-  // Iterate adding one UTXO at a time (largest first) and re-estimate fee each time.
-  //   inputs:  1 (seller inscription) + 1 (dummy) + paymentUtxos.length
-  //   outputs: 3 fixed (seller pay, inscription→buyer, new dummy) + 1 change = 4
-  const paymentUtxos: typeof paymentCandidates = [];
-  let paymentTotal = 0;
-  for (const u of paymentCandidates) {
-    paymentUtxos.push(u);
-    paymentTotal += u.value;
-    const nInputs = 2 + paymentUtxos.length;
+  // inputs: 1 seller inscription + 1 dummy + paymentUtxos.length
+  // outputs: 3 fixed (seller pay, inscription→buyer, new dummy) + change
+  const paymentUtxos = selectSmallestSufficient(paymentCandidates, (n) => {
     const fee = calculateFee(
-      nInputs,
+      2 + Math.max(1, n),
       3,
       feeRate,
-      /* includeChange */ true,
+      true,
       BUY_FEE_SIZE_PADDING_BYTES,
     );
-    if (paymentTotal >= price + DUMMY_UTXO_VALUE + fee) break;
-  }
+    return price + DUMMY_UTXO_VALUE + fee;
+  });
+  const paymentTotal = paymentUtxos.reduce((sum, u) => sum + u.value, 0);
 
   const finalNInputs = 2 + paymentUtxos.length;
   const finalFee = calculateFee(
