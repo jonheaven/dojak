@@ -92,6 +92,7 @@ import {
   shibesToDoge,
   dogeToShibes,
   selectFeeUtxosForInscriptionSend,
+  resolveBuyFeeRateKoinuPerByte,
   buildDummyUtxoPSDT,
   buildBuyPSDT,
   signAndFinalizeBuyPSDT,
@@ -2910,11 +2911,12 @@ export function DojakwebWalletModal({
         );
       }
 
+      const feeRate = await resolveBuyFeeRateKoinuPerByte(2);
       const payerUtxos = await getAddressUtxos(activeAddress);
       const liveFeeUtxos = await filterUtxosByRpcGetTxOutIfConfigured(
         payerUtxos.filter((u) => `${u.txid}:${u.vout}` !== `${insTxid}:${insVout}`),
       );
-      const paymentUtxos = selectFeeUtxosForInscriptionSend(liveFeeUtxos);
+      const paymentUtxos = selectFeeUtxosForInscriptionSend(liveFeeUtxos, feeRate);
 
       if (paymentUtxos.length === 0) throw new Error(t('modal.throws.noPaymentUtxos'));
 
@@ -2924,6 +2926,7 @@ export function DojakwebWalletModal({
         recipientAddress: inscriptionSendRecipient.trim(),
         senderAddress: activeAddress,
         paymentUtxos,
+        feeRateKoinuPerByte: feeRate,
       });
       setInscriptionSendDraft(draft);
     } catch (e: any) {
@@ -3191,12 +3194,13 @@ export function DojakwebWalletModal({
       // Extract inscription output value from the saved signed PSBT
       const inscriptionOutputValue = getInscriptionValueFromPsdt(listing.signedPsbtBase64);
 
-      // Payment UTXOs for fee (non-inscription UTXOs) — smallest sufficient, not top-3 largest.
+      // Payment UTXOs for fee — live inclusion rate + smallest sufficient coins.
+      const feeRate = await resolveBuyFeeRateKoinuPerByte(2);
       const payerUtxos = await getAddressUtxos(activeAddress);
       const liveFeeUtxos = await filterUtxosByRpcGetTxOutIfConfigured(
         payerUtxos.filter((u) => `${u.txid}:${u.vout}` !== listing.inscriptionUtxo),
       );
-      const paymentUtxos = selectFeeUtxosForInscriptionSend(liveFeeUtxos);
+      const paymentUtxos = selectFeeUtxosForInscriptionSend(liveFeeUtxos, feeRate);
 
       if (paymentUtxos.length === 0) {
         throw new Error(t('modal.throws.cancelNeedFunds'));
@@ -3210,6 +3214,7 @@ export function DojakwebWalletModal({
         senderAddress:          activeAddress,
         paymentUtxos,
         privateKeyWif:          w.privateKey,
+        feeRateKoinuPerByte:    feeRate,
       });
 
       const txid = await broadcastOrdinalTx(txHex);

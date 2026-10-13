@@ -1339,6 +1339,8 @@ export interface SendInscriptionParams {
   senderAddress: string;
   paymentUtxos: OrdUtxo[];
   privateKeyWif: string;
+  /** koinu/byte; defaults to live Command.dog inclusion estimate (not static 1000). */
+  feeRateKoinuPerByte?: number;
 }
 
 /** Unsigned send-inscription PSBT + human-readable plan (for review UI before signing). */
@@ -1355,6 +1357,7 @@ function txInputHashLeHex(txin: { hash: Uint8Array }): string {
 
 /**
  * Build an unsigned PSBT that spends the inscription to `recipientAddress` and uses `paymentUtxos` for fees.
+ * Fee rate is live inclusion (Command.dog / estimatesmartfee) — never static 1000 koinu/B alone.
  */
 export async function buildSendInscriptionPsbtUnsigned(
   p: Omit<SendInscriptionParams, 'privateKeyWif'>,
@@ -1362,6 +1365,8 @@ export async function buildSendInscriptionPsbtUnsigned(
   const [insTxid, insVoutStr] = p.inscriptionOutput.split(':');
   const insVout = parseInt(insVoutStr, 10);
   const insTxHex = await getTxHex(insTxid);
+  const feeRate =
+    p.feeRateKoinuPerByte ?? (await resolveBuyFeeRateKoinuPerByte(2));
 
   const psbt = new bitcoin.Psbt(DOGE_PSBT_OPTS);
 
@@ -1380,9 +1385,13 @@ export async function buildSendInscriptionPsbtUnsigned(
     paymentTotal += u.value;
   }
 
-  const fee = calculateFee(psbt.txInputs.length, psbt.txOutputs.length);
+  const fee = calculateFee(psbt.txInputs.length, psbt.txOutputs.length, feeRate);
   const change = paymentTotal - fee;
-  if (change < 0) throw new Error('Insufficient DOGE for transaction fee.');
+  if (change < 0) {
+    throw new Error(
+      `Insufficient DOGE for transaction fee at current network rate (~${shibesToDoge(fee).toFixed(4)} Ð needed).`,
+    );
+  }
   if (change > 546) psbt.addOutput({ address: p.senderAddress.trim(), value: BigInt(change) });
 
   return psbt;
