@@ -11,6 +11,7 @@ import { DojakwebThemeProvider, type DojakwebTheme } from '../contexts/DojakwebT
 import { DataProvider } from './DataProvider';
 import { DojakwebDxTrustedOriginsProvider } from '../contexts/DojakwebDxContext';
 import { DxHostBridge } from '../components/DxHostBridge';
+import { IncomingTxAlerts } from '../components/IncomingTxAlerts';
 import { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
 import {
   setDojakwebUnlockPersistence,
@@ -57,6 +58,7 @@ export function DojakWalletProvider({
               <MyDogeWalletProvider>
                 <BrowserWalletProvider>
                   <UnifiedWalletProvider>
+                    <IncomingTxAlerts />
                     <DataProvider>{children}</DataProvider>
                   </UnifiedWalletProvider>
                 </BrowserWalletProvider>

@@ -7,6 +7,13 @@ export { useUnifiedWallet } from './contexts/useUnifiedWallet';
 export { useMyDogeWallet } from './contexts/useMyDogeWallet';
 export type { UseMyDogeWalletReturn } from './contexts/MyDogeWalletContext';
 export { toast } from 'sonner';
+export { IncomingTxAlerts } from './components/IncomingTxAlerts';
+export {
+  incomingTxAlertsEnabled,
+  setIncomingTxAlertsEnabled,
+  INCOMING_TX_ALERTS_PREF_KEY,
+  parseDnsOfferMemo,
+} from './lib/incoming-tx-alerts';
 
 /** Client-only hide list (localStorage per address). Used by storefront holdings + drawer. */
 export {

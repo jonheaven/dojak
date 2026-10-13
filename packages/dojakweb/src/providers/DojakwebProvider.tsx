@@ -14,6 +14,7 @@ import { CharmsProvider } from '../contexts/CharmsContext';
 import { DataProvider } from './DataProvider';
 import { DojakwebDxTrustedOriginsProvider } from '../contexts/DojakwebDxContext';
 import { DxHostBridge } from '../components/DxHostBridge';
+import { IncomingTxAlerts } from '../components/IncomingTxAlerts';
 import { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
 
 export interface DojakwebProviderProps {
@@ -57,6 +58,7 @@ export function DojakwebProvider({
               <MyDogeWalletProvider>
                 <BrowserWalletProvider>
                   <UnifiedWalletProvider>
+                    <IncomingTxAlerts />
                     <DoginalDrawerProvider>
                       <LiveActivityProvider>
                         <CharmsProvider>

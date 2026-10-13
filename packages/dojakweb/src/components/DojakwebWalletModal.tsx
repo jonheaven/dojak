@@ -146,6 +146,10 @@ import {
   readOneClickLocalSigningPolicy,
   writeOneClickLocalSigningPolicy,
 } from '../lib/host-preferences-sync';
+import {
+  incomingTxAlertsEnabled,
+  setIncomingTxAlertsEnabled,
+} from '../lib/incoming-tx-alerts';
 import { browserRpcProxyAbsoluteUrl, fetchRpcDetailedHealth } from '../lib/rpc-proxy-client';
 import {
   testAllBroadcastRelayHealths,
@@ -695,7 +699,7 @@ export function DojakwebWalletModal({
   const [unlockMode, setUnlockMode] = useState<'password' | 'pin' | 'biometric'>('password');
   const [newPrimarySecret, setNewPrimarySecret] = useState<'password' | 'pin'>('password');
   const [newSecretStrength, setNewSecretStrength] = useState<'standard' | 'high' | 'maximum'>('standard');
-  const [enableWebAuthnQuickUnlock, setEnableWebAuthnQuickUnlock] = useState(false);
+  const [enableWebAuthnQuickUnlock, setEnableWebAuthnQuickUnlock] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [hideBalance, setHideBalance] = useState(false);
@@ -833,7 +837,7 @@ export function DojakwebWalletModal({
       if (!activeAddress || walletType !== 'browser' || !browser.unlocked) {
         toast.error(
           t('modal.toast.dpfpPublishNeedBrowser') ||
-            'Unlock Local Browser Wallet to publish on-chain. Local profile was still set.',
+            'Unlock Dojak to publish on-chain. Local profile was still set.',
         );
         return;
       }
@@ -1001,6 +1005,9 @@ export function DojakwebWalletModal({
   const [settingsHideTextJson, setSettingsHideTextJson] = useState(false);
   const [settingsOneClickLocalSigning, setSettingsOneClickLocalSigning] = useState(false);
   const [settingsOneClickLocalSigningMaxDoge, setSettingsOneClickLocalSigningMaxDoge] = useState('0.05');
+  const [settingsIncomingTxAlerts, setSettingsIncomingTxAlerts] = useState(() =>
+    incomingTxAlertsEnabled(),
+  );
   const [hideTextJsonInscriptions, setHideTextJsonInscriptions] = useState(
     () => getWalletDataProviderConfig().hideTextJsonInscriptions === true,
   );
@@ -1766,6 +1773,11 @@ export function DojakwebWalletModal({
       /* vault is saved; signing needs this secret in the tab session */
     }
     await browser.connect(walletToPersist);
+    try {
+      void navigator.storage?.persist?.();
+    } catch {
+      /* best-effort: ask the browser to keep this origin's wallet data */
+    }
     const passwordKey = getStoredPasswordFlag(walletToPersist.address);
     const bannerKey = getTemporaryBannerFlag(walletToPersist.address);
     const backupKey = getBackupFlag(walletToPersist.address);
@@ -3998,6 +4010,15 @@ export function DojakwebWalletModal({
                             ? t('modal.password.migrateHint')
                             : t('modal.password.requiredHint')}
                         </p>
+                        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 py-3 text-sm text-white/75">
+                          <input
+                            type="checkbox"
+                            checked={enableWebAuthnQuickUnlock}
+                            onChange={(event) => setEnableWebAuthnQuickUnlock(event.target.checked)}
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-transparent"
+                          />
+                          <span>{t('modal.password.biometricHint')}</span>
+                        </label>
                         <div>
                           <span className="mb-2 block text-sm text-[#E5E5E5]">{t('modal.password.primaryLabel')}</span>
                           <div className="flex rounded-xl border border-white/10 bg-[#0A0A0A] p-1">
@@ -4045,16 +4066,6 @@ export function DojakwebWalletModal({
                             <option value="high">{t('modal.password.strengthHigh')}</option>
                             <option value="maximum">{t('modal.password.strengthMaximum')}</option>
                           </select>
-                        </label>
-
-                        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 py-3 text-sm text-white/75">
-                          <input
-                            type="checkbox"
-                            checked={enableWebAuthnQuickUnlock}
-                            onChange={(event) => setEnableWebAuthnQuickUnlock(event.target.checked)}
-                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-transparent"
-                          />
-                          <span>{t('modal.password.biometricHint')}</span>
                         </label>
 
                         {newPrimarySecret === 'pin' ? (
@@ -7118,6 +7129,30 @@ export function DojakwebWalletModal({
                             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                               <button
                                 type="button"
+                                onClick={() => {
+                                  setSettingsIncomingTxAlerts((v) => {
+                                    const next = !v;
+                                    setIncomingTxAlertsEnabled(next);
+                                    return next;
+                                  });
+                                }}
+                                className="flex w-full items-start gap-2.5 text-left"
+                              >
+                                <div className={cx('mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition', settingsIncomingTxAlerts ? 'border-[#D4A017] bg-[#D4A017]/20' : 'border-white/25')}>
+                                  {settingsIncomingTxAlerts && <span className="text-[9px] font-bold text-[#D4A017]">✓</span>}
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="text-sm font-semibold text-white">Incoming DOGE ping</span>
+                                  <p className="mt-0.5 text-[11px] leading-snug text-white/45">
+                                    Soft chime + toast when this wallet receives DOGE — including ÐNS offer memos in OP_RETURN. First load seeds history quietly.
+                                  </p>
+                                </div>
+                              </button>
+                            </div>
+
+                            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                              <button
+                                type="button"
                                 onClick={() => setSettingsOneClickLocalSigning((v) => !v)}
                                 className="flex w-full items-start gap-2.5 text-left"
                               >
@@ -7127,7 +7162,7 @@ export function DojakwebWalletModal({
                                 <div className="min-w-0">
                                   <span className="text-sm font-semibold text-white">Auto-approve tiny local transactions</span>
                                   <p className="mt-0.5 text-[11px] leading-snug text-white/45">
-                                    Allows unlocked Local Browser Wallet flows to sign and broadcast without another prompt when the estimated spend is below your limit. Keep off for review-every-time.
+                                    Allows unlocked Dojak flows to sign and broadcast without another prompt when the estimated spend is below your limit. Keep off for review-every-time.
                                   </p>
                                 </div>
                               </button>
