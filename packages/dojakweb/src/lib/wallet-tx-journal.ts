@@ -26,6 +26,7 @@ export type DojakwebWalletTxProtocol =
   | 'dogepark'
   | 'dogetag'
   | 'yard'
+  | 'dns'
   | 'unknown';
 
 export type DojakwebWalletTxEntry = {
@@ -64,6 +65,7 @@ export const WALLET_TX_PROTOCOL_LABELS: Record<DojakwebWalletTxProtocol, string>
   dogepark: 'DogePark',
   dogetag: 'ÐogeTag',
   yard: 'YARD',
+  dns: 'DNS',
   unknown: 'Unknown',
 };
 
@@ -84,6 +86,7 @@ const PROTOCOL_RANK: Record<DojakwebWalletTxProtocol, number> = {
   incinerator: 6,
   dogepark: 5,
   yard: 4,
+  dns: 5,
 };
 
 function nowIso(): string {
@@ -115,13 +118,14 @@ export function guessWalletTxOriginLabel(host: string, path: string): string {
     if (p.includes('lotto') || p.includes('dlotto')) return 'dogecoin.games · ÐLotto';
     return 'dogecoin.games';
   }
-  if (h.includes('dogenals')) {
+  if (h.includes('dogecoin.dog') || h.includes('dogenals')) {
+    if (p.includes('/dns') || p.startsWith('/n/')) return 'dogecoin.dog · DNS';
     if (p.includes('/lock')) return 'dogenals · ÐLocker';
     if (p.includes('/incinerator') || p.includes('/burn')) return 'dogenals · BurneÐ';
     if (p.includes('alkane')) return 'dogenals · Ðalkanes';
     if (p.includes('dogepark')) return 'dogenals · DogePark';
     // Protocol (Ðunes / Treats) already has its own chip — don't restamp "dogenals · Ðunes".
-    return 'dogenals.com';
+    return h.includes('dogecoin.dog') ? 'dogecoin.dog' : 'dogenals.com';
   }
   if (h.includes('dojak')) return 'Dojakweb';
   if (h.includes('localhost') || h === '127.0.0.1') return `local · ${p || '/'}`;
@@ -304,6 +308,56 @@ export function upsertWalletTxJournalEntry(
   };
   saveWalletTxJournal([next, ...current.filter((row) => row.id !== next.id && row.txid !== next.txid)]);
   return next;
+}
+
+export function journalDnsTx(opts: {
+  txid: string;
+  address: string;
+  action: 'register' | 'config' | 'offer' | 'commit';
+  name: string;
+  inscriptionId?: string;
+  commitTxid?: string;
+  amountDoge?: number;
+}): DojakwebWalletTxEntry | null {
+  const name = opts.name.trim().toLowerCase();
+  const actionLabel =
+    opts.action === 'register'
+      ? 'Register'
+      : opts.action === 'config'
+        ? 'Config'
+        : opts.action === 'offer'
+          ? 'Offer'
+          : 'Commit';
+  const title =
+    opts.action === 'commit'
+      ? `DNS commit · ${name}`
+      : opts.action === 'offer'
+        ? `Offer · ${name}`
+        : `${actionLabel} · ${name}`;
+  return upsertWalletTxJournalEntry({
+    txid: opts.txid,
+    address: opts.address,
+    protocol: 'dns',
+    action: opts.action,
+    title,
+    summary:
+      [
+        name,
+        opts.inscriptionId || null,
+        opts.amountDoge != null ? `${opts.amountDoge} Ð` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ') || undefined,
+    status: 'broadcasted',
+    originLabel: 'dogecoin.dog · DNS',
+    metadata: {
+      actionLabel,
+      name,
+      inscriptionId: opts.inscriptionId,
+      commitTxid: opts.commitTxid,
+      amountDoge: opts.amountDoge,
+    },
+  });
 }
 
 export function journalDlockerTx(opts: {

@@ -2792,7 +2792,7 @@ export function DojakwebWalletModal({
     }
   }, [step, tab, activeAddress, fetchTransactions]);
 
-  // Label ÐGames / ÐLotto / Ðalkanes (and friends) via dogex indexes.
+  // Label ÐGames / ÐLotto / Ðalkanes / DNS (and friends) via dogex indexes.
   useEffect(() => {
     if (step !== 'dashboard' || tab !== 'transactions' || !activeAddress) return;
     const visible = [
@@ -2813,6 +2813,20 @@ export function DojakwebWalletModal({
       cancelled = true;
     };
   }, [step, tab, activeAddress, transactions, localRecentTransactions]);
+
+  const pendingTxCount = useMemo(
+    () => mergedTransactions.filter((tx) => tx.pending).length,
+    [mergedTransactions],
+  );
+
+  // While anything is in mempool, refresh history so the yellow blink clears on confirm.
+  useEffect(() => {
+    if (step !== 'dashboard' || !activeAddress || pendingTxCount <= 0) return;
+    const id = window.setInterval(() => {
+      void fetchTransactions(activeAddress, 1);
+    }, 12_000);
+    return () => window.clearInterval(id);
+  }, [step, activeAddress, pendingTxCount, fetchTransactions]);
 
 
   useEffect(() => {
@@ -4484,7 +4498,7 @@ export function DojakwebWalletModal({
                                 type="button"
                                 onClick={() => setTab(item)}
                                 className={cx(
-                                  'flex-1 rounded-xl px-3 py-2 text-xs font-semibold capitalize tracking-wide transition',
+                                  'relative flex-1 rounded-xl px-3 py-2 text-xs font-semibold capitalize tracking-wide transition',
                                   tab === item
                                     ? isDark
                                       ? 'bg-[#FCD34D]/15 text-[#FCD34D] shadow-[inset_0_0_0_1px_rgba(252,211,77,0.35)]'
@@ -4494,7 +4508,16 @@ export function DojakwebWalletModal({
                                       : 'text-zinc-500 hover:bg-white hover:text-zinc-800',
                                 )}
                               >
-                                {item === 'assets' ? t('modal.tabs.assets') : item === 'transactions' ? t('modal.tabs.transactions') : t('modal.tabs.listings')}
+                                <span className="inline-flex items-center justify-center gap-1.5">
+                                  {item === 'assets' ? t('modal.tabs.assets') : item === 'transactions' ? t('modal.tabs.transactions') : t('modal.tabs.listings')}
+                                  {item === 'transactions' && pendingTxCount > 0 ? (
+                                    <span
+                                      className="inline-block h-2 w-2 shrink-0 rounded-full bg-amber-400 animate-pulse"
+                                      title={`${pendingTxCount} in mempool`}
+                                      aria-label={`${pendingTxCount} pending in mempool`}
+                                    />
+                                  ) : null}
+                                </span>
                               </button>
                             ))}
                           </div>
@@ -5557,9 +5580,15 @@ export function DojakwebWalletModal({
                                               isDark
                                                 ? 'hover:bg-white/5'
                                                 : 'bg-zinc-50 hover:bg-white',
+                                              tx.pending && (isDark ? 'bg-amber-500/5' : 'bg-amber-50'),
                                             )}
                                           >
-                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C9A84C] text-[10px] font-bold text-[#161109]">
+                                            <div
+                                              className={cx(
+                                                'relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C9A84C] text-[10px] font-bold text-[#161109]',
+                                                tx.pending && 'ring-2 ring-amber-400 animate-pulse',
+                                              )}
+                                            >
                                               {initials}
                                             </div>
                                             <div className="min-w-0 flex-1">
@@ -5579,7 +5608,10 @@ export function DojakwebWalletModal({
                                                   </span>
                                                 ) : null}
                                                 {metaBits.slice(chips.protocolLabel ? 1 : 0).map((bit, idx) => (
-                                                  <span key={`${bit}-${idx}`}>
+                                                  <span
+                                                    key={`${bit}-${idx}`}
+                                                    className={bit === 'Mempool' ? 'text-amber-400 animate-pulse' : undefined}
+                                                  >
                                                     {(chips.protocolLabel || idx > 0) ? ' · ' : null}
                                                     {bit}
                                                   </span>

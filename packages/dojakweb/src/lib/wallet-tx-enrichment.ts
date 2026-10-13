@@ -264,7 +264,7 @@ export async function fetchAddressProtocolEnrichments(
   const addr = address.trim();
   if (!addr) return out;
 
-  const [playsBody, ticketsBody, locksBody] = await Promise.all([
+  const [playsBody, ticketsBody, locksBody, dnsBody] = await Promise.all([
     fetchFirstJson([
       `/api/dgames/plays?player=${encodeURIComponent(addr)}&op=all&limit=100`,
     ]),
@@ -273,6 +273,9 @@ export async function fetchAddressProtocolEnrichments(
     ]),
     fetchFirstJson([
       `/api/dlocker/address/${encodeURIComponent(addr)}?status=all&limit=100`,
+    ]),
+    fetchFirstJson([
+      `/api/dns/address/${encodeURIComponent(addr)}?limit=200`,
     ]),
   ]);
 
@@ -324,6 +327,57 @@ export async function fetchAddressProtocolEnrichments(
     }
   }
 
+  const dnsNames =
+    dnsBody && typeof dnsBody === 'object' && Array.isArray((dnsBody as any).names)
+      ? ((dnsBody as any).names as unknown[])
+      : [];
+  for (const raw of dnsNames) {
+    if (!raw || typeof raw !== 'object') continue;
+    for (const e of enrichmentsFromDnsName(raw as Record<string, unknown>)) {
+      const existing = out.get(e.txid);
+      if (!existing || existing.protocol === 'dogecoin' || existing.protocol === 'doginals') {
+        out.set(e.txid, e);
+      }
+    }
+  }
+
+  return out;
+}
+
+function enrichmentsFromDnsName(row: Record<string, unknown>): WalletTxEnrichment[] {
+  const name = String(row.name || '').trim().toLowerCase();
+  if (!name) return [];
+  const out: WalletTxEnrichment[] = [];
+  const regId = String(row.inscription_id || row.inscriptionId || '').trim();
+  const regTxid = txidFromInscriptionId(regId);
+  if (regTxid) {
+    out.push({
+      txid: regTxid,
+      protocol: 'dns',
+      action: 'register',
+      actionLabel: 'Register',
+      title: `Register · ${name}`,
+      summary: name,
+      originLabel: 'dogecoin.dog · DNS',
+      indexed: true,
+      metadata: { name, inscriptionId: regId, actionLabel: 'Register' },
+    });
+  }
+  const cfgId = String(row.config_inscription_id || row.configInscriptionId || '').trim();
+  const cfgTxid = txidFromInscriptionId(cfgId);
+  if (cfgTxid && cfgTxid !== regTxid) {
+    out.push({
+      txid: cfgTxid,
+      protocol: 'dns',
+      action: 'config',
+      actionLabel: 'Config',
+      title: `Config · ${name}`,
+      summary: name,
+      originLabel: 'dogecoin.dog · DNS',
+      indexed: true,
+      metadata: { name, inscriptionId: cfgId, actionLabel: 'Config' },
+    });
+  }
   return out;
 }
 

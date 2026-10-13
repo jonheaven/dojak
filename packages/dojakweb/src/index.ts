@@ -74,10 +74,14 @@ export type { PublishDn05Result } from './lib/dn05';
 export {
   publishDnsOnChain,
   buildDnsInscriptionJson,
+  buildDnsOfferOpReturn,
   normalizeDnsName,
   isDnsName,
   DNS_MARKER,
   DNS_HERO_NAMESPACE,
+  DNS_REGISTRAR_HOUSE,
+  DNS_REGISTRAR_FEE_KOINU,
+  DNS_PARK_INSCRIPTION_ID,
 } from './lib/dnsPublish';
 export type { PublishDnsResult, DnsRecords as DnsNameRecords } from './lib/dnsPublish';
 export {
@@ -429,6 +433,7 @@ export {
   subscribeWalletTxJournal,
   upsertWalletTxJournalEntry,
   journalDlockerTx,
+  journalDnsTx,
   journalIncineratorTx,
   walletTxActionLabel,
   walletTxDisplayChips,

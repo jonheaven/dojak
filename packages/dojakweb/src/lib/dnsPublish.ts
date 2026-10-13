@@ -3,12 +3,19 @@
  * Spec: dogenals/spec/protocols/dns/spec.md
  *
  * Names are Doginals inscriptions (not OP_RETURN). Sign with signInscriptionTxs.
+ * Studio register MAY attach a 1 DOGE product fee — not required for protocol validity.
  */
 import { signInscriptionTxs } from './dogetag/inscribe';
 import { broadcastSignedTransaction } from './broadcast/dogecoinTxBroadcast';
+import { journalDnsTx } from './wallet-tx-journal';
 
 export const DNS_MARKER = 'dns';
 export const DNS_HERO_NAMESPACE = 'doge';
+
+/** Studio registrar fee (product only). Games house wallet. */
+export const DNS_REGISTRAR_HOUSE = 'D8XknrqM5nNQnjpMLLTHRh5A3tQ4bWGLkB';
+export const DNS_REGISTRAR_FEE_KOINU = 100_000_000;
+export const DNS_PARK_INSCRIPTION_ID = '';
 
 const LABEL_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 const RESERVED = new Set([
@@ -66,13 +73,27 @@ export function buildDnsInscriptionJson(opts: {
     name,
   };
   const r = opts.records || {};
-  if (r.address) body.address = r.address.trim();
-  if (r.url) body.url = r.url.trim();
-  if (r.site) body.site = r.site.trim().toLowerCase();
-  if (r.avatar) body.avatar = r.avatar.trim();
-  if (r.content) body.content = r.content.trim().slice(0, 280);
-  if (r.cname) body.cname = r.cname.trim().toLowerCase();
+  if (r.address != null) body.address = r.address.trim();
+  if (r.url != null) body.url = r.url.trim();
+  if (r.site != null) body.site = r.site.trim().toLowerCase();
+  if (r.avatar != null) body.avatar = r.avatar.trim();
+  if (r.content != null) body.content = r.content.trim().slice(0, 280);
+  if (r.cname != null) body.cname = r.cname.trim().toLowerCase();
   return JSON.stringify(body);
+}
+
+export function buildDnsOfferOpReturn(opts: {
+  name: string;
+  amountDoge: number;
+  note?: string;
+}): string {
+  const name = normalizeDnsName(opts.name);
+  if (!name) throw new Error('Invalid DNS name');
+  const amt = Number.isFinite(opts.amountDoge) ? opts.amountDoge : 0;
+  const note = (opts.note || '').trim().slice(0, 80);
+  const link = `https://dogecoin.dog/dns/${encodeURIComponent(name)}`;
+  const base = `dns offer ${name} ${amt} ${link}`;
+  return note ? `${base} ${note}` : base;
 }
 
 export type PublishDnsResult = {
@@ -88,6 +109,8 @@ export async function publishDnsOnChain(params: {
   name: string;
   records?: DnsRecords;
   feeRate?: number;
+  /** Skip studio 1 DOGE registrar fee. */
+  skipRegistrarFee?: boolean;
   onStatus?: (msg: string) => void;
 }): Promise<PublishDnsResult> {
   const name = normalizeDnsName(params.name);
@@ -97,6 +120,10 @@ export async function publishDnsOnChain(params: {
   const text = plain
     ? name
     : buildDnsInscriptionJson({ op: 'config', name, records: params.records });
+  const fee =
+    params.op === 'register' && !params.skipRegistrarFee
+      ? [{ address: DNS_REGISTRAR_HOUSE, satoshis: DNS_REGISTRAR_FEE_KOINU }]
+      : undefined;
   params.onStatus?.('Signing DNS commit + reveal…');
   const pair = await signInscriptionTxs({
     text,
@@ -104,14 +131,33 @@ export async function publishDnsOnChain(params: {
     privateKeyWIF: params.privateKeyWIF,
     feeRate: params.feeRate ?? 0,
     contentType: plain ? 'text/plain;charset=utf-8' : 'application/json',
+    extraRevealPayments: fee,
   });
   params.onStatus?.('Broadcasting commit…');
   await broadcastSignedTransaction(pair.commitTxHex);
   params.onStatus?.('Broadcasting reveal…');
   await broadcastSignedTransaction(pair.revealTxHex);
+  const inscriptionId = `${pair.revealTxid}i0`;
+  journalDnsTx({
+    txid: pair.revealTxid,
+    address: params.fromAddress,
+    action: params.op === 'register' ? 'register' : 'config',
+    name,
+    inscriptionId,
+    commitTxid: pair.commitTxid,
+  });
+  if (pair.commitTxid && pair.commitTxid !== pair.revealTxid) {
+    journalDnsTx({
+      txid: pair.commitTxid,
+      address: params.fromAddress,
+      action: 'commit',
+      name,
+      inscriptionId,
+    });
+  }
   return {
     commitTxid: pair.commitTxid,
     revealTxid: pair.revealTxid,
-    inscriptionId: `${pair.revealTxid}i0`,
+    inscriptionId,
   };
 }
