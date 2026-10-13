@@ -74,7 +74,7 @@ export function NetworkFeeFuelButton({ className, panelClassName }: NetworkFeeFu
             isDark ? 'text-white/40' : 'text-zinc-500',
           )}
         >
-          Applies to Local Browser Wallet txs on this site.
+          Applies to Dojak txs on this site.
         </p>
       </PopoverPanel>
     </Popover>

@@ -292,7 +292,7 @@ export function DMPPage() {
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 text-center">
           <ShoppingBagIcon className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
           <p className="text-zinc-400 text-sm mb-4">
-            Connect your Dojakweb wallet to sign ÐMP marketplace intents.
+            Connect Dojak in this browser to sign ÐMP marketplace intents.
           </p>
           <div className="text-xs text-zinc-600">
             ÐMP requires wallet signing for cryptographic verification.

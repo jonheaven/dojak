@@ -706,7 +706,7 @@ export async function bumpSignedDoginalStageFee(params: {
   const partials = splitIntoPartials(content, ct);
   if (!rawDoginalTxSupportsRbf(stage.txHex)) {
     throw new Error(
-      'This transaction was signed with final sequences (no RBF). Re-sign the whole chain in Dojakweb to enable fee bumps, or use a wallet/Core path that supports replacement.',
+      'This transaction was signed with final sequences (no RBF). Re-sign the whole chain in the wallet to enable fee bumps, or use a wallet/Core path that supports replacement.',
     );
   }
 

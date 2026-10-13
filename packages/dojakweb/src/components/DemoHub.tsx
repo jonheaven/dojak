@@ -187,7 +187,7 @@ export function DemoHub({
     setLiveError(null);
     setLiveMessageResult(null);
     setLiveMessageStatus('running');
-    const payload = `Dojakweb wallet demo message\nwallet=${walletType ?? 'unknown'}\naddress=${activeAddress ?? 'n/a'}\nts=${new Date().toISOString()}`;
+    const payload = `Dojak demo message\nwallet=${walletType ?? 'unknown'}\naddress=${activeAddress ?? 'n/a'}\nts=${new Date().toISOString()}`;
     console.log('[DemoHub] liveMessageTest:start', { walletType, payload });
     try {
       const signature = await signMessage(payload);

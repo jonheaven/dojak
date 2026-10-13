@@ -253,7 +253,7 @@ export function WalletQuickPicker({
           </span>
           {feature || variant === 'sheet' ? (
             <span className="ds-wallet-quick-picker__row-text">
-              <span className="ds-wallet-quick-picker__row-title">{tile.shortTitle}</span>
+              <span className="ds-wallet-quick-picker__row-title">{tile.title}</span>
               <span className="ds-wallet-quick-picker__row-sub">
                 {asInstall ? t('wallet.quickPicker.getWallet', { name: tile.shortTitle }) : tile.subtitle}
               </span>

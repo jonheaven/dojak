@@ -128,11 +128,11 @@ export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelP
         wif = (await browser.getSigningWallet()).privateKey.trim();
       }
     } catch (e) {
-      setUnlockError(e instanceof Error ? e.message : 'Unlock your Local Browser Wallet first');
+      setUnlockError(e instanceof Error ? e.message : 'Unlock Dojak first');
       return;
     }
     if (!wif || !address) {
-      setUnlockError('Unlock your Local Browser Wallet first');
+      setUnlockError('Unlock Dojak first');
       return;
     }
     approveLockRef.current = true;
@@ -254,7 +254,7 @@ export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelP
         {!sessionReady ? (
           <div className="ds-wallet-approval__unlock">
             <p className="ds-wallet-approval__unlock-title">
-              Unlock Local Browser Wallet to approve
+              Unlock Dojak to approve
             </p>
             <input
               type="password"
@@ -294,7 +294,7 @@ export function WalletApprovalPanel({ isDark: isDarkProp }: WalletApprovalPanelP
 
         <p className="ds-wallet-approval__hint">
           Only approve if you trust this site. Approving signs and may broadcast a Dogecoin
-          transaction from your Local Browser Wallet.
+          transaction from Dojak in this browser.
         </p>
       </div>
 

@@ -615,7 +615,7 @@ export function WalletSendFlow({
     return (
       <div className="space-y-4">
         <div className="text-sm text-white/70">
-          One confirm — we sign & broadcast from your unlocked Local Browser Wallet.
+          One confirm — we sign and broadcast from Dojak in this browser.
         </div>
 
         <div className="rounded-xl border border-white/10 bg-[#0A0A0A] px-4 py-4 space-y-3">

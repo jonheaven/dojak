@@ -144,7 +144,7 @@ export const WALLET_UI_EN_FLAT: Record<string, string> = {
     'Coin list: BlockCypher (includes unconfirmed / 0-conf coins). Inscription labels use your wallet data API from Settings.',
   'utxo.fetchSource.tatum':
     'Coin list: Tatum API (includes unconfirmed / 0-conf coins). Inscription labels use your wallet data API from Settings.',
-  'utxo.walletLockedNotice': 'Unlock your browser wallet to enable merge & split operations.',
+  'utxo.walletLockedNotice': 'Unlock Dojak to merge and split coins.',
   'utxo.cardTitle.confirmed':
     'Confirmed (≥1 block), spendable in your Core wallet — usually matches extension wallets. Total on-chain includes pending rows below.',
   'utxo.cardTitle.unconfirmed': 'Sum of all coins (Blockchair mode: confirmation depth not shown).',

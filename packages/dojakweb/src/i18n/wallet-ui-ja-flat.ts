@@ -141,7 +141,7 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
     'UTXO 一覧: BlockCypher（未確定 / 0 確認の UTXO を含む）。インスクリプション表示は設定のウォレットデータ API を使用します。',
   'utxo.fetchSource.tatum':
     'UTXO 一覧: Tatum API（未確定 / 0 確認の UTXO を含む）。インスクリプション表示は設定のウォレットデータ API を使用します。',
-  'utxo.walletLockedNotice': 'マージ・分割を使うにはブラウザウォレットのロックを解除してください。',
+  'utxo.walletLockedNotice': 'コインの結合と分割には Dojak のロック解除が必要です。',
   'utxo.cardTitle.confirmed':
     '確定（≥1 ブロック）、Core ウォレットで使用可能 — 拡張ウォレットと通常一致。オンチェーン合計には下の未確定行を含みます。',
   'utxo.cardTitle.unconfirmed': 'すべての UTXO の合計（Blockchair モード: 確認深度は表示されません）。',

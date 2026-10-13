@@ -351,16 +351,16 @@ Max size: ${INSCRIPTION_MAX_CONTENT_BYTES} bytes in this UI (single-partial, ind
         // Dogetag inscription path: canonical Doginals P2SH commit-reveal
         if (wallet?.walletType !== 'browser') {
           throw new Error(
-            'Doginal inscriptions require the local Dojakweb browser wallet (needs direct key access). ' +
+            'Doginal inscriptions require Dojak in this browser (needs direct key access). ' +
             'Connect your local wallet or switch to DogeTag:tx (OP_RETURN) mode.',
           );
         }
         if (typeof wallet?.getPrivateKeyWIF !== 'function') {
-          throw new Error('Unlock your Dojakweb browser wallet before building an inscription.');
+          throw new Error('Unlock Dojak before building an inscription.');
         }
         const privateKeyWIF = await wallet.getPrivateKeyWIF();
         if (!privateKeyWIF) {
-          throw new Error('Unlock your Dojakweb browser wallet before building an inscription.');
+          throw new Error('Unlock Dojak before building an inscription.');
         }
 
         const plan = await signInscriptionTxs({

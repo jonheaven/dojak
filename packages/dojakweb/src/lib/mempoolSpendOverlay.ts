@@ -304,7 +304,7 @@ export function friendlyPaymentSendError(err: unknown): string {
     return m;
   }
   if (/wallet.*locked|private key/i.test(m)) {
-    return 'Unlock your Local Browser Wallet and try again.';
+    return 'Unlock Dojak and try again.';
   }
   if (/all broadcast providers failed|broadcast/i.test(m)) {
     return `Broadcast failed: ${m.replace(/^Invalid transaction\.\s*/i, '').trim()}. The coins were NOT sent — try again.`;

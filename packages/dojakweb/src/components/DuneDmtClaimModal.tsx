@@ -41,11 +41,11 @@ export const DuneDmtClaimModal: React.FC<Props> = ({ isOpen, onClose, onSuccess 
   const submit = async () => {
     setError(null);
     if (!connected || !address) {
-      setError('Connect the local browser wallet first.');
+      setError('Connect Dojak first.');
       return;
     }
     if (!browser.unlocked) {
-      setError('Unlock Local Browser Wallet to sign the claim inscription.');
+      setError('Unlock Dojak to sign the claim inscription.');
       return;
     }
     let payload: Record<string, unknown>;

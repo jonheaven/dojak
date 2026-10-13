@@ -855,7 +855,7 @@ export const InscribePage: React.FC = () => {
       return;
     }
     if (walletType !== 'browser' || !browser.unlocked) {
-      toast.error('Unlock your Dojakweb browser wallet to inscribe.');
+      toast.error('Unlock Dojak to inscribe.');
       return;
     }
     const ct = contentType.trim();
@@ -1267,7 +1267,7 @@ export const InscribePage: React.FC = () => {
           console.warn('[dojakweb:bumpfee] bumpfee failed', rpcRes.error);
           if (st.kind !== 'commit' && !rawRbf) {
             throw new Error(
-              `${rpcRes.error} Re-sign the chain in Dojakweb (new builds use RBF-friendly sequences) or import the tx into your Core wallet.`,
+              `${rpcRes.error} Re-sign the chain in the wallet (new builds use RBF-friendly sequences) or import the tx into your Core wallet.`,
             );
           }
           throw new Error(rpcRes.error);
@@ -1290,7 +1290,7 @@ export const InscribePage: React.FC = () => {
       if (stageIndex < lastIdx) {
         if (walletType !== 'browser' || !browser.unlocked) {
           throw new Error(
-            'Unlock the Dojakweb browser wallet so the app can re-sign downstream transactions against the new parent txid.',
+            'Unlock Dojak so the app can re-sign downstream transactions against the new parent txid.',
           );
         }
         newPlan = await resignDoginalChainTailAfterBumpedStage({
@@ -1390,8 +1390,8 @@ export const InscribePage: React.FC = () => {
             {MEMPOOL_ANCESTOR_CHAIN_HINT}+ ancestors) can hit “too-long-mempool-chain” — use a competitive fee and, if
             needed, pause until the front confirms then continue. <strong className="text-text-secondary dark:text-white/70">Optional slow mode:</strong>{' '}
             you can still wait 1 confirmation between steps for extra caution.{' '}
-            <strong className="text-text-secondary dark:text-white/70">Extensions:</strong> multi-step signing uses the Dojakweb browser wallet
-            today; PSDT for extension wallets is planned.
+            <strong className="text-text-secondary dark:text-white/70">Extensions:</strong> multi-step signing uses Dojak
+            in this browser today; PSDT for extension wallets is planned.
           </p>
         </header>
 
@@ -1697,7 +1697,7 @@ export const InscribePage: React.FC = () => {
             </button>
             {walletType !== 'browser' && (
               <p className="text-xs text-amber-200/90">
-                Switch to the Dojakweb browser wallet to sign multi-transaction inscription chains.
+                Switch to Dojak in this browser to sign multi-transaction inscription chains.
               </p>
             )}
           </div>

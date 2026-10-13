@@ -13,8 +13,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.title.addressBook': 'Address Book',
   'modal.title.sendInscription': 'Send #{num}',
   'modal.title.listInscription': 'List #{num}',
-  'modal.tagline.builtIn':
-    'Built-in Dogecoin wallet — no extension required. Create once and start using this dApp right away.',
+  'modal.tagline.builtIn': 'A Dogecoin wallet in this browser. Your keys never leave it.',
   'modal.aria.backToWallet': 'Back to wallet',
   'modal.aria.switchWallet': 'Switch wallet',
   'modal.aria.signingWallet': 'Signing wallet: {label}',
@@ -55,24 +54,25 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.aria.cancelListing': 'Cancel listing',
   'modal.aria.closeWalletSwitcher': 'Close wallet switcher',
   'modal.aria.useWalletTitle': 'Use {label} as the active wallet',
-  'modal.savedWallets.heading': 'Saved local wallets',
+  'modal.savedWallets.heading': 'Wallets in this browser',
   'modal.savedWallets.encrypted': 'Encrypted',
   'modal.savedWallets.passwordless': 'Passwordless',
   'modal.savedWallets.account': 'Account {index}',
   'modal.savedWallets.connect': 'Connect',
-  'modal.entry.createNew': 'Get a Dogecoin wallet',
+  'modal.entry.createNew': 'Create a wallet',
   'modal.entry.creating': 'Creating wallet…',
-  'modal.entry.createHint': 'One tap. Keys stay in this browser until you clear site data.',
-  'modal.entry.import': 'Import existing wallet',
+  'modal.entry.createHint':
+    'Hot wallet. Keep small amounts. If this browser is cleared, only your recovery phrase gets it back.',
+  'modal.entry.import': 'Import a wallet',
   'modal.unlock.enterPassword': 'Enter password',
   'modal.unlock.enterPin': 'Enter PIN (6+ digits)',
   'modal.unlock.modePassword': 'Password',
   'modal.unlock.modePin': 'PIN',
-  'modal.unlock.modeBiometric': 'Biometric',
-  'modal.unlock.biometricReason': 'Unlock your local wallet',
+  'modal.unlock.modeBiometric': 'Passkey',
+  'modal.unlock.biometricReason': 'Unlock Dojak',
   'modal.unlock.biometricHint':
-    'Use your device fingerprint, Face ID, Windows Hello, or a USB security key — same secret you protected when you enabled quick unlock.',
-  'modal.unlock.biometricCta': 'Use fingerprint / security key',
+    'Face ID, fingerprint, Windows Hello, or a passkey on this device. Same secret you saved when you turned quick unlock on.',
+  'modal.unlock.biometricCta': 'Unlock with passkey',
   'modal.unlock.goBack': 'Go back',
   'modal.unlock.unlocking': 'Unlocking…',
   'modal.unlock.submit': 'Unlock Wallet',
@@ -98,7 +98,8 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.password.strengthStandard': 'Standard (fast)',
   'modal.password.strengthHigh': 'High',
   'modal.password.strengthMaximum': 'Maximum (slowest, strongest)',
-  'modal.password.biometricHint': 'Allow WebAuthn / USB security key quick unlock after you save (uses this same secret).',
+  'modal.password.biometricHint':
+    'Also unlock with a passkey (Face ID, fingerprint, Windows Hello, or a security key) on this device.',
   'modal.password.confirm': 'Confirm password',
   'modal.password.skip': 'Skip for now',
   'modal.password.requiredHint':
@@ -203,7 +204,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.toast.dpfaCleared': 'ÐPFA cleared',
   'modal.toast.dpfaNoUrl': 'No playable URL for this inscription — try another indexer or wallet data source.',
   'modal.toast.dpfpPublishNeedBrowser':
-    'Unlock Local Browser Wallet to publish on-chain (extensions cannot inscribe binds yet). Local profile was still set.',
+    'Unlock Dojak to publish on-chain (extensions cannot inscribe binds yet). The profile on this device was still set.',
   'modal.toast.dpfpPublished': 'ÐPFP published on-chain: {id}',
   'modal.toast.dpfaPublished': 'ÐPFA published on-chain: {id}',
   'modal.assets.listForSale': 'List for sale',
@@ -306,7 +307,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.identity.blurb':
     'On-chain identity lives in this wallet. Ð𝕏 links 𝕏; ÐN05 claims a Nostr name. Both are cheap OP_RETURN statements — not transferable NFTs.',
   'modal.identity.needBrowser':
-    'Unlock Local Browser Wallet to sign OP_RETURN. Extension wallets cannot bind identity yet.',
+    'Unlock Dojak to sign OP_RETURN. Extension wallets cannot bind identity yet.',
   'modal.identity.dxIntro':
     'Tweet your Dogecoin address from the 𝕏 account, paste the tweet URL, then approve a DX OP_RETURN. dogex indexes the bind.',
   'modal.identity.n05Intro':
@@ -396,7 +397,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.verification.signedToast': 'Ð𝕏 register payload ready — you can inscribe from here or copy JSON.',
   'modal.verification.errTweetId': 'Could not read a numeric tweet id from that input.',
   'modal.verification.dxDone':
-    'Your dx register JSON is ready. Inscribe it on-chain below (browser wallet), or copy JSON for external tooling.',
+    'Your dx register JSON is ready. Inscribe it on-chain below with Dojak, or copy JSON for external tooling.',
   'modal.verification.copyPayload': 'Copy inscription JSON',
   'modal.verification.dxInscribeHint':
     'Protocol registration uses the JSON inscription. Optional HTML card loads one shared badge image by inscription id (set VITE_DX_BADGE_INSCRIPTION_ID) so the image bytes are not repeated per user.',
@@ -407,7 +408,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.verification.dxInscribeCardBtn': 'Inscribe wallet card (HTML)',
   'modal.verification.dxInscribing': 'Signing & broadcasting…',
   'modal.verification.dxInscribeNeedBrowser':
-    'Unlock Local Browser Wallet for one-click inscribe, or use Easy inscribe (deposit) for MyDoge / extensions.',
+    'Unlock Dojak for one-click inscribe, or use Easy inscribe (deposit) for MyDoge / extensions.',
   'modal.verification.dxEasyHint':
     'MyDoge / Spooky / extension: send plain DOGE to the deposit — command.dog inscribes your dx JSON (Easy bet style).',
   'modal.verification.dxEasyCreated':
@@ -417,7 +418,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.verification.dxEasyFailed': 'Easy Ð𝕏 inscribe failed: {err}',
   'modal.verification.dxRevokeTitle': 'Revoke on-chain link',
   'modal.verification.dxRevokeHint':
-    'Clear this address’s Ð𝕏 link so you can re-register on another wallet (e.g. MyDoge → Local Browser).',
+    'Clear this address’s Ð𝕏 link so you can re-register on another wallet (e.g. MyDoge → Dojak).',
   'modal.verification.dxRevokePrevId': 'Previous register inscription id',
   'modal.verification.dxRevokeBtn': 'Sign & inscribe revoke',
   'modal.verification.dxRevokeOk': 'Revoke inscription broadcast: {id}',
@@ -603,8 +604,8 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.walletSwitcher.tab.local': 'HD wallet (browser)',
   'modal.walletSwitcher.tab.ext': 'Extension',
   'modal.walletSwitcher.tab.hw': 'Hardware',
-  'modal.walletSwitcher.group.localTitle': 'Local Browser Wallets',
-  'modal.walletSwitcher.group.localHint': 'HD accounts derived from seeds saved in this browser. Switch wallet above for extensions or hardware.',
+  'modal.walletSwitcher.group.localTitle': 'Dojak in this browser',
+  'modal.walletSwitcher.group.localHint': 'Accounts from seeds saved in this browser. Extensions and hardware are in the switcher above.',
   'modal.walletSwitcher.group.extTitle': 'Connected Extensions',
   'modal.walletSwitcher.group.extHint': 'Dojak and Doge Soft sign with their own injected APIs.',
   'modal.walletSwitcher.group.hwTitle': 'Hardware Wallets',
@@ -623,9 +624,9 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.walletSwitcher.connectAnother': 'Connect another',
   'modal.walletSwitcher.connectAnotherHint':
     'Add an extension or hardware wallet without disconnecting your current session.',
-  'modal.walletSource.local': 'Local',
+  'modal.walletSource.local': 'Dojak',
   'modal.walletSource.mydoge': 'MyDoge',
-  'modal.walletSource.dojak': 'Dojak',
+  'modal.walletSource.dojak': 'Dojak extension',
   'modal.walletSource.spookydoge': 'Spooky Doge',
   'modal.walletSource.dogesoft': 'Doge Soft',
   'modal.walletSource.ledger': 'Ledger',
@@ -642,7 +643,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.priceSources.coingecko.desc': 'CoinGecko public API (no key required)',
   'modal.priceSources.coinpaprika.label': 'CoinPaprika',
   'modal.priceSources.coinpaprika.desc': 'CoinPaprika public API (no key required)',
-  'modal.toast.backupZipLocalOnly': 'Wallet backup is only available for the local browser wallet.',
+  'modal.toast.backupZipLocalOnly': 'Wallet backup is only available for Dojak in this browser.',
   'modal.toast.backupNeedSessionPw': 'Re-open and unlock your wallet to enable an encrypted backup. Your session password is required.',
   'modal.toast.backupZipUnencryptedWarn': 'No wallet password set — the backup ZIP will be unencrypted. Set a password first for a secured backup.',
   'modal.toast.backupZipEncrypted': 'Encrypted wallet backup ZIP downloaded.',
@@ -725,7 +726,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.throws.walletLocked': 'Wallet locked — please unlock first.',
   'modal.throws.walletLockedShort': 'Wallet locked — unlock first.',
   'modal.throws.noPaymentUtxos': 'No payment coins found for fee.',
-  'modal.throws.listingNotSupported': 'Listing signing is not supported for the current wallet type. Use the browser wallet to create listings.',
+  'modal.throws.listingNotSupported': 'Listing signing is not supported for the current wallet type. Use Dojak in this browser to create listings.',
   'modal.throws.cancelNeedFunds': 'Need spendable DOGE to pay the cancellation fee (~0.001 DOGE). Fund your wallet and try again.',
   'modal.placeholders.rpcUrl': 'http://127.0.0.1:22555',
   'modal.placeholders.rpcuser': 'rpcuser',

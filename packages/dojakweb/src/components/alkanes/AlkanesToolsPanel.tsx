@@ -108,7 +108,7 @@ export function AlkanesToolsPanel({
       return;
     }
     if (!connected || !address) {
-      setError('Connect / unlock Local Browser Wallet to deploy');
+      setError('Connect / unlock Dojak to deploy');
       return;
     }
     setBusy(true);
@@ -226,7 +226,7 @@ export function AlkanesToolsPanel({
     setError(null);
     setStatus(null);
     if (!connected || !address) {
-      setError('Connect / unlock Local Browser Wallet to broadcast');
+      setError('Connect / unlock Dojak to broadcast');
       return;
     }
     const [b, t] = target.split(':').map((x) => x.trim());

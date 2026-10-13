@@ -20,7 +20,7 @@ export class BrowserWalletSigner implements MarketplaceSigner {
   async connect(): Promise<{ address: string }> {
     const loaded = await this.wallet.loadWallet(this.password);
     if (!loaded) {
-      throw new Error('No browser wallet available. Create or import a wallet first.');
+      throw new Error('No Dojak wallet in this browser. Create or import a wallet first.');
     }
     this.connectedAddress = loaded.address;
     return { address: loaded.address };

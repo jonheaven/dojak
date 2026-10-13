@@ -197,7 +197,7 @@ function normalizeLedgerError(error: unknown): string {
 function getWalletTypeLabel(type: WalletType, browserNickname?: string | null): string {
   switch (type) {
     case 'browser':
-      return browserNickname?.trim() || 'Local Browser Wallet';
+      return browserNickname?.trim() || 'Dojak';
     case 'mydoge':
       return 'MyDoge';
     case 'spookydoge':
@@ -205,7 +205,7 @@ function getWalletTypeLabel(type: WalletType, browserNickname?: string | null): 
     case 'dogesoft':
       return 'Doge Soft';
     case 'dojak':
-      return 'Dojak';
+      return 'Dojak extension';
     case 'ledger':
       return 'Ledger';
     case 'dogewatch':
@@ -1280,17 +1280,17 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       const opReturnHex = sendOptions?.opReturnHex?.trim();
       if ((opReturnMessage || opReturnHex) && walletType === 'mydoge') {
         throw new Error(
-          'MyDoge cannot attach protocol OP_RETURN yet. Use Local Browser Wallet or Dojak extension for Ðocial likes.',
+          'MyDoge cannot attach protocol OP_RETURN yet. Use Dojak in this browser, or the Dojak extension, for Ðocial likes.',
         );
       }
       if ((opReturnMessage || opReturnHex) && walletType === 'spookydoge') {
         throw new Error(
-          'SpookyDoge cannot attach protocol OP_RETURN yet. Use Local Browser Wallet or Dojak for Ðocial likes.',
+          'SpookyDoge cannot attach protocol OP_RETURN yet. Use Dojak in this browser for Ðocial likes.',
         );
       }
       if ((opReturnMessage || opReturnHex) && walletType === 'dogesoft') {
         throw new Error(
-          'Doge Soft cannot attach protocol OP_RETURN yet. Use Local Browser Wallet or Dojak for Ðocial likes.',
+          'Doge Soft cannot attach protocol OP_RETURN yet. Use Dojak in this browser for Ðocial likes.',
         );
       }
 
@@ -1443,7 +1443,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
         const txid = (await requestWalletApproval({
           title: 'Send DOGE',
-          description: 'Approve to sign and broadcast this transfer from your Local Browser Wallet.',
+          description: 'Approve to sign and broadcast this transfer from Dojak in this browser.',
           details: [
             { label: 'To', value: toAddress },
             { label: 'Amount', value: `${amount} DOGE` },
@@ -1461,7 +1461,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
       if (walletType === 'ledger') {
         throw new Error(
-          'Sending DOGE from Ledger is not wired for simple transfers yet. Use Local browser wallet or an extension for this action.'
+          'Sending DOGE from Ledger is not wired for simple transfers yet. Use Dojak in this browser or an extension for this action.'
         );
       }
 
@@ -1633,7 +1633,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           /* fall through */
         }
         if (!w?.privateKey) {
-          throw new Error('Unlock your browser wallet to sign PSBTs.');
+          throw new Error('Unlock Dojak to sign PSBTs.');
         }
         const local = new BrowserWallet();
         return local.signPSBT(psbtHex, undefined, undefined, w.address);
@@ -1642,7 +1642,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       if (walletType === 'ledger') {
         throw new Error(
           'Ledger’s Dogecoin app uses the legacy Ledger interface: it cannot sign PSBTs from web apps (only older “build transaction” flows). ' +
-            'doggy.market-style buys need PSDT signing. Use Dojak, Doge Soft, or Dojakweb’s in-browser wallet for this step.',
+            'doggy.market-style buys need PSDT signing. Use Dojak in this browser, the Dojak extension, or Doge Soft for this step.',
         );
       }
 
@@ -1787,7 +1787,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         // Already inside requestWalletApproval (host dApp) — do not nest another panel.
         if (opts?.skipApprovalUi) {
           const wif = (await browser.getSigningWallet()).privateKey;
-          if (!wif) throw new Error('Unlock your browser wallet to sign PSBTs.');
+          if (!wif) throw new Error('Unlock Dojak to sign PSBTs.');
           const signed = await runSign(wif);
           console.log('[UnifiedWallet] signPSBTOnly:browser:result', {
             length: signed.length,
@@ -1807,7 +1807,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           title: opts?.approval?.title ?? 'Sign PSBT',
           description:
             opts?.approval?.description ??
-            'Approve to partially sign this PSBT/PSDT with your Local Browser Wallet. Host apps should pass richer details when possible.',
+            'Approve to partially sign this PSBT/PSDT with Dojak in this browser. Host apps should pass richer details when possible.',
           details: approvalDetails,
           approveLabel:
             psbtAudit.risk === 'critical'
@@ -1829,7 +1829,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       if (walletType === 'ledger') {
         throw new Error(
           'Ledger’s Dogecoin app uses the legacy Ledger interface: it cannot sign PSBTs from web apps (only older “build transaction” flows). ' +
-            'doggy.market-style buys need PSDT signing. Use Dojak, Doge Soft, or Dojakweb’s in-browser wallet for this step.',
+            'doggy.market-style buys need PSDT signing. Use Dojak in this browser, the Dojak extension, or Doge Soft for this step.',
         );
       }
 

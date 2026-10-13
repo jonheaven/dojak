@@ -253,7 +253,7 @@ export const DogetagPage: React.FC<{
     signPsbt: async (psbtHex: string) => signPSBTOnly(psbtHex),
     getPrivateKeyWIF: async () => {
       if (walletType !== 'browser' || !browser.unlocked)
-        throw new Error('Unlock your Dojakweb wallet before signing a Dogetag.');
+        throw new Error('Unlock Dojak before signing a Dogetag.');
       return (await browser.getSigningWallet()).privateKey;
     },
     signOpReturn: async (params: {
@@ -264,7 +264,7 @@ export const DogetagPage: React.FC<{
       excludedOutpoints?: string[];
     }) => {
       if (walletType !== 'browser' || !browser.unlocked)
-        throw new Error('Unlock your Dojakweb wallet before signing DogeTag:tx (OP_RETURN).');
+        throw new Error('Unlock Dojak before signing DogeTag:tx (OP_RETURN).');
       return signOpReturnTransaction({
         message: params.message,
         fromAddress: params.fromAddress,
@@ -287,7 +287,7 @@ export const DogetagPage: React.FC<{
         </div>
         <h2 className="mb-2 text-base font-bold text-white">Connect your wallet to create</h2>
         <p className="mb-4 text-sm text-zinc-400">
-          Works with your local Dojakweb wallet, Dojak, or Doge Soft.
+          Works with Dojak in this browser, the Dojak extension, or Doge Soft.
         </p>
         <button
           type="button"

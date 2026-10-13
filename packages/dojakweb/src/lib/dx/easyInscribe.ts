@@ -39,7 +39,7 @@ export async function createEasyDxInscribeJob(opts: {
 }): Promise<InscribeJobResponse> {
   if (!isInscribeJobsClientConfigured()) {
     throw new Error(
-      'Easy Ð𝕏 inscribe needs VITE_INSCRIBE_JOBS_API_KEY + VITE_COMMAND_DOG_API_URL (same as inscribe jobs). Or unlock Local Browser Wallet to inscribe client-side.',
+      'Easy Ð𝕏 inscribe needs VITE_INSCRIBE_JOBS_API_KEY + VITE_COMMAND_DOG_API_URL (same as inscribe jobs). Or unlock Dojak to inscribe in this browser.',
     );
   }
   const json = opts.jsonBody;

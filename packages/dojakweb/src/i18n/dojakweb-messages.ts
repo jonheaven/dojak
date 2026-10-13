@@ -51,9 +51,9 @@ const en: MsgTree = {
       getWallet: 'Get {name}',
       disconnectAria: 'Disconnect {name}',
       short: {
-        browser: 'Local',
+        browser: 'Dojak',
         mydoge: 'MyDoge',
-        dojak: 'Dojak',
+        dojak: 'Dojak ext',
         spookydoge: 'Spooky',
         dogesoft: 'Doge Soft',
         ledger: 'Ledger',
@@ -63,9 +63,9 @@ const en: MsgTree = {
     connectionModal: {
       eyebrow: 'Wallet connection',
       title: 'Choose a wallet',
-      subtitle: 'Local browser wallet first. Or use an extension (Dojak, Doge Soft, Spooky Doge) or hardware.',
+      subtitle: 'Create or import Dojak in this browser, or connect an extension or a hardware wallet.',
       footer:
-        'Keys stay on this device. The local browser wallet is a hot wallet for this site: encrypted at rest, and this site can sign while the tab is unlocked. Not for sizeable holdings — use the Dojak extension for those.',
+        'Your keys never leave this device. Dojak in this browser is a hot wallet: encrypted here, and this site can sign while the tab is unlocked. Keep small amounts. Use the Dojak extension for larger holdings.',
       close: 'Close',
       categoryInternal: 'Internal',
       categoryExternal: 'External',
@@ -73,14 +73,14 @@ const en: MsgTree = {
     },
     options: {
       browser: {
-        title: 'Local Browser Wallet',
-        subtitleHas: 'Hot wallet on this site. Encrypted at rest. This site can sign while the tab is unlocked. Not for sizeable holdings.',
-        subtitleNew: 'Hot wallet created for this site only. This site can sign while the tab is unlocked. Not for sizeable holdings.',
-        available: 'Wallet available',
-        create: 'Create wallet',
+        title: 'Dojak',
+        subtitleHas: 'Wallet in this browser. Encrypted here. This site can sign while the tab is unlocked. Keep small amounts.',
+        subtitleNew: 'Create or import a Dogecoin wallet in this browser. Hot wallet — keep small amounts.',
+        available: 'Ready',
+        create: 'Create or import',
       },
       dojak: {
-        title: 'Browser Extension: Dojak',
+        title: 'Dojak extension',
         subtitleOk: 'Native Dogecoin and Doginals extension flow.',
         subtitleInstall: 'Install the Dojak extension to continue.',
         detected: 'Detected',
@@ -157,9 +157,9 @@ const ja: MsgTree = {
       getWallet: '{name} を入手',
       disconnectAria: '{name} を切断',
       short: {
-        browser: 'ローカル',
+        browser: 'Dojak',
         mydoge: 'MyDoge',
-        dojak: 'Dojak',
+        dojak: 'Dojak 拡張',
         spookydoge: 'Spooky',
         dogesoft: 'Doge Soft',
         ledger: 'Ledger',
@@ -169,9 +169,9 @@ const ja: MsgTree = {
     connectionModal: {
       eyebrow: 'ウォレット接続',
       title: 'ウォレットを選択',
-      subtitle: 'まずはローカルブラウザウォレット。拡張機能（Dojak、Doge Soft、Spooky Doge）かハードウェアも使えます。',
+      subtitle: 'このブラウザで Dojak を作成またはインポートするか、拡張機能かハードウェアを接続します。',
       footer:
-        '秘密鍵は端末内に留まります。ローカルブラウザウォレットはこのサイト専用のホットウォレットです。保存時は暗号化されますが、タブのロック解除中はこのサイトが署名できます。まとまった保有には向きません。その場合は Dojak 拡張機能を使ってください。',
+        '秘密鍵はこの端末から出ません。ブラウザの Dojak はホットウォレットです。保存時は暗号化されますが、タブのロック解除中はこのサイトが署名できます。少額だけ置いてください。まとまった保有は Dojak 拡張機能を使ってください。',
       close: '閉じる',
       categoryInternal: '内蔵',
       categoryExternal: '拡張機能',
@@ -179,14 +179,14 @@ const ja: MsgTree = {
     },
     options: {
       browser: {
-        title: 'ローカルブラウザウォレット',
-        subtitleHas: 'このサイトのホットウォレット。保存時は暗号化。タブのロック解除中はこのサイトが署名できます。まとまった保有には向きません。',
-        subtitleNew: 'このサイト専用のホットウォレット。タブのロック解除中はこのサイトが署名できます。まとまった保有には向きません。',
-        available: 'ウォレットあり',
-        create: 'ウォレット作成',
+        title: 'Dojak',
+        subtitleHas: 'このブラウザのウォレット。保存時は暗号化。タブのロック解除中はこのサイトが署名できます。少額だけ置いてください。',
+        subtitleNew: 'このブラウザに Dogecoin ウォレットを作成またはインポート。ホットウォレットなので少額だけ。',
+        available: '準備OK',
+        create: '作成またはインポート',
       },
       dojak: {
-        title: 'ブラウザ拡張: Dojak',
+        title: 'Dojak 拡張機能',
         subtitleOk: 'Dogecoin と Doginals のネイティブ拡張フロー。',
         subtitleInstall: '続行するには Dojak 拡張をインストールしてください。',
         detected: '検出済み',

@@ -231,11 +231,11 @@ export function TreatsMintPanel({
 
   async function handleBroadcast() {
     if (!isValid || !address) {
-      setError(address ? 'Fix form fields before broadcasting.' : 'Connect your Dojakweb wallet first.');
+      setError(address ? 'Fix form fields before broadcasting.' : 'Connect Dojak in this browser first.');
       return;
     }
     if (wallet.walletType !== 'browser' || !browser.unlocked) {
-      setError('Unlock your local Dojakweb browser wallet to sign ÐogeTreats OP_RETURN transactions.');
+      setError('Unlock Dojak to sign ÐogeTreats OP_RETURN transactions.');
       return;
     }
     if (op === 'transfer' && !transferTo.trim()) {

@@ -510,11 +510,11 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
     const storage = new BrowserWallet();
     const secret = await createDojakwebSessionSecretStore().getSecret();
     if (!secret) {
-      throw new Error('Unlock your Local Browser Wallet to sign.');
+      throw new Error('Unlock Dojak to sign.');
     }
     const loaded = await storage.loadWallet(secret, address || undefined);
     if (!loaded?.privateKey) {
-      throw new Error('Unlock your Local Browser Wallet to sign.');
+      throw new Error('Unlock Dojak to sign.');
     }
     return loaded;
   }, [address]);

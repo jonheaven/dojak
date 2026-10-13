@@ -13,8 +13,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.title.addressBook': 'アドレス帳',
   'modal.title.sendInscription': '送信 #{num}',
   'modal.title.listInscription': '出品 #{num}',
-  'modal.tagline.builtIn':
-    '拡張機能不要の内蔵 Dogecoin ウォレット。一度作成すれば、すぐにこの dApp を使えます。',
+  'modal.tagline.builtIn': 'このブラウザの Dogecoin ウォレット。秘密鍵はここから出ません。',
   'modal.aria.backToWallet': 'ウォレットに戻る',
   'modal.aria.switchWallet': 'ウォレットを切り替え',
   'modal.aria.signingWallet': '署名ウォレット: {label}',
@@ -56,24 +55,25 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.aria.cancelListing': '出品をキャンセル',
   'modal.aria.closeWalletSwitcher': 'ウォレット切替を閉じる',
   'modal.aria.useWalletTitle': '{label} をアクティブウォレットにする',
-  'modal.savedWallets.heading': '保存済みローカルウォレット',
+  'modal.savedWallets.heading': 'このブラウザのウォレット',
   'modal.savedWallets.encrypted': '暗号化済み',
   'modal.savedWallets.passwordless': 'パスワードなし',
   'modal.savedWallets.account': 'アカウント {index}',
   'modal.savedWallets.connect': '接続',
-  'modal.entry.createNew': 'Dogecoin ウォレットを作成',
+  'modal.entry.createNew': 'ウォレットを作成',
   'modal.entry.creating': 'ウォレット作成中…',
-  'modal.entry.createHint': 'ワンタップ。サイトデータを消すまで、鍵はこのブラウザに保存されます。',
-  'modal.entry.import': '既存ウォレットをインポート',
+  'modal.entry.createHint':
+    'ホットウォレットです。少額だけ置いてください。このブラウザのデータを消すと、回復フレーズだけが戻す手段です。',
+  'modal.entry.import': 'ウォレットをインポート',
   'modal.unlock.enterPassword': 'パスワードを入力',
   'modal.unlock.enterPin': 'PIN を入力（6桁以上）',
   'modal.unlock.modePassword': 'パスワード',
   'modal.unlock.modePin': 'PIN',
-  'modal.unlock.modeBiometric': '生体認証',
-  'modal.unlock.biometricReason': 'ローカルウォレットのロック解除',
+  'modal.unlock.modeBiometric': 'パスキー',
+  'modal.unlock.biometricReason': 'Dojak のロック解除',
   'modal.unlock.biometricHint':
     'クイック解除を有効にしたときと同じ秘密鍵で、指紋・顔認証・Windows Hello・USB セキュリティキーなどを利用できます。',
-  'modal.unlock.biometricCta': '指紋 / セキュリティキーで解除',
+  'modal.unlock.biometricCta': 'パスキーで解除',
   'modal.unlock.goBack': '戻る',
   'modal.unlock.unlocking': 'ロック解除中…',
   'modal.unlock.submit': 'ウォレットのロックを解除',
@@ -103,7 +103,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.password.strengthHigh': '高',
   'modal.password.strengthMaximum': '最大（遅いが最強）',
   'modal.password.biometricHint':
-    '保存後に WebAuthn / USB セキュリティキーでのクイック解除を許可（同じ秘密を使用）。',
+    'この端末のパスキー（顔認証、指紋、Windows Hello、セキュリティキー）でも解除できるようにする。',
   'modal.password.confirm': 'パスワードを確認',
   'modal.password.skip': '今はスキップ',
   'modal.password.requiredHint':
@@ -313,7 +313,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.identity.blurb':
     'オンチェーンのアイデンティティはこのウォレットにあります。Ð𝕏 は 𝕏、ÐN05 は Nostr 名。どちらも安い OP_RETURN の声明で、譲渡可能な NFT ではありません。',
   'modal.identity.needBrowser':
-    'OP_RETURN に署名するには Local Browser Wallet のロックを解除してください。拡張ウォレットではまだ紐付けできません。',
+    'OP_RETURN に署名するには Dojak のロックを解除してください。拡張ウォレットではまだ紐付けできません。',
   'modal.identity.dxIntro':
     'その 𝕏 アカウントから Dogecoin アドレスをツイートし、URL を貼って DX の OP_RETURN を承認します。dogex がインデックスします。',
   'modal.identity.n05Intro':
@@ -414,7 +414,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.verification.dxInscribeCardBtn': 'ウォレットカードを inscription（HTML）',
   'modal.verification.dxInscribing': '署名・ブロードキャスト中…',
   'modal.verification.dxInscribeNeedBrowser':
-    'Dojakweb のインブラウザウォレットを開錠してください — dx inscription にローカル鍵が必要です。',
+    'Dojak のロックを解除してください — dx inscription にはこのブラウザの鍵が必要です。',
   'modal.verification.dxBadgeIdMissing':
     '共有 Doge𝕏 Check 画像の inscription id を VITE_DX_BADGE_INSCRIPTION_ID に設定してください（public/dogexcheck-400.webp を一度 inscription）。',
   'modal.verification.dxCardEnvHint':
@@ -596,7 +596,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.walletSwitcher.tab.local': 'HDウォレット（ブラウザ）',
   'modal.walletSwitcher.tab.ext': '拡張機能',
   'modal.walletSwitcher.tab.hw': 'ハードウェア',
-  'modal.walletSwitcher.group.localTitle': 'ローカルブラウザウォレット',
+  'modal.walletSwitcher.group.localTitle': 'このブラウザの Dojak',
   'modal.walletSwitcher.group.localHint': 'このブラウザに保存されたシードから導出した HD アカウント。拡張機能やハードウェアは上のウォレット切り替えから。',
   'modal.walletSwitcher.group.extTitle': '接続中の拡張機能',
   'modal.walletSwitcher.group.extHint':
@@ -617,9 +617,9 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.walletSwitcher.connectAnother': '別のウォレットを接続',
   'modal.walletSwitcher.connectAnotherHint':
     '現在のセッションを切らずに拡張機能やハードウェアウォレットを追加できます。',
-  'modal.walletSource.local': 'ローカル',
+  'modal.walletSource.local': 'Dojak',
   'modal.walletSource.mydoge': 'MyDoge',
-  'modal.walletSource.dojak': 'Dojak',
+  'modal.walletSource.dojak': 'Dojak 拡張',
   'modal.walletSource.spookydoge': 'Spooky Doge',
   'modal.walletSource.dogesoft': 'Doge Soft',
   'modal.walletSource.ledger': 'Ledger',
@@ -636,7 +636,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.priceSources.coingecko.desc': 'CoinGecko 公開 API（キー不要）',
   'modal.priceSources.coinpaprika.label': 'CoinPaprika',
   'modal.priceSources.coinpaprika.desc': 'CoinPaprika 公開 API（キー不要）',
-  'modal.toast.backupZipLocalOnly': 'バックアップ ZIP はローカルブラウザウォレットのみ利用できます。',
+  'modal.toast.backupZipLocalOnly': 'バックアップ ZIP はこのブラウザの Dojak だけで使えます。',
   'modal.toast.backupNeedSessionPw':
     '暗号化バックアップにはウォレットを再度開いてロック解除してください。セッションパスワードが必要です。',
   'modal.toast.backupZipUnencryptedWarn':
@@ -727,7 +727,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.throws.walletLockedShort': 'ウォレットがロックされています。先に解除してください。',
   'modal.throws.noPaymentUtxos': '手数料用の支払い UTXO がありません。',
   'modal.throws.listingNotSupported':
-    '現在のウォレットタイプでは出品署名に対応していません。ブラウザウォレットで出品を作成してください。',
+    '現在のウォレットタイプでは出品署名に対応していません。このブラウザの Dojak で出品を作成してください。',
   'modal.throws.cancelNeedFunds':
     'キャンセル手数料（約 0.001 DOGE）を支払える DOGE が必要です。ウォレットに入金してから再試行してください。',
   'modal.placeholders.rpcUrl': 'http://127.0.0.1:22555',

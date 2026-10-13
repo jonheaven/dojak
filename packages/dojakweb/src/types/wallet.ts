@@ -203,7 +203,7 @@ export function isUnsupportedExtensionWallet(type: string | null | undefined): b
 
 export function unsupportedExtensionWalletMessage(type?: string | null): string {
   const name = type === 'mydoge' ? 'MyDoge' : 'This browser extension';
-  return `${name} is not available in the wallet picker. Use Local, an extension (Dojak, Doge Soft, or Spooky Doge), or hardware.`;
+  return `${name} is not available in the wallet picker. Use Dojak in this browser, an extension (Dojak, Doge Soft, or Spooky Doge), or hardware.`;
 }
 
 export type WalletMode = 'dojak' | 'local_browser_wallet';

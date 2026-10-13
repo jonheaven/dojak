@@ -418,7 +418,7 @@ export const DuneDeployModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, i
         preferBrowserApproval: isBrowser,
         title: `Deploy Ðune · ${name.trim()}`,
         description:
-          'Approve to sign and broadcast this Ðune etch (OP_RETURN 0xD0) from your Local Browser Wallet — same approval drawer as dogecoin.games.',
+          'Approve to sign and broadcast this Ðune etch (OP_RETURN 0xD0) from Dojak in this browser — same approval drawer as dogecoin.games.',
         details: [
           { label: 'Ðune', value: name.trim() },
           { label: 'Magic', value: '0xD0 (Ðunes v2)' },

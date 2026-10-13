@@ -94,7 +94,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
         <button
           onClick={onSettingsClick}
           className="p-1 rounded-md hover:bg-bg-secondary transition-colors duration-200"
-          title="Open Dojakweb wallet modal"
+          title="Open Dojak"
         >
           <CogIcon className="w-4 h-4 text-text-secondary" />
         </button>

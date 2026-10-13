@@ -142,7 +142,7 @@ export function WalletConnectChooser({
         ) : null}
         {feature ? (
           <span className="ds-wallet-quick-picker__row-text">
-            <span className="ds-wallet-quick-picker__row-title">{tile.shortTitle}</span>
+            <span className="ds-wallet-quick-picker__row-title">{tile.title}</span>
             <span className="ds-wallet-quick-picker__row-sub">{tile.subtitle}</span>
           </span>
         ) : null}

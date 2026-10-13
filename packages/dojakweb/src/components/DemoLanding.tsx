@@ -154,7 +154,7 @@ export function DemoLanding({
             </h1>
             <p className="max-w-3xl text-sm leading-7 text-text-secondary sm:text-base dark:text-white/72">
               This app runs the same <code className="text-xs">@dojak/web</code> package as the extension and storefront —
-              local browser wallet, extension adapters, and Ledger — encoding the open Dogenals spec
+              Dojak, extension adapters, and Ledger — encoding the open Dogenals spec
               (<code className="text-xs">dogenals/spec</code>). Source: github.com/jonheaven/dojak.
             </p>
             <div className="flex flex-wrap gap-3">

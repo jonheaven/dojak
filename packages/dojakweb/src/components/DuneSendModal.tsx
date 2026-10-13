@@ -504,7 +504,7 @@ export const DuneSendModal: React.FC<Props> = ({
         <div className="ds-wallet-approval__header">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="ds-wallet-approval__eyebrow">Local Browser Wallet</p>
+              <p className="ds-wallet-approval__eyebrow">Dojak</p>
               <h2 id="dune-send-title" className="ds-wallet-approval__title">
                 Send Ðune
               </h2>

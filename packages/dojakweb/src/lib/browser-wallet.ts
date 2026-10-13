@@ -847,12 +847,12 @@ export class BrowserWallet {
 
     const currentAddress = address || localStorage.getItem(BrowserWallet.STORAGE_CURRENT);
     if (!currentAddress) {
-      throw new Error('No active browser wallet is available');
+      throw new Error('Create or unlock Dojak in this browser first');
     }
 
     const currentWallet = await this.loadWallet(password, currentAddress);
     if (!currentWallet) {
-      throw new Error('No active browser wallet is available');
+      throw new Error('Create or unlock Dojak in this browser first');
     }
 
     const seedMaterial = await this.loadSeedMaterial(password, currentAddress);
@@ -1311,7 +1311,7 @@ export class BrowserWallet {
 
     const loaded = await this.loadWallet(options.password, options.address);
     if (!loaded) {
-      throw new Error('No browser wallet is available for sending');
+      throw new Error('Dojak is not ready in this browser for sending');
     }
 
     return loaded;
@@ -1493,7 +1493,7 @@ export class BrowserWallet {
 
     const wallet = await this.loadWalletForSigning(password, address);
     if (!wallet) {
-      throw new Error('No browser wallet is available for signing');
+      throw new Error('Dojak is not ready in this browser for signing');
     }
 
     return signDogecoinMessage(wallet.privateKey, message);
@@ -1514,7 +1514,7 @@ export class BrowserWallet {
 
     const wallet = await this.loadWalletForSigning(password, address);
     if (!wallet) {
-      throw new Error('No browser wallet is available for signing');
+      throw new Error('Dojak is not ready in this browser for signing');
     }
 
     return signPsdtWithWifToTxHex(psbt, wallet.privateKey, inputIndexes);
@@ -1536,7 +1536,7 @@ export class BrowserWallet {
 
     const wallet = await this.loadWalletForSigning(password, address);
     if (!wallet) {
-      throw new Error('No browser wallet is available for signing');
+      throw new Error('Dojak is not ready in this browser for signing');
     }
 
     return signPartialPsdtWithWifToHex(psbt, wallet.privateKey, inputIndexes);
@@ -1572,7 +1572,7 @@ export class BrowserWallet {
 
     const wallet = await this.loadWalletForSigning(password, address);
     if (!wallet) {
-      throw new Error('No browser wallet is available for intent signing');
+      throw new Error('Dojak is not ready in this browser for intent signing');
     }
 
     if (payload.network !== wallet.network) {

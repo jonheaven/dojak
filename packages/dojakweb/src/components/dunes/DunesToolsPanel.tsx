@@ -181,7 +181,7 @@ export function DunesToolsPanel({
 
       {!address && (
         <p className="rounded-xl border border-border-primary bg-bg-secondary px-4 py-3 text-sm text-text-secondary">
-          Connect your Dojakweb wallet to view holdings and sign Ðune transactions.
+          Connect Dojak in this browser to view holdings and sign Ðune transactions.
         </p>
       )}
 
