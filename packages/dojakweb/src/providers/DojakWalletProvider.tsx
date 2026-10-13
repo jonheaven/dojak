@@ -25,9 +25,11 @@ export interface DojakWalletProviderProps {
   theme?: DojakwebTheme;
   dxTrustedOrigins?: readonly string[];
   /**
-   * `memory` (default): local-wallet unlock dies on refresh.
-   * `tab`: keep the unlock for this tab so a refresh does not ask for the password again.
-   * Closing the tab ends it. Disconnect still locks immediately.
+   * `window` (default): keep the unlock across refresh for the Display "stay unlocked" period.
+   * `tab`: keep the unlock until this tab closes.
+   * `memory`: unlock dies on refresh.
+   * Closing the tab ends it. Lock and disconnect still lock immediately.
+   * The PIN is never written to localStorage.
    */
   unlockPersistence?: DojakwebUnlockPersistence;
 }
@@ -40,7 +42,7 @@ export function DojakWalletProvider({
   fxRatesUrl,
   theme = 'dark',
   dxTrustedOrigins,
-  unlockPersistence = 'memory',
+  unlockPersistence = 'window',
 }: DojakWalletProviderProps) {
   setDojakwebUnlockPersistence(unlockPersistence);
 

@@ -158,6 +158,12 @@ import {
   incomingTxAlertsEnabled,
   setIncomingTxAlertsEnabled,
 } from '../lib/incoming-tx-alerts';
+import {
+  readUnlockWindow,
+  writeUnlockWindow,
+  UNLOCK_WINDOW_CHOICES,
+  type UnlockWindowId,
+} from '../lib/unlock-window';
 import { browserRpcProxyAbsoluteUrl, fetchRpcDetailedHealth } from '../lib/rpc-proxy-client';
 import {
   testAllBroadcastRelayHealths,
@@ -1016,6 +1022,9 @@ export function DojakwebWalletModal({
   const [settingsIncomingTxAlerts, setSettingsIncomingTxAlerts] = useState(() =>
     incomingTxAlertsEnabled(),
   );
+  const [settingsUnlockWindow, setSettingsUnlockWindow] = useState<UnlockWindowId>(() =>
+    readUnlockWindow(),
+  );
   const [hideTextJsonInscriptions, setHideTextJsonInscriptions] = useState(
     () => getWalletDataProviderConfig().hideTextJsonInscriptions === true,
   );
@@ -1630,7 +1639,7 @@ export function DojakwebWalletModal({
       setIsEncryptedWallet(encrypted);
 
       if (encrypted) {
-        // Tab session unlock: reuse in-memory / chrome.storage.session secret (never sessionStorage).
+        // Reuse the tab unlock secret (sessionStorage for the stay-unlocked window). Never localStorage.
         try {
           const sessionSecret = await createDojakwebSessionSecretStore().getSecret();
           if (sessionSecret) {
@@ -2219,7 +2228,7 @@ export function DojakwebWalletModal({
    * - If the wallet has no password yet, send the user to the password setup step.
    * - If already password-protected: end the tab unlock session (clear session secret)
    *   and disconnect so the next action requires unlock again.
-   * Normal use: unlock once per browser tab; lock is explicit.
+   * Normal use: stay unlocked across refresh until the Display quiet period ends.
    */
   const handleLockWallet = async () => {
     if (!activeAddress || !isBrowserWallet) return;
@@ -7169,6 +7178,37 @@ export function DojakwebWalletModal({
                         {/* ══ DISPLAY TAB ══ */}
                         {settingsTab === 'display' && (
                           <div className="space-y-4">
+                            <div>
+                              <span className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                                Stay unlocked
+                              </span>
+                              <div className="grid grid-cols-2 gap-2">
+                                {UNLOCK_WINDOW_CHOICES.map((choice) => (
+                                  <button
+                                    key={choice.id}
+                                    type="button"
+                                    aria-pressed={settingsUnlockWindow === choice.id}
+                                    onClick={() => {
+                                      setSettingsUnlockWindow(choice.id);
+                                      writeUnlockWindow(choice.id);
+                                    }}
+                                    className={cx(
+                                      'border px-2 py-2.5 text-xs font-semibold transition',
+                                      choice.id === 'tab' && 'col-span-2',
+                                      settingsUnlockWindow === choice.id
+                                        ? 'border-[#D4A017] bg-[#D4A017]/10 text-white'
+                                        : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10',
+                                    )}
+                                  >
+                                    {choice.label}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="mt-1 text-[10px] leading-snug text-white/30">
+                                Locks after this long with no clicks. Refreshing the page keeps you in. Closing the tab, Lock, or Disconnect asks for the PIN again. The PIN stays in this tab only.
+                              </p>
+                            </div>
+
                             {/* Theme */}
                             <div>
                               <span className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-white/35">Theme</span>

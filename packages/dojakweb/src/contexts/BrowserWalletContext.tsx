@@ -4,7 +4,17 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { BrowserWallet, isPlaintextMigrationRequiredError, toPublicSessionWallet, type BrowserWalletSaveOptions } from '../lib/browser-wallet';
 import type { SeedMaterial, WalletData } from '../types/wallet';
 import { walletDataApi } from '../utils/api';
-import { createDojakwebSessionSecretStore, dojakwebUnlockPersistsForTab } from '../lib/dojakweb-biometric';
+import {
+  createDojakwebSessionSecretStore,
+  dojakwebUnlockPersistsForTab,
+  dojakwebUnlockUsesWindow,
+} from '../lib/dojakweb-biometric';
+import {
+  msUntilUnlockExpiry,
+  stampUnlockExpiry,
+  unlockExpiryElapsed,
+  UNLOCK_WINDOW_CHANGED_EVENT,
+} from '../lib/unlock-window';
 
 export interface UseBrowserWalletReturn {
   connected: boolean;
@@ -138,8 +148,9 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
         const storage = new BrowserWallet();
         const current = localStorage.getItem('dojakweb_wallet_current');
 
-        // Encrypted wallets: stay unlocked for this tab only after first unlock.
-        // Password lives in chrome.storage.session when that API exists — never localStorage.
+        // Encrypted wallets stay unlocked across a refresh while the stay-unlocked
+        // window is still open. The PIN is in sessionStorage for this tab, or
+        // chrome.storage.session in the extension. Never localStorage.
         if (current && (await storage.isEncrypted(current))) {
           let sessionSecret: string | null = null;
           try {
@@ -165,6 +176,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
             setBalanceVerified(false);
             setBalanceError(null);
             localStorage.removeItem(RESTORE_BLOCK_KEY);
+            if (dojakwebUnlockUsesWindow()) stampUnlockExpiry();
             try {
               localStorage.setItem('wallet_type', 'browser');
             } catch {
@@ -320,10 +332,57 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
     if (typeof window === 'undefined' || !connected || !unlocked) {
       return;
     }
-    // Game hosts keep the unlock for the tab. A refresh or a short alt-tab
-    // should not dump the player back to the password screen.
+    // Game hosts keep the unlock until the tab closes. No hide timer, no clock.
     if (dojakwebUnlockPersistsForTab()) {
       return;
+    }
+
+    // Public wallet: the PIN survives refresh. Lock only after the quiet period
+    // chosen in Display settings. Hiding the tab does not lock by itself.
+    if (dojakwebUnlockUsesWindow()) {
+      let timer: number | null = null;
+      const clearTimer = () => {
+        if (timer !== null) {
+          window.clearTimeout(timer);
+          timer = null;
+        }
+      };
+      const arm = () => {
+        clearTimer();
+        const ms = msUntilUnlockExpiry();
+        if (ms === null) return;
+        if (ms <= 0) {
+          void lockSession();
+          return;
+        }
+        timer = window.setTimeout(() => {
+          if (unlockExpiryElapsed()) void lockSession();
+          else arm();
+        }, ms);
+      };
+      const onActivity = () => {
+        stampUnlockExpiry();
+        arm();
+      };
+      const onVisibility = () => {
+        if (document.visibilityState === 'visible' && unlockExpiryElapsed()) {
+          void lockSession();
+        }
+      };
+
+      document.addEventListener('visibilitychange', onVisibility);
+      window.addEventListener('pointerdown', onActivity);
+      window.addEventListener('keydown', onActivity);
+      window.addEventListener(UNLOCK_WINDOW_CHANGED_EVENT, onActivity);
+      arm();
+
+      return () => {
+        clearTimer();
+        document.removeEventListener('visibilitychange', onVisibility);
+        window.removeEventListener('pointerdown', onActivity);
+        window.removeEventListener('keydown', onActivity);
+        window.removeEventListener(UNLOCK_WINDOW_CHANGED_EVENT, onActivity);
+      };
     }
 
     let hideTimer: number | null = null;

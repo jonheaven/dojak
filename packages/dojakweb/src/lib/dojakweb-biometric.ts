@@ -5,6 +5,7 @@ import {
   type BiometricFacade,
   type SessionSecretStore,
 } from '@dojak/biometrics';
+import { stampUnlockExpiry, unlockExpiryElapsed, writeUnlockExpiresAt } from './unlock-window';
 
 const SESSION_SECRET_KEY = 'dojakweb.biometric.session-secret';
 const LEGACY_SESSION_KEYS = [
@@ -16,25 +17,39 @@ const LEGACY_SESSION_KEYS = [
 let memorySecret: string | null = null;
 
 /**
- * `memory` (default): unlock dies on refresh. Used by dogenals and the public wallet.
- * `tab`: also write sessionStorage so a game host can keep the player in across refresh.
- * The secret still dies when the tab closes. Never localStorage.
+ * `window` (default): sessionStorage plus the Display "stay unlocked" clock.
+ * A refresh in the same tab stays unlocked until that quiet period ends.
+ * `tab`: sessionStorage with no clock, for a game host that must last until the tab closes.
+ * `memory`: unlock dies on refresh. Explicit opt-in.
+ * The secret dies when the tab closes. Never localStorage.
  */
-export type DojakwebUnlockPersistence = 'memory' | 'tab';
+export type DojakwebUnlockPersistence = 'memory' | 'tab' | 'window';
 
 const TAB_UNLOCK_KEY = 'dojakweb.tab-unlock-secret';
-let unlockPersistence: DojakwebUnlockPersistence = 'memory';
+let unlockPersistence: DojakwebUnlockPersistence = 'window';
 
 export function setDojakwebUnlockPersistence(mode: DojakwebUnlockPersistence): void {
-  unlockPersistence = mode === 'tab' ? 'tab' : 'memory';
+  if (mode === 'tab' || mode === 'memory' || mode === 'window') {
+    unlockPersistence = mode;
+    return;
+  }
+  unlockPersistence = 'window';
 }
 
 export function dojakwebUnlockPersistsForTab(): boolean {
   return unlockPersistence === 'tab';
 }
 
+export function dojakwebUnlockUsesWindow(): boolean {
+  return unlockPersistence === 'window';
+}
+
+function sessionUnlockEnabled(): boolean {
+  return unlockPersistence === 'tab' || unlockPersistence === 'window';
+}
+
 function readTabUnlockSecret(): string | null {
-  if (unlockPersistence !== 'tab' || typeof sessionStorage === 'undefined') return null;
+  if (!sessionUnlockEnabled() || typeof sessionStorage === 'undefined') return null;
   try {
     return sessionStorage.getItem(TAB_UNLOCK_KEY);
   } catch {
@@ -45,7 +60,7 @@ function readTabUnlockSecret(): string | null {
 function writeTabUnlockSecret(secret: string | null): void {
   if (typeof sessionStorage === 'undefined') return;
   try {
-    if (secret && unlockPersistence === 'tab') sessionStorage.setItem(TAB_UNLOCK_KEY, secret);
+    if (secret && sessionUnlockEnabled()) sessionStorage.setItem(TAB_UNLOCK_KEY, secret);
     else sessionStorage.removeItem(TAB_UNLOCK_KEY);
   } catch {
     /* private-mode quota */
@@ -87,18 +102,19 @@ function getChromeSessionStorage():
 /**
  * Session secret store isolated from the extension (`dojak.biometric.*`) keys.
  * Extension: chrome.storage.session only.
- * Public site: in-memory for the JS realm (survives SPA remounts, not full reload).
- * Game hosts may opt into `tab` persistence (sessionStorage) via DojakWalletProvider.
+ * Public site: sessionStorage for this tab, with the stay-unlocked clock.
+ * Game hosts may opt into `tab` (no clock) or `memory` (dies on refresh).
  * Never write the unlock password to localStorage.
  */
 export function createDojakwebSessionSecretStore(): SessionSecretStore {
   const chromeSession = getChromeSessionStorage();
   wipeLegacyWebStorage();
 
-  return {
+  const store: SessionSecretStore = {
     async saveSecret(secret: string) {
       wipeLegacyWebStorage();
       writeTabUnlockSecret(secret);
+      if (unlockPersistence === 'window') stampUnlockExpiry();
       if (chromeSession) {
         try {
           await chromeSession.set({ [SESSION_SECRET_KEY]: secret });
@@ -115,16 +131,29 @@ export function createDojakwebSessionSecretStore(): SessionSecretStore {
         try {
           const result = await chromeSession.get([SESSION_SECRET_KEY]);
           const fromChrome = result?.[SESSION_SECRET_KEY] ?? null;
-          if (fromChrome) return fromChrome;
+          if (fromChrome) {
+            if (unlockPersistence === 'window' && unlockExpiryElapsed()) {
+              await store.clearSecret();
+              return null;
+            }
+            return fromChrome;
+          }
         } catch {
           /* fall through */
         }
       }
-      return memorySecret ?? readTabUnlockSecret();
+      const secret = memorySecret ?? readTabUnlockSecret();
+      if (!secret) return null;
+      if (unlockPersistence === 'window' && unlockExpiryElapsed()) {
+        await store.clearSecret();
+        return null;
+      }
+      return secret;
     },
     async clearSecret() {
       memorySecret = null;
       writeTabUnlockSecret(null);
+      writeUnlockExpiresAt(null);
       wipeLegacyWebStorage();
       if (chromeSession) {
         try {
@@ -135,6 +164,7 @@ export function createDojakwebSessionSecretStore(): SessionSecretStore {
       }
     },
   };
+  return store;
 }
 
 /**
