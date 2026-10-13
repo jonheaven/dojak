@@ -510,12 +510,12 @@ export const DUMMY_UTXO_VALUE   = 100_000;     // 0.001 DOGE — "dummy" sentine
 const BUY_FEE_SIZE_PADDING_BYTES = 32;
 
 /**
- * Fee rate for marketplace buy / dummy-setup txs (koinu per byte).
- * Uses Command.dog inclusion policy (≥10× relay) with the same estimatesmartfee path as inscribe.
+ * Fee rate for marketplace buy / dummy-setup / inscription-send txs (koinu per byte).
+ * Honors wallet Normal/Fast/Priority/Custom and never underpays live Core estimate.
  */
-export async function resolveBuyFeeRateKoinuPerByte(targetBlocks = 6): Promise<number> {
-  const { resolveInclusionFeeRateKoinuPerByte } = await import('./fees/dogecoinFeePolicy');
-  return resolveInclusionFeeRateKoinuPerByte(targetBlocks);
+export async function resolveBuyFeeRateKoinuPerByte(_targetBlocks = 6): Promise<number> {
+  const { resolveDojakwebFeeRateKoinuPerByte } = await import('./fees/txFeePreference');
+  return resolveDojakwebFeeRateKoinuPerByte();
 }
 export const BLOCKCHAIR_URL     = 'https://api.blockchair.com/dogecoin';
 export const NOSTR_RELAY_URL    = 'wss://relay.damus.io';
@@ -1365,8 +1365,14 @@ export async function buildSendInscriptionPsbtUnsigned(
   const [insTxid, insVoutStr] = p.inscriptionOutput.split(':');
   const insVout = parseInt(insVoutStr, 10);
   const insTxHex = await getTxHex(insTxid);
-  const feeRate =
-    p.feeRateKoinuPerByte ?? (await resolveBuyFeeRateKoinuPerByte(2));
+  const { enforceBroadcastFeeRateKoinuPerByte } = await import('./fees/dogecoinFeePolicy');
+  const paidFeeRate = await enforceBroadcastFeeRateKoinuPerByte({
+    requestedKoinuPerByte:
+      p.feeRateKoinuPerByte != null && p.feeRateKoinuPerByte > 0
+        ? p.feeRateKoinuPerByte
+        : await resolveBuyFeeRateKoinuPerByte(2),
+    context: 'buildSendInscriptionPsbtUnsigned',
+  });
 
   const psbt = new bitcoin.Psbt(DOGE_PSBT_OPTS);
 
@@ -1385,7 +1391,7 @@ export async function buildSendInscriptionPsbtUnsigned(
     paymentTotal += u.value;
   }
 
-  const fee = calculateFee(psbt.txInputs.length, psbt.txOutputs.length, feeRate);
+  const fee = calculateFee(psbt.txInputs.length, psbt.txOutputs.length, paidFeeRate);
   const change = paymentTotal - fee;
   if (change < 0) {
     throw new Error(

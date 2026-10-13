@@ -63,7 +63,7 @@ function normalizePref(raw: Partial<DojakwebTxFeePreference> | null | undefined)
     raw?.preset === 'custom' ||
     raw?.preset === 'normal'
       ? raw.preset
-      : 'normal';
+      : 'fast';
   return {
     preset,
     customRateKoinuPerByte:
@@ -73,8 +73,11 @@ function normalizePref(raw: Partial<DojakwebTxFeePreference> | null | undefined)
   };
 }
 
+/** Factory default: Fast (1.5× live inclusion). Normal still available; never static 1000. */
+export const DOJAKWEB_DEFAULT_TX_FEE_PRESET: DojakwebTxFeePreset = 'fast';
+
 export function readDojakwebTxFeePreference(): DojakwebTxFeePreference {
-  if (typeof window === 'undefined') return { preset: 'normal' };
+  if (typeof window === 'undefined') return { preset: DOJAKWEB_DEFAULT_TX_FEE_PRESET };
   try {
     const raw = window.localStorage.getItem(DOJAKWEB_TX_FEE_PREF_KEY);
     if (raw) return normalizePref(JSON.parse(raw) as Partial<DojakwebTxFeePreference>);
@@ -88,7 +91,7 @@ export function readDojakwebTxFeePreference(): DojakwebTxFeePreference {
   } catch {
     /* ignore */
   }
-  return { preset: 'normal' };
+  return { preset: DOJAKWEB_DEFAULT_TX_FEE_PRESET };
 }
 
 export function writeDojakwebTxFeePreference(pref: DojakwebTxFeePreference): void {

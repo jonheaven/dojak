@@ -75,11 +75,20 @@ export function NetworkFeeControl({
     };
   }, []);
 
+  const [feeEstimateError, setFeeEstimateError] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    void resolveDojakwebFeeRateKoinuPerByte(pref).then((rate) => {
-      if (!cancelled) setLiveRate(rate);
-    });
+    setFeeEstimateError(null);
+    void resolveDojakwebFeeRateKoinuPerByte(pref)
+      .then((rate) => {
+        if (!cancelled) setLiveRate(rate);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : String(e);
+        setFeeEstimateError(msg);
+      });
     return () => {
       cancelled = true;
     };
@@ -216,15 +225,24 @@ export function NetworkFeeControl({
           />
         </label>
       ) : null}
-      {compact ? null : (
+      {feeEstimateError ? (
+        <p
+          className={cn(
+            'mt-1.5 text-[10px] leading-snug',
+            wallet ? (walletDark ? 'text-red-300/90' : 'text-red-600') : 'text-red-600',
+          )}
+        >
+          {feeEstimateError}
+        </p>
+      ) : compact ? null : (
         <p
           className={cn(
             'mt-1.5 text-[10px] leading-snug',
             wallet ? (walletDark ? 'text-white/40' : 'text-zinc-500') : 'text-text-secondary',
           )}
         >
-          Rates track live Core estimatesmartfee (via command.dog). Underpaying is blocked at
-          sign/broadcast. Pick Fast or Priority when the mempool is hot.
+          Default is Fast (1.5× live Core estimatesmartfee via command.dog). Underpaying is
+          blocked at sign/broadcast — Custom cannot go below the network rate.
         </p>
       )}
     </div>

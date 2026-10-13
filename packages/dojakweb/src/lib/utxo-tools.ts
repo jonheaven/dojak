@@ -417,22 +417,33 @@ function estimateTxSize(inputs: number, outputs: number): number {
   return 10 + inputs * 148 + outputs * 34;
 }
 
-/** Estimate merge fee for N plain UTXOs → 1 output. */
-export function estimateMergeFee(inputCount: number): number {
-  return Math.max(MIN_RELAY_FEE, estimateTxSize(inputCount, 1) * FEE_RATE_KOINU_PER_BYTE);
+/** Estimate merge fee for N plain UTXOs → 1 output (pass live wallet fee rate). */
+export function estimateMergeFee(inputCount: number, feeRateKoinuPerByte = FEE_RATE_KOINU_PER_BYTE): number {
+  const rate = Math.max(FEE_RATE_KOINU_PER_BYTE, Math.floor(feeRateKoinuPerByte));
+  return Math.max(MIN_RELAY_FEE, estimateTxSize(inputCount, 1) * rate);
 }
 
 /** Estimate split fee for 1 UTXO → N outputs (includes soft-dust penalties). */
-export function estimateSplitFee(outputCount: number, outputValues?: number[]): number {
-  const sizeFee = Math.max(MIN_RELAY_FEE, estimateTxSize(1, outputCount) * FEE_RATE_KOINU_PER_BYTE);
+export function estimateSplitFee(
+  outputCount: number,
+  outputValues?: number[],
+  feeRateKoinuPerByte = FEE_RATE_KOINU_PER_BYTE,
+): number {
+  const rate = Math.max(FEE_RATE_KOINU_PER_BYTE, Math.floor(feeRateKoinuPerByte));
+  const sizeFee = Math.max(MIN_RELAY_FEE, estimateTxSize(1, outputCount) * rate);
   // Prefer soft-dust-safe outs; if caller creates hard-dust (0.001) carriers, add +0.01 each.
   const values = outputValues ?? Array.from({ length: outputCount }, () => SOFT_DUST_KOINU);
   return sizeFee + softDustFeePenaltyKoinu(values);
 }
 
-export function buildMergeFeeEstimate(utxos: ManagedUtxo[]): MergeFeeEstimate {
+export async function resolveMergeFeeRateKoinuPerByte(): Promise<number> {
+  const { resolveDojakwebFeeRateKoinuPerByte } = await import('./fees/txFeePreference');
+  return resolveDojakwebFeeRateKoinuPerByte();
+}
+
+export function buildMergeFeeEstimate(utxos: ManagedUtxo[], feeRateKoinuPerByte?: number): MergeFeeEstimate {
   const totalInput = utxos.reduce((s, u) => s + u.value, 0);
-  const fee = estimateMergeFee(utxos.length);
+  const fee = estimateMergeFee(utxos.length, feeRateKoinuPerByte);
   return {
     feeSatoshis: fee,
     inputCount: utxos.length,
@@ -444,8 +455,9 @@ export function buildMergeFeeEstimate(utxos: ManagedUtxo[]): MergeFeeEstimate {
 export function buildSplitFeeEstimate(
   utxo: ManagedUtxo,
   outputSatoshis: number[],
+  feeRateKoinuPerByte?: number,
 ): SplitFeeEstimate {
-  const fee = estimateSplitFee(outputSatoshis.length, outputSatoshis);
+  const fee = estimateSplitFee(outputSatoshis.length, outputSatoshis, feeRateKoinuPerByte);
   return {
     feeSatoshis: fee,
     outputCount: outputSatoshis.length,
@@ -1009,8 +1021,54 @@ export async function assertUtxosCurrentlyUnspent(utxos: UtxoRef[]): Promise<voi
   }
 }
 
+/**
+ * Last line of defense: refuse to push a raw tx whose paid koinu/B is below the
+ * wallet's live inclusion rate (Normal/Fast/Priority/Custom, never under network).
+ */
+async function assertRawTxMeetsWalletFeePolicy(rawHex: string): Promise<void> {
+  const hex = rawHex.trim();
+  if (!/^[0-9a-fA-F]+$/.test(hex) || hex.length < 20 || hex.length % 2 !== 0) {
+    throw new Error('Invalid transaction hex — refusing broadcast.');
+  }
+  const { resolveDojakwebFeeRateKoinuPerByte } = await import('./fees/txFeePreference');
+  const minRate = await resolveDojakwebFeeRateKoinuPerByte();
+  const tx = bitcoin.Transaction.fromHex(hex);
+  let inputTotal = 0;
+  for (const vin of tx.ins) {
+    const prevTxid = Buffer.from(vin.hash).reverse().toString('hex');
+    let prevHex: string | null = null;
+    try {
+      const r = await rpcViaProxyDetailed<string>('getrawtransaction', [prevTxid]);
+      if (r.ok && typeof r.result === 'string' && r.result.length > 0) prevHex = r.result;
+    } catch {
+      prevHex = null;
+    }
+    if (!prevHex) {
+      throw new Error(
+        `Cannot verify fee rate (prevout ${prevTxid.slice(0, 12)}… unavailable via command.dog). Refusing broadcast rather than risk a stuck underpaid tx.`,
+      );
+    }
+    const prev = bitcoin.Transaction.fromHex(prevHex);
+    const out = prev.outs[vin.index];
+    if (!out) throw new Error(`Missing prevout ${prevTxid}:${vin.index}`);
+    inputTotal += Number(out.value);
+  }
+  const outputTotal = tx.outs.reduce((s, o) => s + Number(o.value), 0);
+  const fee = inputTotal - outputTotal;
+  if (fee < 0) throw new Error('Invalid transaction: outputs exceed inputs.');
+  const size = Math.max(1, hex.length / 2);
+  const paidRate = fee / size;
+  // 10% slack for size estimate vs signed bytes; never allow a deep underpay.
+  if (paidRate < minRate * 0.9) {
+    throw new Error(
+      `Refusing to broadcast: fee ~${(fee / 1e8).toFixed(4)} Ð (${Math.floor(paidRate)} koinu/B on ${size} B) is below wallet network rate (${minRate} koinu/B). Open the fuel / fee control, pick Fast or Priority, rebuild, and try again.`,
+    );
+  }
+}
+
 /** Broadcast: Wallet Settings order + propagation verification (same as OP_RETURN / inscribe flows). */
 export async function broadcastUtxoTx(rawHex: string): Promise<string> {
+  await assertRawTxMeetsWalletFeePolicy(rawHex);
   const cfg = loadBroadcastConfig();
   const order = resolvedUtxoBroadcastOrder(cfg);
   /** If Core already said mempool-conflict, do not treat BlockCypher HTTP 409 as “duplicate success” (masks a bad buy). */
@@ -1105,7 +1163,8 @@ export async function buildAndSignMergeTx(
   }
 
   const totalInput = utxos.reduce((s, u) => s + u.value, 0);
-  const fee = estimateMergeFee(utxos.length);
+  const feeRate = await resolveMergeFeeRateKoinuPerByte();
+  const fee = estimateMergeFee(utxos.length, feeRate);
   const changeToWallet = totalInput - fee;
 
   if (changeToWallet <= 0) {
@@ -1155,7 +1214,8 @@ export async function buildAndSignSplitTx(
     );
   }
 
-  const fee = estimateSplitFee(outputSatoshis.length, outputSatoshis);
+  const feeRate = await resolveMergeFeeRateKoinuPerByte();
+  const fee = estimateSplitFee(outputSatoshis.length, outputSatoshis, feeRate);
   const totalOut = outputSatoshis.reduce((s, v) => s + v, 0);
 
   if (totalOut + fee > utxo.value) {

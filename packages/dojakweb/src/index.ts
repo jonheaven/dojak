@@ -672,11 +672,13 @@ export {
   clampKoinuPerKb,
   clampKoinuPerByte,
   clearFeeEstimateCache,
+  FeeEstimateUnavailableError,
 } from './lib/fees/dogecoinFeePolicy';
 
 export {
   DOJAKWEB_TX_FEE_PREF_KEY,
   DOJAKWEB_TX_FEE_PREF_EVENT,
+  DOJAKWEB_DEFAULT_TX_FEE_PRESET,
   DOJAKWEB_FEE_PRESET_RATES,
   DOJAKWEB_FEE_MIN_KOINU_PER_BYTE,
   DOJAKWEB_FEE_MAX_KOINU_PER_BYTE,

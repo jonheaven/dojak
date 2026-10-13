@@ -6095,6 +6095,15 @@ export function DojakwebWalletModal({
                                 disabled={inscriptionSendBusy || inscriptionSendReviewBusy}
                               />
                             </label>
+                            <NetworkFeeControl
+                              compact
+                              tone="wallet"
+                              title="Network fee"
+                              inputs={2}
+                              outputs={2}
+                              disabled={inscriptionSendBusy || inscriptionSendReviewBusy}
+                              onRateKoinuPerByteChange={() => setInscriptionSendDraft(null)}
+                            />
                             <div className="space-y-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs leading-5 text-[#F8E7A1]">
                               <div className="flex items-start gap-2">
                                 <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 opacity-90" aria-hidden />
