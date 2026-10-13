@@ -218,7 +218,7 @@ export function dnsNameFromBody(raw: string): string | null {
   if (parts.length !== 2) return null;
   const [label, ns] = parts;
   if (!label || !ns || DNS_RESERVED.has(label)) return null;
-  if (ns === 'dogemap' || ns === 'bitmap') return null;
+  if (ns === 'bitmap' || ns === 'dogemap' || ns.startsWith('dogemap')) return null;
   if (!DNS_LABEL.test(label) || !DNS_LABEL.test(ns)) return null;
   return `${label}.${ns}`;
 }

@@ -53,6 +53,9 @@ export function normalizeDnsName(raw: string, defaultNs = DNS_HERO_NAMESPACE): s
   if (!label || !ns || RESERVED.has(label) || !LABEL_RE.test(label) || !LABEL_RE.test(ns)) {
     return null;
   }
+  if (ns === 'bitmap' || ns === 'dogemap' || ns.startsWith('dogemap')) {
+    return null;
+  }
   return `${label}.${ns}`;
 }
 

@@ -52,6 +52,7 @@ export function isDNSName(input: string): boolean {
   if (parts.length !== 2) return false;
   const [label, namespace] = parts;
   if (!label || !namespace || !DNS_LABEL.test(label) || !DNS_LABEL.test(namespace)) return false;
+  if (namespace === 'bitmap' || namespace === 'dogemap' || namespace.startsWith('dogemap')) return false;
   return true;
 }
 
