@@ -175,13 +175,18 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.assets.filterAll': 'All',
   'modal.assets.filterMedia': 'Images',
   'modal.assets.filterDlotto': 'ÐLotto',
+  'modal.assets.filterDns': 'Names',
   'modal.assets.dlocked': 'ÐLocked',
   'modal.assets.filterDlottoLoading': 'Finding tickets…',
+  'modal.assets.filterDnsLoading': 'Finding names…',
   'modal.assets.noDoginalsHiddenTextHint':
     'No image Doginals left — {count} text/JSON inscriptions are hidden.',
   'modal.assets.noDlottoTitle': 'No ÐLotto inscriptions',
   'modal.assets.noDlottoHint':
     'Tickets and other Ð:LOTTO JSON show here. Burn expired tickets from dogecoin.games — do not send them.',
+  'modal.assets.noDnsTitle': 'No DNS names',
+  'modal.assets.noDnsHint':
+    'Plain name.namespace inscriptions and DNS registers show here. Other text stays under All.',
   'modal.assets.setAsDpfp': 'Set as ÐPFP (this device)',
   'modal.assets.setAsDpfa': 'Set as ÐPFA (this device)',
   'modal.assets.publishDpfp': 'Publish ÐPFP on-chain',

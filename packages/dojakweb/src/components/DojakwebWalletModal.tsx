@@ -67,6 +67,7 @@ import {
 import { InscriptionInspectModal } from './wallet/InscriptionInspectModal';
 import {
   isDlottoInscriptionText,
+  isDnsInscriptionText,
   loadInscriptionTextBody,
 } from '../utils/inscription-text';
 import {
@@ -212,7 +213,7 @@ export interface DojakwebWalletModalProps {
   drawerSide?: 'left' | 'right';
   onThemeChange?: (theme: 'dark' | 'light') => void;
   /** Host open focus: Assets → NFT → ÐLotto filter */
-  initialNftFilter?: 'all' | 'media' | 'dlotto';
+  initialNftFilter?: 'all' | 'media' | 'dlotto' | 'dns';
   initialDashboardTab?: 'assets' | 'transactions' | 'listings';
   initialAssetType?: 'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes';
 }
@@ -733,10 +734,12 @@ export function DojakwebWalletModal({
   const [walletNameDraft, setWalletNameDraft] = useState('');
   const [isSavingWalletName, setIsSavingWalletName] = useState(false);
   const [assetType, setAssetType] = useState<'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes'>('nft');
-  const [nftFilter, setNftFilter] = useState<'all' | 'media' | 'dlotto'>('all');
+  const [nftFilter, setNftFilter] = useState<'all' | 'media' | 'dlotto' | 'dns'>('all');
   /** inscriptionId → is ÐLotto (async classification cache) */
   const [dlottoFlags, setDlottoFlags] = useState<Record<string, boolean>>({});
   const [dlottoClassifying, setDlottoClassifying] = useState(false);
+  const [dnsFlags, setDnsFlags] = useState<Record<string, boolean>>({});
+  const [dnsClassifying, setDnsClassifying] = useState(false);
   const [revealPassword, setRevealPassword] = useState('');
   const [inscriptions, setInscriptions] = useState<MyDogeInscription[]>([]);
   const [dlockedInscriptionIds, setDlockedInscriptionIds] = useState<Set<string>>(new Set());
@@ -1042,11 +1045,17 @@ export function DojakwebWalletModal({
     if (nftFilter === 'media') {
       return list.filter((item) => !isTextishInscription(item.contentType));
     }
-    if (nftFilter === 'dlotto') {
+    if (nftFilter === 'dlotto' || nftFilter === 'dns') {
       return list.filter((item) => isTextishInscription(item.contentType));
     }
-    if (hideTextJsonInscriptions) {
-      list = list.filter((item) => !isTextishInscription(item.contentType));
+    if (hideTextJsonInscriptions && nftFilter !== 'dlotto' && nftFilter !== 'dns') {
+      list = list.filter((item) => {
+        if (!isTextishInscription(item.contentType)) return true;
+        const id = (item.inscriptionId || '').trim().toLowerCase();
+        if (item.contentBody && isDnsInscriptionText(item.contentBody)) return true;
+        if (id && dnsFlags[id]) return true;
+        return false;
+      });
     }
     return list;
   }, [
@@ -1054,6 +1063,7 @@ export function DojakwebWalletModal({
     hideTextJsonInscriptions,
     nftFilter,
     dlottoFlags,
+    dnsFlags,
     hiddenInscriptionIds,
     showHiddenInscriptions,
   ]);
@@ -1116,6 +1126,58 @@ export function DojakwebWalletModal({
     };
   }, [nftFilter, isOpen, uniqueInscriptions]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const candidates = uniqueInscriptions.filter((item) => isTextishInscription(item.contentType));
+    let cancelled = false;
+    const ac = new AbortController();
+
+    void (async () => {
+      const seed: Record<string, boolean> = {};
+      const toFetch: MyDogeInscription[] = [];
+      for (const item of candidates) {
+        const id = (item.inscriptionId || '').trim().toLowerCase();
+        if (!id) continue;
+        if (item.contentBody) {
+          seed[id] = isDnsInscriptionText(item.contentBody);
+        } else {
+          toFetch.push(item);
+        }
+      }
+      if (Object.keys(seed).length) {
+        setDnsFlags((prev) => ({ ...prev, ...seed }));
+      }
+
+      setDnsClassifying(true);
+      const next: Record<string, boolean> = {};
+      for (const item of toFetch.slice(0, 80)) {
+        if (cancelled) break;
+        const id = (item.inscriptionId || '').trim().toLowerCase();
+        try {
+          const body = await loadInscriptionTextBody({
+            contentBody: item.contentBody,
+            contentUrl: item.content || item.preview,
+            inscriptionId: item.inscriptionId,
+            signal: ac.signal,
+          });
+          next[id] = isDnsInscriptionText(body);
+        } catch {
+          next[id] = false;
+        }
+      }
+      if (!cancelled) {
+        if (Object.keys(next).length) setDnsFlags((prev) => ({ ...prev, ...next }));
+        setDnsClassifying(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      ac.abort();
+      setDnsClassifying(false);
+    };
+  }, [nftFilter, isOpen, uniqueInscriptions]);
+
   const gridInscriptions = useMemo(() => {
     if (nftFilter !== 'dlotto') return visibleInscriptions;
     return visibleInscriptions.filter((item) => {
@@ -1126,6 +1188,17 @@ export function DojakwebWalletModal({
       return dlottoClassifying;
     });
   }, [nftFilter, visibleInscriptions, dlottoFlags, dlottoClassifying]);
+
+  const gridInscriptionsShown = useMemo(() => {
+    if (nftFilter !== 'dns') return gridInscriptions;
+    return gridInscriptions.filter((item) => {
+      const id = (item.inscriptionId || '').trim().toLowerCase();
+      if (item.contentBody && isDnsInscriptionText(item.contentBody)) return true;
+      if (id && dnsFlags[id] === true) return true;
+      if (id && dnsFlags[id] === false) return false;
+      return dnsClassifying;
+    });
+  }, [nftFilter, gridInscriptions, dnsFlags, dnsClassifying]);
   const [settingsIndexerApiBase, setSettingsIndexerApiBase] = useState('');
   const [settingsDogexCdnBase, setSettingsDogexCdnBase] = useState('');
   type IndexerHealthRow = {
@@ -4668,17 +4741,21 @@ export function DojakwebWalletModal({
                                     </div>
                                   )
                                 ) : assetType === 'nft' ? (
-                                  gridInscriptions.length === 0 ? (
+                                  gridInscriptionsShown.length === 0 ? (
                                     <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
                                       <WalletIcon className="h-8 w-8 text-white/30" />
                                       <div className="text-sm font-semibold text-white">
                                         {nftFilter === 'dlotto'
                                           ? t('modal.assets.noDlottoTitle')
+                                          : nftFilter === 'dns'
+                                            ? t('modal.assets.noDnsTitle')
                                           : t('modal.assets.noDoginalsTitle')}
                                       </div>
                                       <div className="text-xs text-white/45">
                                         {nftFilter === 'dlotto'
                                           ? t('modal.assets.noDlottoHint')
+                                          : nftFilter === 'dns'
+                                            ? t('modal.assets.noDnsHint')
                                           : hideTextJsonInscriptions && textJsonInscriptionCount > 0
                                             ? t('modal.assets.noDoginalsHiddenTextHint', {
                                                 count: String(textJsonInscriptionCount),
@@ -4686,6 +4763,7 @@ export function DojakwebWalletModal({
                                             : t('modal.assets.noDoginalsHint')}
                                       </div>
                                       {nftFilter !== 'dlotto' &&
+                                      nftFilter !== 'dns' &&
                                       hideTextJsonInscriptions &&
                                       textJsonInscriptionCount > 0 ? (
                                         <button
@@ -4713,6 +4791,7 @@ export function DojakwebWalletModal({
                                             [
                                               { id: 'all' as const, label: t('modal.assets.filterAll') },
                                               { id: 'media' as const, label: t('modal.assets.filterMedia') },
+                                              { id: 'dns' as const, label: t('modal.assets.filterDns') },
                                               { id: 'dlotto' as const, label: t('modal.assets.filterDlotto') },
                                             ] as const
                                           ).map((opt) => (
@@ -4721,7 +4800,7 @@ export function DojakwebWalletModal({
                                               type="button"
                                               onClick={() => {
                                                 setNftFilter(opt.id);
-                                                if (opt.id === 'dlotto') {
+                                                if (opt.id === 'dlotto' || opt.id === 'dns') {
                                                   setHideTextJsonInscriptions(false);
                                                   setSettingsHideTextJson(false);
                                                   const dp = getWalletDataProviderConfig();
@@ -4801,11 +4880,15 @@ export function DojakwebWalletModal({
                                           <span className="text-[11px] text-white/45">
                                             {t('modal.assets.filterDlottoLoading')}
                                           </span>
+                                        ) : nftFilter === 'dns' && dnsClassifying ? (
+                                          <span className="text-[11px] text-white/45">
+                                            {t('modal.assets.filterDnsLoading')}
+                                          </span>
                                         ) : null}
                                         </div>
                                       </div>
                                     <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
-                                      {gridInscriptions.map((item) => {
+                                      {gridInscriptionsShown.map((item) => {
                                         const out = String(item.output || item.location || '')
                                           .split(':')
                                           .slice(0, 2)

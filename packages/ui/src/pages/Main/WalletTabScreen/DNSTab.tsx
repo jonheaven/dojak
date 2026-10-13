@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Inscription } from '@dojak/core/types';
+import { isDNSName } from '@dojak/core/lib/dns';
 import { useTools } from '@dojak/ui/components/ActionComponent';
 import InscriptionPreview from '@dojak/ui/components/InscriptionPreview';
 import { VirtualList } from '@dojak/ui/components/VirtualList';
@@ -11,6 +12,31 @@ import { useChainType } from '@dojak/ui/state/settings/hooks';
 import { useWallet } from '@dojak/ui/utils';
 
 import { useNavigate } from '../../MainRoute';
+
+function dnsNameFromInscription(inscription: Inscription): string | null {
+  const body = inscription.contentBody;
+  if (typeof body !== 'string') return null;
+  const text = body.trim();
+  if (!text) return null;
+  if (text.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(text.replace(/,\s*([}\]])/g, '$1')) as {
+        p?: string;
+        op?: string;
+        name?: string;
+      };
+      if (String(parsed.p || '').toLowerCase() !== 'dns') return null;
+      const op = String(parsed.op || '').toLowerCase();
+      if (op && !['register', 'reg', 'config', 'update', 'upd'].includes(op)) return null;
+      const name = typeof parsed.name === 'string' ? parsed.name.trim().toLowerCase() : '';
+      return isDNSName(name) ? name : null;
+    } catch {
+      return null;
+    }
+  }
+  const token = (text.split(/\s+/)[0] || '').toLowerCase();
+  return isDNSName(token) ? token : null;
+}
 
 export function DNSTab() {
   const navigate = useNavigate();
@@ -44,18 +70,7 @@ export function DNSTab() {
 
       // Filter for DNS inscriptions (plain text that looks like domains)
       const dnsInscriptions = allInscriptions.list.filter((inscription: Inscription) => {
-        // Check if it's a plain text inscription that looks like a domain
-        if (inscription.contentType?.includes('text/plain') &&
-            inscription.contentBody &&
-            typeof inscription.contentBody === 'string') {
-
-          const content = inscription.contentBody.trim();
-
-          // Basic domain pattern: word.doge (or other TLDs)
-          const domainPattern = /^[a-zA-Z0-9]+\.[a-zA-Z]+$/;
-          return domainPattern.test(content) && content.length < 50; // Reasonable length limit
-        }
-        return false;
+        return Boolean(dnsNameFromInscription(inscription));
       });
 
       return {
@@ -69,9 +84,7 @@ export function DNSTab() {
   const renderDNSInscription = useCallback(
     (inscription: Inscription, index: number) => {
       // Add DNS-specific verification badge
-      const domainName = inscription.contentBody?.trim() || '';
-      const isVerified = false; // TODO: Check against Dojaker indexer for verification
-      const isInvalid = false; // TODO: Check if this domain has been claimed by someone else
+      const domainName = dnsNameFromInscription(inscription) || inscription.contentBody?.trim() || '';
 
       return (
         <div style={{ position: 'relative' }}>
@@ -93,44 +106,21 @@ export function DNSTab() {
             }}
           />
 
-          {/* DNS Verification Badge */}
           <div
             style={{
               position: 'absolute',
               top: 8,
               right: 8,
-              background: isVerified
-                ? 'linear-gradient(135deg, #28a745, #20c997)' // Green for verified
-                : isInvalid
-                  ? 'linear-gradient(135deg, #dc3545, #fd7e14)' // Red/orange for invalid
-                  : 'linear-gradient(135deg, #6c757d, #adb5bd)', // Gray for unverified
-              color: 'white',
+              background: 'linear-gradient(135deg, #b45309, #fbbf24)',
+              color: '#1c1917',
               borderRadius: 12,
               padding: '2px 8px',
               fontSize: 10,
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+              fontWeight: 700,
+              letterSpacing: '0.04em'
             }}
           >
-            {isVerified ? (
-              <>
-                <span>✓</span>
-                <span>VERIFIED</span>
-              </>
-            ) : isInvalid ? (
-              <>
-                <span>✗</span>
-                <span>INVALID</span>
-              </>
-            ) : (
-              <>
-                <span>?</span>
-                <span>UNVERIFIED</span>
-              </>
-            )}
+            DNS
           </div>
 
           {/* Domain name overlay for easy reading */}

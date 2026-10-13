@@ -88,15 +88,11 @@ export type ParsedInscriptionText = {
 export function parseInscriptionText(raw: string): ParsedInscriptionText {
   const text = repairInubitsUtf8Mojibake(raw).trim();
   let json: unknown | null = null;
-  try {
-    if (
-      (text.startsWith('{') && text.endsWith('}')) ||
-      (text.startsWith('[') && text.endsWith(']'))
-    ) {
-      json = JSON.parse(text);
-    }
-  } catch {
-    json = null;
+  if (
+    (text.startsWith('{') && text.endsWith('}')) ||
+    (text.startsWith('[') && text.endsWith(']'))
+  ) {
+    json = parseLooseJson(text);
   }
 
   if (json && typeof json === 'object' && !Array.isArray(json)) {
@@ -141,6 +137,20 @@ export function parseInscriptionText(raw: string): ParsedInscriptionText {
       };
     }
 
+    if (protocol?.toLowerCase() === 'dns') {
+      const named = typeof o.name === 'string' ? dnsNameFromBody(o.name) : null;
+      const kind =
+        op === 'config' || op === 'update' || op === 'upd' ? 'Records' : 'Name';
+      return {
+        raw: text,
+        json,
+        protocol: 'dns',
+        op,
+        title: named || 'DNS',
+        subtitle: named ? kind : 'Not a valid name',
+      };
+    }
+
     if (protocol || op) {
       return {
         raw: text,
@@ -163,12 +173,68 @@ export function parseInscriptionText(raw: string): ParsedInscriptionText {
   }
 
   const firstLine = text.split(/\r?\n/).find((l) => l.trim()) || text;
+  const dns = dnsNameFromBody(text);
+  if (dns) {
+    return {
+      raw: text,
+      json: null,
+      protocol: 'dns',
+      op: 'register',
+      title: dns,
+      subtitle: 'Name',
+    };
+  }
   return {
     raw: text,
     json: null,
     title: 'Text inscription',
     subtitle: firstLine.slice(0, 80) + (firstLine.length > 80 ? '…' : ''),
   };
+}
+
+const DNS_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+const DNS_RESERVED = new Set([
+  'www',
+  'mail',
+  'ftp',
+  'localhost',
+  'dns',
+  'ns',
+  'ns1',
+  'ns2',
+  'admin',
+  'root',
+  'api',
+  'm',
+  'smtp',
+]);
+
+/** First token of a plain inscription, or a `name` field, when it is `label.namespace`. */
+export function dnsNameFromBody(raw: string): string | null {
+  const text = repairInubitsUtf8Mojibake(raw).trim();
+  if (!text || text.includes('{')) return null;
+  const token = (text.split(/\s+/)[0] || '').toLowerCase().replace(/^\.+|\.+$/g, '');
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [label, ns] = parts;
+  if (!label || !ns || DNS_RESERVED.has(label)) return null;
+  if (ns === 'dogemap' || ns === 'bitmap') return null;
+  if (!DNS_LABEL.test(label) || !DNS_LABEL.test(ns)) return null;
+  return `${label}.${ns}`;
+}
+
+function parseLooseJson(text: string): unknown | null {
+  const loose = text.replace(/,\s*([}\]])/g, '$1');
+  try {
+    return JSON.parse(loose);
+  } catch {
+    return null;
+  }
+}
+
+export function isDnsInscriptionText(body?: string | null): boolean {
+  if (!body) return false;
+  return parseInscriptionText(body).protocol === 'dns';
 }
 
 /** True when body is ÐLotto protocol JSON (`p` contains LOTTO). */

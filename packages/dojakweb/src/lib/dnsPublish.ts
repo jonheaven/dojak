@@ -59,7 +59,7 @@ export function buildDnsInscriptionJson(opts: {
   records?: DnsRecords;
 }): string {
   const name = normalizeDnsName(opts.name);
-  if (!name) throw new Error('Invalid .doge name');
+  if (!name) throw new Error('Invalid DNS name');
   const body: Record<string, string> = {
     p: DNS_MARKER,
     op: opts.op,
@@ -90,18 +90,20 @@ export async function publishDnsOnChain(params: {
   feeRate?: number;
   onStatus?: (msg: string) => void;
 }): Promise<PublishDnsResult> {
-  const text = buildDnsInscriptionJson({
-    op: params.op,
-    name: params.name,
-    records: params.records,
-  });
+  const name = normalizeDnsName(params.name);
+  if (!name) throw new Error('Invalid DNS name');
+  // The name itself stays plain text. Site, bio, and other records are a later config inscription.
+  const plain = params.op === 'register';
+  const text = plain
+    ? name
+    : buildDnsInscriptionJson({ op: 'config', name, records: params.records });
   params.onStatus?.('Signing DNS commit + reveal…');
   const pair = await signInscriptionTxs({
     text,
     fromAddress: params.fromAddress,
     privateKeyWIF: params.privateKeyWIF,
     feeRate: params.feeRate ?? 0,
-    contentType: 'application/json',
+    contentType: plain ? 'text/plain;charset=utf-8' : 'application/json',
   });
   params.onStatus?.('Broadcasting commit…');
   await broadcastSignedTransaction(pair.commitTxHex);

@@ -407,33 +407,45 @@ export function TextInscriptionCardMedia({ item, onInspect, className = '' }: Ca
 
   const isJson = isJsonInscription(item.contentType, parsed?.raw);
   const lotto = Boolean(parsed?.protocol && /lotto/i.test(parsed.protocol));
+  const dns = parsed?.protocol === 'dns';
 
   return (
     <button
       type="button"
       onClick={onInspect}
       className={`relative flex aspect-square w-full flex-col overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-950 to-black p-3 text-left transition hover:brightness-110 ${className}`}
-      title="Inspect text / JSON"
+      title={dns ? parsed?.title || 'DNS name' : 'Inspect text / JSON'}
     >
       <div
         className={`mb-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-          lotto
+          dns
+            ? 'bg-amber-400/20 text-amber-200'
+            : lotto
             ? 'bg-amber-500/20 text-amber-200'
             : isJson
               ? 'bg-violet-500/20 text-violet-200'
               : 'bg-sky-500/15 text-sky-200'
         }`}
       >
-        {isJson ? (
+        {dns ? null : isJson ? (
           <CodeBracketIcon className="h-3 w-3" aria-hidden />
         ) : (
           <DocumentTextIcon className="h-3 w-3" aria-hidden />
         )}
-        {lotto ? 'ÐLotto' : isJson ? 'JSON' : 'Text'}
+        {dns ? 'DNS' : lotto ? 'ÐLotto' : isJson ? 'JSON' : 'Text'}
       </div>
 
       {loading ? (
         <div className="flex flex-1 items-center text-[11px] text-white/40">Loading…</div>
+      ) : parsed && dns ? (
+        <div className="flex flex-1 flex-col justify-center">
+          <div className="break-all font-mono text-base font-bold leading-tight text-amber-100">
+            {parsed.title}
+          </div>
+          <div className="mt-1 text-[10px] uppercase tracking-wider text-white/45">
+            {parsed.subtitle || 'Name'}
+          </div>
+        </div>
       ) : parsed ? (
         <>
           <div className="line-clamp-2 text-xs font-semibold leading-snug text-white/95">
@@ -555,6 +567,16 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
             </div>
             {parsed?.subtitle ? (
               <div className="mt-0.5 text-xs text-white/50">{parsed.subtitle}</div>
+            ) : null}
+            {parsed?.protocol === 'dns' && parsed.title && parsed.title !== 'DNS' ? (
+              <a
+                href={`https://dogecoin.dog/dns/${encodeURIComponent(parsed.title)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-block text-xs text-amber-300 hover:underline"
+              >
+                Open on dogecoin.dog
+              </a>
             ) : null}
             <div className="mt-1 truncate font-mono text-[10px] text-white/35">{item.inscriptionId}</div>
           </div>

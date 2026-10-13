@@ -459,16 +459,23 @@ export function WalletIdentityPanel({
     setBusy(true);
     setErr(null);
     try {
+      const wif = (await browser.getSigningWallet()).privateKey;
       const result = await publishDnsOnChain({
         fromAddress: address,
-        privateKeyWIF: (await browser.getSigningWallet()).privateKey,
+        privateKeyWIF: wif,
         op: 'register',
         name,
-        records: {
-          address,
-          url: dnsUrl.trim() || undefined,
-        },
       });
+      const site = dnsUrl.trim();
+      if (site) {
+        await publishDnsOnChain({
+          fromAddress: address,
+          privateKeyWIF: wif,
+          op: 'config',
+          name,
+          records: { url: site },
+        });
+      }
       setLastDnsTxid(result.inscriptionId);
       toast.success(`${name} inscribed`);
       await load();
@@ -755,8 +762,9 @@ export function WalletIdentityPanel({
       ) : (
         <div className="space-y-3">
           <p className="text-sm leading-6 text-[#D4D4D4]">
-            Claim a <span className="font-semibold text-emerald-200">.doge</span> name as a Doginal.
-            Point it at a site. Transfer the inscription to give it away.
+            Names you hold show up here and in Doginals as <span className="font-semibold text-emerald-200">DNS</span>,
+            not as plain text. A new name is inscribed as <span className="font-mono text-emerald-100">name.namespace</span>.
+            A site is a separate update, so the name itself stays clean if you transfer it.
           </p>
           {dnsMine.length ? (
             <ul className="space-y-2">
@@ -765,33 +773,42 @@ export function WalletIdentityPanel({
                   key={n.name}
                   className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-50"
                 >
-                  <p className="font-semibold">{n.name}</p>
+                  <a
+                    href={`https://dogecoin.dog/dns/${encodeURIComponent(n.name)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono font-semibold text-emerald-100 hover:underline"
+                  >
+                    {n.name}
+                  </a>
                   {n.records?.url ? (
                     <p className="truncate font-mono text-[11px] text-white/55">{n.records.url}</p>
+                  ) : n.records?.content ? (
+                    <p className="line-clamp-2 text-[11px] text-white/55">{n.records.content}</p>
                   ) : (
-                    <p className="text-[11px] text-white/45">No site yet</p>
+                    <p className="text-[11px] text-white/45">No site or bio yet</p>
                   )}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-white/50">No .doge names on this wallet yet.</p>
+            <p className="text-sm text-white/50">No DNS names on this wallet yet.</p>
           )}
           <label className="block text-sm text-white">
             <span className="mb-2 block">Name</span>
-            <div className="flex items-center gap-2">
-              <input
-                value={dnsLabel}
-                onChange={(e) => setDnsLabel(e.target.value)}
-                placeholder="jon"
-                className={INPUT}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                disabled={busy}
-              />
-              <span className="shrink-0 text-xs text-white/45">.doge</span>
-            </div>
+            <input
+              value={dnsLabel}
+              onChange={(e) => setDnsLabel(e.target.value)}
+              placeholder="jon.doge"
+              className={INPUT}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              disabled={busy}
+            />
+            <span className="mt-1 block text-[11px] text-white/40">
+              A bare label becomes .doge. Any other suffix works: jon.dogecoin, satoshi.x
+            </span>
           </label>
           <label className="block text-sm text-white">
             <span className="mb-2 block">Site URL (optional)</span>

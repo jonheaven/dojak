@@ -181,13 +181,18 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.assets.filterAll': 'すべて',
   'modal.assets.filterMedia': '画像',
   'modal.assets.filterDlotto': 'ÐLotto',
+  'modal.assets.filterDns': '名前',
   'modal.assets.dlocked': 'ÐLocked',
   'modal.assets.filterDlottoLoading': 'チケット検索中…',
+  'modal.assets.filterDnsLoading': '名前を検索中…',
   'modal.assets.noDoginalsHiddenTextHint':
     '画像 Doginals がありません — テキスト/JSON が {count} 件隠れています。',
   'modal.assets.noDlottoTitle': 'ÐLotto がありません',
   'modal.assets.noDlottoHint':
     'チケット等の Ð:LOTTO JSON がここに表示されます。期限切れチケットのバーンは dogecoin.games から — 送信しないでください。',
+  'modal.assets.noDnsTitle': 'DNS の名前がありません',
+  'modal.assets.noDnsHint':
+    'name.namespace のプレーンテキストと DNS の登録がここに出ます。それ以外のテキストは「すべて」に残ります。',
   'modal.assets.setAsDpfp': 'ÐPFP に設定',
   'modal.assets.setAsDpfa': 'ÐPFA に設定',
   'modal.profileDpfp.avatarMenuAria': 'プロフィール画像・音声',
