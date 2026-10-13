@@ -774,7 +774,7 @@ export function WalletIdentityPanel({
                   className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-50"
                 >
                   <a
-                    href={`https://dogecoin.dog/dns/${encodeURIComponent(n.name)}`}
+                    href={`https://dogex.dog/dns/${encodeURIComponent(n.name)}`}
                     target="_blank"
                     rel="noreferrer"
                     className="font-mono font-semibold text-emerald-100 hover:underline"
@@ -832,12 +832,12 @@ export function WalletIdentityPanel({
             {busy ? t('modal.identity.broadcasting') : 'Register name'}
           </Btn>
           <a
-            href="https://dogecoin.dog/dns"
+            href="https://dogex.dog/dns"
             target="_blank"
             rel="noreferrer"
             className="block text-center text-xs text-emerald-300/80 hover:text-emerald-200"
           >
-            Open DNS on dogecoin.dog
+            Open DNS on dogex.dog
           </a>
         </div>
       )}

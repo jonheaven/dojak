@@ -192,7 +192,29 @@ export function parseInscriptionText(raw: string): ParsedInscriptionText {
   };
 }
 
-const DNS_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+/** ASCII A–Z only. `toLowerCase` turns Dogecoin Ð (U+00D0) into ð. */
+function asciiLowerDns(s: string): string {
+  let out = '';
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) ?? 0;
+    out += cp >= 0x41 && cp <= 0x5a ? String.fromCodePoint(cp + 0x20) : ch;
+  }
+  return out;
+}
+
+/** Unicode ok. ASCII only `[a-z0-9-]` after ASCII lowercase. */
+function isDnsLabel(part: string): boolean {
+  const chars = [...part];
+  if (!chars.length || chars.length > 63) return false;
+  if (chars[0] === '-' || chars[chars.length - 1] === '-') return false;
+  for (const c of chars) {
+    if (c === '.' || /\s/u.test(c)) return false;
+    const cp = c.codePointAt(0) ?? 0;
+    if (cp < 0x20 || (cp >= 0x7f && cp <= 0x9f)) return false;
+    if (cp < 0x80 && !/[a-z0-9-]/.test(c)) return false;
+  }
+  return true;
+}
 const DNS_RESERVED = new Set([
   'www',
   'mail',
@@ -213,13 +235,13 @@ const DNS_RESERVED = new Set([
 export function dnsNameFromBody(raw: string): string | null {
   const text = repairInubitsUtf8Mojibake(raw).trim();
   if (!text || text.includes('{')) return null;
-  const token = (text.split(/\s+/)[0] || '').toLowerCase().replace(/^\.+|\.+$/g, '');
+  const token = asciiLowerDns((text.split(/\s+/)[0] || '').replace(/^\.+|\.+$/g, ''));
   const parts = token.split('.');
   if (parts.length !== 2) return null;
   const [label, ns] = parts;
   if (!label || !ns || DNS_RESERVED.has(label)) return null;
   if (ns === 'bitmap' || ns === 'dogemap' || ns.startsWith('dogemap')) return null;
-  if (!DNS_LABEL.test(label) || !DNS_LABEL.test(ns)) return null;
+  if (!isDnsLabel(label) || !isDnsLabel(ns)) return null;
   return `${label}.${ns}`;
 }
 

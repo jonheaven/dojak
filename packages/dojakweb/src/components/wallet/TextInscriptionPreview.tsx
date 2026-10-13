@@ -570,12 +570,12 @@ export function InscriptionTextInspectModal({ item, open, onClose }: InspectProp
             ) : null}
             {parsed?.protocol === 'dns' && parsed.title && parsed.title !== 'DNS' ? (
               <a
-                href={`https://dogecoin.dog/dns/${encodeURIComponent(parsed.title)}`}
+                href={`https://dogex.dog/dns/${encodeURIComponent(parsed.title)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-1 inline-block text-xs text-amber-300 hover:underline"
               >
-                Open on dogecoin.dog
+                Open on dogex.dog
               </a>
             ) : null}
             <div className="mt-1 truncate font-mono text-[10px] text-white/35">{item.inscriptionId}</div>
