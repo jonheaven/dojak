@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ArrowsRightLeftIcon, WalletIcon } from '@heroicons/react/24/solid';
-import DojakwebWalletModal from './DojakwebWalletModal';
 import WalletDrawer from './WalletDrawer';
+
+const DojakwebWalletModal = lazy(() => import('./DojakwebWalletModal'));
 import {
   WalletQuickPicker,
   type WalletDrawerOpenStep,
@@ -194,16 +195,18 @@ export function ConnectWalletButton({
         onRequestOpenDrawer={(step) => openDrawer(step)}
       />
 
-      {mode === 'modal' ? (
-        <DojakwebWalletModal
-          isOpen={drawerOpen}
-          onClose={handleCloseDrawer}
-          isDark={isDark}
-          initialStep={drawerStep}
-          mode="modal"
-          {...focusProps}
-        />
-      ) : (
+      {mode === 'modal' && drawerOpen ? (
+        <Suspense fallback={null}>
+          <DojakwebWalletModal
+            isOpen={drawerOpen}
+            onClose={handleCloseDrawer}
+            isDark={isDark}
+            initialStep={drawerStep}
+            mode="modal"
+            {...focusProps}
+          />
+        </Suspense>
+      ) : mode !== 'modal' ? (
         <WalletDrawer
           isOpen={drawerOpen}
           onClose={handleCloseDrawer}
@@ -211,7 +214,7 @@ export function ConnectWalletButton({
           isDark={isDark}
           {...focusProps}
         />
-      )}
+      ) : null}
     </>
   );
 }

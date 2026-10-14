@@ -1,15 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useDojakwebTheme } from '../contexts/DojakwebThemeContext';
 import { useIsMobileWallet } from '../hooks/useMediaQuery';
 import { useWalletDrawerLayout } from '../hooks/useWalletDrawerLayout';
 import { readWalletTheme } from '../lib/wallet-theme-pref';
-import DojakwebWalletModal from './DojakwebWalletModal';
-/** Bundled Shiba paw — desktop phone-chassis only; never shown on mobile. */
-import bundledPawSrc from '../assets/paw.png';
+
+const DojakwebWalletModal = lazy(() => import('./DojakwebWalletModal'));
+const WalletPawGrip = lazy(() => import('./WalletPawGrip').then((m) => ({ default: m.WalletPawGrip })));
 
 export interface WalletDrawerProps {
   isOpen: boolean;
@@ -31,53 +30,6 @@ const EDGE_PAD = 8;
 const CLICK_DRAG_THRESHOLD_PX = 6;
 
 type DrawerPos = { right: number; bottom: number };
-
-const gripVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    x: 56,
-    y: 48,
-    rotate: -38,
-    scale: 0.86,
-  },
-  visible: {
-    opacity: 1,
-    x: 0,
-    y: 0,
-    rotate: -21,
-    scale: 1,
-    transition: {
-      type: 'spring',
-      stiffness: 340,
-      damping: 26,
-      mass: 0.85,
-      delay: 0.1,
-    },
-  },
-  exit: {
-    opacity: 0,
-    x: 40,
-    y: 32,
-    rotate: -30,
-    scale: 0.9,
-    transition: { duration: 0.24, ease: [0.4, 0, 0.85, 1] },
-  },
-};
-
-const pawImgVariants: Variants = {
-  hidden: { scale: 1.08, y: 6 },
-  visible: {
-    scale: 1,
-    y: 0,
-    transition: {
-      type: 'spring',
-      stiffness: 420,
-      damping: 28,
-      delay: 0.18,
-    },
-  },
-  exit: { scale: 0.96, y: 4, transition: { duration: 0.18 } },
-};
 
 function readStoredPos(): DrawerPos | null {
   if (typeof window === 'undefined') return null;
@@ -364,49 +316,26 @@ export default function WalletDrawer({
   );
 
   const showPaw = isOpen && !isMobile && !isModal;
+  const [modalArmed, setModalArmed] = useState(isOpen);
+  useEffect(() => {
+    if (isOpen) setModalArmed(true);
+  }, [isOpen]);
 
   const paw =
-    typeof document !== 'undefined'
+    modalArmed && !isMobile && !isModal && typeof document !== 'undefined'
       ? createPortal(
-          <AnimatePresence>
-            {showPaw ? (
-              <motion.div
-                key="wallet-paw"
-                className={`wallet-paw-grip${isDock ? ' wallet-paw-grip--docked' : ''}`}
-                role="button"
-                tabIndex={-1}
-                aria-label={
-                  isDock
-                    ? 'Close wallet'
-                    : 'Close wallet or drag sideways to reposition'
-                }
-                title={isDock ? 'Click to close' : 'Click to close. Drag left or right to move.'}
-                variants={gripVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                onPointerDown={isPawLayout ? onPointerDown : undefined}
-                onPointerMove={isPawLayout ? onPointerMove : undefined}
-                onPointerUp={isPawLayout ? endDrag : undefined}
-                onPointerCancel={isPawLayout ? endDrag : undefined}
-                onClick={
-                  isDock
-                    ? (e) => {
-                        e.preventDefault();
-                        onClose();
-                      }
-                    : undefined
-                }
-              >
-                <motion.img
-                  src={bundledPawSrc}
-                  alt=""
-                  draggable={false}
-                  variants={pawImgVariants}
-                />
-              </motion.div>
-            ) : null}
-          </AnimatePresence>,
+          <Suspense fallback={null}>
+            <WalletPawGrip
+              show={showPaw}
+              isDock={isDock}
+              isPawLayout={isPawLayout}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              onDockClose={onClose}
+            />
+          </Suspense>,
           document.body,
         )
       : null;
@@ -414,17 +343,21 @@ export default function WalletDrawer({
   return (
     <>
       {paw}
-      <DojakwebWalletModal
-        isOpen={isOpen}
-        onClose={onClose}
-        isDark={isDark}
-        initialStep={initialStep}
-        mode={isModal ? 'modal' : 'drawer'}
-        openNonce={openNonce}
-        initialNftFilter={initialNftFilter}
-        initialDashboardTab={initialDashboardTab}
-        initialAssetType={initialAssetType}
-      />
+      {modalArmed ? (
+        <Suspense fallback={null}>
+          <DojakwebWalletModal
+            isOpen={isOpen}
+            onClose={onClose}
+            isDark={isDark}
+            initialStep={initialStep}
+            mode={isModal ? 'modal' : 'drawer'}
+            openNonce={openNonce}
+            initialNftFilter={initialNftFilter}
+            initialDashboardTab={initialDashboardTab}
+            initialAssetType={initialAssetType}
+          />
+        </Suspense>
+      ) : null}
     </>
   );
 }

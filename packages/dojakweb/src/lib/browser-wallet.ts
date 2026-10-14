@@ -6,28 +6,7 @@
  * m/44'/3'/0'/0/0
  */
 
-import {
-  DogeMemoryWallet,
-  createP2PKHTransaction,
-  getP2PKHAddressFromPublicKey,
-  decodePrivateKeyFromWIF,
-} from 'doge-sdk';
-import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39';
-import { wordlist as englishWordlist } from '@scure/bip39/wordlists/english.js';
-import { HDKey } from '@scure/bip32';
-import * as secp from '@noble/secp256k1';
-
 import { decryptJSON, encryptJSON } from './secureStorage';
-import { warnIfUnexpectedSigningHostname } from '../services/dmp';
-import { buildOpReturnLockingScript, estimateOpReturnOutputsTxWeight } from './tx/opReturn';
-import { assertValidDogecoinAddress } from './dogecoinAddressValidate';
-import { SOFT_DUST_KOINU, assertPlainPaymentKoinu } from './dogecoin/softDust';
-import { selectP2PKHPaymentInputs } from './fees/selectP2PKHPaymentInputs';
-import { fixCoinSelectP2PKHFee } from './fixCoinSelectP2PKHFee';
-import {
-  signPartialPsdtWithWifToHex,
-  signPsdtWithWifToTxHex,
-} from './doginal-psdt';
 import type {
   WalletData,
   NetworkType,
@@ -278,8 +257,17 @@ function getDogecoinDerivationPath(accountIndex = 0): string {
   return `m/44'/3'/${accountIndex}'/0/0`;
 }
 
-secp.hashes.hmacSha256Async = hmacSha256 as any;
-secp.hashes.sha256Async = sha256 as any;
+function loadSecp() {
+  return import('@noble/secp256k1').then((secp) => {
+    secp.hashes.hmacSha256Async = hmacSha256 as typeof secp.hashes.hmacSha256Async;
+    secp.hashes.sha256Async = sha256 as typeof secp.hashes.sha256Async;
+    return secp;
+  });
+}
+
+function loadDogeSdk() {
+  return import('doge-sdk');
+}
 
 function encodeVarInt(value: number): Uint8Array {
   if (!Number.isSafeInteger(value) || value < 0) {
@@ -363,6 +351,7 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 async function signDogecoinMessage(privateKeyWif: string, message: string): Promise<string> {
+  const [{ decodePrivateKeyFromWIF }, secp] = await Promise.all([loadDogeSdk(), loadSecp()]);
   const privateKeyBytes = decodePrivateKeyFromWIF(privateKeyWif);
   const messageHash = await hashDogecoinSignedMessage(message);
   const signature = await secp.signAsync(messageHash, privateKeyBytes, {
@@ -389,6 +378,7 @@ async function buildWalletDataFromPrivateKey(
   metadata?: Partial<WalletData>
 ): Promise<WalletData> {
   const networkId = getNetworkId(network);
+  const { DogeMemoryWallet, getP2PKHAddressFromPublicKey } = await loadDogeSdk();
   const wallet = new DogeMemoryWallet(privateKeyBytes, networkId);
   const publicKeyRaw = await wallet.getCompressedPublicKey();
   const publicKey =
@@ -489,6 +479,12 @@ export class BrowserWallet {
     network: NetworkType = 'mainnet'
   ): Promise<WalletData & { mnemonic?: string }> {
 
+    const [{ generateMnemonic, mnemonicToSeedSync }, wordlistMod, { HDKey }] = await Promise.all([
+      import('@scure/bip39'),
+      import('@scure/bip39/wordlists/english.js'),
+      import('@scure/bip32'),
+    ]);
+    const englishWordlist = wordlistMod.wordlist;
     const mnemonic = generateMnemonic(englishWordlist, 128);
     const seedMaterial: SeedMaterial = { mnemonic, passphrase: '' };
     const seed = mnemonicToSeedSync(mnemonic);
@@ -521,6 +517,7 @@ export class BrowserWallet {
     network: NetworkType = 'mainnet'
   ): Promise<WalletData> {
     const normalized = privateKeyInput.trim();
+    const { decodePrivateKeyFromWIF } = await loadDogeSdk();
     const privateKeyBytes = /^(0x)?[0-9a-fA-F]{64}$/.test(normalized)
       ? hexToBytes(normalized)
       : decodePrivateKeyFromWIF(normalized);
@@ -546,6 +543,12 @@ export class BrowserWallet {
     accountIndex = 0
   ): Promise<WalletData> {
 
+    const [{ mnemonicToSeedSync, validateMnemonic }, wordlistMod, { HDKey }] = await Promise.all([
+      import('@scure/bip39'),
+      import('@scure/bip39/wordlists/english.js'),
+      import('@scure/bip32'),
+    ]);
+    const englishWordlist = wordlistMod.wordlist;
     const normalizedMnemonic = mnemonic.trim().replace(/\s+/g, ' ');
     if (!validateMnemonic(normalizedMnemonic, englishWordlist)) {
       throw new Error('Invalid BIP-39 mnemonic phrase');
@@ -1328,6 +1331,22 @@ export class BrowserWallet {
       throw new Error('Recipient address is required');
     }
 
+    const [
+      { assertValidDogecoinAddress },
+      { SOFT_DUST_KOINU, assertPlainPaymentKoinu },
+      { selectP2PKHPaymentInputs },
+      { fixCoinSelectP2PKHFee },
+      { buildOpReturnLockingScript, estimateOpReturnOutputsTxWeight },
+      { DogeMemoryWallet, createP2PKHTransaction },
+    ] = await Promise.all([
+      import('./dogecoinAddressValidate'),
+      import('./dogecoin/softDust'),
+      import('./fees/selectP2PKHPaymentInputs'),
+      import('./fixCoinSelectP2PKHFee'),
+      import('./tx/opReturn'),
+      loadDogeSdk(),
+    ]);
+
     // Checksum + network version — catch off-by-one typos before coin select.
     const normalizedRecipient = assertValidDogecoinAddress(recipientAddress);
 
@@ -1490,6 +1509,7 @@ export class BrowserWallet {
       throw new Error('Message is required');
     }
 
+    const { warnIfUnexpectedSigningHostname } = await import('../services/dmp');
     warnIfUnexpectedSigningHostname('Message signing');
 
     const wallet = await this.loadWalletForSigning(password, address);
@@ -1511,6 +1531,10 @@ export class BrowserWallet {
       throw new Error('PSDT is required');
     }
 
+    const [{ warnIfUnexpectedSigningHostname }, { signPsdtWithWifToTxHex }] = await Promise.all([
+      import('../services/dmp'),
+      import('./doginal-psdt'),
+    ]);
     warnIfUnexpectedSigningHostname('PSDT signing');
 
     const wallet = await this.loadWalletForSigning(password, address);
@@ -1533,6 +1557,10 @@ export class BrowserWallet {
       throw new Error('PSDT is required');
     }
 
+    const [{ warnIfUnexpectedSigningHostname }, { signPartialPsdtWithWifToHex }] = await Promise.all([
+      import('../services/dmp'),
+      import('./doginal-psdt'),
+    ]);
     warnIfUnexpectedSigningHostname('PSDT signing');
 
     const wallet = await this.loadWalletForSigning(password, address);

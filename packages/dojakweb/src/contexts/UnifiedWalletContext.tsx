@@ -4,29 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMyDogeWallet } from './useMyDogeWallet';
 import { useBrowserWallet } from './BrowserWalletContext';
 import { BrowserWallet, isPlaintextMigrationRequiredError, signDogecoinMessageWithWif } from '../lib/browser-wallet';
-import { LedgerWallet } from '../lib/ledger-wallet';
 import { DogewatchWallet } from '../lib/dogewatch-wallet';
-import {
-  broadcastTx,
-  normalizeSignedPsdtToBase64,
-  preparePsdtForExtensionSign,
-  preparePsdtForMyDogeSign,
-  signPartialPsdtWithWifToHex,
-  signPsdtWithWifToTxHex,
-} from '../lib/doginal-psdt';
-import { auditPsbtForWalletApproval, type PsbtHostClaims } from '../lib/psbt-approval-audit';
-import { getPaymentUtxosForSend } from '../lib/paymentUtxos';
-import { assertValidDogecoinAddress } from '../lib/dogecoinAddressValidate';
+import type { PsbtHostClaims } from '../lib/psbt-approval-audit';
 import {
   friendlyPaymentSendError,
   isInputsSpentBroadcastError,
   markOutpointsSpent,
   recordPaymentBroadcast,
 } from '../lib/mempoolSpendOverlay';
-import {
-  signDMPIntent as signDMPIntentService,
-  warnIfUnexpectedSigningHostname,
-} from '../services/dmp';
 import { walletDataApi } from '../utils/api';
 import {
   dogeSoftRequest,
@@ -240,7 +225,14 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
   const spookyListenersRef = useRef(false);
   const dogeSoftListenersRef = useRef(false);
   const dojakListenersRef = useRef(false);
-  const ledgerWalletRef = useRef(new LedgerWallet());
+  const ledgerWalletRef = useRef<import('../lib/ledger-wallet').LedgerWallet | null>(null);
+  const getLedgerWallet = async () => {
+    if (!ledgerWalletRef.current) {
+      const { LedgerWallet } = await import('../lib/ledger-wallet');
+      ledgerWalletRef.current = new LedgerWallet();
+    }
+    return ledgerWalletRef.current;
+  };
   const dogewatchWalletRef = useRef(new DogewatchWallet());
 
   useEffect(() => {
@@ -701,7 +693,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           setDojakState(DOJAK_INITIAL_STATE);
         }
         if (type === 'ledger' && ledgerState.connected) {
-          await ledgerWalletRef.current.disconnect();
+          await (await getLedgerWallet()).disconnect();
           setLedgerState(LEDGER_INITIAL_STATE);
         }
         if (type === 'dogewatch' && dogewatchState.connected) {
@@ -872,7 +864,8 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
         if (type === 'ledger') {
           setLedgerState((prev) => ({ ...prev, connecting: true, balanceRefreshing: false, balanceVerified: false, balanceError: null }));
-          const account = await ledgerWalletRef.current.connect({
+          const { LedgerWallet } = await import('../lib/ledger-wallet');
+          const account = await (await getLedgerWallet()).connect({
             accountIndex: LedgerWallet.getPersistedAccountIndex(),
             promptUser: options?.ledgerPrompt ?? true,
             verify: options?.ledgerVerify ?? true,
@@ -1157,7 +1150,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       if (walletType === 'ledger') {
         setLedgerState((prev) => ({ ...prev, connecting: true }));
         try {
-          const account = await ledgerWalletRef.current.switchAccount(nextAccountIndex);
+          const account = await (await getLedgerWallet()).switchAccount(nextAccountIndex);
           setLedgerState({
             connected: true,
             address: account.address,
@@ -1227,7 +1220,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       }
       if (ledgerState.connected) {
         try {
-          await ledgerWalletRef.current.disconnect();
+          await (await getLedgerWallet()).disconnect();
         } catch {
           /* ignore */
         }
@@ -1344,6 +1337,9 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         if (!browser.connected || !browser.address) {
           throw new Error('Browser wallet not connected');
         }
+        const { broadcastTx } = await import('../lib/doginal-psdt');
+        const { getPaymentUtxosForSend } = await import('../lib/paymentUtxos');
+        const { assertValidDogecoinAddress } = await import('../lib/dogecoinAddressValidate');
         const toAddress = assertValidDogecoinAddress(recipientAddress);
 
         const runBrowserSend = async ({
@@ -1476,6 +1472,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         throw new Error('Wallet system not initialized');
       }
 
+      const { warnIfUnexpectedSigningHostname } = await import('../services/dmp');
       warnIfUnexpectedSigningHostname('Message signing');
 
       if (walletType === 'mydoge') {
@@ -1512,7 +1509,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         return (window.dojak as any).signMessage(message, 'ecdsa');
       }
       if (walletType === 'ledger') {
-        return ledgerWalletRef.current.signMessage(message);
+        return (await getLedgerWallet()).signMessage(message);
       }
       if (walletType === 'dogewatch') {
         const signature = await dogewatchWalletRef.current.signMessage(message);
@@ -1538,6 +1535,11 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
 
   const signPSBT = useCallback(
     async (psbtHex: string): Promise<string> => {
+      const {
+        preparePsdtForMyDogeSign,
+        signPsdtWithWifToTxHex,
+      } = await import('../lib/doginal-psdt');
+      const { warnIfUnexpectedSigningHostname } = await import('../services/dmp');
       console.log('[UnifiedWallet] signPSBT:start', {
         walletType,
         length: psbtHex.length,
@@ -1675,6 +1677,14 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         claims?: PsbtHostClaims;
       },
     ): Promise<string> => {
+      const {
+        preparePsdtForMyDogeSign,
+        preparePsdtForExtensionSign,
+        normalizeSignedPsdtToBase64,
+        signPartialPsdtWithWifToHex,
+      } = await import('../lib/doginal-psdt');
+      const { warnIfUnexpectedSigningHostname } = await import('../services/dmp');
+      const { auditPsbtForWalletApproval } = await import('../lib/psbt-approval-audit');
       console.log('[UnifiedWallet] signPSBTOnly:start', {
         walletType,
         length: psbtInput.length,
@@ -1857,6 +1867,8 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         throw new Error('Connect a wallet before signing ÐMP intents');
       }
 
+      const { signDMPIntent: signDMPIntentService } = await import('../services/dmp');
+
       if (walletType === 'browser') {
         const browserWallet = new BrowserWallet();
         return signDMPIntentService(intentType, {
@@ -1924,7 +1936,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         return signDMPIntentService(intentType, {
           ...params,
           activeAddress: address,
-          signMessage: (message) => ledgerWalletRef.current.signMessage(message),
+          signMessage: async (message) => (await getLedgerWallet()).signMessage(message),
         });
       }
 

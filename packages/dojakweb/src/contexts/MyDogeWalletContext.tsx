@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MyDogeWalletContext } from './mydogeWalletInternals';
-import { Transaction } from 'bitcoinjs-lib';
-import { preparePsdtForMyDogeSign, tryParsePsdt } from '../lib/doginal-psdt';
 import { getInjectedMyDogeProvider } from '../utils/mydoge-provider';
 import { unsupportedExtensionWalletMessage } from '../types/wallet';
 
@@ -12,13 +10,17 @@ import { unsupportedExtensionWalletMessage } from '../types/wallet';
  * Always runs preparePsdtForMyDogeSign: the old guard skipped all-hex strings that were not
  * detected as PSBT, so base64/hex PSBT was passed to requestPsbt as "raw tx" → Invalid PSBT.
  */
-function normalizeMyDogePsbtInput(psbtInput: string): {
+/** bitcoinjs `Transaction.SIGHASH_ALL`. Kept as a constant so the shell does not import the library. */
+const SIGHASH_ALL = 0x01;
+
+async function normalizeMyDogePsbtInput(psbtInput: string): Promise<{
   normalizedHex: string;
   canonicalBase64: string | null;
   signIndexes: number[];
   isPSBT: boolean;
   sighashType: number;
-} {
+}> {
+  const { preparePsdtForMyDogeSign, tryParsePsdt } = await import('../lib/doginal-psdt');
   console.log('[MyDoge] normalizeMyDogePsbtInput:start', {
     inputLength: psbtInput.length,
     inputPrefix: psbtInput.slice(0, 24),
@@ -145,7 +147,7 @@ async function invokeMyDogePsbtSigner(
   const attempts: Array<{ label: string; run: () => Promise<unknown> }> = [];
 
   // MyDoge signPSBT does not pass sighashType; skip when PSBT needs a non-ALL sighash (e.g. listings).
-  if (isPSBT && myDoge.signPSBT && sighashType === Transaction.SIGHASH_ALL) {
+  if (isPSBT && myDoge.signPSBT && sighashType === SIGHASH_ALL) {
     attempts.push({
       label: 'signPSBT',
       run: () => myDoge.signPSBT!({ psbtHex: normalizedHex, indexes: signIndexes }),
@@ -468,7 +470,7 @@ export function MyDogeWalletProvider({ children }: { children: React.ReactNode }
       console.log('📞 [WALLET] Requesting signature from wallet...');
 
       const { normalizedHex, canonicalBase64, signIndexes, isPSBT, sighashType } =
-        normalizeMyDogePsbtInput(psbtHex);
+        await normalizeMyDogePsbtInput(psbtHex);
       console.log('📄 [WALLET] Input format:', isPSBT ? 'PSBT' : 'Raw Transaction');
       console.log('📄 [WALLET] Sign input indexes:', signIndexes.join(','));
       console.log('[MyDoge] signPSBT:requestPsbt params', {
@@ -534,7 +536,7 @@ export function MyDogeWalletProvider({ children }: { children: React.ReactNode }
       console.log('📞 [WALLET] Requesting PSBT signature from wallet...');
 
       const { normalizedHex, canonicalBase64, signIndexes, isPSBT, sighashType } =
-        normalizeMyDogePsbtInput(psbtHex);
+        await normalizeMyDogePsbtInput(psbtHex);
       console.log('📄 [WALLET] Input format:', isPSBT ? 'PSBT' : 'Raw Transaction');
       console.log('📄 [WALLET] Sign input indexes:', signIndexes.join(','));
       if (isPSBT && signIndexes.length === 0) {
@@ -592,7 +594,7 @@ export function MyDogeWalletProvider({ children }: { children: React.ReactNode }
     }
 
     const { normalizedHex, canonicalBase64, signIndexes, isPSBT, sighashType } =
-      normalizeMyDogePsbtInput(psbtInput);
+      await normalizeMyDogePsbtInput(psbtInput);
     const attempts: Array<{ label: string; params: Record<string, unknown> }> = [
       {
         label: 'partial-sign-only',

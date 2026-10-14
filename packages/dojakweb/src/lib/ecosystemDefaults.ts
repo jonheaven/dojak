@@ -11,11 +11,13 @@
  */
 import { ensureDefaultWalletDataProvider } from '../utils/api';
 import { ensureDefaultChainExplorer } from '../utils/dogeTxExplorer';
-import { ensureDefaultBroadcastConfig } from './broadcast/dogecoinTxBroadcast';
 
 /** Call once on host boot (idempotent migrations). */
 export function ensureDojakwebEcosystemDefaults(): void {
   ensureDefaultWalletDataProvider();
   ensureDefaultChainExplorer();
-  ensureDefaultBroadcastConfig();
+  // Broadcast policy pulls doge-sdk. Load it after paint, not with the page shell.
+  void import('./broadcast/dogecoinTxBroadcast').then((m) => {
+    m.ensureDefaultBroadcastConfig();
+  });
 }

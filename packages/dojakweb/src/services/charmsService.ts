@@ -22,7 +22,10 @@ import type {
   BeamPreparePayload,
 } from '../lib/charms/types';
 import { CHARMS_API_BASE } from '../lib/charms/constants';
-import { coerceSignedPsdtToRawTxHex } from '../lib/doginal-psdt';
+async function coerceSignedPsdtToRawTxHex(signedPayload: string): Promise<string> {
+  const psdt = await import('../lib/doginal-psdt');
+  return psdt.coerceSignedPsdtToRawTxHex(signedPayload);
+}
 
 export interface CharmsWalletSigner {
   signPsdt: (psdt: string) => Promise<string>;
@@ -333,7 +336,7 @@ export class CharmsService {
     }
 
     const signedPayload = await params.signer.signPsdt(unsigned);
-    const signedTxHex = coerceSignedPsdtToRawTxHex(signedPayload);
+    const signedTxHex = await coerceSignedPsdtToRawTxHex(signedPayload);
     const broadcast = await this.broadcastSignedTx({
       signedTxHex,
       chainId: params.chainId,
@@ -548,7 +551,7 @@ export class CharmsService {
     }
 
     const signedPayload = await params.signer.signPsdt(response.unsignedTxHex);
-    const signedTxHex = coerceSignedPsdtToRawTxHex(signedPayload);
+    const signedTxHex = await coerceSignedPsdtToRawTxHex(signedPayload);
 
     const broadcast = await this.broadcastSignedTx({
       signedTxHex,
@@ -600,7 +603,7 @@ export class CharmsService {
       throw new Error('Charms beam prepare did not return an unsigned Dogecoin transaction');
     }
     const signedPayload = await params.signer.signPsdt(unsignedPayload);
-    const signedTxHex = coerceSignedPsdtToRawTxHex(signedPayload);
+    const signedTxHex = await coerceSignedPsdtToRawTxHex(signedPayload);
 
     const broadcast = await this.broadcastSignedTx({
       signedTxHex,
