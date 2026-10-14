@@ -21,7 +21,7 @@
  * PROTOCOL OVERVIEW
  * =========================================================================
  *
- * ÐMP uses on-chain JSON envelopes (`p: "Ð:MP"`) plus a seller-signed PSDT fill.
+ * ÐMP uses on-chain JSON envelopes (`p: "dmp"`) plus a seller-signed PSDT fill.
  * Spec: dogenals/spec/protocols/dmp/spec.md · public: github.com/jonheaven/dmp-spec
  * Wallet signing here produces that envelope (op: list | bid | settle | cancel).
  *
@@ -30,7 +30,7 @@
  * =========================================================================
  *
  * For marketplace developers:
- *   1. Use signDMPIntent() from the wallet context (emits p:"Ð:MP")
+ *   1. Use signDMPIntent() from the wallet context (emits p:"dmp")
  *   2. Inscribe the envelope; attach seller-signed PSDT as `psdt`
  *   3. Buyers complete the PSDT and broadcast via command.dog → Core
  */
@@ -348,7 +348,7 @@ export function DMPPage() {
           <div className="grid gap-6">
             <OperationExample
               title="Create Listing"
-              description="Sign a spec list envelope (p: Ð:MP, op: list) with seller-signed PSDT."
+              description="Sign a spec list envelope (p: dmp, op: list) with seller-signed PSDT."
               intentType="list"
               params={{
                 inscription_id: SAMPLE_LISTING_ID,
@@ -422,7 +422,7 @@ export function DMPPage() {
   price_koinu: 4206900000,  // emitted as price string
   psdt: sellerSignedPsdtBase64,
 });
-// Inscribe JSON with p:"Ð:MP"  — spec: dogenals.org / github.com/jonheaven/dmp-spec`}
+// Inscribe JSON with p:"dmp"  — spec: dogenals.org / github.com/jonheaven/dmp-spec`}
               </pre>
             </div>
 
@@ -478,7 +478,7 @@ const completed = await completeListingPsdt(signed.psdt, buyerUtxos);`}
             <div className="bg-black/50 rounded-lg p-4">
               <pre className="text-xs text-zinc-300 font-mono">
 {`{
-  "p": "Ð:MP",
+  "p": "dmp",
   "op": "list",
   "inscription_id": "<txid>i0",
   "price": "4206900000",

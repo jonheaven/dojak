@@ -2,14 +2,18 @@
  * ÐMP envelope — dogenals/spec/protocols/dmp/spec.md
  * Public canonical: github.com/jonheaven/dmp-spec
  *
- * Marker is `p: "Ð:MP"`. Write budget: embed `psdt` when it fits; else `psdt_hash`
- * (PSDT off-band). Chatty bids prefer DogeTag; sale truth is the payment tx.
+ * Marker is `p: "dmp"` (ASCII wire). Styled `Ð:MP` is still accepted when reading.
+ * Write budget: embed `psdt` when it fits; else `psdt_hash` (PSDT off-band).
+ * Chatty bids prefer DogeTag; sale truth is the payment tx.
  */
 
 import { sha256 } from '@noble/hashes/sha2';
 import { bytesToHex } from './hash16';
 
-export const DMP_MARKER = 'Ð:MP';
+/** Normative on-chain marker — emit this. */
+export const DMP_MARKER = 'dmp';
+/** Styled brand alias still accepted by indexers / parsers. */
+export const DMP_MARKER_ALIAS = 'Ð:MP';
 export const DMP_VERSION = '1.0';
 
 /** Soft body cap (~4 KB) before falling back to hash-only list. */
@@ -202,5 +206,5 @@ export function stringifyDmpEnvelope(envelope: DmpEnvelope): string {
 export function isDmpEnvelope(value: unknown): value is DmpEnvelope {
   if (!value || typeof value !== 'object') return false;
   const p = (value as { p?: unknown }).p;
-  return p === DMP_MARKER || p === 'dmp';
+  return p === DMP_MARKER || p === DMP_MARKER_ALIAS;
 }

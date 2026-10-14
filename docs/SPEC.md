@@ -12,7 +12,7 @@ Encoders: `packages/core/src/modules/dogenals/` — re-exported from `@dojak/web
 | --- | --- | --- | --- |
 | **Ðunes** | `0xD0` | Encode etch/mint/edicts; protect dune UTXOs | `packages/dojakweb/src/lib/dunestone.ts` |
 | **ÐogeTreats** | `p:"dt"` | Encode deploy/mint/transfer/burn OP_RETURN | `packages/dojakweb/src/lib/treats/` |
-| **ÐMP** | `p:"Ð:MP"` | Spec envelope + PSDT listing/buy | `modules/dogenals/dmp.ts` · `services/dmp.ts` · `doginal-psdt.ts` |
+| **ÐMP** | `p:"dmp"` (alias `Ð:MP`) | Spec envelope + PSDT listing/buy | `modules/dogenals/dmp.ts` · `services/dmp.ts` · `doginal-psdt.ts` |
 | **Ðocial** | `Ð:SOC` | 30-byte binary engage/follow + post JSON | `modules/dogenals/dsocial.ts` (vectors SOC-OR-001…003) |
 | **Ðignal** | `Ð:DIG` | 50-byte binary signal + encrypted inscription JSON | `modules/dogenals/dignal.ts` |
 | **ÐLotto** | `p:"Ð:LOTTO"` | Detect/hold tickets; mint on dogecoin.games | `modules/dogenals/dlotto.ts` |
@@ -54,7 +54,7 @@ Encoders: `packages/core/src/modules/dogenals/` — re-exported from `@dojak/web
 
 - One social marker: **Ð:SOC**. Do not also emit `Ð:P` / ÐEcho on the same action.
 - Ðignal magic is **`Ð:DIG`**, not the old Era-2 `Ð:W` line.
-- ÐMP `p` is **`Ð:MP`**. Price is a **string** of koinu. PSDT is the fill contract.
+- ÐMP `p` is **`dmp`** (styled `Ð:MP` still accepted when reading). Price is a **string** of koinu. PSDT is the fill contract.
 - Inscriptions on Dogecoin: **P2SH commit → reveal** (Core rejects push-only `OP_IF` in `scriptSig`).
 - Broadcast: **command.dog `POST /v1/tx/broadcast`** → Core.
 

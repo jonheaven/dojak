@@ -341,6 +341,7 @@ export {
   encodeDignalShortText,
   buildDignalMessageJson,
   DMP_MARKER,
+  DMP_MARKER_ALIAS,
   DMP_LIST_MAX_JSON_BYTES,
   buildDmpEnvelope,
   buildDmpListEnvelope,

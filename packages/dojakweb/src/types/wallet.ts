@@ -309,7 +309,7 @@ export interface DmpIntentParamsMap {
 export type DmpIntentParams<T extends DmpIntentType = DmpIntentType> = DmpIntentParamsMap[T];
 
 export interface SignedDmpIntentBase {
-  p: 'Ð:MP';
+  p: 'dmp';
   op: DmpIntentType;
   seller: string;
   ts: number;

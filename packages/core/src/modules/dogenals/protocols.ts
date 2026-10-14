@@ -43,11 +43,11 @@ export const DOGENALS_PROTOCOLS: readonly DogenalsProtocolEntry[] = [
   {
     id: 'dmp',
     name: 'ÐMP',
-    marker: 'Ð:MP',
+    marker: 'dmp',
     spec: 'protocols/dmp/spec.md',
     role: 'encode',
     notes:
-      'Marketplace intents. Durable envelopes p:"Ð:MP". Write budget: psdt_hash / off-band PSDT when fat; DogeTag for chatty bids; sale tx is money truth. PSDT fill is the contract.',
+      'Marketplace intents. Durable envelopes p:"dmp" (alias Ð:MP). Write budget: psdt_hash / off-band PSDT when fat; DogeTag for chatty bids; sale tx is money truth. PSDT fill is the contract.',
   },
   {
     id: 'dsocial',
@@ -214,6 +214,7 @@ export const DOGENALS_PROTOCOLS: readonly DogenalsProtocolEntry[] = [
 export const DOGENALS_INSCRIPTION_MARKERS = [
   'Ð:SOC',
   'Ð:DIG',
+  'dmp',
   'Ð:MP',
   'Ð:LOTTO',
   'Ð:WOW',
