@@ -104,7 +104,7 @@ export type DnsOfferMemo = {
   raw: string;
 };
 
-/** `dns offer {name} {amt} {link} [note…]` */
+/** `dns offer {name} {amt} [note…]`. A leading https URL in the tail is a legacy link and is ignored. */
 export function parseDnsOfferMemo(text: string): DnsOfferMemo | null {
   const t = text.trim();
   const m = t.match(/^dns\s+offer\s+(\S+)\s+([0-9]+(?:\.[0-9]+)?)\b(.*)$/i);

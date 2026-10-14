@@ -12,6 +12,15 @@ export type PaymentUtxo = {
 };
 
 const STORAGE_KEY = 'dogeco:mempool-utxo-v1';
+/**
+ * Broadcast ids outlive the session UTXO overlay (2h, tab-scoped).
+ * The boost field reads this so a stuck send still has its txid after refresh.
+ */
+const BROADCAST_LOG_KEY = 'dogeco:pending-broadcasts-v1';
+/** Parent txid → CPFP child, so the boost card does not offer a second speed-up. */
+const CPFP_LINK_KEY = 'dogeco:cpfp-children-v1';
+const BROADCAST_TTL_MS = 36 * 60 * 60 * 1000;
+const BROADCASTS_PER_ADDRESS = 20;
 /** Also read legacy keys from casino / earlier dojakweb sessions. */
 const LEGACY_STORAGE_KEYS = [
   'dojakweb:mempool-utxo-v1',
@@ -29,6 +38,14 @@ type AddressBag = {
 };
 
 type Store = Record<string, AddressBag>;
+
+type BroadcastLogEntry = {
+  txid: string;
+  spent: OutpointKey[];
+  createdAt: number;
+};
+
+type BroadcastLog = Record<string, BroadcastLogEntry[]>;
 
 function outpointKey(txid: string, vout: number): OutpointKey {
   return `${txid.trim().toLowerCase()}:${vout}`;
@@ -100,6 +117,230 @@ function getBag(address: string): AddressBag {
   return pruneBag(bag);
 }
 
+function loadBroadcastLog(): BroadcastLog {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(BROADCAST_LOG_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as BroadcastLog;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveBroadcastLog(log: BroadcastLog): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(BROADCAST_LOG_KEY, JSON.stringify(log));
+  } catch {
+    /* quota */
+  }
+}
+
+function pruneBroadcasts(entries: BroadcastLogEntry[], t = Date.now()): BroadcastLogEntry[] {
+  const seen = new Set<string>();
+  const out: BroadcastLogEntry[] = [];
+  for (const row of [...entries].sort((a, b) => b.createdAt - a.createdAt)) {
+    const txid = row.txid?.trim().toLowerCase() ?? '';
+    if (!/^[0-9a-f]{64}$/.test(txid) || seen.has(txid)) continue;
+    if (t - row.createdAt >= BROADCAST_TTL_MS) continue;
+    seen.add(txid);
+    out.push({
+      txid,
+      spent: (row.spent ?? []).map((k) => k.trim().toLowerCase()).filter(Boolean),
+      createdAt: row.createdAt,
+    });
+    if (out.length >= BROADCASTS_PER_ADDRESS) break;
+  }
+  return out;
+}
+
+/** Newest broadcast first. Survives refresh; session change entries are included. */
+export function listRecentBroadcastTxids(address: string): string[] {
+  const fromLog = pruneBroadcasts(loadBroadcastLog()[addrKey(address)] ?? []);
+  const fromSession = [...getBag(address).change].sort((a, b) => b.createdAt - a.createdAt);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const row of fromLog) {
+    if (seen.has(row.txid)) continue;
+    seen.add(row.txid);
+    out.push(row.txid);
+  }
+  for (const row of fromSession) {
+    const txid = row.txid.trim().toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(txid) || seen.has(txid)) continue;
+    seen.add(txid);
+    out.push(txid);
+  }
+  return out;
+}
+
+/** Newest broadcast that spent one of these outpoints, if we recorded it. */
+export function findBroadcastForSpentInputs(
+  address: string,
+  spent: Array<{ txid: string; vout: number }>,
+): string | null {
+  const want = new Set(spent.map((s) => outpointKey(s.txid, s.vout)));
+  if (!want.size) return null;
+  const rows = pruneBroadcasts(loadBroadcastLog()[addrKey(address)] ?? []);
+  for (const row of rows) {
+    if (row.spent.some((k) => want.has(k))) return row.txid;
+  }
+  return null;
+}
+
+/** Quiet time before a still-unconfirmed send is offered a CPFP speed-up. */
+export const STUCK_BOOST_AFTER_MS = 15 * 60 * 1000;
+
+function finiteTimes(values: Array<number | undefined>): number[] {
+  return values.filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+}
+
+/**
+ * When we first saw this broadcast locally.
+ * A specific txid uses its own log/change time. With no txid, the oldest hold on the address.
+ */
+export function broadcastTrackedAt(address: string, txid?: string | null): number | null {
+  const bag = getBag(address);
+  const id = txid?.trim().toLowerCase() ?? '';
+  if (/^[0-9a-f]{64}$/.test(id)) {
+    const logged = pruneBroadcasts(loadBroadcastLog()[addrKey(address)] ?? []).find((row) => row.txid === id);
+    const times = finiteTimes([
+      logged?.createdAt,
+      ...bag.change.filter((c) => c.txid.trim().toLowerCase() === id).map((c) => c.createdAt),
+    ]);
+    return times.length ? Math.min(...times) : null;
+  }
+  const times = finiteTimes([
+    ...Object.values(bag.spent),
+    ...bag.change.map((c) => c.createdAt),
+  ]);
+  return times.length ? Math.min(...times) : null;
+}
+
+/** True once this send has been unconfirmed locally for `STUCK_BOOST_AFTER_MS`. */
+export function isBroadcastStuck(address: string, txid?: string | null, now = Date.now()): boolean {
+  const at = broadcastTrackedAt(address, txid);
+  if (at == null) return false;
+  return now - at >= STUCK_BOOST_AFTER_MS;
+}
+
+/** Change outputs we broadcast, newest first. */
+export function listLocalChangeBroadcasts(
+  address: string,
+): Array<{ txid: string; createdAt: number }> {
+  const byTx = new Map<string, number>();
+  for (const row of getBag(address).change) {
+    const id = row.txid.trim().toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(id)) continue;
+    const prev = byTx.get(id);
+    if (prev == null || row.createdAt < prev) byTx.set(id, row.createdAt);
+  }
+  return [...byTx.entries()]
+    .map(([txid, createdAt]) => ({ txid, createdAt }))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export function forgetBroadcast(address: string, txid: string): void {
+  const id = txid.trim().toLowerCase();
+  const log = loadBroadcastLog();
+  const key = addrKey(address);
+  const next = (log[key] ?? []).filter((row) => row.txid.trim().toLowerCase() !== id);
+  if (next.length) log[key] = next;
+  else delete log[key];
+  saveBroadcastLog(log);
+}
+
+type CpfpLink = { parentTxid: string; childTxid: string; createdAt: number };
+
+function loadCpfpLinks(): CpfpLink[] {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CPFP_LINK_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as CpfpLink[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCpfpLinks(rows: CpfpLink[]): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(CPFP_LINK_KEY, JSON.stringify(rows));
+  } catch {
+    /* quota */
+  }
+}
+
+function liveCpfpLinks(t = Date.now()): CpfpLink[] {
+  const seen = new Set<string>();
+  const out: CpfpLink[] = [];
+  for (const row of [...loadCpfpLinks()].sort((a, b) => b.createdAt - a.createdAt)) {
+    const parentTxid = row.parentTxid?.trim().toLowerCase() ?? '';
+    const childTxid = row.childTxid?.trim().toLowerCase() ?? '';
+    if (!/^[0-9a-f]{64}$/.test(parentTxid) || !/^[0-9a-f]{64}$/.test(childTxid)) continue;
+    if (t - row.createdAt >= BROADCAST_TTL_MS) continue;
+    if (seen.has(parentTxid) || seen.has(childTxid)) continue;
+    seen.add(parentTxid);
+    seen.add(childTxid);
+    out.push({ parentTxid, childTxid, createdAt: row.createdAt });
+  }
+  return out;
+}
+
+export function rememberCpfpChild(parentTxid: string, childTxid: string): void {
+  const parent = parentTxid.trim().toLowerCase();
+  const child = childTxid.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(parent) || !/^[0-9a-f]{64}$/.test(child) || parent === child) return;
+  const prev = liveCpfpLinks().filter((row) => row.parentTxid !== parent && row.childTxid !== child);
+  saveCpfpLinks([{ parentTxid: parent, childTxid: child, createdAt: Date.now() }, ...prev].slice(0, 20));
+}
+
+export function cpfpChildForParent(parentTxid: string): string | null {
+  const id = parentTxid.trim().toLowerCase();
+  return liveCpfpLinks().find((row) => row.parentTxid === id)?.childTxid ?? null;
+}
+
+export function cpfpParentForChild(childTxid: string): string | null {
+  const id = childTxid.trim().toLowerCase();
+  return liveCpfpLinks().find((row) => row.childTxid === id)?.parentTxid ?? null;
+}
+
+/** Done-state for the boost card. Accepts either the parent or the child txid. */
+export function resolveStoredBoost(txid: string): { parentTxid: string; childTxid: string } | null {
+  const id = txid.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(id)) return null;
+  const child = cpfpChildForParent(id);
+  if (child) return { parentTxid: id, childTxid: child };
+  const parent = cpfpParentForChild(id);
+  if (parent) return { parentTxid: parent, childTxid: id };
+  return null;
+}
+
+function rememberBroadcast(
+  address: string,
+  txid: string,
+  spent: Array<{ txid: string; vout: number }>,
+): void {
+  const id = txid.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(id)) return;
+  const log = loadBroadcastLog();
+  const key = addrKey(address);
+  const prev = log[key] ?? [];
+  log[key] = pruneBroadcasts([
+    {
+      txid: id,
+      spent: spent.map((s) => outpointKey(s.txid, s.vout)),
+      createdAt: Date.now(),
+    },
+    ...prev,
+  ]);
+  saveBroadcastLog(log);
+}
+
 function putBag(address: string, bag: AddressBag): void {
   const store = loadStore();
   const key = addrKey(address);
@@ -149,6 +390,7 @@ export function recordPaymentBroadcast(params: {
     });
   }
   putBag(params.address, { spent: bag.spent, change });
+  rememberBroadcast(params.address, params.txid, params.spent);
 }
 
 /**
@@ -263,53 +505,6 @@ export function clearMempoolOverlayForAddress(address: string): void {
   } catch {
     /* ignore */
   }
-}
-
-/** Quiet time before a still-unconfirmed send is offered a CPFP speed-up. */
-export const STUCK_BOOST_AFTER_MS = 15 * 60 * 1000;
-
-/**
- * When we first saw this broadcast locally.
- * A specific txid uses its change output time. With no txid, the oldest hold on the address.
- */
-export function broadcastTrackedAt(address: string, txid?: string | null): number | null {
-  const bag = getBag(address);
-  const id = txid?.trim().toLowerCase() ?? '';
-  const finite = (values: number[]) => values.filter((n) => Number.isFinite(n));
-  if (/^[0-9a-f]{64}$/.test(id)) {
-    const times = finite(
-      bag.change.filter((c) => c.txid.trim().toLowerCase() === id).map((c) => c.createdAt),
-    );
-    return times.length ? Math.min(...times) : null;
-  }
-  const times = finite([
-    ...Object.values(bag.spent),
-    ...bag.change.map((c) => c.createdAt),
-  ]);
-  return times.length ? Math.min(...times) : null;
-}
-
-/** True once this send has been unconfirmed locally for `STUCK_BOOST_AFTER_MS`. */
-export function isBroadcastStuck(address: string, txid?: string | null, now = Date.now()): boolean {
-  const at = broadcastTrackedAt(address, txid);
-  if (at == null) return false;
-  return now - at >= STUCK_BOOST_AFTER_MS;
-}
-
-/** Change outputs we broadcast, newest first. */
-export function listLocalChangeBroadcasts(
-  address: string,
-): Array<{ txid: string; createdAt: number }> {
-  const byTx = new Map<string, number>();
-  for (const row of getBag(address).change) {
-    const id = row.txid.trim().toLowerCase();
-    if (!/^[0-9a-f]{64}$/.test(id)) continue;
-    const prev = byTx.get(id);
-    if (prev == null || row.createdAt < prev) byTx.set(id, row.createdAt);
-  }
-  return [...byTx.entries()]
-    .map(([txid, createdAt]) => ({ txid, createdAt }))
-    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function isInputsSpentBroadcastError(err: unknown): boolean {

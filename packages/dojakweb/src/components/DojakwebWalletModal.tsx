@@ -100,14 +100,18 @@ import {
   validateSellerPSDT,
 } from '../lib/doginal-psdt';
 import {
+  cpfpParentForChild,
+  findBroadcastForSpentInputs,
+  forgetBroadcast,
   isBroadcastStuck,
   isInputsSpentBroadcastError,
-  listLocalChangeBroadcasts,
+  listRecentBroadcastTxids,
   markOutpointsSpent,
   recordPaymentBroadcast,
+  rememberCpfpChild,
 } from '../lib/mempoolSpendOverlay';
 import { filterUtxosByRpcGetTxOutIfConfigured, rpcGetTxOutSpendable } from '../lib/utxo-tools';
-import { boostParentWithCpfp, cacheParentChange } from '../lib/broadcast/cpfpBoost';
+import { boostParentWithCpfp, cacheParentChange, findMempoolParentTxid } from '../lib/broadcast/cpfpBoost';
 import { PendingChangeBoost } from './wallet/PendingChangeBoost';
 import { publishListingToNostr, publishListingToNostrWithDiagnostics, publishListingCancelToNostr, type NostrPublishRelayResult } from '../services/nostr';
 import {
@@ -206,7 +210,8 @@ import {
   type DojakwebWalletTxEntry,
   type WalletTxListRow,
 } from '../lib/wallet-tx-journal';
-import { enrichWalletTransactionsForAddress } from '../lib/wallet-tx-enrichment';
+import { enrichWalletTransactionsForAddress, inscriptionFaceFromWalletTx } from '../lib/wallet-tx-enrichment';
+import { WalletTxInscriptionPreview } from './wallet/WalletTxInscriptionPreview';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { DOJAKWEB_DX_PM_PROTOCOL, DOJAKWEB_DX_RESPONSE, type DxPostMessageResponse } from '../lib/dx/postMessage';
 import { useDxHostStore } from '../stores/dxHostStore';
@@ -767,8 +772,9 @@ export function DojakwebWalletModal({
   const [dlockedOutpoints, setDlockedOutpoints] = useState<Set<string>>(new Set());
   const [spendableBreak, setSpendableBreak] = useState<SpendableBalanceBreakdown | null>(null);
   const [spendableBreakBusy, setSpendableBreakBusy] = useState(false);
+  /** Parent tx still in the mempool, from this browser's broadcast log. */
   const [pendingBoostTxid, setPendingBoostTxid] = useState<string | null>(null);
-  /** CPFP card stays hidden until a send has sat in the mempool. */
+  /** CPFP card is hidden until a send has actually sat in the mempool. */
   const [showStuckBoostCard, setShowStuckBoostCard] = useState(false);
   /** Full-viewport Coins & UTXOs (outside narrow drawer). */
   const [utxoManagerOpen, setUtxoManagerOpen] = useState(false);
@@ -2752,7 +2758,7 @@ export function DojakwebWalletModal({
       if (initialDashboardTab) setTab(initialDashboardTab);
       if (initialAssetType) setAssetType(initialAssetType);
       if (initialNftFilter) setNftFilter(initialNftFilter);
-      if (initialNftFilter === 'dlotto') {
+      if (initialNftFilter === 'dlotto' || initialNftFilter === 'dns') {
         setHideTextJsonInscriptions(false);
         setAssetType('nft');
         setTab('assets');
@@ -2854,6 +2860,11 @@ export function DojakwebWalletModal({
     [mergedTransactions],
   );
 
+  const detailTx = useMemo(() => {
+    if (!selectedTx) return null;
+    return mergedTransactions.find((tx) => tx.txid === selectedTx.txid) ?? selectedTx;
+  }, [selectedTx, mergedTransactions]);
+
   // While anything is in mempool, refresh history so the yellow blink clears on confirm.
   useEffect(() => {
     if (step !== 'dashboard' || !activeAddress || pendingTxCount <= 0) return;
@@ -2885,7 +2896,7 @@ export function DojakwebWalletModal({
     };
   }, [step, activeAddress, connected, balance, balanceVerified]);
 
-  // Offer a speed-up only after a send has been unconfirmed for a while.
+  // Offer CPFP only after a send has been unconfirmed for a while. A fresh broadcast stays quiet.
   useEffect(() => {
     if (!activeAddress) {
       setPendingBoostTxid(null);
@@ -2896,30 +2907,36 @@ export function DojakwebWalletModal({
     let timer = 0;
 
     const scan = async () => {
-      const rows = listLocalChangeBroadcasts(activeAddress);
+      const ids = listRecentBroadcastTxids(activeAddress);
       let offer: string | null = null;
-      let retry = false;
-      for (const row of rows) {
-        if (!isBroadcastStuck(activeAddress, row.txid)) {
-          retry = true;
+      let hasYoung = false;
+      for (const id of ids) {
+        if (!isBroadcastStuck(activeAddress, id)) {
+          hasYoung = true;
           continue;
         }
-        const st = await fetchCommandDogTxStatus(row.txid);
+        const st = await fetchCommandDogTxStatus(id);
         if (cancelled) return;
         if (!st) {
-          retry = true;
+          hasYoung = true;
           continue;
         }
         if (st.in_block || (st.confirmations ?? 0) > 0 || st.known === false || st.in_mempool === false) {
+          forgetBroadcast(activeAddress, id);
           continue;
         }
-        offer = row.txid;
+        // A speed-up spends the stuck parent. Show that parent as finished, not as another boost.
+        const linkedParent = cpfpParentForChild(id);
+        const parent = linkedParent || (await findMempoolParentTxid(id));
+        if (cancelled) return;
+        offer = parent && parent !== id ? parent : id;
+        if (parent && parent !== id) rememberCpfpChild(parent, id);
         break;
       }
       if (cancelled) return;
       setPendingBoostTxid(offer);
       setShowStuckBoostCard(Boolean(offer));
-      if (retry || offer) {
+      if (hasYoung || offer) {
         timer = window.setTimeout(() => {
           void scan();
         }, 30_000);
@@ -2931,7 +2948,7 @@ export function DojakwebWalletModal({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [activeAddress]);
+  }, [activeAddress, spendableBreak?.localHoldCount]);
 
   const openSendInscription = (inscription: MyDogeInscription) => {
 
@@ -2970,6 +2987,13 @@ export function DojakwebWalletModal({
       }
       const inscriptionStillFree = await rpcGetTxOutSpendable({ txid: insTxid, vout: insVout });
       if (inscriptionStillFree === false) {
+        const remembered = findBroadcastForSpentInputs(activeAddress, [
+          { txid: insTxid, vout: insVout },
+        ]);
+        if (remembered && isBroadcastStuck(activeAddress, remembered)) {
+          setPendingBoostTxid(remembered);
+          setShowStuckBoostCard(true);
+        }
         throw new Error(
           'This inscription is already spent or sitting in a pending mempool send. ' +
             'Do not rebuild/retry — wait for that transaction to confirm (or check your recent tx history).',
@@ -3039,6 +3063,40 @@ export function DojakwebWalletModal({
       });
       setInscriptionSendTxid(txid);
       setInscriptionSendDraft(null);
+      const body = (selectedInscription.contentBody || '').trim();
+      const name =
+        body && body.length <= 80
+          ? body.split(/\r?\n/).find((line) => line.trim())?.trim() || ''
+          : '';
+      upsertWalletTxJournalEntry({
+        txid,
+        address: activeAddress,
+        protocol: 'doginals',
+        action: 'send',
+        title:
+          name ||
+          (selectedInscription.inscriptionNumber != null
+            ? `Inscription #${selectedInscription.inscriptionNumber}`
+            : 'Inscription transfer'),
+        summary: `Inscription transfer → ${inscriptionSendRecipient.trim()}`,
+        status: 'broadcasted',
+        metadata: {
+          inscriptionId: selectedInscription.inscriptionId,
+          inscriptionNumber: selectedInscription.inscriptionNumber,
+          contentType: selectedInscription.contentType,
+          previewUrl: selectedInscription.preview || selectedInscription.content,
+          contentPreview: name || undefined,
+          recipientAddress: inscriptionSendRecipient.trim(),
+          actionLabel: 'Send',
+          postageDoge: (() => {
+            const raw = Number(selectedInscription.outputValue || 0);
+            if (raw >= 1) return raw / 1e8;
+            if (raw > 0) return raw;
+            return 0.001;
+          })(),
+        },
+      });
+      setWalletTxJournal(loadWalletTxJournal());
       toast.success(t('modal.toast.inscriptionSent', { txShort: txid.slice(0, 12) }));
     } catch (e: any) {
       if (isInputsSpentBroadcastError(e) && inscriptionSendDraft) {
@@ -3046,14 +3104,25 @@ export function DojakwebWalletModal({
           const [txidIn, voutStr] = row.outpoint.split(':');
           return { txid: txidIn, vout: parseInt(voutStr, 10) };
         });
-        markOutpointsSpent(activeAddress, spent);
         const raw = e?.message ?? String(e);
-        const pendingParent = raw.match(/mempool tx:?\s*([0-9a-f]{64})/i)?.[1];
+        const pendingParent =
+          raw.match(/mempool tx:?\s*([0-9a-f]{64})/i)?.[1] ??
+          findBroadcastForSpentInputs(activeAddress, spent);
         if (pendingParent) {
           void cacheParentChange(activeAddress, pendingParent).catch(() => {
             /* change stays unspendable until the user pastes the txid */
           });
+          if (isBroadcastStuck(activeAddress, pendingParent)) {
+            setPendingBoostTxid(pendingParent.toLowerCase());
+            setShowStuckBoostCard(true);
+          }
         }
+        const actuallySpent: Array<{ txid: string; vout: number }> = [];
+        for (const s of spent) {
+          const free = await rpcGetTxOutSpendable(s);
+          if (free === false) actuallySpent.push(s);
+        }
+        if (actuallySpent.length) markOutpointsSpent(activeAddress, actuallySpent);
         const ins = inscriptionSendDraft.inputs.find((row) => row.role === 'inscription');
         if (ins) {
           const [txidIn, voutStr] = ins.outpoint.split(':');
@@ -5400,7 +5469,7 @@ export function DojakwebWalletModal({
                                   </button>
                                 </div>
                                 {/* Detail overlay */}
-                                {selectedTx &&
+                                {detailTx &&
                                   typeof document !== 'undefined' &&
                                   createPortal(
                                   <div
@@ -5428,16 +5497,25 @@ export function DojakwebWalletModal({
                                       >
                                         <XMarkIcon className="h-5 w-5" />
                                       </button>
+                                      {detailTx.protocol === 'doginals' && detailTx.title ? (
+                                        <div className={cx(
+                                          'mb-1 text-lg font-bold tracking-tight',
+                                          isDark ? 'text-white' : 'text-zinc-900',
+                                        )}>
+                                          {detailTx.title}
+                                        </div>
+                                      ) : (
                                       <div className={cx(
                                         'mb-3 text-xs font-bold uppercase tracking-widest',
                                         isDark ? 'text-white/40' : 'text-zinc-400',
                                       )}>
-                                        {selectedTx.title
+                                        {detailTx.title
                                           ?.replace(/^Ðune\s*[·•.-]\s*/i, '')
-                                          || (selectedTx.type === 'sent' ? t('modal.tx.to') : t('modal.tx.from'))}
+                                          || (detailTx.type === 'sent' ? t('modal.tx.to') : t('modal.tx.from'))}
                                       </div>
-                                      {(selectedTx.protocolLabel || selectedTx.originLabel || selectedTx.actionLabel) && (() => {
-                                        const chips = walletTxDisplayChips(selectedTx);
+                                      )}
+                                      {(detailTx.protocolLabel || detailTx.originLabel || detailTx.actionLabel) && (() => {
+                                        const chips = walletTxDisplayChips(detailTx);
                                         if (!chips.protocolLabel && !chips.actionLabel && !chips.originLabel) return null;
                                         return (
                                         <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
@@ -5473,73 +5551,75 @@ export function DojakwebWalletModal({
                                       <div className="mb-3">
                                         <span className={cx(
                                           'text-xs font-medium',
-                                          selectedTx.pending
+                                          detailTx.pending
                                             ? (isDark ? 'text-yellow-200' : 'text-yellow-700')
                                             : (isDark ? 'text-emerald-300/90' : 'text-emerald-700'),
                                         )}>
-                                          {selectedTx.pending
+                                          {detailTx.pending
                                             ? 'Mempool'
-                                            : selectedTx.journal?.status === 'indexed'
+                                            : detailTx.journal?.status === 'indexed'
                                               ? 'Indexed'
-                                              : selectedTx.confirmations > 0
-                                                ? `Confirmed · ${selectedTx.confirmations}`
+                                              : detailTx.confirmations > 0
+                                                ? `Confirmed · ${detailTx.confirmations}`
                                                 : 'Seen'}
                                         </span>
                                       </div>
-                                      {selectedTx.summary && selectedTx.protocol !== 'dunes' && selectedTx.protocol !== 'marketplace' && (
+                                      {detailTx.summary && detailTx.protocol !== 'dunes' && detailTx.protocol !== 'marketplace' && (
                                         <div className={cx(
                                           'mb-3 text-xs leading-relaxed',
                                           isDark ? 'text-white/55' : 'text-zinc-500',
                                         )}>
-                                          {selectedTx.summary}
+                                          {detailTx.summary}
                                         </div>
                                       )}
-                                      {selectedTx.protocol === 'marketplace' &&
-                                      (typeof selectedTx.journal?.metadata?.seller === 'string' ||
-                                        typeof selectedTx.journal?.metadata?.buyer === 'string') ? (
+                                      {detailTx.protocol === 'marketplace' &&
+                                      (typeof detailTx.journal?.metadata?.seller === 'string' ||
+                                        typeof detailTx.journal?.metadata?.buyer === 'string') ? (
                                       <div className="mb-1 space-y-1 text-xs">
-                                        {typeof selectedTx.journal?.metadata?.seller === 'string' ? (
+                                        {typeof detailTx.journal?.metadata?.seller === 'string' ? (
                                           <div className="flex items-center justify-center gap-2">
                                             <span className={isDark ? 'text-white/40' : 'text-zinc-500'}>Seller</span>
                                             <span className="font-mono font-semibold">
-                                              {String(selectedTx.journal.metadata.seller).slice(0, 10)}…
-                                              {String(selectedTx.journal.metadata.seller).slice(-4)}
+                                              {String(detailTx.journal.metadata.seller).slice(0, 10)}…
+                                              {String(detailTx.journal.metadata.seller).slice(-4)}
                                             </span>
                                           </div>
                                         ) : null}
-                                        {typeof selectedTx.journal?.metadata?.buyer === 'string' ? (
+                                        {typeof detailTx.journal?.metadata?.buyer === 'string' ? (
                                           <div className="flex items-center justify-center gap-2">
                                             <span className={isDark ? 'text-white/40' : 'text-zinc-500'}>Buyer</span>
                                             <span className="font-mono font-semibold">
-                                              {String(selectedTx.journal.metadata.buyer).slice(0, 10)}…
-                                              {String(selectedTx.journal.metadata.buyer).slice(-4)}
+                                              {String(detailTx.journal.metadata.buyer).slice(0, 10)}…
+                                              {String(detailTx.journal.metadata.buyer).slice(-4)}
                                             </span>
                                           </div>
                                         ) : null}
                                       </div>
                                       ) : (
                                       <div className="mb-1 flex items-center justify-center gap-2">
+                                        {inscriptionFaceFromWalletTx(detailTx) ? null : (
                                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-white">
-                                          {(selectedTx.address || selectedTx.protocolLabel || 'TX').slice(0, 2).toUpperCase()}
+                                          {(detailTx.address || detailTx.protocolLabel || 'TX').slice(0, 2).toUpperCase()}
                                         </div>
+                                        )}
                                         <span className={cx(
                                           'font-mono text-sm font-semibold truncate max-w-[200px]',
                                           isDark ? 'text-white' : 'text-zinc-800',
                                         )}>
-                                          {selectedTx.address
-                                            ? `${selectedTx.address.slice(0, 10)}…${selectedTx.address.slice(-4)}`
-                                            : selectedTx.localOnly
+                                          {detailTx.address
+                                            ? `${detailTx.address.slice(0, 10)}…${detailTx.address.slice(-4)}`
+                                            : detailTx.localOnly
                                               ? 'Local journal'
                                               : '—'}
                                         </span>
-                                        {selectedTx.address && (
+                                        {detailTx.address && (
                                           <button
                                             type="button"
                                             className={cx(
                                               'transition',
                                               isDark ? 'text-white/40 hover:text-white' : 'text-zinc-400 hover:text-zinc-600',
                                             )}
-                                            onClick={() => { void navigator.clipboard.writeText(selectedTx.address); }}
+                                            onClick={() => { void navigator.clipboard.writeText(detailTx.address); }}
                                             title="Copy address"
                                           >
                                             <ClipboardDocumentIcon className="h-4 w-4" />
@@ -5547,24 +5627,65 @@ export function DojakwebWalletModal({
                                         )}
                                       </div>
                                       )}
+                                      {(() => {
+                                        const face = inscriptionFaceFromWalletTx(detailTx);
+                                        if (!face) return null;
+                                        return (
+                                          <div className="mx-auto mb-4 w-40">
+                                            <WalletTxInscriptionPreview face={face} />
+                                          </div>
+                                        );
+                                      })()}
                                       <div className={cx(
                                         'my-4 text-4xl font-bold',
                                         isDark ? 'text-white' : 'text-zinc-900',
                                       )}>
-                                        {selectedTx.protocol === 'dunes' && selectedTx.summary ? (
+                                        {detailTx.protocol === 'doginals' ? (
+                                          <div className="space-y-1">
+                                            {(() => {
+                                              const postage = inscriptionFaceFromWalletTx(detailTx)?.postageDoge;
+                                              if (postage == null) return null;
+                                              return (
+                                                <div className="text-2xl font-bold text-[#FCD34D]">
+                                                  Ð{postage.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                                                  <span className={cx(
+                                                    'ml-2 text-xs font-medium',
+                                                    isDark ? 'text-white/40' : 'text-zinc-400',
+                                                  )}>
+                                                    {t('modal.tx.postage')}
+                                                  </span>
+                                                </div>
+                                              );
+                                            })()}
+                                            {detailTx.amount > 0 ? (
+                                              <div className={cx(
+                                                'text-sm font-semibold',
+                                                isDark ? 'text-white/80' : 'text-zinc-700',
+                                              )}>
+                                                Ð{detailTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                                                <span className={cx(
+                                                  'ml-2 text-xs font-medium',
+                                                  isDark ? 'text-white/40' : 'text-zinc-400',
+                                                )}>
+                                                  {t('modal.tx.walletDelta')}
+                                                </span>
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        ) : detailTx.protocol === 'dunes' && detailTx.summary ? (
                                           <div className="space-y-2">
-                                            {selectedTx.tokenAmountLabel ? (
+                                            {detailTx.tokenAmountLabel ? (
                                               <div className="text-2xl font-bold leading-snug sm:text-3xl">
-                                                {selectedTx.tokenAmountLabel}
+                                                {detailTx.tokenAmountLabel}
                                               </div>
                                             ) : (
                                               <div className="text-lg font-semibold leading-snug sm:text-xl">
-                                                {selectedTx.summary}
+                                                {detailTx.summary}
                                               </div>
                                             )}
-                                            {selectedTx.amount > 0 ? (
+                                            {detailTx.amount > 0 ? (
                                               <div className="text-base font-semibold text-[#FCD34D]">
-                                                Ð{selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                                                Ð{detailTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
                                                 <span className={cx(
                                                   'ml-2 text-xs font-medium',
                                                   isDark ? 'text-white/40' : 'text-zinc-400',
@@ -5574,14 +5695,14 @@ export function DojakwebWalletModal({
                                               </div>
                                             ) : null}
                                           </div>
-                                        ) : selectedTx.protocol === 'marketplace' ? (
+                                        ) : detailTx.protocol === 'marketplace' ? (
                                           <div className="space-y-2">
                                             <div className="text-lg font-semibold leading-snug sm:text-xl">
-                                              {selectedTx.summary || selectedTx.title || 'NFT sale'}
+                                              {detailTx.summary || detailTx.title || 'NFT sale'}
                                             </div>
-                                            {selectedTx.amount > 0 ? (
+                                            {detailTx.amount > 0 ? (
                                               <div className="text-base font-semibold text-[#FCD34D]">
-                                                Ð{selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                                                Ð{detailTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
                                                 <span className={cx(
                                                   'ml-2 text-xs font-medium',
                                                   isDark ? 'text-white/40' : 'text-zinc-400',
@@ -5593,7 +5714,7 @@ export function DojakwebWalletModal({
                                           </div>
                                         ) : (
                                           <>
-                                            Ð{selectedTx.amount % 1 === 0 ? selectedTx.amount.toLocaleString() : selectedTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                                            Ð{detailTx.amount % 1 === 0 ? detailTx.amount.toLocaleString() : detailTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
                                           </>
                                         )}
                                       </div>
@@ -5608,18 +5729,18 @@ export function DojakwebWalletModal({
                                               'font-mono text-[11px] font-semibold truncate max-w-[11rem]',
                                               isDark ? 'text-white' : 'text-zinc-800',
                                             )}>
-                                              {selectedTx.txid
-                                                ? `${selectedTx.txid.slice(0, 10)}…${selectedTx.txid.slice(-8)}`
+                                              {detailTx.txid
+                                                ? `${detailTx.txid.slice(0, 10)}…${detailTx.txid.slice(-8)}`
                                                 : '—'}
                                             </span>
-                                            {selectedTx.txid && (
+                                            {detailTx.txid && (
                                               <button
                                                 type="button"
                                                 className={cx(
                                                   'shrink-0 transition',
                                                   isDark ? 'text-white/40 hover:text-white' : 'text-zinc-400 hover:text-zinc-600',
                                                 )}
-                                                onClick={() => { void navigator.clipboard.writeText(selectedTx.txid); }}
+                                                onClick={() => { void navigator.clipboard.writeText(detailTx.txid); }}
                                                 title="Copy txid"
                                               >
                                                 <ClipboardDocumentIcon className="h-4 w-4" />
@@ -5630,29 +5751,29 @@ export function DojakwebWalletModal({
                                         <div className="flex items-center justify-between px-4 py-2">
                                           <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>{t('modal.tx.confirmations')}</span>
                                           <span className={cx('font-semibold', isDark ? 'text-white' : 'text-zinc-800')}>
-                                            {selectedTx.confirmations}
+                                            {detailTx.confirmations}
                                           </span>
                                         </div>
-                                        {selectedTx.timestamp && (
+                                        {detailTx.timestamp && (
                                           <div className="flex items-center justify-between px-4 py-2">
                                             <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>{t('modal.tx.timestamp')}</span>
                                             <span className={cx('font-semibold', isDark ? 'text-white' : 'text-zinc-800')}>
-                                              {selectedTx.timestamp}
+                                              {detailTx.timestamp}
                                             </span>
                                           </div>
                                         )}
-                                        {selectedTx.journal?.status && (
+                                        {detailTx.journal?.status && (
                                           <div className="flex items-center justify-between px-4 py-2">
                                             <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>Journal</span>
                                             <span className={cx('font-semibold capitalize', isDark ? 'text-white' : 'text-zinc-800')}>
-                                              {selectedTx.journal.status}
+                                              {detailTx.journal.status}
                                             </span>
                                           </div>
                                         )}
                                       </div>
-                                      {selectedTx.txid && (
+                                      {detailTx.txid && (
                                         <a
-                                          href={dogeTxExplorerUrl(selectedTx.txid, txExplorerPref)}
+                                          href={dogeTxExplorerUrl(detailTx.txid, txExplorerPref)}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className={cx(
@@ -5717,6 +5838,7 @@ export function DojakwebWalletModal({
                                             ? 'ÐU'
                                             : (tx.protocolLabel || tx.address || 'TX').slice(0, 2).toUpperCase();
                                         const chips = walletTxDisplayChips(tx);
+                                        const inscriptionFace = inscriptionFaceFromWalletTx(tx);
                                         const statusText = tx.pending
                                           ? 'Mempool'
                                           : tx.journal?.status === 'indexed'
@@ -5724,6 +5846,8 @@ export function DojakwebWalletModal({
                                             : 'Confirmed';
                                         const amountRaw = tx.tokenAmountLabel
                                           ? tx.tokenAmountLabel
+                                          : inscriptionFace?.postageDoge != null
+                                            ? `${tx.type === 'received' ? '+' : '-'}${inscriptionFace.postageDoge} DOGE`
                                           : tx.protocol === 'dunes'
                                             ? 'Ðune'
                                             : `${tx.type === 'received' ? '+' : '-'}${tx.amount % 1 === 0 ? tx.amount : tx.amount.toFixed(tx.amount < 0.01 ? 8 : 3)}`;
@@ -5747,6 +5871,11 @@ export function DojakwebWalletModal({
                                               tx.pending && (isDark ? 'bg-amber-500/5' : 'bg-amber-50'),
                                             )}
                                           >
+                                            {inscriptionFace ? (
+                                              <div className={cx(tx.pending && 'rounded-lg ring-2 ring-amber-400 animate-pulse')}>
+                                                <WalletTxInscriptionPreview face={inscriptionFace} compact />
+                                              </div>
+                                            ) : (
                                             <div
                                               className={cx(
                                                 'relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C9A84C] text-[10px] font-bold text-[#161109]',
@@ -5755,6 +5884,7 @@ export function DojakwebWalletModal({
                                             >
                                               {initials}
                                             </div>
+                                            )}
                                             <div className="min-w-0 flex-1">
                                               <div className={cx(
                                                 'truncate text-[13px] font-semibold leading-tight',

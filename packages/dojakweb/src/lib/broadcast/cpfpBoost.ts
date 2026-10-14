@@ -13,7 +13,8 @@ import { getTxHex } from '../doginal-psdt';
 import { enforceBroadcastFeeRateKoinuPerByte } from '../fees/dogecoinFeePolicy';
 import { HARD_DUST_KOINU } from '../dogecoin/softDust';
 import { fetchCommandDogTxStatus } from '../../utils/api';
-import { recordPaymentBroadcast } from '../mempoolSpendOverlay';
+import { rpcViaProxyDetailed } from '../rpc-proxy-client';
+import { recordPaymentBroadcast, rememberCpfpChild } from '../mempoolSpendOverlay';
 
 const TX_OVERHEAD = 10;
 const P2PKH_IN = 148;
@@ -211,6 +212,7 @@ export async function boostParentWithCpfp(params: CpfpBoostParams): Promise<Cpfp
     spent: [{ txid: parentTxid, vout: change.n }],
     change: sendValue > 0 ? { vout: 0, value: sendValue } : null,
   });
+  rememberCpfpChild(parentTxid, broadcastTxid);
 
   return {
     childTxid: broadcastTxid,
@@ -221,4 +223,23 @@ export async function boostParentWithCpfp(params: CpfpBoostParams): Promise<Cpfp
     packageRateKoinuPerByte: packageRate,
     childRawHex: rawHex,
   };
+}
+
+/**
+ * If `txid` spends an output that is still in the mempool, that input is its parent.
+ * A CPFP child looks like this. A normal send spends confirmed coins and returns null.
+ */
+export async function findMempoolParentTxid(txid: string): Promise<string | null> {
+  const id = txid.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(id)) return null;
+  const raw = await rpcViaProxyDetailed<{ vin?: Array<{ txid?: string }> }>('getrawtransaction', [id, true]);
+  if (!raw.ok || !raw.result || typeof raw.result !== 'object') return null;
+  const vins = Array.isArray(raw.result.vin) ? raw.result.vin : [];
+  for (const vin of vins) {
+    const prev = String(vin?.txid ?? '').trim().toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(prev) || prev === id) continue;
+    const st = await fetchCommandDogTxStatus(prev);
+    if (st?.in_mempool && !st.in_block && (st.confirmations ?? 0) <= 0) return prev;
+  }
+  return null;
 }

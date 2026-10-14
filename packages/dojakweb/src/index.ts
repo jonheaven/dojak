@@ -263,7 +263,7 @@ export type {
   BuiltOpReturnPSDT,
 } from './lib/broadcast/dogecoinTxBroadcast';
 
-export { boostParentWithCpfp, cacheParentChange } from './lib/broadcast/cpfpBoost';
+export { boostParentWithCpfp, cacheParentChange, findMempoolParentTxid } from './lib/broadcast/cpfpBoost';
 export type { CpfpBoostParams, CpfpBoostResult } from './lib/broadcast/cpfpBoost';
 
 export {
@@ -460,10 +460,17 @@ export {
 
 export {
   clearMempoolOverlayForAddress,
+  cpfpChildForParent,
+  cpfpParentForChild,
+  findBroadcastForSpentInputs,
+  forgetBroadcast,
   friendlyPaymentSendError,
   isInputsSpentBroadcastError,
+  listRecentBroadcastTxids,
   markOutpointsSpent,
   recordPaymentBroadcast,
+  rememberCpfpChild,
+  resolveStoredBoost,
 } from './lib/mempoolSpendOverlay';
 
 export {

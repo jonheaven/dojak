@@ -92,11 +92,23 @@ export function buildDnsOfferOpReturn(opts: {
 }): string {
   const name = normalizeDnsName(opts.name);
   if (!name) throw new Error('Invalid DNS name');
-  const amt = Number.isFinite(opts.amountDoge) ? opts.amountDoge : 0;
-  const note = (opts.note || '').trim().slice(0, 80);
-  const link = `https://dogecoin.dog/dns/${encodeURIComponent(name)}`;
-  const base = `dns offer ${name} ${amt} ${link}`;
-  return note ? `${base} ${note}` : base;
+  const amt = Number.isFinite(opts.amountDoge) ? String(opts.amountDoge) : '0';
+  const note = (opts.note || '').replace(/\s+/g, ' ').trim();
+  // Link is derived (dogex.dog/dns/{name}). Do not repeat the name in OP_RETURN.
+  const head = `dns offer ${name} ${amt}`;
+  const max = 80;
+  const bytes = (s: string) => new TextEncoder().encode(s).length;
+  if (bytes(head) > max) throw new Error('Name is too long to fit in a Dogecoin offer memo');
+  if (!note) return head;
+  let fitted = '';
+  const room = max - bytes(head) - 1;
+  for (const ch of note) {
+    const next = fitted + ch;
+    if (bytes(next) > room) break;
+    fitted = next;
+  }
+  fitted = fitted.replace(/\s+$/u, '');
+  return fitted ? `${head} ${fitted}` : head;
 }
 
 export type PublishDnsResult = {

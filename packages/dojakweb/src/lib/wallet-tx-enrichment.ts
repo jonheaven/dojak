@@ -5,6 +5,7 @@
  */
 
 import { getIndexerFetchBases } from '../utils/api';
+import { dnsNameFromBody } from '../utils/inscription-text';
 import { gatedMydogeGetJson } from './mydoge/httpGate';
 import {
   loadWalletTxJournal,
@@ -57,6 +58,40 @@ async function fetchFirstJson(paths: string[]): Promise<unknown | null> {
     for (const path of paths) {
       const data = await fetchJsonQuiet(`${base}${path}`);
       if (data != null) return data;
+    }
+  }
+  return null;
+}
+
+async function fetchTextQuiet(url: string, timeoutMs = 8_000): Promise<string | null> {
+  try {
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer =
+      ctrl && typeof window !== 'undefined'
+        ? window.setTimeout(() => ctrl.abort(), timeoutMs)
+        : null;
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { Accept: 'text/plain, application/json, text/html' },
+      signal: ctrl?.signal,
+    });
+    if (timer != null) window.clearTimeout(timer);
+    if (!res.ok) return null;
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (ct.startsWith('image/') || ct.includes('octet-stream')) return null;
+    const text = (await res.text()).replace(/^\uFEFF/, '').trim();
+    if (!text || text.length > 240 || text.includes('\0')) return null;
+    return text;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFirstText(paths: string[]): Promise<string | null> {
+  for (const base of indexerBases()) {
+    for (const path of paths) {
+      const text = await fetchTextQuiet(`${base}${path}`);
+      if (text) return text;
     }
   }
   return null;
@@ -518,12 +553,137 @@ function enrichmentFromInscriptionLocation(
   };
 }
 
+type MarketNft = {
+  inscriptionId?: string;
+  vout?: number;
+  postageKoinu?: string | number;
+  media?: { doggyCdn?: string; dogexContent?: string };
+};
+
+export type InscriptionMoveDetail = {
+  contentType?: string;
+  previewUrl?: string;
+  /** Short plain body, or a DNS name pulled out of it. */
+  contentPreview?: string;
+};
+
+function marketNfts(row: Record<string, unknown>): MarketNft[] {
+  return Array.isArray(row.nfts) ? (row.nfts as MarketNft[]) : [];
+}
+
+function inscriptionIdFromMarket(
+  txid: string,
+  row: Record<string, unknown>,
+  mydogeRows: MydogeInscriptionRow[],
+): string {
+  const nfts = marketNfts(row);
+  const direct = nfts.map((n) => String(n.inscriptionId ?? '').trim()).find(Boolean) || '';
+  if (direct) return direct;
+  const vout = nfts.find((n) => n.vout != null)?.vout;
+  return String(findMydogeAt(mydogeRows, txid, vout)?.inscriptionId ?? '').trim();
+}
+
+function previewUrlFromMarket(row: Record<string, unknown>): string {
+  const nft = marketNfts(row).find((n) => n.media?.doggyCdn || n.media?.dogexContent);
+  return String(nft?.media?.doggyCdn || nft?.media?.dogexContent || '').trim();
+}
+
+function postageDogeFromMarket(row: Record<string, unknown>): number | undefined {
+  const raw = marketNfts(row).find((n) => n.postageKoinu != null)?.postageKoinu;
+  if (raw == null) return undefined;
+  const n = typeof raw === 'string' ? Number(raw) : raw;
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return n / 1e8;
+}
+
+function contentLabel(detail?: InscriptionMoveDetail): string {
+  const preview = detail?.contentPreview?.trim() || '';
+  if (!preview) return '';
+  return dnsNameFromBody(preview) || preview.split(/\r?\n/).find((line) => line.trim())?.trim().slice(0, 80) || '';
+}
+
+/**
+ * Doginal gift / self-move. dogex `kind: "transfer"` is not a sale — the wallet
+ * was showing the net DOGE delta (postage + fee) as a plain payment.
+ */
+export function inscriptionMoveEnrichment(
+  txid: string,
+  row: Record<string, unknown>,
+  detail?: InscriptionMoveDetail,
+  mydogeRows: MydogeInscriptionRow[] = [],
+): WalletTxEnrichment | null {
+  const kind = String(row.kind ?? '');
+  if (kind !== 'transfer' && kind !== 'self_move') return null;
+  const inscriptionId = inscriptionIdFromMarket(txid, row, mydogeRows);
+  if (!inscriptionId) return null;
+  const seller = typeof row.seller === 'string' ? row.seller : '';
+  const buyer = typeof row.buyer === 'string' ? row.buyer : '';
+  const label = contentLabel(detail);
+  const self = kind === 'self_move';
+  const summary =
+    typeof row.summary === 'string' && row.summary.trim()
+      ? row.summary.trim()
+      : self
+        ? 'Inscription self-move'
+        : 'Inscription transfer';
+  const postageDoge = postageDogeFromMarket(row);
+  const previewUrl = detail?.previewUrl?.trim() || previewUrlFromMarket(row);
+  return {
+    txid,
+    protocol: 'doginals',
+    action: 'send',
+    actionLabel: self ? 'Move' : 'Send',
+    title: label || (self ? 'Inscription self-move' : 'Inscription transfer'),
+    summary,
+    indexed: true,
+    metadata: {
+      inscriptionId,
+      contentType: detail?.contentType || undefined,
+      previewUrl: previewUrl || undefined,
+      contentPreview: label || undefined,
+      seller: seller || undefined,
+      buyer: buyer || undefined,
+      recipientAddress: buyer || undefined,
+      postageDoge,
+      actionLabel: self ? 'Move' : 'Send',
+    },
+  };
+}
+
+async function fetchInscriptionMoveDetail(inscriptionId: string): Promise<InscriptionMoveDetail> {
+  const body = await fetchFirstJson([`/inscription/${encodeURIComponent(inscriptionId)}`]);
+  const row = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+  const contentType = String(row.contentType ?? row.content_type ?? '').trim();
+  const previewUrl = String(row.preview ?? '').trim();
+  const length = Number(row.contentLength ?? row.content_length ?? NaN);
+  const textual =
+    !contentType ||
+    contentType.startsWith('text/') ||
+    contentType.includes('json') ||
+    contentType.includes('xml');
+  let contentPreview = '';
+  if (textual && (!Number.isFinite(length) || length <= 240)) {
+    const text = await fetchFirstText([`/cdn/content/${encodeURIComponent(inscriptionId)}`]);
+    if (text) contentPreview = text;
+  }
+  return {
+    ...(contentType ? { contentType } : {}),
+    ...(previewUrl ? { previewUrl } : {}),
+    ...(contentPreview ? { contentPreview } : {}),
+  };
+}
+
 async function enrichmentFromMarketplace(
   txid: string,
   row: Record<string, unknown>,
   mydogeRows: MydogeInscriptionRow[] = [],
 ): Promise<WalletTxEnrichment | null> {
   const kind = String(row.kind ?? '');
+  if (kind === 'transfer' || kind === 'self_move') {
+    const inscriptionId = inscriptionIdFromMarket(txid, row, mydogeRows);
+    const detail = inscriptionId ? await fetchInscriptionMoveDetail(inscriptionId) : undefined;
+    return inscriptionMoveEnrichment(txid, row, detail, mydogeRows);
+  }
   if (kind !== 'marketplace_sale' && kind !== 'otc_sale') return null;
   const venue = String(row.venue ?? 'openordex').trim() || 'openordex';
   const seller = typeof row.seller === 'string' ? row.seller : '';
@@ -534,23 +694,14 @@ async function enrichmentFromMarketplace(
       : typeof row.sellerProceedsDoge === 'number'
         ? row.sellerProceedsDoge
         : undefined;
-  const nfts = Array.isArray(row.nfts)
-    ? (row.nfts as Array<{ inscriptionId?: string; vout?: number }>)
-    : [];
-  let inscriptionId = nfts.map((n) => n.inscriptionId).find(Boolean) || '';
-  if (!inscriptionId) {
-    const vout = nfts.find((n) => n.vout != null)?.vout;
-    const hit = findMydogeAt(mydogeRows, txid, vout);
-    inscriptionId = String(hit?.inscriptionId ?? '').trim();
-  }
-  const num = inscriptionId
-    ? findMydogeAt(mydogeRows, txid)?.inscriptionNumber
-    : undefined;
+  const inscriptionId = inscriptionIdFromMarket(txid, row, mydogeRows);
+  const num = inscriptionId ? findMydogeAt(mydogeRows, txid)?.inscriptionNumber : undefined;
   const summary =
     typeof row.summary === 'string' && row.summary.trim()
       ? row.summary.trim()
       : `${venue} sale${price != null ? ` · ${price} Ð` : ''}`;
   const title = num != null ? `${venue} #${num}` : venue === 'openordex' ? 'NFT sale' : venue;
+  const previewUrl = previewUrlFromMarket(row);
   return {
     txid,
     protocol: 'marketplace',
@@ -566,8 +717,35 @@ async function enrichmentFromMarketplace(
       buyer: buyer || undefined,
       grossPriceDoge: price,
       inscriptionId: inscriptionId || undefined,
+      previewUrl: previewUrl || undefined,
       amountDisplay: price != null ? `${price} Ð` : undefined,
     },
+  };
+}
+
+export type WalletTxInscriptionFace = {
+  inscriptionId: string;
+  contentType?: string;
+  previewUrl?: string;
+  contentPreview?: string;
+  postageDoge?: number;
+};
+
+/** Inscription carried by a history row, from the journal enrichment metadata. */
+export function inscriptionFaceFromWalletTx(row: {
+  journal?: { metadata?: Record<string, unknown> } | null;
+}): WalletTxInscriptionFace | null {
+  const meta = row.journal?.metadata;
+  if (!meta) return null;
+  const inscriptionId = String(meta.inscriptionId ?? '').trim();
+  if (!/^[0-9a-f]{64}i\d+$/i.test(inscriptionId)) return null;
+  const postage = meta.postageDoge;
+  return {
+    inscriptionId,
+    contentType: typeof meta.contentType === 'string' ? meta.contentType : undefined,
+    previewUrl: typeof meta.previewUrl === 'string' ? meta.previewUrl : undefined,
+    contentPreview: typeof meta.contentPreview === 'string' ? meta.contentPreview : undefined,
+    postageDoge: typeof postage === 'number' && postage > 0 ? postage : undefined,
   };
 }
 
