@@ -30,12 +30,12 @@ import { getPaymentUtxosForSend } from '../../lib/paymentUtxos';
 import { getSpendableBalanceBreakdown, type SpendableBalanceBreakdown } from '../../lib/spendableBalance';
 import { dogeTxExplorerUrl } from '../../utils/dogeTxExplorer';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
-import { fetchDxByHandle, type DxRegistration } from '../../lib/identity/indexer';
+import { dxPayTweetIntentUrl } from '../../lib/dx/pay';
 import {
-  looksLikeDxHandleInput,
-  parseDxHandleInput,
-  dxPayTweetIntentUrl,
-} from '../../lib/dx/pay';
+  classifySendRecipient,
+  resolveSendRecipient,
+  type ResolvedSendRecipient,
+} from '../../lib/resolveSendRecipient';
 
 function isLikelyTxid(id: string): boolean {
   return /^[0-9a-fA-F]{64}$/.test(id.trim());
@@ -163,9 +163,9 @@ export function WalletSendFlow({
   const [spendableDoge, setSpendableDoge] = useState<number | null>(null);
   const [spendableBusy, setSpendableBusy] = useState(false);
   const [spendBreak, setSpendBreak] = useState<SpendableBalanceBreakdown | null>(null);
-  const [dxReg, setDxReg] = useState<DxRegistration | null>(null);
-  const [dxLookup, setDxLookup] = useState<'off' | 'invalid' | 'loading' | 'linked' | 'unlinked' | 'error'>('off');
-  const [dxError, setDxError] = useState<string | null>(null);
+  const [resolvedRecipient, setResolvedRecipient] = useState<ResolvedSendRecipient | null>(null);
+  const [recipientLookup, setRecipientLookup] = useState<'off' | 'loading' | 'ok' | 'error'>('off');
+  const [recipientLookupError, setRecipientLookupError] = useState<string | null>(null);
   const [feeTick, setFeeTick] = useState(0);
 
   useEffect(() => {
@@ -218,70 +218,64 @@ export function WalletSendFlow({
     };
   }, [connected, activeAddress, balance, phase, txid]);
 
-  const dxHandleAttempt = looksLikeDxHandleInput(recipient);
-  const parsedDxHandle = useMemo(() => parseDxHandleInput(recipient), [recipient]);
+  const recipientClass = useMemo(() => classifySendRecipient(recipient), [recipient]);
+  const needsRemoteResolve =
+    recipientClass.kind === 'dx' || recipientClass.kind === 'dns';
 
   useEffect(() => {
-    if (!dxHandleAttempt) {
-      setDxReg(null);
-      setDxLookup('off');
-      setDxError(null);
-      return;
-    }
-    if (!parsedDxHandle) {
-      setDxReg(null);
-      setDxLookup('invalid');
-      setDxError('Invalid 𝕏 handle (use @username, max 15 characters).');
+    const raw = recipient.trim();
+    if (!raw) {
+      setResolvedRecipient(null);
+      setRecipientLookup('off');
+      setRecipientLookupError(null);
       return;
     }
     let cancelled = false;
-    setDxLookup('loading');
-    setDxError(null);
+    setRecipientLookup('loading');
+    setRecipientLookupError(null);
+    setResolvedRecipient(null);
     const t = window.setTimeout(() => {
-      void fetchDxByHandle(parsedDxHandle)
-        .then((reg) => {
-          if (cancelled) return;
-          if (reg?.dogeAddress) {
-            setDxReg(reg);
-            setDxLookup('linked');
-            setDxError(null);
-          } else {
-            setDxReg(null);
-            setDxLookup('unlinked');
-            setDxError(
-              `No Ð𝕏 bind for ${parsedDxHandle}. They need to link at /dx (dogex.dog or dogeshit.lol) before you can pay by handle.`,
-            );
-          }
-        })
-        .catch((e) => {
-          if (cancelled) return;
-          setDxReg(null);
-          setDxLookup('error');
-          setDxError(e instanceof Error ? e.message : 'Ð𝕏 lookup failed');
-        });
+      void resolveSendRecipient(raw).then((r) => {
+        if (cancelled) return;
+        if (r.ok) {
+          setResolvedRecipient(r);
+          setRecipientLookup('ok');
+          setRecipientLookupError(null);
+        } else {
+          setResolvedRecipient(null);
+          setRecipientLookup('error');
+          setRecipientLookupError(r.error);
+        }
+      });
     }, 320);
     return () => {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [dxHandleAttempt, parsedDxHandle]);
+  }, [recipient]);
 
   const validation = useMemo(() => {
-    if (dxHandleAttempt) {
-      if (dxLookup === 'linked' && dxReg?.dogeAddress) {
-        return validateDogecoinAddress(dxReg.dogeAddress);
-      }
+    if (!recipient.trim()) {
+      return { ok: false as const, address: '', error: 'Enter a Dogecoin address, @handle, or name.namespace.' };
+    }
+    if (recipientLookup === 'loading') {
       return {
         ok: false as const,
         address: recipient,
-        error:
-          dxLookup === 'loading'
-            ? 'Looking up Ð𝕏…'
-            : dxError || 'Enter a linked @handle or a Dogecoin address.',
+        error: needsRemoteResolve ? 'Looking up recipient…' : 'Checking address…',
       };
     }
-    return validateDogecoinAddress(recipient);
-  }, [dxHandleAttempt, dxLookup, dxReg, dxError, recipient]);
+    if (resolvedRecipient) {
+      const v = validateDogecoinAddress(resolvedRecipient.address);
+      if (v.ok) return v;
+      return { ok: false as const, address: resolvedRecipient.address, error: v.error };
+    }
+    return {
+      ok: false as const,
+      address: recipient,
+      error: recipientLookupError || 'Enter a linked @handle, Doge Domain, or Dogecoin address.',
+    };
+  }, [needsRemoteResolve, recipient, recipientLookup, recipientLookupError, resolvedRecipient]);
 
   const bookMatch = useMemo(() => {
     if (!validation.ok) return null;
@@ -411,7 +405,10 @@ export function WalletSendFlow({
       }
       setTxid(id);
       setPhase('success');
-      pushRecent(quote.recipient, parsedDxHandle || bookMatch?.label);
+      pushRecent(
+        quote.recipient,
+        resolvedRecipient?.label || resolvedRecipient?.display || bookMatch?.label,
+      );
       setRecent(loadRecent());
       const existing = entries.find(
         (e) => e.address.toLowerCase() === quote.recipient.toLowerCase(),
@@ -464,7 +461,7 @@ export function WalletSendFlow({
     quote,
     refreshBalance,
     sendTransaction,
-    parsedDxHandle,
+    resolvedRecipient,
   ]);
 
   const resetAll = useCallback(() => {
@@ -477,10 +474,15 @@ export function WalletSendFlow({
     setStatus(null);
     setSaveLabel('');
     setShowContacts(false);
-    setDxReg(null);
-    setDxLookup('off');
-    setDxError(null);
+    setResolvedRecipient(null);
+    setRecipientLookup('off');
+    setRecipientLookupError(null);
   }, []);
+
+  const resolvedPayLabel =
+    resolvedRecipient?.kind === 'dx' || resolvedRecipient?.kind === 'dns'
+      ? resolvedRecipient.label || resolvedRecipient.display
+      : null;
 
   const pickAddress = useCallback((addr: string, label?: string) => {
     setRecipient(normalizeDogeAddressInput(addr));
@@ -547,7 +549,11 @@ export function WalletSendFlow({
             <div className="flex justify-between gap-3">
               <span className="text-white/45">To</span>
               <span className="max-w-[60%] break-all text-right font-mono text-xs text-white/80">
-                {parsedDxHandle ? `${parsedDxHandle} · ` : bookMatch?.label ? `${bookMatch.label} · ` : ''}
+                {resolvedPayLabel
+                  ? `${resolvedPayLabel} · `
+                  : bookMatch?.label
+                    ? `${bookMatch.label} · `
+                    : ''}
                 {quote.recipient}
               </span>
             </div>
@@ -589,11 +595,11 @@ export function WalletSendFlow({
           <ArrowDownTrayIcon className="h-4 w-4 rotate-[-90deg]" />
         </a>
 
-        {parsedDxHandle ? (
+        {resolvedRecipient?.kind === 'dx' && resolvedPayLabel ? (
           <a
             href={dxPayTweetIntentUrl({
               amountDoge: quote.amountDoge,
-              handle: parsedDxHandle,
+              handle: resolvedPayLabel,
               txid,
             })}
             target="_blank"
@@ -632,10 +638,14 @@ export function WalletSendFlow({
             <div className="flex justify-between gap-3">
               <span className="text-white/50">To</span>
               <span className="max-w-[65%] break-all text-right font-mono text-xs text-white">
-                {parsedDxHandle ? (
+                {resolvedPayLabel ? (
                   <span className="mb-0.5 block text-[11px] text-[#FCD34D]/90">
-                    {parsedDxHandle}
-                    {dxReg?.tweetVerified === true ? ' · verified Ð𝕏' : ' · on-chain claim'}
+                    {resolvedPayLabel}
+                    {resolvedRecipient?.kind === 'dx'
+                      ? ' · Ð𝕏'
+                      : resolvedRecipient?.kind === 'dns'
+                        ? ' · Doge Domain'
+                        : ''}
                   </span>
                 ) : bookMatch?.label ? (
                   <span className="mb-0.5 block text-[11px] text-[#FCD34D]/90">{bookMatch.label}</span>
@@ -743,25 +753,32 @@ export function WalletSendFlow({
             setRecipient(normalizeDogeAddressInput(text));
             setError(null);
           }}
-          placeholder="D… address or @handle"
+          placeholder="D…, @handle, or name.namespace"
           className={INPUT_CLASS}
           disabled={busy}
           autoComplete="off"
           spellCheck={false}
-          aria-invalid={Boolean(recipient) && !validation.ok && dxLookup !== 'loading'}
+          aria-invalid={Boolean(recipient) && !validation.ok && recipientLookup !== 'loading'}
         />
         {recipient ? (
-          dxHandleAttempt ? (
-            dxLookup === 'loading' ? (
-              <p className="mt-1.5 text-[11px] text-amber-200/90">Looking up Ð𝕏 for {parsedDxHandle}…</p>
-            ) : dxLookup === 'linked' && dxReg ? (
-              <p className="mt-1.5 text-[11px] text-emerald-300/90">
-                {dxReg.xHandle} → {dxReg.dogeAddress.slice(0, 10)}…
-                {dxReg.tweetVerified === true ? ' · tweet verified' : ' · on-chain claim'}
-              </p>
-            ) : (
-              <p className="mt-1.5 text-[11px] text-red-300/90">{dxError || validation.error}</p>
-            )
+          recipientLookup === 'loading' ? (
+            <p className="mt-1.5 text-[11px] text-amber-200/90">
+              {recipientClass.kind === 'dx'
+                ? 'Looking up Ð𝕏…'
+                : recipientClass.kind === 'dns'
+                  ? 'Looking up Doge Domain…'
+                  : 'Checking address…'}
+            </p>
+          ) : resolvedRecipient?.kind === 'dx' ? (
+            <p className="mt-1.5 text-[11px] text-emerald-300/90">
+              {resolvedRecipient.label || resolvedRecipient.display} →{' '}
+              {resolvedRecipient.address.slice(0, 10)}… · Ð𝕏
+            </p>
+          ) : resolvedRecipient?.kind === 'dns' ? (
+            <p className="mt-1.5 text-[11px] text-emerald-300/90">
+              {resolvedRecipient.label || resolvedRecipient.display} →{' '}
+              {resolvedRecipient.address.slice(0, 10)}… · pay-to
+            </p>
           ) : validation.ok ? (
             <p className="mt-1.5 text-[11px] text-emerald-300/90">
               Valid {dogeAddressKindLabel(validation.kind)}
@@ -770,13 +787,13 @@ export function WalletSendFlow({
             </p>
           ) : (
             <p className="mt-1.5 text-[11px] text-red-300/90">
-              {validation.error}
-              {validation.hint ? ` — ${validation.hint}` : ''}
+              {recipientLookupError || validation.error}
+              {'hint' in validation && validation.hint ? ` — ${validation.hint}` : ''}
             </p>
           )
         ) : (
           <p className="mt-1.5 text-[11px] text-white/40">
-            Pay by Ð𝕏 handle (`@name`) or paste a Dogecoin address.
+            Pay by Ð𝕏 (`@name`), Doge Domain (`billy.dogefeed`), or paste a Dogecoin address.
           </p>
         )}
         {connected && otherSiblings.length > 0 ? (
@@ -991,7 +1008,7 @@ export function WalletSendFlow({
       <Button
         type="button"
         className={cx('w-full', PRIMARY_BUTTON, (busy || quoteBusy) && 'cursor-wait')}
-        disabled={busy || quoteBusy || !validation.ok || !amountOk || dxLookup === 'loading'}
+        disabled={busy || quoteBusy || !validation.ok || !amountOk || recipientLookup === 'loading'}
         onClick={() => void goReview()}
       >
         {busy ? 'Preparing…' : 'Review send'}

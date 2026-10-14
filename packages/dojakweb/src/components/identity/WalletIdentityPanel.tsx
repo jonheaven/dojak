@@ -239,9 +239,13 @@ export function WalletIdentityPanel({
     }
     let cancelled = false;
     const tmo = window.setTimeout(() => {
-      void fetchDxByHandle(normalizedHandle).then((r) => {
-        if (!cancelled) setHandleTaken(r);
-      });
+      void fetchDxByHandle(normalizedHandle)
+        .then((r) => {
+          if (!cancelled) setHandleTaken(r);
+        })
+        .catch(() => {
+          if (!cancelled) setHandleTaken(undefined);
+        });
     }, 250);
     return () => {
       cancelled = true;

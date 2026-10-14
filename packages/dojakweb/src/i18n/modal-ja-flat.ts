@@ -233,8 +233,11 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.dataLabel.prefix': 'データ:',
   'modal.sendInscription.sentTitle': 'Inscription を送信しました',
   'modal.sendInscription.viewExplorer': 'エクスプローラーで見る →',
-  'modal.sendInscription.recipientLabel': '受取アドレス',
-  'modal.sendInscription.placeholderAddr': 'D... (Dogecoin アドレス)',
+  'modal.sendInscription.recipientLabel': '受取先',
+  'modal.sendInscription.placeholderAddr': 'D…、@handle、または name.namespace',
+  'modal.sendInscription.resolving': '受取先を解決中…',
+  'modal.sendInscription.resolvedDx': 'Ð𝕏 {handle} → {address}',
+  'modal.sendInscription.resolvedDns': '{name} → {address}',
   'modal.sendInscription.warningShort':
     'inscription とその UTXO 上の DOGE は、入力したアドレスへまとめて移ります。',
   'modal.sendInscription.warning':

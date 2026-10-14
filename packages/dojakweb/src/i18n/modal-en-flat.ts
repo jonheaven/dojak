@@ -233,8 +233,11 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.dataLabel.prefix': 'Data:',
   'modal.sendInscription.sentTitle': 'Inscription sent!',
   'modal.sendInscription.viewExplorer': 'View on explorer →',
-  'modal.sendInscription.recipientLabel': 'Recipient Address',
-  'modal.sendInscription.placeholderAddr': 'D... (Dogecoin address)',
+  'modal.sendInscription.recipientLabel': 'Recipient',
+  'modal.sendInscription.placeholderAddr': 'D…, @handle, or name.namespace',
+  'modal.sendInscription.resolving': 'Resolving recipient…',
+  'modal.sendInscription.resolvedDx': 'Ð𝕏 {handle} → {address}',
+  'modal.sendInscription.resolvedDns': '{name} → {address}',
   'modal.sendInscription.warningShort':
     'The inscription and any DOGE on that coin move together to the address you enter.',
   'modal.sendInscription.warning': '⚠ This sends the inscription coin directly to the recipient. The inscription and all DOGE in that coin will transfer.',

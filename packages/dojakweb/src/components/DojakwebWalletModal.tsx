@@ -227,6 +227,11 @@ import { useIsMobileWallet } from '../hooks/useMediaQuery';
 import { useConnectedWalletAddress } from '../wallet/getConnectedWalletAddress';
 import { TechDetails } from './ui/tech-details';
 import { publishDpfpBindOnChain } from '../lib/dpfpPublish';
+import {
+  classifySendRecipient,
+  resolveSendRecipient,
+  type ResolvedSendRecipient,
+} from '../lib/resolveSendRecipient';
 
 export interface DojakwebWalletModalProps {
   isOpen: boolean;
@@ -989,6 +994,11 @@ export function DojakwebWalletModal({
   // ── Inscription action state ──
   const [selectedInscription, setSelectedInscription] = useState<MyDogeInscription | null>(null);
   const [inscriptionSendRecipient, setInscriptionSendRecipient] = useState('');
+  const [inscriptionSendResolved, setInscriptionSendResolved] = useState<ResolvedSendRecipient | null>(null);
+  const [inscriptionSendLookup, setInscriptionSendLookup] = useState<
+    'off' | 'loading' | 'ok' | 'error'
+  >('off');
+  const [inscriptionSendLookupError, setInscriptionSendLookupError] = useState<string | null>(null);
   const [inscriptionSendBusy, setInscriptionSendBusy] = useState(false);
   const [inscriptionSendReviewBusy, setInscriptionSendReviewBusy] = useState(false);
   const [inscriptionSendDraft, setInscriptionSendDraft] = useState<SendInscriptionPsbtDraft | null>(null);
@@ -2950,10 +2960,51 @@ export function DojakwebWalletModal({
     };
   }, [activeAddress, spendableBreak?.localHoldCount]);
 
-  const openSendInscription = (inscription: MyDogeInscription) => {
+  useEffect(() => {
+    const raw = inscriptionSendRecipient.trim();
+    if (!raw || step !== 'send_inscription') {
+      setInscriptionSendResolved(null);
+      setInscriptionSendLookup('off');
+      setInscriptionSendLookupError(null);
+      return;
+    }
+    const classified = classifySendRecipient(raw);
+    if (classified.kind === 'empty') {
+      setInscriptionSendResolved(null);
+      setInscriptionSendLookup('off');
+      setInscriptionSendLookupError(null);
+      return;
+    }
+    let cancelled = false;
+    setInscriptionSendLookup('loading');
+    setInscriptionSendLookupError(null);
+    setInscriptionSendResolved(null);
+    const tmo = window.setTimeout(() => {
+      void resolveSendRecipient(raw).then((r) => {
+        if (cancelled) return;
+        if (r.ok) {
+          setInscriptionSendResolved(r);
+          setInscriptionSendLookup('ok');
+          setInscriptionSendLookupError(null);
+        } else {
+          setInscriptionSendResolved(null);
+          setInscriptionSendLookup('error');
+          setInscriptionSendLookupError(r.error);
+        }
+      });
+    }, 320);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(tmo);
+    };
+  }, [inscriptionSendRecipient, step]);
 
+  const openSendInscription = (inscription: MyDogeInscription) => {
     setSelectedInscription(inscription);
     setInscriptionSendRecipient('');
+    setInscriptionSendResolved(null);
+    setInscriptionSendLookup('off');
+    setInscriptionSendLookupError(null);
     setInscriptionSendTxid(null);
     setInscriptionSendError(null);
     setInscriptionSendDraft(null);
@@ -2979,6 +3030,17 @@ export function DojakwebWalletModal({
     setInscriptionSendError(null);
     setInscriptionSendDraft(null);
     try {
+      const resolved = await resolveSendRecipient(inscriptionSendRecipient);
+      if (!resolved.ok) {
+        setInscriptionSendLookup('error');
+        setInscriptionSendLookupError(resolved.error);
+        setInscriptionSendResolved(null);
+        throw new Error(resolved.error);
+      }
+      setInscriptionSendResolved(resolved);
+      setInscriptionSendLookup('ok');
+      setInscriptionSendLookupError(null);
+
       const insData = await getInscriptionData(selectedInscription.inscriptionId, selectedInscription);
       const [insTxid, insVoutStr] = String(insData.output).split(':');
       const insVout = parseInt(insVoutStr, 10);
@@ -3012,7 +3074,7 @@ export function DojakwebWalletModal({
       const draft = await buildSendInscriptionDraft({
         inscriptionOutput: insData.output,
         inscriptionOutputValue: insData.outputValue,
-        recipientAddress: inscriptionSendRecipient.trim(),
+        recipientAddress: resolved.address,
         senderAddress: activeAddress,
         paymentUtxos,
         feeRateKoinuPerByte: feeRate,
@@ -3078,7 +3140,11 @@ export function DojakwebWalletModal({
           (selectedInscription.inscriptionNumber != null
             ? `Inscription #${selectedInscription.inscriptionNumber}`
             : 'Inscription transfer'),
-        summary: `Inscription transfer → ${inscriptionSendRecipient.trim()}`,
+        summary: `Inscription transfer → ${
+          inscriptionSendResolved?.label ||
+          inscriptionSendResolved?.display ||
+          inscriptionSendRecipient.trim()
+        }`,
         status: 'broadcasted',
         metadata: {
           inscriptionId: selectedInscription.inscriptionId,
@@ -3086,7 +3152,8 @@ export function DojakwebWalletModal({
           contentType: selectedInscription.contentType,
           previewUrl: selectedInscription.preview || selectedInscription.content,
           contentPreview: name || undefined,
-          recipientAddress: inscriptionSendRecipient.trim(),
+          recipientAddress:
+            inscriptionSendResolved?.address || inscriptionSendRecipient.trim(),
           actionLabel: 'Send',
           postageDoge: (() => {
             const raw = Number(selectedInscription.outputValue || 0);
@@ -6224,8 +6291,18 @@ export function DojakwebWalletModal({
                               </TechDetails>
                               <p className="mt-2 break-all font-mono text-[11px] text-white/80">
                                 {t('modal.sendInscription.summaryRecipient')}{' '}
-                                <span className="text-[#FCD34D]/90">{inscriptionSendRecipient.trim()}</span>
+                                <span className="text-[#FCD34D]/90">
+                                  {inscriptionSendResolved?.label ||
+                                    inscriptionSendResolved?.display ||
+                                    inscriptionSendRecipient.trim()}
+                                </span>
                               </p>
+                              {inscriptionSendResolved &&
+                              inscriptionSendResolved.kind !== 'address' ? (
+                                <p className="mt-1 break-all font-mono text-[11px] text-white/55">
+                                  {inscriptionSendResolved.address}
+                                </p>
+                              ) : null}
                               <p className="mt-1 text-xs text-white/70">
                                 {t('modal.sendInscription.summaryFee', {
                                   fee: shibesToDoge(inscriptionSendDraft.feeShib).toLocaleString(undefined, {
@@ -6315,11 +6392,39 @@ export function DojakwebWalletModal({
                                 onChange={(e) => {
                                   setInscriptionSendRecipient(e.target.value);
                                   setInscriptionSendDraft(null);
+                                  setInscriptionSendError(null);
                                 }}
                                 placeholder={t('modal.sendInscription.placeholderAddr')}
                                 className={INPUT_CLASS}
                                 disabled={inscriptionSendBusy || inscriptionSendReviewBusy}
+                                aria-invalid={
+                                  Boolean(inscriptionSendRecipient.trim()) &&
+                                  inscriptionSendLookup === 'error'
+                                }
                               />
+                              {inscriptionSendRecipient.trim() ? (
+                                <div className="mt-2 text-xs">
+                                  {inscriptionSendLookup === 'loading' ? (
+                                    <p className="text-white/50">{t('modal.sendInscription.resolving')}</p>
+                                  ) : inscriptionSendLookup === 'ok' && inscriptionSendResolved ? (
+                                    <p className="break-all text-emerald-300/90">
+                                      {inscriptionSendResolved.kind === 'dx'
+                                        ? t('modal.sendInscription.resolvedDx', {
+                                            handle: inscriptionSendResolved.label || inscriptionSendResolved.display,
+                                            address: inscriptionSendResolved.address,
+                                          })
+                                        : inscriptionSendResolved.kind === 'dns'
+                                          ? t('modal.sendInscription.resolvedDns', {
+                                              name: inscriptionSendResolved.label || inscriptionSendResolved.display,
+                                              address: inscriptionSendResolved.address,
+                                            })
+                                          : inscriptionSendResolved.address}
+                                    </p>
+                                  ) : inscriptionSendLookup === 'error' && inscriptionSendLookupError ? (
+                                    <p className="text-red-300/90">{inscriptionSendLookupError}</p>
+                                  ) : null}
+                                </div>
+                              ) : null}
                             </label>
                             <NetworkFeeControl
                               compact
@@ -6364,6 +6469,9 @@ export function DojakwebWalletModal({
                               if (inscriptionSendTxid) {
                                 setInscriptionSendDraft(null);
                                 setInscriptionSendRecipient('');
+                                setInscriptionSendResolved(null);
+                                setInscriptionSendLookup('off');
+                                setInscriptionSendLookupError(null);
                                 setInscriptionSendTxid(null);
                                 setInscriptionSendError(null);
                                 setStep('dashboard');
@@ -6375,6 +6483,9 @@ export function DojakwebWalletModal({
                               }
                               setInscriptionSendDraft(null);
                               setInscriptionSendRecipient('');
+                              setInscriptionSendResolved(null);
+                              setInscriptionSendLookup('off');
+                              setInscriptionSendLookupError(null);
                               setInscriptionSendTxid(null);
                               setInscriptionSendError(null);
                               setStep('dashboard');
@@ -6391,7 +6502,13 @@ export function DojakwebWalletModal({
                             <Button
                               type="button"
                               onClick={() => void handleReviewSendInscription()}
-                              disabled={inscriptionSendReviewBusy || !inscriptionSendRecipient.trim()}
+                              disabled={
+                                inscriptionSendReviewBusy ||
+                                !inscriptionSendRecipient.trim() ||
+                                inscriptionSendLookup === 'loading' ||
+                                inscriptionSendLookup === 'error' ||
+                                !inscriptionSendResolved
+                              }
                               className={cx('flex-1', PRIMARY_BUTTON)}
                             >
                               {inscriptionSendReviewBusy
