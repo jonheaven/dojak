@@ -35,15 +35,15 @@ const valueProps = [
 
 const useCases = [
   'Dojak-owned surfaces that need the full browser + extension + Ledger matrix',
-  'Doginals / Dogenals flows exercised here before shipping in the main product',
+  'Doginals / metaprotocol flows exercised here before shipping in the main product',
   'Engineering demos and QA against the same `@dojak/web` code the extension/web stack uses',
 ];
 
 const faq = [
   {
-    question: 'Where is the open Dogenals standard?',
+    question: 'Where are the open Doginals metaprotocol specs?',
     answer:
-      'Normative protocols live in dogenals/spec (GitHub: jonheaven/dogenals). Dojak is the open-source reference wallet that encodes those rules — not a second spec.',
+      'Normative protocols live in the studio specs tree (GitHub: jonheaven/dogenals — repo name is historical). Dojak is the open-source reference wallet that encodes those rules — not a second spec.',
   },
   {
     question: 'Is Dojakweb an npm library for other projects?',
@@ -154,7 +154,7 @@ export function DemoLanding({
             </h1>
             <p className="max-w-3xl text-sm leading-7 text-text-secondary sm:text-base dark:text-white/72">
               This app runs the same <code className="text-xs">@dojak/web</code> package as the extension and storefront —
-              Dojak, extension adapters, and Ledger — encoding the open Dogenals spec
+              Dojak, extension adapters, and Ledger — encoding open Doginals metaprotocol specs
               (<code className="text-xs">dogenals/spec</code>). Source: github.com/jonheaven/dojak.
             </p>
             <div className="flex flex-wrap gap-3">

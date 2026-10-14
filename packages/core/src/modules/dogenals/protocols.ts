@@ -1,5 +1,5 @@
 /**
- * Canonical Dogenals protocol table for the wallet.
+ * Canonical Doginals metaprotocol table for the wallet (module path `dogenals/` is historical).
  * Markers MUST match dogenals/spec (studio copy: ../dogenals/spec).
  *
  * Wallet job = encode/sign/display. Indexing stays in dogex.

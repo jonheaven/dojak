@@ -32,7 +32,7 @@ const FEATURE_LABELS: Record<FeatureId, string> = {
 };
 
 const FEATURE_DESCRIPTIONS: Record<FeatureId, string> = {
-  wallet: 'Main wallet interface for managing DOGE and Dogenals',
+  wallet: 'Main wallet interface for managing DOGE and Doginals',
   'inscription-hub': 'Overview at /inscription — ÐogeTags vs file inscription (reserved for future nav)',
   dogetags: 'Create and manage ÐogeTags',
   inscribe: 'Inscribe files and recursive HTML on Dogecoin',

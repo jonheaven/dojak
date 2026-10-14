@@ -319,7 +319,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.listing.cancel': 'Cancel',
   'modal.listing.reviewNext': 'Review Listing →',
   'modal.verification.dxBadge': 'Ð𝕏 (Ðoge𝕏ID) register payload',
-  'modal.verification.dxSpecLink': 'Dogenals dx spec',
+  'modal.verification.dxSpecLink': 'Ð𝕏 spec',
   'modal.verification.needWallet': 'Connect a Dogecoin wallet first, then complete identity binds.',
   'modal.identity.blurb':
     'On-chain identity lives in this wallet. Ð𝕏 links 𝕏; ÐN05 claims a Nostr name. Both are cheap OP_RETURN statements — not transferable NFTs.',
@@ -372,7 +372,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.identity.nameLabel': 'Localpart',
   'modal.identity.npubLabel': 'Nostr pubkey',
   'modal.verification.dxIntro':
-    'Link your 𝕏 handle to this Dogecoin address using the Dogenals Ð𝕏 protocol (on-chain inscription). Dojakweb never uses 𝕏 OAuth — you prove control with a public post and a wallet signature.',
+    'Link your 𝕏 handle to this Dogecoin address using the Ð𝕏 protocol (on-chain inscription). Dojakweb never uses 𝕏 OAuth — you prove control with a public post and a wallet signature.',
   'modal.verification.handleLabel': '𝕏 handle to verify',
   'modal.verification.dxPremiumGrokLabel': 'Premium: Grok Imagine + rip-pack card art',
   'modal.verification.dxPremiumGrokHint':

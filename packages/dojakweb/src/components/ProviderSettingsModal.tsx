@@ -247,20 +247,20 @@ export const ProviderSettingsModal: React.FC<ProviderSettingsModalProps> = ({ is
                       <SelectValue placeholder="Select inscription protocol" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ord">Doginals v1 (ord)</SelectItem>
-                      <SelectItem value="dog">Dogenals v2 (dog)</SelectItem>
+                      <SelectItem value="ord">Doginals (ord)</SelectItem>
+                      <SelectItem value="dog">GDR lab (dog)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-text-tertiary mt-1">
-                    Choose which inscription protocol layer to use for your inscriptions.
+                    Doginals use <span className="font-mono">ord</span>. The <span className="font-mono">dog</span> marker is lab-only for Good Dog Registry / eternal.dog registry JSON — not photo mints.
                   </p>
                 </div>
 
                 <div className="p-3 bg-bg-secondary rounded-md">
-                  <h4 className="text-sm font-medium text-text-primary mb-1">What are Inscription Protocols?</h4>
+                  <h4 className="text-sm font-medium text-text-primary mb-1">Inscription carriers</h4>
                   <p className="text-xs text-text-secondary">
-                    Doginals v1 (ord) is the original inscription protocol. Dogenals v2 (dog) is a new protocol layer
-                    that provides additional features and improvements. Choose the protocol that best fits your needs.
+                    <strong>Doginals (ord)</strong> is the community inscription standard. <strong>dog</strong> is an optional
+                    GDR / eternal.dog registry carrier — not a general “v2 Doginals” replacement.
                   </p>
                 </div>
               </div>

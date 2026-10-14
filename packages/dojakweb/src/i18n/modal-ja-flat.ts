@@ -325,7 +325,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.listing.cancel': 'キャンセル',
   'modal.listing.reviewNext': '出品を確認 →',
   'modal.verification.dxBadge': 'Ð𝕏（Ðoge𝕏ID）register ペイロード',
-  'modal.verification.dxSpecLink': 'Dogenals dx 仕様',
+  'modal.verification.dxSpecLink': 'Ð𝕏 仕様',
   'modal.verification.needWallet': '先に Dogecoin ウォレットを接続してからアイデンティティを紐付けてください。',
   'modal.identity.blurb':
     'オンチェーンのアイデンティティはこのウォレットにあります。Ð𝕏 は 𝕏、ÐN05 は Nostr 名。どちらも安い OP_RETURN の声明で、譲渡可能な NFT ではありません。',
@@ -379,7 +379,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.identity.nameLabel': 'ローカルパート',
   'modal.identity.npubLabel': 'Nostr 公開鍵',
   'modal.verification.dxIntro':
-    'Dogenals Ð𝕏 プロトコルで 𝕏 ハンドルとこの Dogecoin アドレスをオンチェーンで紐付けます。Dojakweb は 𝕏 OAuth を使いません — 公開ツイートとウォレット署名で証明します。',
+    'Ð𝕏 プロトコルで 𝕏 ハンドルとこの Dogecoin アドレスをオンチェーンで紐付けます。Dojakweb は 𝕏 OAuth を使いません — 公開ツイートとウォレット署名で証明します。',
   'modal.verification.handleLabel': '認証する 𝕏 ハンドル',
   'modal.verification.dxPremiumGrokLabel': 'プレミアム: Grok Imagine + rip-pack カード画像',
   'modal.verification.dxPremiumGrokHint':

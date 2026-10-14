@@ -1728,7 +1728,7 @@ export const InscribePage: React.FC = () => {
                 <p className="mt-1 text-[11px] leading-relaxed text-text-tertiary dark:text-white/48">
                   Protocol marker:{' '}
                   <span className="font-medium text-text-secondary dark:text-white/70">
-                    {inscriptionMarker === 'ord' ? 'Doginals v1 (ord)' : 'Dogenals v2 (dog)'}
+                    {inscriptionMarker === 'ord' ? 'Doginals (ord)' : 'GDR lab (dog)'}
                   </span>{' '}
                   — default is <strong className="text-text-secondary dark:text-white/65">ord</strong> (what MyDoge-style indexers expect). Change under{' '}
                   <strong className="text-text-secondary dark:text-white/65">Settings → Providers → Inscription Protocol</strong>.
