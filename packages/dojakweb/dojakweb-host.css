@@ -56,10 +56,10 @@
 .wallet-input {
   width: 100%;
   border-radius: 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ds-border, rgba(255, 255, 255, 0.1));
+  background: color-mix(in srgb, var(--ds-text, #f0ece0) 4%, transparent);
   padding: 0.8rem 1rem;
-  color: #f0ece0;
+  color: var(--ds-text, #f0ece0);
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -67,13 +67,13 @@
 }
 
 .wallet-input::placeholder {
-  color: rgb(100 96 88);
+  color: var(--ds-text-muted, rgb(100 96 88));
 }
 
 .wallet-input:focus {
   outline: none;
-  border-color: rgb(250 204 21);
-  box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.16);
+  border-color: var(--ds-accent-solid, rgb(250 204 21));
+  box-shadow: 0 0 0 4px var(--ds-accent-ring, rgba(234, 179, 8, 0.16));
 }
 
 .ds-connect-button,
@@ -968,8 +968,8 @@
 }
 
 /* ─── Light-mode: CSS token overrides ─────────────────────────────────────── */
-/* html[data-theme] = host apps (dogenals web-com); .ds-light = modal panel class */
-:is(html[data-theme="light"], .ds-light) {
+/* html[data-theme] = host apps; .ds-light / [data-ds-theme=light] = wallet chrome */
+:is(html[data-theme="light"], .ds-light, [data-ds-theme="light"]) {
   color-scheme: light;
   --ds-bg: #fafaf8;
   --ds-bg-elevated: #f2f0eb;
