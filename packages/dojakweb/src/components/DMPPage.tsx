@@ -1,13 +1,13 @@
 /**
  * DMPPage.tsx
  *
- * Dogecoin Marketplace Protocol (ÐMP) documentation and demo page.
+ * Doginals Marketplace Protocol (ÐMP) documentation and demo page.
  *
  * =========================================================================
  * WHAT IS ÐMP?
  * =========================================================================
  *
- * ÐMP (Dogecoin Marketplace Protocol) is a standardized protocol for
+ * ÐMP (Doginals Marketplace Protocol) is a standardized protocol for
  * Dogecoin marketplace transactions. It provides a secure, verifiable way
  * for buyers and sellers to interact in Dogecoin marketplaces.
  *
@@ -234,7 +234,7 @@ export function DMPPage() {
 
         <div className="prose prose-invert max-w-none">
           <p className="text-zinc-300 leading-relaxed">
-            ÐMP (Dogecoin Marketplace Protocol) is a standardized protocol for secure marketplace
+            ÐMP (Doginals Marketplace Protocol) is a standardized protocol for secure marketplace
             transactions on Dogecoin. It uses cryptographically signed JSON intents to ensure
             that marketplace operations are verifiable and tamper-proof.
           </p>

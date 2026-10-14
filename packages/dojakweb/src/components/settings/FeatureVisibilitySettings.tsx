@@ -41,7 +41,7 @@ const FEATURE_DESCRIPTIONS: Record<FeatureId, string> = {
   'dogenal-locker': 'Lock Doginals for extended periods',
   'soft-staking': 'Flexible staking with time-based rewards',
   'locked-assets': 'View and manage locked assets',
-  dmp: 'ÐMP (Dogecoin Marketplace Protocol) — signed marketplace intents',
+  dmp: 'ÐMP (Doginals Marketplace Protocol) — signed marketplace intents',
   demo: 'Home / landing page',
   'address-book': 'Import/export contacts for easy transaction management',
   tools: 'Developer tools — PSBT analyzer, UTXO inspector, validators, probes',

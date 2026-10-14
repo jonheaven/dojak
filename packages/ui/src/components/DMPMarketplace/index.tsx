@@ -7,7 +7,7 @@ interface DMPMarketplaceProps {
 const DMPMarketplace: React.FC<DMPMarketplaceProps> = ({ listings }) => {
   return (
     <div>
-      <h2>Dogenals Marketplace (ÐMP)</h2>
+      <h2>Doginals Marketplace (ÐMP)</h2>
       <ul>
         {listings.map((listing, index) => (
           <li key={index}>
