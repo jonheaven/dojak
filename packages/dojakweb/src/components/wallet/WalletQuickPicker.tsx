@@ -12,6 +12,7 @@ import {
 import { useUnifiedWallet } from '../../contexts/UnifiedWalletContext';
 import { useDojakwebI18n } from '../../contexts/DojakwebLocaleContext';
 import { useDojakwebTheme } from '../../contexts/DojakwebThemeContext';
+import { readWalletTheme, WALLET_THEME_EVENT } from '../../lib/wallet-theme-pref';
 import { WalletProviderIcon } from './WalletProviderIcon';
 
 export type WalletDrawerOpenStep = 'chooser' | 'entry' | 'dashboard' | 'unlock';
@@ -24,6 +25,11 @@ export type WalletQuickPickerProps = {
   /** Anchor element for flyout positioning (the connect icon button). */
   anchorRef?: React.RefObject<HTMLElement | null>;
   onRequestOpenDrawer: (step: WalletDrawerOpenStep) => void;
+  /**
+   * Host chrome theme (same prop as ConnectWalletButton / drawer).
+   * When set, resolves like the wallet modal: wallet Settings override, else this prop.
+   */
+  isDark?: boolean;
 };
 
 function cx(...parts: Array<string | false | null | undefined>): string {
@@ -78,11 +84,28 @@ export function WalletQuickPicker({
   variant,
   anchorRef,
   onRequestOpenDrawer,
+  isDark: isDarkProp,
 }: WalletQuickPickerProps) {
   const { connected, walletType } = useUnifiedWallet();
   const { t } = useDojakwebI18n();
-  const { theme } = useDojakwebTheme();
-  const isLight = theme === 'light';
+  const { theme: walletTheme } = useDojakwebTheme();
+  const [pickedTheme, setPickedTheme] = useState<'dark' | 'light' | null>(() =>
+    typeof window === 'undefined' ? null : readWalletTheme(),
+  );
+  useEffect(() => {
+    const sync = () => setPickedTheme(readWalletTheme());
+    window.addEventListener(WALLET_THEME_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(WALLET_THEME_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+  // Match DojakwebWalletModal: Settings pick wins, else host isDark, else provider theme.
+  const resolvedTheme =
+    pickedTheme ??
+    (isDarkProp === undefined ? walletTheme : isDarkProp ? 'dark' : 'light');
+  const isLight = resolvedTheme === 'light';
   const panelRef = useRef<HTMLDivElement>(null);
   const [flyoutStyle, setFlyoutStyle] = useState<React.CSSProperties | undefined>();
 

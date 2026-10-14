@@ -193,6 +193,7 @@ export function ConnectWalletButton({
         variant={isMobile ? 'sheet' : 'flyout'}
         anchorRef={buttonRef}
         onRequestOpenDrawer={(step) => openDrawer(step)}
+        isDark={isDark}
       />
 
       {mode === 'modal' && drawerOpen ? (

@@ -387,74 +387,133 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
-.ds-light .ds-wallet-quick-picker,
-.ds-wallet-quick-picker.ds-light {
+/* Host light (html[data-theme]) + panel .ds-light / data-ds-theme — flyout is portaled to body */
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker,
+.ds-wallet-quick-picker.ds-light,
+.ds-wallet-quick-picker[data-ds-theme="light"] {
   background: linear-gradient(180deg, #ffffff 0%, #f4f4f5 100%);
   border-color: rgba(0, 0, 0, 0.1);
   color: #18181b;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
 }
 
-.ds-light .ds-wallet-quick-picker__title,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__title {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__title,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__title,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__title {
   color: #18181b;
 }
 
-.ds-light .ds-wallet-quick-picker__tile,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__tile {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__tile,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__tile,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__tile {
   border-color: rgba(0, 0, 0, 0.1);
   background: rgba(0, 0, 0, 0.03);
 }
 
-.ds-light .ds-wallet-quick-picker__tile--active,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__tile--active {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__tile:hover:not(:disabled),
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__tile:hover:not(:disabled),
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__tile:hover:not(:disabled) {
+  border-color: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__tile--active,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__tile--active,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__tile--active {
   border-color: #d97706;
   background: rgba(252, 211, 77, 0.28);
   box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.25);
 }
 
-.ds-light .ds-wallet-quick-picker__tile--connected:not(.ds-wallet-quick-picker__tile--active),
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__tile--connected:not(.ds-wallet-quick-picker__tile--active) {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__tile--connected:not(.ds-wallet-quick-picker__tile--active),
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__tile--connected:not(.ds-wallet-quick-picker__tile--active),
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__tile--connected:not(.ds-wallet-quick-picker__tile--active) {
   border-color: #059669;
   background: rgba(52, 211, 153, 0.12);
 }
 
-.ds-light .ds-wallet-quick-picker__disconnect,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__disconnect {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__tile--priority:not(.ds-wallet-quick-picker__tile--active):not(.ds-wallet-quick-picker__tile--connected),
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__tile--priority:not(.ds-wallet-quick-picker__tile--active):not(.ds-wallet-quick-picker__tile--connected),
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__tile--priority:not(.ds-wallet-quick-picker__tile--active):not(.ds-wallet-quick-picker__tile--connected) {
+  border-color: rgba(217, 119, 6, 0.55);
+  background: rgba(252, 211, 77, 0.14);
+}
+
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__row-title,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__row-title,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__row-title {
+  color: #18181b;
+}
+
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__row-sub,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__row-sub,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__row-sub {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__choice-panel,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__choice-panel,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__choice-panel {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__disconnect,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__disconnect,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__disconnect {
   background: #ffffff;
   color: #3f3f46;
   border-color: rgba(0, 0, 0, 0.16);
   box-shadow: 0 0 0 2px #ffffff;
 }
 
-.ds-light .ds-wallet-quick-picker__disconnect:hover,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__disconnect:hover {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__disconnect:hover,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__disconnect:hover,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__disconnect:hover {
   background: #ef4444;
   border-color: #ef4444;
   color: #fff;
 }
 
-.ds-light .ds-wallet-quick-picker__dot,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__dot {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__dot,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__dot,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__dot {
   box-shadow: 0 0 0 2px #ffffff;
 }
 
-.ds-light .ds-wallet-quick-picker__hint,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__hint {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__hint,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__hint,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__hint {
   color: rgba(0, 0, 0, 0.45);
 }
 
-.ds-light .ds-wallet-quick-picker__open,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__open {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__open,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__open,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__open {
   background: #1a1408;
   border-color: #1a1408;
   color: #f8e7a8;
 }
 
-.ds-light .ds-wallet-quick-picker__open:hover,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__open:hover {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__open:hover,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__open:hover,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__open:hover {
   background: #2a2010;
   border-color: #2a2010;
   color: #fff6c8;
+}
+
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__close,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__close,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__close {
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.65);
+}
+
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker-backdrop,
+.ds-wallet-quick-picker-backdrop.ds-light {
+  background: rgba(15, 14, 13, 0.35);
 }
 
 .ds-wallet-quick-picker__other-wrap {
@@ -482,14 +541,16 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
-.ds-light .ds-wallet-quick-picker__other,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__other {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__other,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__other,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__other {
   border-color: rgba(0, 0, 0, 0.16);
   color: rgba(0, 0, 0, 0.55);
 }
 
-.ds-light .ds-wallet-quick-picker__other:hover,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__other:hover {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__other:hover,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__other:hover,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__other:hover {
   border-color: rgba(0, 0, 0, 0.35);
   color: #18181b;
 }
@@ -502,8 +563,9 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
-.ds-light .ds-wallet-quick-picker__other-hint,
-.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__other-hint {
+:is(html[data-theme="light"], .ds-light) .ds-wallet-quick-picker__other-hint,
+.ds-wallet-quick-picker.ds-light .ds-wallet-quick-picker__other-hint,
+.ds-wallet-quick-picker[data-ds-theme="light"] .ds-wallet-quick-picker__other-hint {
   color: rgba(0, 0, 0, 0.45);
 }
 
@@ -1220,11 +1282,14 @@
   color: #0f0e0d !important;
 }
 
-/* Inactive tabs - fix contrast (this was the main issue reported) */
-:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-zinc-700.bg-zinc-950,
-:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/40 {
+/* Inactive tabs - fix contrast (do NOT paint background on every .text-white/40) */
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-zinc-700.bg-zinc-950 {
   color: #6b665d !important;
   background-color: #ede9e2 !important;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard .text-white\/40 {
+  color: #6b665d !important;
 }
 
 :is([data-ds-theme="light"], html[data-theme="light"]) .ds-wallet-dashboard button.border-zinc-700.bg-zinc-950:hover,
@@ -2502,4 +2567,219 @@ body.wallet-drawer-dock-open.wallet-drawer-dragging .wallet-paw-grip {
 :is([data-ds-theme="light"], html[data-theme="light"], .ds-light) .ds-wallet-dashboard select option {
   background-color: #ffffff;
   color: #0f0e0d;
+}
+
+/* ─── Inscription text cards + compact overlay chrome ─────────────────────── */
+.ds-inscription-text-card {
+  background: linear-gradient(160deg, #27272a 0%, #18181b 48%, #09090b 100%);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.ds-inscription-text-card__title {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.ds-inscription-text-card__muted,
+.ds-inscription-text-card__raw {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.ds-inscription-text-card__dns-title {
+  color: #fef3c7;
+}
+
+.ds-inscription-text-card__chip {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(254, 243, 199, 0.9);
+}
+
+.ds-inscription-text-card__icon {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.ds-inscription-text-card__badge--dns {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fde68a;
+}
+
+.ds-inscription-text-card__badge--lotto {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
+
+.ds-inscription-text-card__badge--json {
+  background: rgba(139, 92, 246, 0.2);
+  color: #ddd6fe;
+}
+
+.ds-inscription-text-card__badge--text {
+  background: rgba(14, 165, 233, 0.15);
+  color: #bae6fd;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card {
+  background: linear-gradient(160deg, #f8f6f1 0%, #efebe3 55%, #e7e2d8 100%);
+  color: #1c1917;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__title {
+  color: #1c1917;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__muted,
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__raw {
+  color: rgba(68, 64, 60, 0.72);
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__dns-title {
+  color: #92400e;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__chip {
+  background: rgba(0, 0, 0, 0.06);
+  color: #78350f;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__icon {
+  color: rgba(68, 64, 60, 0.35);
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__badge--dns {
+  background: rgba(217, 119, 6, 0.14);
+  color: #92400e;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__badge--lotto {
+  background: rgba(217, 119, 6, 0.16);
+  color: #a16207;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__badge--json {
+  background: rgba(109, 40, 217, 0.12);
+  color: #5b21b6;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-text-card__badge--text {
+  background: rgba(2, 132, 199, 0.12);
+  color: #0369a1;
+}
+
+/* Compact inscription card: media full-bleed, tiny overlay chrome */
+.ds-inscription-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #18181b;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.ds-inscription-card:hover {
+  border-color: rgba(212, 160, 23, 0.55);
+  box-shadow: 0 4px 14px rgba(212, 160, 23, 0.12);
+}
+
+.ds-inscription-card__media {
+  position: relative;
+  overflow: hidden;
+}
+
+.ds-inscription-card__chrome {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding: 0.35rem 0.4rem;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.ds-inscription-card__num,
+.ds-inscription-card__more {
+  pointer-events: auto;
+}
+
+.ds-inscription-card__num {
+  min-width: 0;
+  max-width: calc(100% - 2rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.92);
+  border-radius: 0.375rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 10px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: left;
+  backdrop-filter: blur(6px);
+}
+
+.ds-inscription-card__num:hover {
+  color: #fcd34d;
+}
+
+.ds-inscription-card__more {
+  display: inline-flex;
+  height: 1.5rem;
+  width: 1.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.ds-inscription-card__more:hover {
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-card {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-card:hover {
+  border-color: rgba(201, 168, 76, 0.7);
+  box-shadow: 0 4px 14px rgba(120, 90, 20, 0.12);
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-card__chrome {
+  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.82) 100%);
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-card__num {
+  background: rgba(255, 255, 255, 0.88);
+  color: #1c1917;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-card__num:hover {
+  color: #92400e;
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-card__more {
+  background: rgba(255, 255, 255, 0.9);
+  color: #44403c;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+:is([data-ds-theme="light"], html[data-theme="light"]) .ds-inscription-card__more:hover {
+  background: #f5f5f4;
+  color: #1c1917;
 }

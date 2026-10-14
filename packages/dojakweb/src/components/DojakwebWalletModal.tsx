@@ -5223,10 +5223,9 @@ export function DojakwebWalletModal({
                                         return (
                                         <div
                                           key={item.inscriptionId}
-                                          className="group relative overflow-visible rounded-xl border border-white/10 bg-zinc-900 shadow-sm transition hover:border-[#D4A017]/55 hover:shadow-md hover:shadow-[#D4A017]/10"
+                                          className="ds-inscription-card group"
                                         >
-                                          {/* image — overflow-hidden scoped to media only */}
-                                          <div className="relative overflow-hidden rounded-t-[0.65rem]">
+                                          <div className="ds-inscription-card__media">
                                             {dlocked ? (
                                               <div
                                                 className="absolute right-1.5 top-1.5 z-10 inline-flex items-center gap-0.5 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-[#FCD34D]"
@@ -5246,7 +5245,7 @@ export function DojakwebWalletModal({
                                                   inscriptionId={item.inscriptionId}
                                                   content={item.content}
                                                   preview={item.preview}
-                                                  alt={`#${item.inscriptionNumber}`}
+                                                  alt={`#${item.inscriptionNumber ?? ''}`}
                                                   className="aspect-square w-full object-cover"
                                                 />
                                               </button>
@@ -5269,29 +5268,32 @@ export function DojakwebWalletModal({
                                               <button
                                                 type="button"
                                                 onClick={() => setInspectItem(item)}
-                                                className="flex aspect-square w-full items-center justify-center bg-gray-800 text-xs text-white/40"
+                                                className={cx(
+                                                  'flex aspect-square w-full items-center justify-center text-xs',
+                                                  isDark ? 'bg-gray-800 text-white/40' : 'bg-stone-200 text-stone-500',
+                                                )}
                                               >
                                                 {item.contentType ?? t('modal.assets.unknownType')}
                                               </button>
                                             )}
-                                          </div>
-                                          <div className="flex items-center justify-between gap-1 border-t border-white/5 bg-zinc-950 px-2.5 py-2">
-                                            <button
-                                              type="button"
-                                              onClick={() => setInspectItem(item)}
-                                              className="min-w-0 truncate text-left text-xs font-semibold tabular-nums text-white/90 hover:text-[#FCD34D]"
-                                            >
-                                              #{item.inscriptionNumber}
-                                            </button>
-                                            {/* ··· more menu per inscription */}
-                                            <Menu as="div" className="relative shrink-0">
-                                              <Menu.Button
-                                                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/55 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#D4A017]/70"
-                                                aria-label={t('modal.aria.moreActions')}
-                                                title={t('modal.aria.moreActions')}
+                                            <div className="ds-inscription-card__chrome">
+                                              <button
+                                                type="button"
+                                                onClick={() => setInspectItem(item)}
+                                                className="ds-inscription-card__num"
                                               >
-                                                <EllipsisHorizontalIcon className="h-4 w-4" />
-                                              </Menu.Button>
+                                                {item.inscriptionNumber != null
+                                                  ? `#${item.inscriptionNumber}`
+                                                  : '#'}
+                                              </button>
+                                              <Menu as="div" className="relative shrink-0">
+                                                <Menu.Button
+                                                  className="ds-inscription-card__more focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#D4A017]/70"
+                                                  aria-label={t('modal.aria.moreActions')}
+                                                  title={t('modal.aria.moreActions')}
+                                                >
+                                                  <EllipsisHorizontalIcon className="h-3.5 w-3.5" />
+                                                </Menu.Button>
                                               <WalletMenuItems theme={isDark ? 'dark' : 'light'} anchor="bottom end" className="min-w-[12rem]">
                                                   <Menu.Item>
                                                     {({ focus, active }) => (
@@ -5476,6 +5478,7 @@ export function DojakwebWalletModal({
                                                   ) : null}
                                               </WalletMenuItems>
                                             </Menu>
+                                            </div>
                                           </div>
                                         </div>
                                         );

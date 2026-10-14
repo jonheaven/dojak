@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -41,6 +42,7 @@ export function DojakwebThemeProvider({ theme: themeProp, children }: DojakwebTh
   const [override, setOverride] = useState<WalletChromeTheme | null>(() =>
     typeof window === 'undefined' ? null : readWalletTheme(),
   );
+  const prevHostTheme = useRef<DojakwebTheme | null>(null);
 
   useEffect(() => {
     const sync = () => setOverride(readWalletTheme());
@@ -51,6 +53,20 @@ export function DojakwebThemeProvider({ theme: themeProp, children }: DojakwebTh
       window.removeEventListener('storage', sync);
     };
   }, []);
+
+  // Site header theme toggle changes themeProp — sync wallet chrome so the Wallets
+  // flyout is not stuck on a stale Settings pick. Skip the first value so hosts that
+  // briefly pass "dark" before hydrate do not wipe a saved preference.
+  useEffect(() => {
+    if (prevHostTheme.current === null) {
+      prevHostTheme.current = themeProp;
+      return;
+    }
+    if (prevHostTheme.current === themeProp) return;
+    prevHostTheme.current = themeProp;
+    writeWalletTheme(themeProp);
+    setOverride(themeProp);
+  }, [themeProp]);
 
   const setTheme = useCallback((next: DojakwebTheme) => {
     writeWalletTheme(next);

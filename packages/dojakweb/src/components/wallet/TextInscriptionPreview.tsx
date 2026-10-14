@@ -413,18 +413,18 @@ export function TextInscriptionCardMedia({ item, onInspect, className = '' }: Ca
     <button
       type="button"
       onClick={onInspect}
-      className={`relative flex aspect-square w-full flex-col overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-950 to-black p-3 text-left transition hover:brightness-110 ${className}`}
+      className={`ds-inscription-text-card relative flex aspect-square w-full flex-col overflow-hidden p-3 text-left transition hover:brightness-[1.03] ${className}`}
       title={dns ? parsed?.title || 'DNS name' : 'Inspect text / JSON'}
     >
       <div
-        className={`mb-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+        className={`ds-inscription-text-card__badge mb-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
           dns
-            ? 'bg-amber-400/20 text-amber-200'
+            ? 'ds-inscription-text-card__badge--dns'
             : lotto
-            ? 'bg-amber-500/20 text-amber-200'
+            ? 'ds-inscription-text-card__badge--lotto'
             : isJson
-              ? 'bg-violet-500/20 text-violet-200'
-              : 'bg-sky-500/15 text-sky-200'
+              ? 'ds-inscription-text-card__badge--json'
+              : 'ds-inscription-text-card__badge--text'
         }`}
       >
         {dns ? null : isJson ? (
@@ -436,23 +436,23 @@ export function TextInscriptionCardMedia({ item, onInspect, className = '' }: Ca
       </div>
 
       {loading ? (
-        <div className="flex flex-1 items-center text-[11px] text-white/40">Loading…</div>
+        <div className="ds-inscription-text-card__muted flex flex-1 items-center text-[11px]">Loading…</div>
       ) : parsed && dns ? (
         <div className="flex flex-1 flex-col justify-center">
-          <div className="break-all font-mono text-base font-bold leading-tight text-amber-100">
+          <div className="ds-inscription-text-card__dns-title break-all font-mono text-base font-bold leading-tight">
             {parsed.title}
           </div>
-          <div className="mt-1 text-[10px] uppercase tracking-wider text-white/45">
+          <div className="ds-inscription-text-card__muted mt-1 text-[10px] uppercase tracking-wider">
             {parsed.subtitle || 'Name'}
           </div>
         </div>
       ) : parsed ? (
         <>
-          <div className="line-clamp-2 text-xs font-semibold leading-snug text-white/95">
+          <div className="ds-inscription-text-card__title line-clamp-2 text-xs font-semibold leading-snug">
             {parsed.title}
           </div>
           {parsed.subtitle ? (
-            <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/50">
+            <div className="ds-inscription-text-card__muted mt-1 line-clamp-2 text-[10px] leading-snug">
               {parsed.subtitle}
             </div>
           ) : null}
@@ -461,17 +461,17 @@ export function TextInscriptionCardMedia({ item, onInspect, className = '' }: Ca
               {parsed.chips.slice(0, 8).map((c) => (
                 <span
                   key={c}
-                  className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-amber-100/90"
+                  className="ds-inscription-text-card__chip rounded-md px-1.5 py-0.5 font-mono text-[10px] tabular-nums"
                 >
                   {c}
                 </span>
               ))}
               {parsed.chips.length > 8 ? (
-                <span className="text-[10px] text-white/40">+{parsed.chips.length - 8}</span>
+                <span className="ds-inscription-text-card__muted text-[10px]">+{parsed.chips.length - 8}</span>
               ) : null}
             </div>
           ) : (
-            <pre className="mt-auto max-h-[42%] overflow-hidden whitespace-pre-wrap break-all font-mono text-[9px] leading-relaxed text-white/45">
+            <pre className="ds-inscription-text-card__raw mt-auto max-h-[55%] overflow-hidden whitespace-pre-wrap break-all font-mono text-[9px] leading-relaxed">
               {(parsed.raw || '').slice(0, 180)}
               {(parsed.raw || '').length > 180 ? '…' : ''}
             </pre>
@@ -479,8 +479,8 @@ export function TextInscriptionCardMedia({ item, onInspect, className = '' }: Ca
         </>
       ) : (
         <div className="flex flex-1 flex-col justify-center gap-1">
-          <DocumentTextIcon className="h-8 w-8 text-white/25" aria-hidden />
-          <span className="text-[10px] text-white/40">{item.contentType || 'text'}</span>
+          <DocumentTextIcon className="ds-inscription-text-card__icon h-8 w-8" aria-hidden />
+          <span className="ds-inscription-text-card__muted text-[10px]">{item.contentType || 'text'}</span>
         </div>
       )}
     </button>
