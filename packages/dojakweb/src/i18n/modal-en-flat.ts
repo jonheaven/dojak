@@ -176,10 +176,10 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.assets.filterAll': 'All',
   'modal.assets.filterMedia': 'Images',
   'modal.assets.filterDlotto': 'ÐLotto',
-  'modal.assets.filterDns': 'Names',
+  'modal.assets.filterDns': 'ÐNS',
   'modal.assets.dlocked': 'ÐLocked',
   'modal.assets.filterDlottoLoading': 'Finding tickets…',
-  'modal.assets.filterDnsLoading': 'Finding names…',
+  'modal.assets.filterDnsLoading': 'Finding ÐNS…',
   'modal.assets.noDoginalsHiddenTextHint':
     'No image Doginals left — {count} text/JSON inscriptions are hidden.',
   'modal.assets.noDlottoTitle': 'No ÐLotto inscriptions',

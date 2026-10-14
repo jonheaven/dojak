@@ -18,7 +18,7 @@ export interface WalletDrawerProps {
   /** Host override (e.g. ConnectWalletButton isDark). Falls back to DojakwebThemeProvider. */
   isDark?: boolean;
   openNonce?: number;
-  initialNftFilter?: 'all' | 'media' | 'dlotto';
+  initialNftFilter?: 'all' | 'media' | 'dlotto' | 'dns';
   initialDashboardTab?: 'assets' | 'transactions' | 'listings';
   initialAssetType?: 'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes';
 }

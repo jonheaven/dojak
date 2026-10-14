@@ -14,7 +14,7 @@ export type WalletOpenFocus = {
   /** Assets subtype */
   assetType?: 'nft' | 'drc20' | 'treats' | 'dunes' | 'charms' | 'alkanes';
   /** NFT grid filter */
-  nftFilter?: 'all' | 'media' | 'dlotto';
+  nftFilter?: 'all' | 'media' | 'dlotto' | 'dns';
 };
 
 interface DxHostState {
