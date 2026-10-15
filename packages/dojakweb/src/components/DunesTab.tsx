@@ -39,7 +39,6 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
   };
 
   const WHITE = 'THE•WHITE•DOGE';
-  const MANIFESTO = 'DOGENALS•OVER•DOGINALS';
   const [deployName, setDeployName] = useState(WHITE);
 
   return (
@@ -48,8 +47,8 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
         <p className="font-medium text-[#FCD34D]">{t('walletPage.dunes.heroBannerTitle')}</p>
         <p className="mt-1 text-xs text-text-secondary">{t('walletPage.dunes.heroBannerBody')}</p>
         <p className="mt-2 text-xs text-text-secondary">
-          Dual Era 2 flagships: <span className="font-mono text-text-primary">{MANIFESTO}</span> (manifesto) +{' '}
-          <span className="font-mono text-text-primary">{WHITE}</span> (liquidity / come-home).
+          Flagship liquidity Ðune:{' '}
+          <span className="font-mono text-text-primary">{WHITE}</span> (come-home rewards).
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button
@@ -62,18 +61,8 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
           >
             Etch {WHITE}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDeployName(MANIFESTO);
-              setDeployOpen(true);
-            }}
-            className="text-xs font-medium text-[#FCD34D] hover:underline"
-          >
-            Etch {MANIFESTO}
-          </button>
           <a
-            href="https://dogenals.com/come-home"
+            href="https://dogex.dog/come-home"
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-text-secondary hover:text-primary-500 hover:underline"
@@ -107,18 +96,6 @@ export const DunesTab: React.FC<Props> = ({ dunes, isLoading, error, onRefresh }
         >
           <SparklesIcon className="w-3.5 h-3.5" />
           Mint {WHITE}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMintDuneName(MANIFESTO);
-            setMintOpen(true);
-          }}
-          className="flex items-center gap-1.5 px-3 py-2 bg-bg-secondary border border-border-primary rounded text-text-primary text-xs hover:border-primary-500 transition-colors"
-          title={MANIFESTO}
-        >
-          <SparklesIcon className="w-3.5 h-3.5" />
-          Mint manifesto
         </button>
         <button
           type="button"
