@@ -36,8 +36,9 @@ export interface WalletDataProviderConfig {
    */
   mergeInuBitsInscriptions: boolean;
   /**
-   * When not false (default on), merge a page of Spooky Doge indexer Doginals and any DRC-20
-   * tickers the primary list missed. Reads only — never a broadcast path.
+   * When not false (default on), merge Spooky Doge indexer Doginals (paginated wallet NFTs)
+   * and any DRC-20 tickers the primary list missed. Spooky is the best full-bag fill while
+   * dogex is not genesis→tip. Reads only — never a broadcast path.
    */
   mergeSpookyIndex?: boolean;
   /**
@@ -65,6 +66,7 @@ export function getFactoryWalletDataProviderConfig(): WalletDataProviderConfig {
     walletDataProvider: 'mydoge',
     walletDataProviderUrl: undefined,
     mergeInuBitsInscriptions: true,
+    mergeSpookyIndex: true,
   };
 }
 
@@ -943,19 +945,84 @@ function mapInubitsRowToMyDoge(row: InubitsWalletInscriptionRow, walletAddress: 
   };
 }
 
-async function withSpookyInscriptions(
+function inscriptionIdSet(rows: MyDogeInscription[]): Set<string> {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    const id = normalizeDoginalInscriptionId(String(row.inscriptionId ?? '')).toLowerCase();
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
+/** Opt-in: `localStorage.dogenalsDebug=1` / `dojakwebDebug=1` or `?debug=1`. */
+function walletBagMergeDebugEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (window.localStorage?.getItem('dogenalsDebug') === '1') return true;
+    if (window.localStorage?.getItem('dojakwebDebug') === '1') return true;
+  } catch {
+    /* private mode */
+  }
+  try {
+    return new URLSearchParams(window.location.search).get('debug') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function logIndexerBagDiff(address: string, spooky: MyDogeInscription[], inubits: MyDogeInscription[]) {
+  if (!walletBagMergeDebugEnabled()) return;
+  const s = inscriptionIdSet(spooky);
+  const i = inscriptionIdSet(inubits);
+  let spookyOnly = 0;
+  let inubitsOnly = 0;
+  for (const id of s) if (!i.has(id)) spookyOnly += 1;
+  for (const id of i) if (!s.has(id)) inubitsOnly += 1;
+  console.info('[walletDataApi] indexer bag merge', {
+    address: `${address.slice(0, 10)}…`,
+    spooky: s.size,
+    inubits: i.size,
+    spookyOnly,
+    inubitsOnly,
+    union: new Set([...s, ...i]).size,
+  });
+}
+
+/**
+ * Parallel Spooky + InuBits fills (union by id). Either side may fail — the other still contributes.
+ * MyDoge/primary fields win on id collision when present.
+ */
+async function mergeSecondaryInscriptionBags(
   address: string,
   primary: MyDogeInscription[],
 ): Promise<MyDogeInscription[]> {
-  if (getWalletDataProviderConfig().mergeSpookyIndex === false) return primary;
-  try {
-    const { fetchSpookyWalletInscriptions } = await import('../lib/spooky-indexer');
-    const extra = await fetchSpookyWalletInscriptions(address);
-    return mergeInscriptionListsById(primary, extra);
-  } catch (e) {
-    console.warn('[walletDataApi] Spooky inscription merge failed', e);
-    return primary;
-  }
+  const cfg = getWalletDataProviderConfig();
+  const wantInu = cfg.mergeInuBitsInscriptions !== false;
+  const wantSpooky = cfg.mergeSpookyIndex !== false;
+
+  const inuP = wantInu
+    ? fetchInubitsWalletInscriptions(address).catch((e) => {
+        console.warn('[walletDataApi] InuBits inscription merge failed', e);
+        return [] as MyDogeInscription[];
+      })
+    : Promise.resolve([] as MyDogeInscription[]);
+
+  const spookyP = wantSpooky
+    ? import('../lib/spooky-indexer')
+        .then((m) => m.fetchSpookyWalletInscriptions(address))
+        .catch((e) => {
+          console.warn('[walletDataApi] Spooky inscription merge failed', e);
+          return [] as MyDogeInscription[];
+        })
+    : Promise.resolve([] as MyDogeInscription[]);
+
+  const [fromInu, fromSpooky] = await Promise.all([inuP, spookyP]);
+  if (wantInu && wantSpooky) logIndexerBagDiff(address, fromSpooky, fromInu);
+
+  let merged = primary;
+  if (fromInu.length) merged = mergeInscriptionListsById(merged, fromInu);
+  if (fromSpooky.length) merged = mergeInscriptionListsById(merged, fromSpooky);
+  return merged;
 }
 
 async function withSpookyDrc20(address: string, primary: DRC20Token[]): Promise<DRC20Token[]> {
@@ -1058,20 +1125,34 @@ async function fetchElectrsUtxos(base: string, addr: string): Promise<ProviderUt
 
 async function fetchInubitsWalletInscriptions(address: string): Promise<MyDogeInscription[]> {
   const base = getInubitsWalletInscriptionsBase();
-  const url = `${base}${INUBITS_WALLET_INSCRIPTIONS_PATH}?address=${encodeURIComponent(address)}`;
-  const data = await fetchJson(url, {
-    networkErrorMessage:
-      'Could not reach InuBits. The API blocks browser CORS — proxy `/__inubits/*` to `https://inubits.com/*` on your dev server (Dojakweb Vite and dogex Next config do this), or set NEXT_PUBLIC_INUBITS_API_BASE / VITE_INUBITS_API_BASE to your proxy URL. You can turn off “Merge InuBits inscriptions” in wallet settings to skip this request.',
-  });
-  if (!data || data.success !== true || !Array.isArray(data.inscriptions)) return [];
   const out: MyDogeInscription[] = [];
-  for (const row of data.inscriptions as InubitsWalletInscriptionRow[]) {
-    try {
-      const m = mapInubitsRowToMyDoge(row, address);
-      if (m) out.push(m);
-    } catch (err) {
-      console.warn('[walletDataApi] skip InuBits inscription row', err);
+  const seen = new Set<string>();
+  let page = 1;
+  const maxPages = 50;
+  while (page <= maxPages) {
+    const url = `${base}${INUBITS_WALLET_INSCRIPTIONS_PATH}?address=${encodeURIComponent(address)}&page=${page}`;
+    const data = await fetchJson(url, {
+      networkErrorMessage:
+        'Could not reach InuBits. The API blocks browser CORS — proxy `/__inubits/*` to `https://inubits.com/*` on your dev server (Dojakweb Vite and dogex Next config do this), or set NEXT_PUBLIC_INUBITS_API_BASE / VITE_INUBITS_API_BASE to your proxy URL. You can turn off “Merge InuBits inscriptions” in wallet settings to skip this request.',
+    });
+    if (!data || data.success !== true || !Array.isArray(data.inscriptions)) break;
+    const rows = data.inscriptions as InubitsWalletInscriptionRow[];
+    if (!rows.length) break;
+    for (const row of rows) {
+      try {
+        const m = mapInubitsRowToMyDoge(row, address);
+        if (!m) continue;
+        const k = m.inscriptionId.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(m);
+      } catch (err) {
+        console.warn('[walletDataApi] skip InuBits inscription row', err);
+      }
     }
+    const hasMore = data.hasNextPage === true || data.hasMore === true;
+    if (!hasMore) break;
+    page += 1;
   }
   return out;
 }
@@ -1183,33 +1264,21 @@ export const walletDataApi = {
   },
 
   fetchInscriptions: async (address: string): Promise<MyDogeInscription[]> => {
-    // electrs / commanddog have no inscription list — those stay on MyDoge until
-    // the 2026-09-17 cutoff. Default dogex uses `/inscriptions/:address`.
+    // Primary: MyDoge (or dogex compat list). Fill: InuBits + Spooky in parallel (union by id).
+    // dogex is not genesis→tip yet — Spooky/InuBits carry OG doginals MyDoge often omits.
+    let primary: MyDogeInscription[];
     if (usesMyDogeInscriptions()) {
-      const fromMyDoge = await fetchInscriptionsFromMyDoge(address);
-      const { mergeInuBitsInscriptions } = getWalletDataProviderConfig();
-      if (mergeInuBitsInscriptions === false) return withSpookyInscriptions(address, fromMyDoge);
+      primary = await fetchInscriptionsFromMyDoge(address);
+    } else {
       try {
-        const fromInu = await fetchInubitsWalletInscriptions(address);
-        return withSpookyInscriptions(address, mergeInscriptionListsById(fromMyDoge, fromInu));
+        const data = await fetchJson(getWalletEndpoint('/inscriptions/', address));
+        primary = extractArray(data) as MyDogeInscription[];
       } catch (e) {
-        console.warn('[walletDataApi] InuBits inscription merge failed', e);
-        return withSpookyInscriptions(address, fromMyDoge);
+        console.warn('[walletDataApi] primary inscription list failed', e);
+        primary = [];
       }
     }
-    const data = await fetchJson(getWalletEndpoint('/inscriptions/', address));
-    const primary = extractArray(data) as MyDogeInscription[];
-    const { mergeInuBitsInscriptions } = getWalletDataProviderConfig();
-    if (mergeInuBitsInscriptions === false) {
-      return withSpookyInscriptions(address, primary);
-    }
-    try {
-      const fromInu = await fetchInubitsWalletInscriptions(address);
-      return withSpookyInscriptions(address, mergeInscriptionListsById(primary, fromInu));
-    } catch (e) {
-      console.warn('[walletDataApi] InuBits inscription merge failed', e);
-      return withSpookyInscriptions(address, primary);
-    }
+    return mergeSecondaryInscriptionBags(address, primary);
   },
 
   fetchDRC20Tokens: async (walletOrAddress: any): Promise<DRC20Token[]> => {

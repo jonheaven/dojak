@@ -114,42 +114,67 @@ export async function fetchSpookyInscription(
   return mapInscription(j as Record<string, unknown>, id);
 }
 
-/** First page only. Spooky is a cross-check, not the wallet's full archive. */
+const SPOOKY_WALLET_PAGE = 100;
+/** Safety cap — huge bags still merge; UI can page locally. */
+const SPOOKY_WALLET_MAX = 5_000;
+
+function mapListedRow(addr: string, row: unknown): SpookyListedInscription | null {
+  if (!row || typeof row !== 'object') return null;
+  const meta = mapInscription(row as Record<string, unknown>, '');
+  if (!meta?.output) return null;
+  const txid = meta.inscriptionId.slice(0, 64);
+  return {
+    address: addr,
+    content: meta.contentUrl,
+    contentBody: '',
+    contentLength: 0,
+    contentType: meta.contentType || '',
+    genesisTransaction: txid,
+    inscriptionId: meta.inscriptionId,
+    inscriptionNumber: meta.inscriptionNumber ?? 0,
+    output: meta.output,
+    outputValue: String(meta.outputValueKoinu ?? 100_000),
+    preview: meta.contentUrl,
+    timestamp: 0,
+    height: meta.blockHeight ?? 0,
+    location: meta.output,
+  };
+}
+
+/**
+ * Full wallet bag from Spooky (`/wallet/:addr/nfts`, paginated).
+ * Prefer this merge while dogex is not genesis→tip — Spooky carries OG doginals,
+ * images, html, and text that MyDoge often omits.
+ */
 export async function fetchSpookyWalletInscriptions(
   address: string,
   signal?: AbortSignal,
 ): Promise<SpookyListedInscription[]> {
   const addr = address.trim();
   if (!addr) return [];
-  const j = await getJson(
-    `${SPOOKY_API_BASE}/wallet/${encodeURIComponent(addr)}/nfts?offset=0&limit=100`,
-    signal,
-  );
-  const rows = j && typeof j === 'object' && Array.isArray((j as { nfts?: unknown }).nfts)
-    ? ((j as { nfts: unknown[] }).nfts)
-    : [];
   const out: SpookyListedInscription[] = [];
-  for (const row of rows.slice(0, 100)) {
-    if (!row || typeof row !== 'object') continue;
-    const meta = mapInscription(row as Record<string, unknown>, '');
-    if (!meta?.output) continue;
-    const txid = meta.inscriptionId.slice(0, 64);
-    out.push({
-      address: addr,
-      content: meta.contentUrl,
-      contentBody: '',
-      contentLength: 0,
-      contentType: meta.contentType || '',
-      genesisTransaction: txid,
-      inscriptionId: meta.inscriptionId,
-      inscriptionNumber: meta.inscriptionNumber ?? 0,
-      output: meta.output,
-      outputValue: String(meta.outputValueKoinu ?? 100_000),
-      preview: meta.contentUrl,
-      timestamp: 0,
-      height: meta.blockHeight ?? 0,
-      location: meta.output,
-    });
+  const seen = new Set<string>();
+  let offset = 0;
+  while (offset < SPOOKY_WALLET_MAX) {
+    const j = await getJson(
+      `${SPOOKY_API_BASE}/wallet/${encodeURIComponent(addr)}/nfts?offset=${offset}&limit=${SPOOKY_WALLET_PAGE}`,
+      signal,
+    );
+    const rows =
+      j && typeof j === 'object' && Array.isArray((j as { nfts?: unknown }).nfts)
+        ? ((j as { nfts: unknown[] }).nfts)
+        : [];
+    if (!rows.length) break;
+    for (const row of rows) {
+      const mapped = mapListedRow(addr, row);
+      if (!mapped) continue;
+      const k = mapped.inscriptionId.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(mapped);
+    }
+    if (rows.length < SPOOKY_WALLET_PAGE) break;
+    offset += rows.length;
   }
   return out;
 }
