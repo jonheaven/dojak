@@ -23,6 +23,8 @@ const REQUIRED = [
   'filterVisibleInscriptions',
   'dogeTxExplorerUrl',
   'DogeTxLink',
+  'DogeTxTracker',
+  'useDogeTxConfirmations',
   'useBroadcastReceipt',
   'filterPaymentSpendableUtxos',
   'invalidateMydogeUtxoCaches',

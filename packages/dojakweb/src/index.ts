@@ -422,6 +422,12 @@ export {
 } from './utils/dogeTxExplorer';
 
 export { DogeTxLink, shortDogeTxid } from './components/DogeTxLink';
+export { DogeTxTracker, type DogeTxTrackerProps } from './components/DogeTxTracker';
+export {
+  useDogeTxConfirmations,
+  type DogeTxConfirmPhase,
+  type UseDogeTxConfirmationsOptions,
+} from './hooks/useDogeTxConfirmations';
 export { DogeAddressLink, shortDogeAddress } from './components/DogeAddressLink';
 export {
   useBroadcastReceipt,

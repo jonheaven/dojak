@@ -200,6 +200,7 @@ import {
   useDogeTxExplorerPreference,
   type DogeTxExplorerId,
 } from '../utils/dogeTxExplorer';
+import { DogeTxTracker } from './DogeTxTracker';
 import { createPortal } from 'react-dom';
 import {
   loadWalletTxJournal,
@@ -6269,15 +6270,33 @@ export function DojakwebWalletModal({
                         {inscriptionSendTxid ? (
                           <div className="space-y-3 rounded-xl border border-green-500/30 bg-green-500/10 p-4">
                             <div className="text-sm font-semibold text-green-300">{t('modal.sendInscription.sentTitle')}</div>
-                            <div className="text-xs text-white/70 font-mono break-all">{inscriptionSendTxid}</div>
-                            <a
-                              href={dogeTxExplorerUrl(inscriptionSendTxid)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-yellow-400 underline"
+                            <DogeTxTracker
+                              txid={inscriptionSendTxid}
+                              showLabel={false}
+                              full
+                              linkClassName="text-xs text-yellow-400 underline break-all font-mono"
+                              onConfirmed={() => {
+                                const body = (selectedInscription?.contentBody || '').trim();
+                                const name =
+                                  body && body.length <= 80
+                                    ? body.split(/\r?\n/).find((line) => line.trim())?.trim() || ''
+                                    : '';
+                                upsertWalletTxJournalEntry({
+                                  txid: inscriptionSendTxid,
+                                  address: activeAddress,
+                                  protocol: 'doginals',
+                                  action: 'send',
+                                  title:
+                                    name ||
+                                    (selectedInscription?.inscriptionNumber != null
+                                      ? `Inscription #${selectedInscription.inscriptionNumber}`
+                                      : 'Inscription transfer'),
+                                  status: 'confirmed',
+                                });
+                              }}
                             >
                               {t('modal.sendInscription.viewExplorer')}
-                            </a>
+                            </DogeTxTracker>
                           </div>
                         ) : inscriptionSendDraft ? (
                           <>

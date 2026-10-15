@@ -28,7 +28,7 @@ import { DOJAKWEB_TX_FEE_PREF_EVENT } from '../../lib/fees/txFeePreference';
 import { NetworkFeeControl } from '../fees/NetworkFeeControl';
 import { getPaymentUtxosForSend } from '../../lib/paymentUtxos';
 import { getSpendableBalanceBreakdown, type SpendableBalanceBreakdown } from '../../lib/spendableBalance';
-import { dogeTxExplorerUrl } from '../../utils/dogeTxExplorer';
+import { DogeTxTracker } from '../DogeTxTracker';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
 import { dxPayTweetIntentUrl } from '../../lib/dx/pay';
 import {
@@ -585,15 +585,15 @@ export function WalletSendFlow({
           </Button>
         </div>
 
-        <a
-          href={dogeTxExplorerUrl(txid)}
-          target="_blank"
-          rel="noreferrer"
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700"
+        <DogeTxTracker
+          txid={txid}
+          showLabel={false}
+          className="flex w-full justify-center"
+          linkClassName="flex w-full items-center justify-center gap-2 rounded-full bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700"
         >
           View on explorer
           <ArrowDownTrayIcon className="h-4 w-4 rotate-[-90deg]" />
-        </a>
+        </DogeTxTracker>
 
         {resolvedRecipient?.kind === 'dx' && resolvedPayLabel ? (
           <a

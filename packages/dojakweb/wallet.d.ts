@@ -60,6 +60,20 @@ export {
   DOGENALS_EXPLORER_ORIGIN,
   type DogeTxExplorerId,
 } from './src/utils/dogeTxExplorer';
+export { DogeTxLink, shortDogeTxid } from './src/components/DogeTxLink';
+export { DogeTxTracker, type DogeTxTrackerProps } from './src/components/DogeTxTracker';
+export {
+  useDogeTxConfirmations,
+  type DogeTxConfirmPhase,
+  type UseDogeTxConfirmationsOptions,
+} from './src/hooks/useDogeTxConfirmations';
+export {
+  useBroadcastReceipt,
+  loadBroadcastReceipt,
+  saveBroadcastReceipt,
+  clearBroadcastReceipt,
+  type BroadcastReceipt,
+} from './src/lib/broadcast-receipt';
 export {
   useDojakwebTheme,
   DojakwebThemeProvider,

@@ -12,6 +12,7 @@ import {
   koinuPerByteToKoinuPerKb,
 } from '../lib/fees/txFeePreference';
 import { NetworkFeeControl } from './fees/NetworkFeeControl';
+import { DogeTxTracker } from './DogeTxTracker';
 import { Input } from '@/components/ui/input';
 import { HARD_DUST_KOINU } from '../lib/dogecoin/softDust';
 
@@ -443,7 +444,12 @@ export const DuneSendModal: React.FC<Props> = ({
               <p className={embedded ? 'ds-wallet-approval__detail-label mb-1' : 'mb-1 text-xs text-text-secondary'}>
                 Transaction ID
               </p>
-              <p className="break-all font-mono text-xs">{txid}</p>
+              <DogeTxTracker
+                txid={txid}
+                showLabel={false}
+                full
+                linkClassName="break-all font-mono text-xs text-accent underline"
+              />
             </div>
           )}
         </div>

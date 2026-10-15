@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUnifiedWallet } from '../../contexts/useUnifiedWallet';
 import { useBrowserWallet } from '../../contexts/BrowserWalletContext';
-import { DogeTxLink } from '../DogeTxLink';
+import { DogeTxTracker } from '../DogeTxTracker';
 import { useBroadcastReceipt } from '../../lib/broadcast-receipt';
 import { upsertWalletTxJournalEntry } from '../../lib/wallet-tx-journal';
 import {
@@ -617,10 +617,11 @@ export function TreatsMintPanel({
 
           {shownTxid && (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
-              Broadcast:{' '}
-              <DogeTxLink
+              <DogeTxTracker
                 txid={shownTxid}
-                className="font-mono underline decoration-emerald-400/60 hover:decoration-emerald-200"
+                label="Broadcast"
+                confirmedLabel="Confirmed"
+                linkClassName="font-mono underline decoration-emerald-400/60 hover:decoration-emerald-200"
               />
             </div>
           )}
