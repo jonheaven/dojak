@@ -15,6 +15,8 @@ export const DCLAIMS_P = 'dclaims';
 export const DCLAIMS_V = '1';
 export const DCLAIMS_CONTENT_TYPE = 'application/json';
 export const DEFAULT_PROTOCOL_FEE_BPS = 250;
+/** dogecoin.games house — default Ðclaims protocol fee sink. */
+export const DEFAULT_PROTOCOL_ADDRESS = 'D8XknrqM5nNQnjpMLLTHRh5A3tQ4bWGLkB';
 
 export interface DclaimRect {
   x: number;
@@ -255,8 +257,9 @@ export async function createDclaim(
     if (fees.mintPrice > 0 && fees.creatorAddress) {
       payments.push({ address: fees.creatorAddress, satoshis: fees.mintPrice });
     }
-    if (fees.protocolFee > 0 && fees.protocolAddress) {
-      payments.push({ address: fees.protocolAddress, satoshis: fees.protocolFee });
+    if (fees.protocolFee > 0) {
+      const proto = (fees.protocolAddress || '').trim() || DEFAULT_PROTOCOL_ADDRESS;
+      payments.push({ address: proto, satoshis: fees.protocolFee });
     }
   }
   const pair = await signInscriptionTxs({
@@ -290,6 +293,6 @@ export function quoteDclaimMint(params: {
     mintPrice,
     protocolFee,
     total: mintPrice + protocolFee,
-    protocolAddress: params.protocolAddress ?? null,
+    protocolAddress: (params.protocolAddress || '').trim() || DEFAULT_PROTOCOL_ADDRESS,
   };
 }

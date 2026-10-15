@@ -78,6 +78,7 @@ export {
   DCLAIMS_P,
   DCLAIMS_V,
   DEFAULT_PROTOCOL_FEE_BPS,
+  DEFAULT_PROTOCOL_ADDRESS,
 } from '../lib/dclaims';
 export type {
   CreateDclaimParams,
