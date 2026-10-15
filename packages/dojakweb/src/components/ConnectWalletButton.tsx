@@ -1,7 +1,8 @@
 'use client';
 
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowsRightLeftIcon, WalletIcon } from '@heroicons/react/24/solid';
+import { ArrowsRightLeftIcon } from '@heroicons/react/24/solid';
+import { Wallet } from 'lucide-react';
 import WalletDrawer from './WalletDrawer';
 
 const DojakwebWalletModal = lazy(() => import('./DojakwebWalletModal'));
@@ -152,7 +153,7 @@ export function ConnectWalletButton({
             .join(' ')}
         >
           <span className="relative inline-flex h-[1.7rem] w-[1.7rem] shrink-0 items-center justify-center">
-            <WalletIcon className="h-full w-full" aria-hidden="true" />
+            <Wallet className="h-full w-full" strokeWidth={1.75} aria-hidden="true" />
             {connected && address && !approvalPending ? (
               <span
                 className="absolute -left-0.5 -bottom-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-[color:var(--ds-accent-solid)]"
