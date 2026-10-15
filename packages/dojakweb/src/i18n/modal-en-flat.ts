@@ -606,7 +606,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.settings.explorerTitle': 'Dogecoin Transaction Explorer',
   'modal.settings.explorer.dogenals': 'doge.watch',
   'modal.settings.explorer.dogenalsDesc':
-    'Default — doge.watch/explorer',
+    'Default — doge.watch/tx · /address · /mempool',
   'modal.settings.explorer.sochain': 'SoChain',
   'modal.settings.explorer.sochainDesc': 'Opens public SoChain tx pages in the browser (no API)',
   'modal.settings.explorer.dogechain': 'DogeChain',

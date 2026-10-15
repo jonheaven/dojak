@@ -5,7 +5,7 @@
  * - **Wallet bag (inscriptions / coins / DRC-20)**: **MyDoge** (`https://api.mydoge.com`)
  * - **Ðunes / Treats / Charms / Ðalkanes**: always dogex indexer
  * - **Chain ops**: command.dog first — broadcast / Core-backed status
- * - **Explorer links**: doge.watch/explorer
+ * - **Explorer links**: doge.watch/tx · /address · /mempool (SPA also at /explorer)
  *
  * dogex remains selectable in Settings for hosts that prefer the studio indexer.
  */

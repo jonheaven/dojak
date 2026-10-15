@@ -8,8 +8,14 @@ export const CHAIN_EXPLORER_CONFIG_KEY = 'dojakweb-chain-explorer-config';
 
 const CHANGED_EVENT = 'dojakweb-chain-explorer-changed';
 
-/** Canonical chain explorer (doge.watch). */
-export const DOGENALS_EXPLORER_ORIGIN = 'https://doge.watch/explorer';
+/**
+ * Public doge.watch origin for chain links.
+ * Prefer short paths (`/tx/…`, `/address/…`); the gateway 302s to `/explorer/…`.
+ */
+export const DOGENALS_EXPLORER_ORIGIN = 'https://doge.watch';
+
+/** Full explorer SPA mount (still valid; short paths redirect here). */
+export const DOGENALS_EXPLORER_SPA_ORIGIN = 'https://doge.watch/explorer';
 
 export function loadDogeTxExplorerPreference(): DogeTxExplorerId {
   if (typeof window === 'undefined') return 'dogenals';
@@ -97,6 +103,16 @@ export function dogeAddressExplorerUrl(address: string, pref?: DogeTxExplorerId)
     default:
       return `${DOGENALS_EXPLORER_ORIGIN}/address/${encodeURIComponent(a)}`;
   }
+}
+
+/** Alias — doge.watch/wallet/… 302s to /explorer/address/…. */
+export function dogeWalletExplorerUrl(address: string, pref?: DogeTxExplorerId): string {
+  const a = address.trim();
+  const p = pref ?? loadDogeTxExplorerPreference();
+  if (p === 'dogenals') {
+    return `${DOGENALS_EXPLORER_ORIGIN}/wallet/${encodeURIComponent(a)}`;
+  }
+  return dogeAddressExplorerUrl(a, p);
 }
 
 function subscribeExplorer(callback: () => void): () => void {

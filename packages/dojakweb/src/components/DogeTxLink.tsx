@@ -13,7 +13,7 @@ export function shortDogeTxid(txid: string, head = 10, tail = 8): string {
 
 /**
  * Transaction id link using Wallet → Settings → Dogecoin Transaction Explorer
- * (default doge.watch/explorer).
+ * (default doge.watch/tx/…).
  */
 export function DogeTxLink({
   txid,

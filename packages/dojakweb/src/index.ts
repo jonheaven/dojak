@@ -410,16 +410,19 @@ export { excludeDogexDuneBearingUtxos } from './lib/duneOutpointGuard';
 export {
   dogeTxExplorerUrl,
   dogeAddressExplorerUrl,
+  dogeWalletExplorerUrl,
   dogeTxExplorerDisplayName,
   ensureDefaultChainExplorer,
   loadDogeTxExplorerPreference,
   saveDogeTxExplorerPreference,
   useDogeTxExplorerPreference,
   DOGENALS_EXPLORER_ORIGIN,
+  DOGENALS_EXPLORER_SPA_ORIGIN,
   type DogeTxExplorerId,
 } from './utils/dogeTxExplorer';
 
 export { DogeTxLink, shortDogeTxid } from './components/DogeTxLink';
+export { DogeAddressLink, shortDogeAddress } from './components/DogeAddressLink';
 export {
   useBroadcastReceipt,
   loadBroadcastReceipt,
