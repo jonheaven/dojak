@@ -3,8 +3,8 @@
  *
  * Featured (defaults — user can change in Wallet → Settings):
  * - **Wallet bag (inscriptions / coins / DRC-20)**: **MyDoge** (`https://api.mydoge.com`),
- *   merged with **Spooky** (`api.spookydoge.xyz`) + InuBits — Spooky fills OG doginals /
- *   text while dogex is not genesis→tip
+ *   merged with **doggy.market** `/wallet/:addr/nfts` (via `/api/doggy`) + Spooky + InuBits.
+ *   Doggy is the live Era-1 Doginals inventory when MyDoge lists empty / Spooky is down.
  * - **Ðunes / Treats / Charms / Ðalkanes**: always dogex indexer
  * - **Chain ops**: command.dog first — broadcast / Core-backed status
  * - **Explorer links**: doge.watch/tx · /address · /mempool (SPA also at /explorer)

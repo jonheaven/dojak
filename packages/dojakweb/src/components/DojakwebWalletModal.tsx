@@ -2423,8 +2423,9 @@ export function DojakwebWalletModal({
     setAssetsError(null);
     try {
       // Hard per-call ceilings — hung dogex/MyDoge must not freeze Assets on "Loading…".
+      // Inscriptions need headroom for Doggy `/wallet/:addr/nfts` pagination (MyDoge/Spooky often empty).
       const settled = await Promise.allSettled([
-        withTimeout(walletDataApi.fetchInscriptions(address), 5_000, [], 'inscriptions'),
+        withTimeout(walletDataApi.fetchInscriptions(address), 28_000, [], 'inscriptions'),
         withTimeout(walletDataApi.fetchDRC20Tokens(address), 4_000, [], 'drc20'),
         withTimeout(walletDataApi.fetchTreatsBalances(address), 4_000, [], 'treats'),
         withTimeout(walletDataApi.fetchDunes(address), 4_500, [], 'dunes'),

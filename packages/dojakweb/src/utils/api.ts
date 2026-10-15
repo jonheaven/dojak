@@ -42,6 +42,11 @@ export interface WalletDataProviderConfig {
    */
   mergeSpookyIndex?: boolean;
   /**
+   * When not false (default on), merge doggy.market `GET /wallet/:addr/nfts` (via `/api/doggy`
+   * proxy). MyDoge address lists are often empty; Doggy is the live Era-1 Doginals inventory.
+   */
+  mergeDoggyMarketNfts?: boolean;
+  /**
    * When true, hide text/* and application/json inscriptions from the NFT grid
    * (lotto tickets, protocols, plain text). Default false.
    */
@@ -67,6 +72,7 @@ export function getFactoryWalletDataProviderConfig(): WalletDataProviderConfig {
     walletDataProviderUrl: undefined,
     mergeInuBitsInscriptions: true,
     mergeSpookyIndex: true,
+    mergeDoggyMarketNfts: true,
   };
 }
 
@@ -416,6 +422,8 @@ export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
     const walletDataProviderUrl =
       storedUrl && !urlsMatch(storedUrl, defaultUrl) ? storedUrl : defaultUrl;
     const mergeInuBitsInscriptions = parsed.mergeInuBitsInscriptions !== false;
+    const mergeSpookyIndex = parsed.mergeSpookyIndex !== false;
+    const mergeDoggyMarketNfts = parsed.mergeDoggyMarketNfts !== false;
     const hideTextJsonInscriptions = parsed.hideTextJsonInscriptions === true;
     const indexerApiBase = normalizeBaseUrl(parsed.indexerApiBase) || undefined;
     const commandDogApiBase = normalizeBaseUrl(parsed.commandDogApiBase) || undefined;
@@ -428,6 +436,8 @@ export const getWalletDataProviderConfig = (): WalletDataProviderConfig => {
       walletDataProvider,
       walletDataProviderUrl,
       mergeInuBitsInscriptions,
+      mergeSpookyIndex,
+      mergeDoggyMarketNfts,
       hideTextJsonInscriptions,
       indexerApiBase,
       commandDogApiBase,
@@ -989,8 +999,11 @@ function logIndexerBagDiff(address: string, spooky: MyDogeInscription[], inubits
 }
 
 /**
- * Parallel Spooky + InuBits fills (union by id). Either side may fail — the other still contributes.
- * MyDoge/primary fields win on id collision when present.
+ * Parallel Doggy + Spooky + InuBits fills (union by id). Either side may fail — others still
+ * contribute. MyDoge/primary fields win on id collision when present.
+ *
+ * Soft per-source ceilings keep a hung InuBits/Spooky from wiping the whole bag (wallet modal
+ * used to race the merge at 5s and land on []).
  */
 async function mergeSecondaryInscriptionBags(
   address: string,
@@ -999,27 +1012,56 @@ async function mergeSecondaryInscriptionBags(
   const cfg = getWalletDataProviderConfig();
   const wantInu = cfg.mergeInuBitsInscriptions !== false;
   const wantSpooky = cfg.mergeSpookyIndex !== false;
+  const wantDoggy = cfg.mergeDoggyMarketNfts !== false;
+
+  const empty = [] as MyDogeInscription[];
+
+  const doggyP = wantDoggy
+    ? withTimeout(
+        import('../lib/doggy-wallet-nfts')
+          .then((m) => m.fetchDoggyWalletInscriptions(address))
+          .catch((e) => {
+            console.warn('[walletDataApi] Doggy wallet NFT merge failed', e);
+            return empty;
+          }),
+        25_000,
+        empty,
+        'doggy-nfts',
+      )
+    : Promise.resolve(empty);
 
   const inuP = wantInu
-    ? fetchInubitsWalletInscriptions(address).catch((e) => {
-        console.warn('[walletDataApi] InuBits inscription merge failed', e);
-        return [] as MyDogeInscription[];
-      })
-    : Promise.resolve([] as MyDogeInscription[]);
+    ? withTimeout(
+        fetchInubitsWalletInscriptions(address).catch((e) => {
+          console.warn('[walletDataApi] InuBits inscription merge failed', e);
+          return empty;
+        }),
+        6_000,
+        empty,
+        'inubits-nfts',
+      )
+    : Promise.resolve(empty);
 
   const spookyP = wantSpooky
-    ? import('../lib/spooky-indexer')
-        .then((m) => m.fetchSpookyWalletInscriptions(address))
-        .catch((e) => {
-          console.warn('[walletDataApi] Spooky inscription merge failed', e);
-          return [] as MyDogeInscription[];
-        })
-    : Promise.resolve([] as MyDogeInscription[]);
+    ? withTimeout(
+        import('../lib/spooky-indexer')
+          .then((m) => m.fetchSpookyWalletInscriptions(address))
+          .catch((e) => {
+            console.warn('[walletDataApi] Spooky inscription merge failed', e);
+            return empty;
+          }),
+        6_000,
+        empty,
+        'spooky-nfts',
+      )
+    : Promise.resolve(empty);
 
-  const [fromInu, fromSpooky] = await Promise.all([inuP, spookyP]);
+  const [fromDoggy, fromInu, fromSpooky] = await Promise.all([doggyP, inuP, spookyP]);
   if (wantInu && wantSpooky) logIndexerBagDiff(address, fromSpooky, fromInu);
 
   let merged = primary;
+  // Doggy first among fills — currently the only reliable Era-1 inventory API.
+  if (fromDoggy.length) merged = mergeInscriptionListsById(merged, fromDoggy);
   if (fromInu.length) merged = mergeInscriptionListsById(merged, fromInu);
   if (fromSpooky.length) merged = mergeInscriptionListsById(merged, fromSpooky);
   return merged;
@@ -1264,8 +1306,8 @@ export const walletDataApi = {
   },
 
   fetchInscriptions: async (address: string): Promise<MyDogeInscription[]> => {
-    // Primary: MyDoge (or dogex compat list). Fill: InuBits + Spooky in parallel (union by id).
-    // dogex is not genesis→tip yet — Spooky/InuBits carry OG doginals MyDoge often omits.
+    // Primary: MyDoge (or dogex compat list). Fill: Doggy wallet/nfts + Spooky + InuBits.
+    // MyDoge address lists are often empty; Spooky has been 500ing — Doggy is the live bag.
     let primary: MyDogeInscription[];
     if (usesMyDogeInscriptions()) {
       primary = await fetchInscriptionsFromMyDoge(address);
