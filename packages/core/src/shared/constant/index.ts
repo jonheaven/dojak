@@ -228,10 +228,10 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
       'https://dogecoin-rpc.publicnode.com', // PublicNode (free tier)
       'https://doge.getblock.io/mainnet/' // GetBlock.io (alternative)
     ],
-    mempoolSpaceUrl: 'https://dogecoin.network', // Dogecoin explorer
-    dojakUrl: 'https://dogenals.com',
+    mempoolSpaceUrl: 'https://doge.watch/mempool',
+    dojakUrl: 'https://dogex.dog',
     doginalsUrl: 'https://doginals.com',
-    dojakExplorerUrl: 'https://dogecoin.network', // Dogecoin explorer
+    dojakExplorerUrl: 'https://doge.watch',
     okxExplorerUrl: '',
     showPrice: true,
     defaultExplorer: 'dojak-explorer',
@@ -246,7 +246,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
     networkType: NetworkType.TESTNET,
     endpoints: ['https://dogecoin-testnet-rpc.allthatnode.com'], // Dogecoin testnet RPC (AllThatNode)
     mempoolSpaceUrl: 'https://testnet.dogecoin.network', // Dogecoin testnet explorer
-    dojakUrl: 'https://dogenals.com',
+    dojakUrl: 'https://dogex.dog',
     doginalsUrl: 'https://testnet.doginals.com',
     dojakExplorerUrl: '',
     okxExplorerUrl: '',
@@ -262,7 +262,7 @@ export const CHAINS_MAP: { [key: string]: TypeChain } = {
     networkType: NetworkType.TESTNET,
     endpoints: ['https://dogecoin-testnet4-rpc.allthatnode.com'], // Dogecoin testnet4 RPC
     mempoolSpaceUrl: 'https://testnet4.dogecoin.network', // Dogecoin testnet4 explorer
-    dojakUrl: 'https://dogenals.com',
+    dojakUrl: 'https://dogex.dog',
     doginalsUrl: 'https://testnet4.doginals.com',
     dojakExplorerUrl: '',
     okxExplorerUrl: '',

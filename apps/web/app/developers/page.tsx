@@ -59,7 +59,7 @@ export default function DevelopersPage() {
             <Pill>Quick start</Pill>
             <h2 className="mt-4 text-2xl font-bold">Copy-paste provider snippet</h2>
             <p className="mt-3 text-sm leading-6 text-zinc-600">
-              Same pattern across dogenals.com, dogecoin.games, and first-party orbit apps. Prefer the injected
+              Same pattern across dogex.dog, dogecoin.games, and first-party orbit apps. Prefer the injected
               provider over asking users to paste seeds into your site.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">

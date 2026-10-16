@@ -131,7 +131,8 @@ export function HistoryDetail({ detail, close }: HistoryDetailProps) {
             <Button
               text={t('view_on_mempool')}
               onClick={() => {
-                window.open(`${chain.mempoolSpaceUrl}/tx/${detail.txid}`);
+                const base = chain.mempoolSpaceUrl.replace(/\/$/, '');
+                window.open(base.includes('/mempool') ? base : `${base}/tx/${detail.txid}`);
               }}
             />
           )}

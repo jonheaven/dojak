@@ -418,7 +418,7 @@
     "message": "Активные адреса (24ч)"
   },
   "go_to_dojak_explorer": {
-    "message": "Перейти в SoChain"
+    "message": "Открыть doge.watch"
   },
   "search_address_and_txids": {
     "message": "Поиск адреса и TXID"
@@ -1522,7 +1522,7 @@
     "message": "Дата"
   },
   "view_on_dojak_explorer": {
-    "message": "Посмотреть в UniSat Explorer"
+    "message": "Смотреть на doge.watch"
   },
   "view_on_okx_explorer": {
     "message": "Посмотреть в OKX Explorer"

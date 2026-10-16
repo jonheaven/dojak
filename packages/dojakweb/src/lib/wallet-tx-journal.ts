@@ -118,14 +118,15 @@ export function guessWalletTxOriginLabel(host: string, path: string): string {
     if (p.includes('lotto') || p.includes('dlotto')) return 'dogecoin.games · ÐLotto';
     return 'dogecoin.games';
   }
-  if (h.includes('dogecoin.dog') || h.includes('dogenals')) {
+  if (h.includes('dogex.dog') || h.includes('dogecoin.dog') || h.includes('dogenals')) {
     if (p.includes('/dns') || p.startsWith('/n/')) return 'dogecoin.dog · DNS';
     if (p.includes('/lock')) return 'dogenals · ÐLocker';
     if (p.includes('/incinerator') || p.includes('/burn')) return 'dogenals · BurneÐ';
     if (p.includes('alkane')) return 'dogenals · Ðalkanes';
     if (p.includes('dogepark')) return 'dogenals · DogePark';
     // Protocol (Ðunes / Treats) already has its own chip — don't restamp "dogenals · Ðunes".
-    return h.includes('dogecoin.dog') ? 'dogecoin.dog' : 'dogenals.com';
+    if (h.includes('dogex.dog')) return 'dogex.dog';
+    return h.includes('dogecoin.dog') ? 'dogecoin.dog' : 'dogex.dog';
   }
   if (h.includes('dojak')) return 'Dojakweb';
   if (h.includes('localhost') || h === '127.0.0.1') return `local · ${p || '/'}`;

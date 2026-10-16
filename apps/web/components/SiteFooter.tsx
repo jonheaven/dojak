@@ -80,7 +80,7 @@ export function SiteFooter() {
           <ul className="mt-3 space-y-2 text-sm">
             <li>
               <a href={LINKS.dogenalsCom} target="_blank" rel="noreferrer" className="hover:text-[#D4A017]">
-                dogenals.com
+                dogex.dog
               </a>
             </li>
             <li>

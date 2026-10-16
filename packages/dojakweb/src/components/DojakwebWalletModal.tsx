@@ -7405,7 +7405,7 @@ export function DojakwebWalletModal({
                               <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/35">TX Explorer</div>
                               <div className="flex gap-2">
                                 {([
-                                  { id: 'dogenals' as const, label: 'ÐExplorer' },
+                                  { id: 'dogenals' as const, label: 'doge.watch' },
                                   { id: 'sochain' as const, label: 'SoChain' },
                                   { id: 'dogechain' as const, label: 'DogeChain' },
                                   { id: 'blockchair' as const, label: 'Blockchair' },

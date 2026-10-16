@@ -181,21 +181,9 @@ function guessContentType(file: File): string {
   return 'application/octet-stream';
 }
 
-/** Public explorer links — prefer Wallet Settings (doge.watch default); keep others open. */
+/** Public explorer link — Wallet Settings, default doge.watch. */
 function preferredPublicTxPageUrl(txid: string): string {
   return dogeTxExplorerUrl(txid);
-}
-
-function dogechainPublicTxUrl(txid: string): string {
-  return `https://dogechain.info/tx/${txid}`;
-}
-
-function blockchairPublicTxUrl(txid: string): string {
-  return `https://blockchair.com/dogecoin/transaction/${txid}`;
-}
-
-function sochainPublicTxPageUrl(txid: string): string {
-  return `https://sochain.com/tx/DOGE/${txid}`;
 }
 
 function dogenalsPublicTxUrl(txid: string): string {
@@ -1430,8 +1418,8 @@ export const InscribePage: React.FC = () => {
             </div>
             <ConfirmationReadSourcesBar dense className="border-white/8 bg-black/20" />
             <p className="text-[11px] leading-relaxed text-text-tertiary dark:text-white/45">
-              With RPC + same-origin proxy, “low fee — may be stuck” can use your node’s mempool. SoChain links in the UI are
-              manual lookup only — not polled for confirmations.
+              With RPC + same-origin proxy, “low fee — may be stuck” can use your node’s mempool. The tx link
+              follows Wallet Settings (default doge.watch) and is not polled for confirmations.
             </p>
           </div>
         )}
@@ -1848,36 +1836,6 @@ export const InscribePage: React.FC = () => {
                                   className="text-xs text-white/50 underline hover:text-white/80"
                                 >
                                   doge.watch
-                                </a>
-                              ) : null}
-                              {prefName !== 'SoChain' ? (
-                                <a
-                                  href={sochainPublicTxPageUrl(st.txid)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-white/50 underline hover:text-white/80"
-                                >
-                                  SoChain
-                                </a>
-                              ) : null}
-                              {prefName !== 'DogeChain' ? (
-                                <a
-                                  href={dogechainPublicTxUrl(st.txid)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-white/50 underline hover:text-white/80"
-                                >
-                                  DogeChain
-                                </a>
-                              ) : null}
-                              {prefName !== 'Blockchair' ? (
-                                <a
-                                  href={blockchairPublicTxUrl(st.txid)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-white/50 underline hover:text-white/80"
-                                >
-                                  Blockchair
                                 </a>
                               ) : null}
                             </>

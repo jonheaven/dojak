@@ -37,7 +37,7 @@ export class TxPoller {
     this.txIds = Array.isArray(txIds) ? txIds : [txIds];
     this.pollInterval = options.pollInterval || 10000; // 10 seconds
     this.maxConfirmations = options.maxConfirmations || 6; // Dogecoin standard
-    this.explorerBase = options.explorerBase || 'https://dogechain.info/tx/';
+    this.explorerBase = options.explorerBase || 'https://doge.watch/tx/';
     this.onUpdate = options.onUpdate;
     this.onComplete = options.onComplete;
     this.onProgress = options.onProgress;

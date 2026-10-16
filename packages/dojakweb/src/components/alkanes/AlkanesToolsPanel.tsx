@@ -294,7 +294,7 @@ export function AlkanesToolsPanel({
           Deploy AMM, block/time oracle, or signed price oracle; simulate and broadcast OP_RETURN 0xD1.{' '}
           <a
             className="text-primary-500 underline hover:text-primary-400"
-            href="https://dogenals.com/alkanescan"
+            href="https://dogex.dog/alkanescan"
             target="_blank"
             rel="noreferrer"
           >
@@ -303,7 +303,7 @@ export function AlkanesToolsPanel({
           {' · '}
           <a
             className="text-primary-500 underline hover:text-primary-400"
-            href="https://dogenals.com/alkanes/clock-in"
+            href="https://dogex.dog/alkanes/clock-in"
             target="_blank"
             rel="noreferrer"
           >
@@ -396,7 +396,7 @@ export function AlkanesToolsPanel({
                   </button>
                   <a
                     className="text-primary-500 underline hover:text-primary-400"
-                    href={`https://dogenals.com/alkanescan/${m.id.replace(':', '/')}`}
+                    href={`https://dogex.dog/alkanescan/${m.id.replace(':', '/')}`}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -405,7 +405,7 @@ export function AlkanesToolsPanel({
                   {app ? (
                     <a
                       className="text-primary-500 underline hover:text-primary-400"
-                      href={`https://dogenals.com${app}${app.includes('?') ? '&' : '?'}target=${encodeURIComponent(m.id)}`}
+                      href={`https://dogex.dog${app}${app.includes('?') ? '&' : '?'}target=${encodeURIComponent(m.id)}`}
                       target="_blank"
                       rel="noreferrer"
                     >

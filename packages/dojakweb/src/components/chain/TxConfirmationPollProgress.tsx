@@ -101,7 +101,7 @@ export function TxConfirmationPollProgress({
               variant === 'default' && 'text-muted-foreground',
             )}
           >
-            If SoChain or your wallet already shows this tx mined, public APIs can lag — use{' '}
+            If doge.watch or your wallet already shows this tx mined, public APIs can lag — use{' '}
             <strong className={variant === 'doginals' ? 'text-amber-50' : 'text-foreground'}>Refresh chain status</strong>{' '}
             or wait for the countdown above.
           </p>

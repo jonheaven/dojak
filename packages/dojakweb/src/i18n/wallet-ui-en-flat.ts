@@ -281,7 +281,7 @@ export const WALLET_UI_EN_FLAT: Record<string, string> = {
   'utxo.aria.lockOne': 'Lock coin',
   'utxo.aria.unlockOne': 'Unlock coin',
   'utxo.selectAll': 'Select all coins',
-  'utxo.viewOnExplorer': 'View on SoChain ↗',
+  'utxo.viewOnExplorer': 'View on explorer ↗',
   'utxo.confirmPendingNote': 'Transaction broadcast — new outputs appear once confirmed. Dogecoin blocks every ~1 min. If using Blockchair as data source, unconfirmed outputs won\'t appear until confirmed.',
 
   'chain.confirmReads.title': 'Tx confirmation checks',

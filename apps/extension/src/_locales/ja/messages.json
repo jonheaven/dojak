@@ -418,7 +418,7 @@
     "message": "アクティブアドレス (24時間)"
   },
   "go_to_dojak_explorer": {
-    "message": "SoChainへ移動"
+    "message": "doge.watch を開く"
   },
   "search_address_and_txids": {
     "message": "アドレスとTXIDを検索"
@@ -1522,7 +1522,7 @@
     "message": "日付"
   },
   "view_on_dojak_explorer": {
-    "message": "UniSat Explorerで表示"
+    "message": "doge.watch で表示"
   },
   "view_on_okx_explorer": {
     "message": "OKX Explorerで表示"

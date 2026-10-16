@@ -28,7 +28,7 @@ export function TreatsPage() {
         <p className="mt-2 text-sm text-zinc-400">
           OP_RETURN meme/launch lane (<code className="text-zinc-200">p:&quot;dt&quot;</code>) — companion to{' '}
           <strong className="text-zinc-300">Ðunes</strong> (hero fungible). Swap and pool via{' '}
-          <strong className="text-zinc-300">ÐSwap Core</strong> on dogenals.com (DOGE/TREATS). Classic inscription DRC-20 is legacy read-only.
+          <strong className="text-zinc-300">ÐSwap Core</strong> on dogex.dog (DOGE/TREATS). Classic inscription DRC-20 is legacy read-only.
         </p>
       </div>
 

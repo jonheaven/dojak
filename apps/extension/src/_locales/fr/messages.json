@@ -420,7 +420,7 @@
     "message": "Adresses Actives (24h)"
   },
   "go_to_dojak_explorer": {
-    "message": "Aller sur SoChain"
+    "message": "Ouvrir doge.watch"
   },
   "search_address_and_txids": {
     "message": "Rechercher Adresse et TXIDs"
@@ -1528,7 +1528,7 @@
     "message": "Date"
   },
   "view_on_dojak_explorer": {
-    "message": "Voir sur l'Explorateur UniSat"
+    "message": "Voir sur doge.watch"
   },
   "view_on_okx_explorer": {
     "message": "Voir sur l'Explorateur OKX"

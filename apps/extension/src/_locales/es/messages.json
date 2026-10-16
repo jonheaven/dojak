@@ -416,7 +416,7 @@
     "message": "Direcciones Activas (24h)"
   },
   "go_to_dojak_explorer": {
-    "message": "Ir al SoChain"
+    "message": "Abrir doge.watch"
   },
   "search_address_and_txids": {
     "message": "Buscar Dirección y TXIDs"
@@ -1524,7 +1524,7 @@
     "message": "Fecha"
   },
   "view_on_dojak_explorer": {
-    "message": "Ver en Explorador UniSat"
+    "message": "Ver en doge.watch"
   },
   "view_on_okx_explorer": {
     "message": "Ver en Explorador OKX"

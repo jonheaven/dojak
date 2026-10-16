@@ -9,7 +9,7 @@ export const LINKS = {
   android: 'https://play.google.com/store/apps',
   ios: '/download#ios',
   dogenals: 'https://dogenals.org',
-  dogenalsCom: 'https://dogenals.com',
+  dogenalsCom: 'https://dogex.dog',
   drok: 'https://drok.lol',
   games: 'https://dogecoin.games',
   explorer: 'https://doge.watch/explorer',

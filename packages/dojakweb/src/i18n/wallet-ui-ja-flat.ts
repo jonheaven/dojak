@@ -274,7 +274,7 @@ export const WALLET_UI_JA_FLAT: Record<string, string> = {
   'utxo.aria.lockOne': 'UTXO をロック',
   'utxo.aria.unlockOne': 'UTXO のロックを解除',
   'utxo.selectAll': 'すべて選択',
-  'utxo.viewOnExplorer': 'SoChain で表示 ↗',
+  'utxo.viewOnExplorer': 'エクスプローラーで表示 ↗',
   'utxo.confirmPendingNote':
     'トランザクションをブロードキャスト済み — 新しい出力は確認後に表示されます。Dogecoin は約 1 分でブロックします。Blockchair をデータソースにしている場合、未確認の出力は確認まで表示されないことがあります。',
 

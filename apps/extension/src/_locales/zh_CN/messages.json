@@ -52,7 +52,7 @@
     "message": "活跃地址 (24h)"
   },
   "go_to_dojak_explorer": {
-    "message": "前往 SoChain"
+    "message": "前往 doge.watch"
   },
   "search_address_and_txids": {
     "message": "搜索地址和交易ID"
@@ -1512,7 +1512,7 @@
     "message": "日期"
   },
   "view_on_dojak_explorer": {
-    "message": "在 UniSat Explorer 上查看"
+    "message": "在 doge.watch 上查看"
   },
   "view_on_okx_explorer": {
     "message": "在 OKX Explorer 上查看"

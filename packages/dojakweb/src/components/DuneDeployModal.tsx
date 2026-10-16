@@ -109,7 +109,7 @@ function rememberDuneEtchReceipt(receipt: { name: string; txid: string; address?
       title: `Dune etch: ${receipt.name}`,
       summary: 'Ðune etch broadcast from Dojakweb (OP_RETURN 0xD0)',
       status: 'broadcasted',
-      originLabel: 'dogenals.com',
+      originLabel: 'dogex.dog',
       metadata: {
         duneName: receipt.name,
         actionLabel: 'Etch',

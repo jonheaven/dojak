@@ -42,7 +42,13 @@ export function SettingsList() {
 
       const origin = new URL(res.url).origin;
 
-      if (origin === 'https://dojak.app' || origin === 'https://dogenals.com') {
+      if (
+        origin === 'https://dojak.app' ||
+        origin === 'https://dogex.dog' ||
+        origin === 'https://www.dogex.dog' ||
+        origin === 'https://doge.watch' ||
+        origin === 'https://www.doge.watch'
+      ) {
         setConnected(true);
       } else {
         const sites = await wallet.getConnectedSites();

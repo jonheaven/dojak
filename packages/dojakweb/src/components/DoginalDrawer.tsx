@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { XMarkIcon, ArrowTopRightOnSquareIcon, EyeIcon, InformationCircleIcon, ClockIcon, MapPinIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useDoginalDrawer } from '../contexts/DoginalDrawerContext';
 import { useConnectedWalletAddress } from '../wallet/getConnectedWalletAddress';
-import { dogeTxExplorerDisplayName, dogeTxExplorerUrl, useDogeTxExplorerPreference } from '../utils/dogeTxExplorer';
+import { DOGENALS_EXPLORER_ORIGIN, dogeTxExplorerDisplayName, dogeTxExplorerUrl, useDogeTxExplorerPreference } from '../utils/dogeTxExplorer';
 import { OwnershipFlow } from './OwnershipFlow';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -524,7 +524,7 @@ const DoginalDrawer: React.FC = () => {
 
             {drawerData.inscriptionId && (
               <a
-                href={`https://dogechain.info/inscription/${drawerData.inscriptionId}`}
+                href={`${DOGENALS_EXPLORER_ORIGIN}/inscription/${encodeURIComponent(drawerData.inscriptionId)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center space-x-2 w-full px-4 py-2 bg-bg-secondary hover:bg-bg-secondary/80 text-text-primary rounded-lg transition-colors duration-200"

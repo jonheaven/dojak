@@ -419,7 +419,7 @@
     "message": "活躍地址數 (24小時)"
   },
   "go_to_dojak_explorer": {
-    "message": "前往 SoChain"
+    "message": "前往 doge.watch"
   },
   "search_address_and_txids": {
     "message": "搜尋地址和交易 ID"
@@ -1524,7 +1524,7 @@
     "message": "日期"
   },
   "view_on_dojak_explorer": {
-    "message": "在 UniSat 瀏覽器上查看"
+    "message": "在 doge.watch 上查看"
   },
   "view_on_okx_explorer": {
     "message": "在 OKX 瀏覽器上查看"

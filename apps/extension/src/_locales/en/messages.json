@@ -423,7 +423,7 @@
     "message": "Active Addresses (24h)"
   },
   "go_to_dojak_explorer": {
-    "message": "Go to SoChain"
+    "message": "Open doge.watch"
   },
   "search_address_and_txids": {
     "message": "Search Address and TXIDs"
@@ -1539,13 +1539,16 @@
     "message": "Date"
   },
   "view_on_sochain_explorer": {
-    "message": "View on SoChain Explorer"
+    "message": "View on doge.watch"
+  },
+  "view_on_dojak_explorer": {
+    "message": "View on doge.watch"
   },
   "view_on_okx_explorer": {
     "message": "View on OKX Explorer"
   },
   "view_on_mempool": {
-    "message": "View on Mempool"
+    "message": "View mempool on doge.watch"
   },
   "from": {
     "message": "From"

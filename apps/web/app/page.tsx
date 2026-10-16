@@ -261,7 +261,7 @@ export default function HomePage() {
                 description={
                   <>
                     Detect <code className="site-code">isDojak</code>, request accounts, sign, push. Same
-                    Dogecoin-native language across dogenals.com, dogecoin.games, and the orbit.
+                    Dogecoin-native language across dogex.dog, dogecoin.games, and the orbit.
                   </>
                 }
               />
@@ -385,7 +385,7 @@ export default function HomePage() {
             {[
               { href: LINKS.explorer, label: 'doge.watch' },
               { href: LINKS.dogenals, label: 'dogenals.org' },
-              { href: LINKS.dogenalsCom, label: 'dogenals.com' },
+              { href: LINKS.dogenalsCom, label: 'dogex.dog' },
               { href: '/dogenals', label: 'Protocol Wall' }
             ].map((l) => (
               <Link
