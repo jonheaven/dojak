@@ -141,6 +141,7 @@ import {
 } from '../lib/browser-wallet-lock-prefs';
 import { findSeedGroupIndexForAddress, groupBrowserWalletsBySeed, type BrowserWalletSeedGroup } from '../lib/wallet-seed-groups';
 import { ConfirmationReadSourcesBar } from './chain/ConfirmationReadSourcesBar';
+import { UnlockLockCountdown } from './wallet/UnlockLockCountdown';
 import { decryptText, encryptText, pbkdf2IterationsForSecretStrength } from '../lib/secureStorage';
 import { useUnifiedWallet } from '../contexts/UnifiedWalletContext';
 import { toast } from 'sonner';
@@ -1612,8 +1613,11 @@ export function DojakwebWalletModal({
       ).includes(stepRef.current);
 
       if (!connected && !browserSessionActive && localStorage.getItem(BROWSER_WALLET_RESTORE_BLOCK_KEY) === 'true') {
-        if (!holdWizardStep && !keepLocalBrowserWizard) setStep('chooser');
-        return;
+        const pinFirst = initialStep === 'unlock' || stepRef.current === 'unlock';
+        if (!pinFirst && !holdWizardStep && !keepLocalBrowserWizard) {
+          setStep('chooser');
+        }
+        if (!pinFirst) return;
       }
 
       if (browserSessionActive && browser.address) {
@@ -1735,6 +1739,7 @@ export function DojakwebWalletModal({
     browser.loadWallet,
     browser.connect,
     connected,
+    initialStep,
     isOpen,
     refreshSavedLocalWallets,
     setActiveWallet,
@@ -6208,9 +6213,10 @@ export function DojakwebWalletModal({
 
                         {/* Data provider indicator - bottom left, less flashy */}
                         <div className="mt-4 text-left">
-                          <div className="inline-flex items-center gap-1 text-[10px] text-white/40">
+                          <div className="inline-flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] text-white/40">
                             <span>{t('modal.dataLabel.prefix')}</span>
                             <span className="font-medium">{getDataProviderInfo(t).label}</span>
+                            {isBrowserWallet && browser.unlocked ? <UnlockLockCountdown /> : null}
                           </div>
                         </div>
                       </div>

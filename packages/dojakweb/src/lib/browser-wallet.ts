@@ -890,6 +890,34 @@ export class BrowserWallet {
     return walletToPersist;
   }
 
+  /** Sync check for a saved local browser wallet. Safe before React state hydrates. */
+  static peekSaved(): boolean {
+    if (typeof localStorage === 'undefined') return false;
+    try {
+      const raw = localStorage.getItem(BrowserWallet.STORAGE_WALLETS);
+      if (raw) {
+        const parsed = JSON.parse(raw) as unknown;
+        if (Array.isArray(parsed) && parsed.length > 0) return true;
+      }
+    } catch {
+      /* ignore malformed list */
+    }
+    if (localStorage.getItem(BrowserWallet.STORAGE_CURRENT)) return true;
+    if (localStorage.getItem(BrowserWallet.STORAGE_KEY)) return true;
+    if (localStorage.getItem(BrowserWallet.STORAGE_ENCRYPTED_KEY)) return true;
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (
+        key.startsWith(BrowserWallet.STORAGE_ENCRYPTED_PREFIX) ||
+        key.startsWith(BrowserWallet.STORAGE_UNENCRYPTED_PREFIX)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   async hasWallet(): Promise<boolean> {
 
     const list = await this.readWalletList();

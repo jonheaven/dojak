@@ -231,6 +231,8 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.listings.localOnly': 'ローカルのみ（リスクあり）',
   'modal.listings.keep': '維持',
   'modal.dataLabel.prefix': 'データ:',
+  'modal.dataLabel.locksIn': 'あと {time} でロック',
+  'modal.dataLabel.locksOnClose': 'このタブを閉じるとロック',
   'modal.sendInscription.sentTitle': 'Inscription を送信しました',
   'modal.sendInscription.viewExplorer': 'エクスプローラーで見る →',
   'modal.sendInscription.recipientLabel': '受取先',

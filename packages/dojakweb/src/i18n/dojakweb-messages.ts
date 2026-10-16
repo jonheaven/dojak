@@ -35,6 +35,7 @@ const en: MsgTree = {
     connect: 'Connect wallet',
     openConnectedAria: 'Open connected wallet',
     closeConnectedAria: 'Close wallet',
+    unlockSavedAria: 'Unlock saved wallet',
     connecting: 'Connecting',
     quickPicker: {
       title: 'Wallets',
@@ -141,6 +142,7 @@ const ja: MsgTree = {
     connect: 'ウォレット接続',
     openConnectedAria: '接続済みウォレットを開く',
     closeConnectedAria: 'ウォレットを閉じる',
+    unlockSavedAria: '保存済みウォレットのロックを解除',
     connecting: '接続中',
     quickPicker: {
       title: 'ウォレット',

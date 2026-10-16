@@ -19,6 +19,7 @@ import {
   isWalletApprovalWorking,
   walletApprovalStore,
 } from '../stores/walletApprovalStore';
+import { BrowserWallet } from '../lib/browser-wallet';
 
 export interface ConnectWalletButtonProps {
   className?: string;
@@ -34,6 +35,7 @@ export function ConnectWalletButton({
 }: ConnectWalletButtonProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [savedLocal, setSavedLocal] = useState(() => BrowserWallet.peekSaved());
   const [openNonce, setOpenNonce] = useState(0);
   const [openFocus, setOpenFocus] = useState<WalletOpenFocus | null>(null);
   const [drawerStep, setDrawerStep] = useState<WalletDrawerOpenStep>('dashboard');
@@ -58,11 +60,17 @@ export function ConnectWalletButton({
   }, []);
 
   useEffect(() => {
+    setSavedLocal(BrowserWallet.peekSaved());
+  }, [connected, drawerOpen]);
+
+  useEffect(() => {
     if (dxOpenSignal > 0) {
       const focus = useDxHostStore.getState().consumeOpenFocus();
-      openDrawer(connected ? 'dashboard' : 'chooser', focus);
+      const approval = walletApprovalStore.getSnapshot();
+      const step = approval || connected ? 'dashboard' : savedLocal ? 'unlock' : 'chooser';
+      openDrawer(step, focus);
     }
-  }, [connected, dxOpenSignal, openDrawer]);
+  }, [connected, dxOpenSignal, openDrawer, savedLocal]);
 
   useEffect(() => {
     if (dxCloseSignal > 0) {
@@ -111,7 +119,11 @@ export function ConnectWalletButton({
       ? drawerOpen
         ? t('wallet.closeConnectedAria')
         : t('wallet.openConnectedAria')
-      : t('wallet.quickPicker.openAria');
+      : savedLocal
+        ? drawerOpen
+          ? t('wallet.closeConnectedAria')
+          : t('wallet.unlockSavedAria')
+        : t('wallet.quickPicker.openAria');
 
   const switchAriaLabel = t('wallet.quickPicker.switchAria');
 
@@ -133,6 +145,15 @@ export function ConnectWalletButton({
               toggleDrawer();
               return;
             }
+            // Saved local wallet: PIN. The connector list is the switch only.
+            if (savedLocal) {
+              if (drawerOpen) {
+                handleCloseDrawer();
+                return;
+              }
+              openDrawer('unlock');
+              return;
+            }
             if (drawerOpen) {
               setDrawerOpen(false);
             }
@@ -140,8 +161,8 @@ export function ConnectWalletButton({
           }}
           aria-label={buttonAriaLabel}
           title={buttonAriaLabel}
-          aria-expanded={connected ? drawerOpen : pickerOpen}
-          aria-haspopup={connected ? 'dialog' : 'menu'}
+          aria-expanded={connected || savedLocal ? drawerOpen : pickerOpen}
+          aria-haspopup={connected || savedLocal ? 'dialog' : 'menu'}
           className={[
             'ds-connect-button ds-connect-button--icon relative inline-flex h-10 w-10 min-h-10 min-w-10 shrink-0 appearance-none items-center justify-center rounded-full p-0 font-semibold transition hover:brightness-105',
             'border border-[color:var(--ds-accent-border)]',
@@ -169,7 +190,7 @@ export function ConnectWalletButton({
           </span>
         </button>
 
-        {connected && address ? (
+        {(connected && address) || savedLocal ? (
           <button
             type="button"
             className="ds-connect-button__switch absolute -right-1 -top-1 z-[1] inline-flex h-4 w-4 items-center justify-center rounded-full border border-[color:var(--ds-accent-border)] bg-[color:var(--ds-bg-elevated,#121212)] text-[color:var(--ds-accent-solid)] shadow-md transition hover:brightness-110"

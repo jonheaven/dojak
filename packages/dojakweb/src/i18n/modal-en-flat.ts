@@ -231,6 +231,8 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.listings.localOnly': 'Local only (risky)',
   'modal.listings.keep': 'Keep',
   'modal.dataLabel.prefix': 'Data:',
+  'modal.dataLabel.locksIn': 'locks in {time}',
+  'modal.dataLabel.locksOnClose': 'locks when this tab closes',
   'modal.sendInscription.sentTitle': 'Inscription sent!',
   'modal.sendInscription.viewExplorer': 'View on explorer →',
   'modal.sendInscription.recipientLabel': 'Recipient',
