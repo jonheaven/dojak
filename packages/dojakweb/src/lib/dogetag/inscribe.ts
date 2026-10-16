@@ -255,6 +255,14 @@ function buildP2shOutputScript(lockScript: Buffer): Buffer {
   ]);
 }
 
+/**
+ * bitcoinjs-lib 7 script bytes are Uint8Array. Calling `.toString('hex')` on
+ * that joins decimal bytes ("169,20,…"), so a commit output never matches.
+ */
+function scriptToHex(script: Uint8Array): string {
+  return Buffer.from(script).toString('hex');
+}
+
 // ── Fee helpers ───────────────────────────────────────────────────────────────
 
 function feeFor(txBytes: number, feeRate: number): number {
@@ -915,7 +923,7 @@ export async function signInscriptionBatch(params: {
     const opReturnScript = opReturnScriptFromUtf8(item.opReturn);
     const lockScript = buildLockScript(pubKeyBytes, partial);
     const p2shScript = buildP2shOutputScript(lockScript);
-    const p2shHex = p2shScript.toString('hex');
+    const p2shHex = scriptToHex(p2shScript);
     const p2shAmount = computeP2shAmount(
       partial,
       lockScript,
@@ -1001,7 +1009,7 @@ export async function signInscriptionBatch(params: {
       .map((out, i) => ({ i, out }))
       .filter(
         ({ i, out }) =>
-          !usedVout.has(i) && Buffer.from(out.script).toString('hex') === plan.p2shHex,
+          !usedVout.has(i) && scriptToHex(out.script) === plan.p2shHex,
       );
     const exact = candidates.find(({ out }) => Number(out.value) === plan.p2shAmount);
     const vout = exact?.i ?? (candidates.length === 1 ? candidates[0]!.i : -1);
@@ -1025,9 +1033,9 @@ export async function signInscriptionBatch(params: {
 
   let changeVout: number | null = null;
   if (commitChange >= SOFT_DUST_KOINU) {
-    const want = changeScriptPubKey.toString('hex');
+    const want = scriptToHex(changeScriptPubKey);
     const idx = commitBtcTx.outs.findIndex(
-      (out, i) => !usedVout.has(i) && Buffer.from(out.script).toString('hex') === want,
+      (out, i) => !usedVout.has(i) && scriptToHex(out.script) === want,
     );
     changeVout = idx >= 0 ? idx : null;
   }
