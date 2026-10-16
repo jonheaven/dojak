@@ -834,9 +834,13 @@ export const INSCRIPTION_BATCH_MAX = 20;
  * One wallet spend, many doginals.
  *
  * Dogecoin indexes an era-1 inscription from `vin[0].scriptSig` only, so N names
- * cannot share one reveal. This builds one commit with N P2SH outputs (each commits
- * to one payload) and N reveal transactions that spend those outputs. The reveals
- * do not share inputs, so they cannot race the same UTXO.
+ * cannot share one reveal. This builds one commit with N P2SH outputs and N reveal
+ * transactions that spend those outputs. The reveals do not share inputs, so they
+ * cannot race the same UTXO.
+ *
+ * The P2SH lock is `<pubkey> CHECKSIGVERIFY DROP×n OP_1`. It commits to the chunk
+ * count, not the bytes, so two short names share a scriptPubKey. Outputs stay
+ * separate; each reveal carries its own payload. Tell them apart by value and vout.
  *
  * Nothing is broadcast here.
  */
@@ -875,7 +879,7 @@ export async function signInscriptionBatch(params: {
     opReturnScript: Buffer | null;
   };
   const plans: Plan[] = [];
-  const seenP2sh = new Set<string>();
+  const seenBody = new Set<string>();
 
   for (const item of items) {
     const contentBuf = Buffer.from(item.text ?? '', 'utf8');
@@ -884,6 +888,11 @@ export async function signInscriptionBatch(params: {
       throw new Error(`Text too long: ${contentBuf.length} bytes (max ${INSCRIPTION_MAX_CONTENT_BYTES}).`);
     }
     const contentType = (item.contentType?.trim() || INSCRIPTION_CONTENT_TYPE).slice(0, 80);
+    const bodyKey = `${contentType}\0${contentBuf.toString('hex')}`;
+    if (seenBody.has(bodyKey)) {
+      throw new Error('Two items committed to the same inscription. Remove the duplicate.');
+    }
+    seenBody.add(bodyKey);
     const queue = [...buildInscriptionChunks(contentBuf, contentType)];
     const partial = extractPartial(queue, true);
     if (queue.length > 0) {
@@ -907,10 +916,6 @@ export async function signInscriptionBatch(params: {
     const lockScript = buildLockScript(pubKeyBytes, partial);
     const p2shScript = buildP2shOutputScript(lockScript);
     const p2shHex = p2shScript.toString('hex');
-    if (seenP2sh.has(p2shHex)) {
-      throw new Error('Two items committed to the same inscription. Remove the duplicate.');
-    }
-    seenP2sh.add(p2shHex);
     const p2shAmount = computeP2shAmount(
       partial,
       lockScript,
@@ -992,10 +997,14 @@ export async function signInscriptionBatch(params: {
   const usedVout = new Set<number>();
   const reveals: SignedInscriptionBatchReveal[] = [];
   for (const plan of plans) {
-    const vout = commitBtcTx.outs.findIndex((out, i) => {
-      if (usedVout.has(i)) return false;
-      return Buffer.from(out.script).toString('hex') === plan.p2shHex;
-    });
+    const candidates = commitBtcTx.outs
+      .map((out, i) => ({ i, out }))
+      .filter(
+        ({ i, out }) =>
+          !usedVout.has(i) && Buffer.from(out.script).toString('hex') === plan.p2shHex,
+      );
+    const exact = candidates.find(({ out }) => Number(out.value) === plan.p2shAmount);
+    const vout = exact?.i ?? (candidates.length === 1 ? candidates[0]!.i : -1);
     if (vout < 0) {
       throw new Error('Commit did not include every inscription output. Nothing was broadcast.');
     }
