@@ -19,7 +19,6 @@ import {
   type DxRegistration,
   type DxVerifyTweetResult
 } from '@dojak/core/dx';
-import { preferenceService } from '@dojak/core/background/service';
 
 const X_HOSTS = new Set(['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com']);
 
@@ -295,36 +294,8 @@ async function clearPending(): Promise<void> {
 
 let lastPopupWindowId: number | null = null;
 
-async function openDxPopup(windowId?: number): Promise<void> {
-  const chromeWithSidePanel = chrome as {
-    sidePanel?: {
-      open: (options: { windowId?: number; tabId?: number }) => Promise<void>;
-    };
-  };
-  const preferSidePanel = (() => {
-    try {
-      return preferenceService.getOpenInSidePanel();
-    } catch {
-      return true;
-    }
-  })();
-
-  if (preferSidePanel && chromeWithSidePanel.sidePanel?.open) {
-    try {
-      let id = windowId;
-      if (id == null) {
-        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-        id = tab?.windowId;
-      }
-      if (id != null) {
-        await chromeWithSidePanel.sidePanel.open({ windowId: id });
-        return;
-      }
-    } catch {
-      /* no user gesture / API missing — fall through */
-    }
-  }
-
+async function openDxPopup(_windowId?: number): Promise<void> {
+  // Tips and profile links render in popup.html. The side panel is the wallet.
   try {
     if (chrome.action?.openPopup) {
       await chrome.action.openPopup();

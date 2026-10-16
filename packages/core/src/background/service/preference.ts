@@ -91,6 +91,8 @@ export interface PreferenceStore {
   openInSidePanel: boolean;
   /** One-shot: docked side panel is the product default (toolbar click). */
   sidePanelDockDefaultV1?: boolean;
+  /** Re-apply the side-panel default after a popup boot path cleared it. */
+  sidePanelDockDefaultV2?: boolean;
   developerMode: boolean;
   theme: 'light' | 'dark';
   customIndexerUrl?: string;
@@ -153,8 +155,9 @@ class PreferenceService {
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
         openInSidePanel: true,
         sidePanelDockDefaultV1: true,
+        sidePanelDockDefaultV2: true,
         developerMode: false,
-        theme: 'light',
+        theme: 'dark',
         biometricUnlockEnabled: false,
         biometricUnlockMethod: ''
       }
@@ -263,6 +266,11 @@ class PreferenceService {
       this.store.sidePanelDockDefaultV1 = true;
     }
 
+    if (!this.store.sidePanelDockDefaultV2) {
+      this.store.openInSidePanel = true;
+      this.store.sidePanelDockDefaultV2 = true;
+    }
+
     if (typeof this.store.openInSidePanel !== 'boolean') {
       this.store.openInSidePanel = true;
     }
@@ -272,7 +280,7 @@ class PreferenceService {
     }
 
     if (!this.store.theme || !['light', 'dark'].includes(this.store.theme)) {
-      this.store.theme = 'light';
+      this.store.theme = 'dark';
     }
 
     if (typeof this.store.biometricUnlockEnabled !== 'boolean') {

@@ -24,7 +24,6 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_popup": "popup.html",
     "default_title": "Dojak · Ð𝕏",
     "default_icon": {
       "16": "icons/icon-16.png",

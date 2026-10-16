@@ -132,16 +132,16 @@ const $viewPresets = {
   } as CSSProperties),
 
   home: Object.assign({}, $baseViewStyle, {
-    backgroundColor: colors.black_dark,
-    minWidth: 64,
-    minHeight: 64,
+    backgroundColor: '#161411',
+    minWidth: 72,
+    minHeight: 68,
     flexDirection: 'column',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#FFFFFF4D',
-    padding: 5,
-    marginRight: 5,
-    marginLeft: 5
+    borderColor: 'rgba(201, 130, 42, 0.45)',
+    padding: 6,
+    marginRight: 6,
+    marginLeft: 6
   }) as CSSProperties,
 
   'drc20-action': Object.assign({}, $baseViewStyle, {

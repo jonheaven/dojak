@@ -15,6 +15,7 @@ module.exports = function commonConfig(env = {}) {
       'content-script': path.resolve(rootDir, 'src/content-script/index.ts'),
       pageProvider: path.resolve(rootDir, 'src/content-script/pageProvider/index.ts'),
       popup: path.resolve(rootDir, 'src/popup/index.tsx'),
+      ui: path.resolve(rootDir, '../../packages/ui/src/index.tsx'),
       'x-overlay': path.resolve(rootDir, 'src/content-script/x-overlay/index.ts')
     },
     output: {
@@ -115,7 +116,7 @@ module.exports = function commonConfig(env = {}) {
       new HtmlWebpackPlugin({
         filename: 'sidepanel.html',
         template: path.resolve(rootDir, 'src/popup/sidepanel.html'),
-        chunks: ['popup'],
+        chunks: ['ui'],
         inject: 'body'
       }),
       new CopyWebpackPlugin({
@@ -133,6 +134,11 @@ module.exports = function commonConfig(env = {}) {
           {
             from: path.resolve(rootDir, 'src/assets/doge.svg'),
             to: path.resolve(rootDir, `dist/${env.browser || 'chrome'}/icons/doge.svg`),
+            noErrorOnMissing: true
+          },
+          {
+            from: path.resolve(rootDir, '../../build/_raw/images'),
+            to: path.resolve(rootDir, `dist/${env.browser || 'chrome'}/images`),
             noErrorOnMissing: true
           }
         ]

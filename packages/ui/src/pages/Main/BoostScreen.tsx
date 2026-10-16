@@ -1,26 +1,35 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { getUiType, useApproval, useWallet } from '@dojak/ui/utils';
 
 import { useNavigate } from '../MainRoute';
+import '../wallet-surfaces.css';
 
 export default function BoostScreen() {
   const navigate = useNavigate();
   const wallet = useWallet();
-
   const [getApproval, , rejectApproval] = useApproval();
+  const [status, setStatus] = useState('Opening your wallet…');
+
   const loadView = async () => {
     const UIType = getUiType();
     const isInNotification = UIType.isNotification;
-    const isInTab = UIType.isTab;
     const isInSidePanel = UIType.isSidePanel;
-    const isInPopup = UIType.isPop;
 
-    if (isInPopup) {
+    // The toolbar opens the side panel. A leftover popup should hand off, not
+    // clear the side-panel preference or dump the user into wallet creation.
+    if (UIType.isPop && !isInSidePanel) {
       try {
-        await wallet.setOpenInSidePanel(false);
+        const docked = await wallet.getOpenInSidePanel();
+        const sidePanel = (chrome as { sidePanel?: { open: (opts: { windowId?: number }) => Promise<void> } }).sidePanel;
+        if (docked !== false && sidePanel?.open) {
+          const windowId = (await chrome.windows.getCurrent()).id;
+          await sidePanel.open({ windowId });
+          window.close();
+          return;
+        }
       } catch (error) {
-        console.error('Failed to update side panel preference:', error);
+        console.error('Failed to open the side panel:', error);
       }
     }
 
@@ -39,14 +48,7 @@ export default function BoostScreen() {
     const isBooted = await wallet.isBooted();
     const isUnlocked = await wallet.isUnlocked();
 
-    // No wallet created yet - go to welcome screen (no password needed)
-    // This handles the case where user set password but never finished wallet creation
-    if (!hasVault) {
-      navigate('WelcomeScreen');
-      return;
-    }
-
-    if (!isBooted) {
+    if (!hasVault || !isBooted) {
       navigate('WelcomeScreen');
       return;
     }
@@ -56,39 +58,42 @@ export default function BoostScreen() {
       return;
     }
 
-    if (!isInNotification && !isInTab && !isInSidePanel) {
-      navigate('CreateHDWalletScreen', { isImport: false });
-      return;
-    }
-
     const currentAccount = await wallet.getCurrentAccount();
-
     if (!currentAccount) {
       navigate('WelcomeScreen');
       return;
-    } else if (approval) {
+    }
+    if (approval) {
       navigate('ApprovalScreen');
-    } else {
-      navigate('MainScreen');
       return;
     }
+    navigate('MainScreen');
   };
 
   const init = async () => {
-    const ready = await wallet.isReady();
-
-    if (ready) {
-      loadView();
-    } else {
-      setTimeout(() => {
-        init();
-      }, 1000);
+    try {
+      const ready = await wallet.isReady();
+      if (ready) {
+        await loadView();
+      } else {
+        setTimeout(() => {
+          void init();
+        }, 400);
+      }
+    } catch (error) {
+      console.error('Wallet boot failed', error);
+      setStatus('Could not open the wallet. Reload the side panel.');
     }
   };
 
   useEffect(() => {
-    init();
+    void init();
   }, []);
 
-  return <div></div>;
+  return (
+    <div className="dj-boot">
+      <strong>Dojak</strong>
+      <span>{status}</span>
+    </div>
+  );
 }

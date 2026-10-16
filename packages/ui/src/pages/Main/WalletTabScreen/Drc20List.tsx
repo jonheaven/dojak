@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { TickPriceItem, TokenBalance } from '@dojak/core/types';
-import { Column, Row } from '@dojak/ui/components';
+import { Column, Row, Text } from '@dojak/ui/components';
 import { useTools } from '@dojak/ui/components/ActionComponent';
 import DRC20BalanceCard from '@dojak/ui/components/DRC20BalanceCard';
 import { Empty } from '@dojak/ui/components/Empty';

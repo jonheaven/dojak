@@ -276,8 +276,9 @@ export function Step2({
   return (
     <Column>
       {/* Dogecoin only supports Legacy (P2PKH) addresses - no selection needed */}
+      <Text text="This is the Dogecoin address for that phrase." preset="sub" />
       <Text text={t('address_type')} preset="bold" />
-      <Text text="Legacy (P2PKH) - Dogecoin addresses starting with P" preset="sub" />
+      <Text text="Legacy (P2PKH). Dogecoin addresses start with D." preset="sub" />
 
       {hdPathOptions.map((item, index) => {
         const address = previewAddresses[index];
@@ -306,7 +307,7 @@ export function Step2({
             items={[
               {
                 address,
-                satoshis: assets.satoshis,
+                satoshis: assets.koinu,
                 path: hdPath
               }
             ]}

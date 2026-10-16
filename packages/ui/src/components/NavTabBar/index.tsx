@@ -14,9 +14,9 @@ export function NavTabBar({ tab }: { tab: TabOption }) {
       columns={3}
       style={{
         width: '100%',
-        // Slightly slimmer bottom nav to optimize main content height
-        height: '52px',
-        backgroundColor: colors.bg2
+        height: '64px',
+        backgroundColor: 'var(--theme-bg2)',
+        borderTop: '1px solid var(--theme-border)'
       }}
     >
       <TabButton tabName="home" icon="wallet" isActive={tab === 'home'} />
@@ -45,6 +45,16 @@ function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: Icon
       }}
     >
       <Icon size={20} icon={icon} color={isActive ? 'gold' : 'white_muted'} />
+      <span
+        style={{
+          marginTop: 2,
+          fontSize: 11,
+          letterSpacing: '0.01em',
+          color: isActive ? colors.gold_light : 'var(--theme-text-dim)'
+        }}
+      >
+        {tabName === 'home' ? 'Wallet' : tabName === 'discover' ? 'Discover' : 'Settings'}
+      </span>
       <BaseView style={{ position: 'relative' }}>
         {tabName === 'discover' && hasNewBanner && (
           <BaseView

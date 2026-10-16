@@ -1,0 +1,120 @@
+.dj-seed {
+  width: 100%;
+  min-height: 148px;
+  resize: vertical;
+  box-sizing: border-box;
+  border-radius: 16px;
+  border: 1px solid var(--theme-primary, #c9822a);
+  background: var(--theme-card, #141210);
+  color: var(--theme-text, #f4efe3);
+  font: 15px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 14px 16px;
+  outline: none;
+}
+
+.dj-seed:focus {
+  box-shadow: 0 0 0 3px rgba(201, 130, 42, 0.22);
+}
+
+.dj-seed-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--theme-text-dim, #8a8478);
+}
+
+.dj-seed-meta.is-ok {
+  color: var(--theme-primary, #e5a03a);
+}
+
+.dj-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: min(100%, 380px);
+  text-align: center;
+  padding: 12px 0 8px;
+}
+
+.dj-mark {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  background: radial-gradient(circle at 30% 20%, #f3e6bf, #e5a03a 42%, #8a5a16);
+  color: #1a1208;
+  box-shadow: 0 12px 40px rgba(201, 130, 42, 0.28);
+}
+
+.dj-welcome h1 {
+  margin: 0;
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, #f8edd0, #e5a03a 50%, #c9822a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dj-welcome p {
+  margin: 0;
+  color: var(--theme-text, #f4efe3);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.dj-welcome-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.dj-home {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px 0 28px;
+}
+
+.dj-home-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid rgba(201, 130, 42, 0.32);
+  border-radius: 22px;
+  padding: 8px 8px 4px;
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(201, 130, 42, 0.18), transparent 58%),
+    var(--theme-card, #141210);
+}
+
+.dj-boot {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--theme-text, #f4efe3);
+  text-align: center;
+  padding: 32px 20px;
+}
+
+.dj-boot strong {
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.dj-boot span {
+  color: var(--theme-text-secondary, #b7b0a1);
+  font-size: 13px;
+}

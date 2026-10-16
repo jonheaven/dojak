@@ -2,6 +2,7 @@ import React, { CSSProperties, useEffect } from 'react';
 
 import { routes } from '@dojak/ui/pages/MainRoute';
 import { useBooted, useIsUnlocked } from '@dojak/ui/state/global/hooks';
+import { getUiType } from '@dojak/ui/utils';
 
 import './index.less';
 
@@ -31,6 +32,7 @@ export function Layout(props: LayoutProps) {
   }, [isBooted, isUnlocked]);
 
   const { children, style: $styleBase } = props;
+  const isSidePanel = getUiType().isSidePanel;
   return (
     <div
       className="layout"
@@ -38,10 +40,12 @@ export function Layout(props: LayoutProps) {
         {
           display: 'flex',
           flexDirection: 'column',
-          width: '100vw',
-          height: '100vh',
+          width: '100%',
+          height: isSidePanel ? '100%' : '100vh',
+          minHeight: isSidePanel ? '100%' : '600px',
           overflowY: 'auto',
-          overflowX: 'hidden'
+          overflowX: 'hidden',
+          background: 'var(--theme-background, #0b0b0c)'
         },
         $styleBase
       )}

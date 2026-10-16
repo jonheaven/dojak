@@ -85,7 +85,19 @@ const { PortMessage } = Message;
 
 const portMessageChannel = new PortMessage();
 
-portMessageChannel.connect('popup');
+function extensionPortName() {
+  const path = window.location.pathname;
+  if (path.endsWith('sidepanel.html')) return 'sidepanel';
+  if (path.endsWith('notification.html')) return 'notification';
+  if (path.endsWith('index.html')) return 'tab';
+  return 'popup';
+}
+
+if (!document.documentElement.getAttribute('data-theme')) {
+  document.documentElement.setAttribute('data-theme', 'dark');
+}
+
+portMessageChannel.connect(extensionPortName());
 
 const wallet: Record<string, any> = new Proxy(
   {},

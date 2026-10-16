@@ -44,29 +44,20 @@ let appStoreLoaded = false;
  * Configure the side panel behavior based on user preference
  */
 async function configureSidePanelBehavior() {
-  // Use type assertion to access the sidePanel API
   const chromeWithSidePanel = chrome as any;
 
   if (!chromeWithSidePanel.sidePanel) {
-    return; // Skip if sidePanel API is not available
+    return;
   }
 
-  const openInSidePanel = preferenceService.getOpenInSidePanel();
-
-  if (openInSidePanel) {
-    // If user previously used side panel, associate action click with side panel opening
-    try {
-      await chromeWithSidePanel.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-    } catch (error) {
-      console.error('[Background] Failed to set side panel behavior:', error);
+  // Toolbar click opens the side panel. A popup and this flag cannot both be set.
+  try {
+    if (chromeWithSidePanel.sidePanel.setOptions) {
+      await chromeWithSidePanel.sidePanel.setOptions({ path: 'sidepanel.html', enabled: true });
     }
-  } else {
-    // User prefers popup mode - don't associate action with side panel
-    try {
-      await chromeWithSidePanel.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
-    } catch (error) {
-      console.error('[Background] Failed to set side panel behavior:', error);
-    }
+    await chromeWithSidePanel.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  } catch (error) {
+    console.error('[Background] Failed to set side panel behavior:', error);
   }
 }
 

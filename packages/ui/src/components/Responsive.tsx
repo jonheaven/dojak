@@ -27,7 +27,7 @@ export const AppDimensions = (props) => {
         width,
         height,
         overscrollBehavior: 'contain',
-        overflowY: 'auto',
+        overflowY: isSidePanel ? 'hidden' : 'auto',
         overflowX: 'hidden'
       }}
       {...props}

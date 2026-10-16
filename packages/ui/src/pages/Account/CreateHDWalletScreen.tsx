@@ -9,6 +9,7 @@ import { ImportOptions } from '@dojak/ui/pages/Account/createHDWalletComponents/
 import { MnemonicDisplay } from '@dojak/ui/pages/Account/createHDWalletComponents/MnemonicDisplay';
 import { Step0 } from '@dojak/ui/pages/Account/createHDWalletComponents/Step0';
 import { Step1_Import } from '@dojak/ui/pages/Account/createHDWalletComponents/Step1_Import';
+import { Step2 } from '@dojak/ui/pages/Account/createHDWalletComponents/Step2';
 import {
   ContextData,
   TabType,
@@ -116,40 +117,40 @@ export default function CreateHDWalletScreen() {
     [contextData, setContextData]
   );
 
+  const phraseStep = {
+    key: TabType.STEP2,
+    label: '',
+    children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
+  };
+  const addressStep = {
+    key: TabType.STEP3,
+    label: '',
+    children: <Step2 contextData={contextData} updateContextData={updateContextData} />
+  };
+
   const items = useMemo(() => {
     if (directImport) {
-      // For direct import, show the import screen directly
-      return [
-        {
-          key: TabType.STEP2,
-          label: '', // No tab label
-          children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
-        }
-      ];
-    } else if (contextData.isRestore) {
-      // For import mode, show both options screen and import screen
+      return [phraseStep, addressStep];
+    }
+    if (contextData.isRestore) {
       return [
         {
           key: TabType.MNEMONIC,
-          label: '', // No tab label
+          label: '',
           children: <ImportOptions contextData={contextData} updateContextData={updateContextData} />
         },
-        {
-          key: TabType.STEP2,
-          label: '', // No tab label
-          children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
-        }
-      ];
-    } else {
-      return [
-        {
-          key: TabType.MNEMONIC,
-          label: t('secret_recovery_phrase'),
-          children: <MnemonicDisplay contextData={contextData} updateContextData={updateContextData} />
-        }
+        phraseStep,
+        addressStep
       ];
     }
-  }, [contextData, updateContextData]);
+    return [
+      {
+        key: TabType.MNEMONIC,
+        label: t('secret_recovery_phrase'),
+        children: <MnemonicDisplay contextData={contextData} updateContextData={updateContextData} />
+      }
+    ];
+  }, [contextData, updateContextData, directImport, t]);
 
   const currentChildren = useMemo(() => {
     const item = items.find((v) => v.key === contextData.tabType);
@@ -164,17 +165,32 @@ export default function CreateHDWalletScreen() {
       return index;
     }
   }, [items, contextData.tabType]);
+  const title =
+    contextData.tabType === TabType.STEP3
+      ? 'Confirm address'
+      : contextData.isRestore
+        ? t('restore_wallet')
+        : t('create_a_new_hd_wallet');
+
   return (
     <Layout>
       <Header
         onBack={() => {
+          if (contextData.tabType === TabType.STEP3) {
+            updateContextData({ tabType: TabType.STEP2 });
+            return;
+          }
+          if (contextData.tabType === TabType.STEP2 && contextData.isRestore && !directImport) {
+            updateContextData({ tabType: TabType.MNEMONIC });
+            return;
+          }
           if (fromUnlock) {
             navigate('WelcomeScreen');
           } else {
             window.history.go(-1);
           }
         }}
-        title={contextData.isRestore ? t('restore_wallet') : t('create_a_new_hd_wallet')}
+        title={title}
       />
       <Content>
         {!contextData.isRestore && !directImport && (
@@ -196,7 +212,21 @@ export default function CreateHDWalletScreen() {
           </Row>
         )}
 
-        {currentChildren}
+        {currentChildren ?? (
+          <Column gap="lg" style={{ padding: 24 }}>
+            <Text
+              text={
+                contextData.mnemonics
+                  ? 'Confirm the address for this phrase, then open the wallet.'
+                  : 'Go back and enter your recovery phrase again.'
+              }
+              textCenter
+            />
+            {contextData.mnemonics ? (
+              <Step2 contextData={contextData} updateContextData={updateContextData} />
+            ) : null}
+          </Column>
+        )}
       </Content>
     </Layout>
   );

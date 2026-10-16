@@ -26,10 +26,11 @@ import {
 } from '@dojak/ui/state/settings/hooks';
 import { useAssetTabKey, useSupportedAssets } from '@dojak/ui/state/ui/hooks';
 import { AssetTabKey, uiActions } from '@dojak/ui/state/ui/reducer';
-import { getUiType, useWallet } from '@dojak/ui/utils';
+import { useWallet } from '@dojak/ui/utils';
 import { KeyringType } from '@unisat/keyring-service/types';
 
 import { useNavigate } from '../../MainRoute';
+import '../../wallet-surfaces.css';
 import { SwitchChainModal } from '../../Settings/SwitchChainModal';
 import { CollectiblesTab } from './CollectiblesTab';
 import { TokensTab } from './TokensTab';
@@ -70,8 +71,6 @@ export default function WalletTabScreen() {
   const addressSummary = useAddressSummary();
 
   const isUnlocked = useIsUnlocked();
-
-  const { isSidePanel } = getUiType();
 
   useEffect(() => {
     if (!isUnlocked) {
@@ -217,44 +216,8 @@ export default function WalletTabScreen() {
       />
 
       <Content style={{ overflowY: 'auto' }}>
-        <Row
-          full
-          gap="lg"
-          style={{
-            alignItems: 'flex-start',
-            // Stack columns vertically in side panel / narrow views
-            flexDirection: isSidePanel ? 'column' : 'row'
-          }}
-        >
-          {/* Left column: asset tabs and lists */}
-          <Column
-            gap="lg2"
-            mt="md"
-            style={{
-              flex: 1,
-              minWidth: 0
-            }}
-          >
-            <Tabs
-              defaultActiveKey={finalAssetTabKey as unknown as string}
-              activeKey={finalAssetTabKey as unknown as string}
-              items={tabItems as unknown as any[]}
-              onTabClick={(key) => {
-                dispatch(uiActions.updateAssetTabScreen({ assetTabKey: key as unknown as AssetTabKey }));
-              }}
-            />
-          </Column>
-
-          {/* Right column: account selector, warnings, balance, actions */}
-          <Column
-            gap="lg2"
-            mt="md"
-            style={{
-              width: isSidePanel ? '100%' : 320,
-              maxWidth: isSidePanel ? '100%' : 360,
-              alignSelf: 'stretch'
-            }}
-          >
+        <div className="dj-home">
+          <div className="dj-home-hero">
             <AccountSelect />
 
             {(walletConfig.chainTip || walletConfig.statusMessage || addressTips.homeTip) && (
@@ -277,13 +240,22 @@ export default function WalletTabScreen() {
             <BalanceCard
               accountBalance={accountBalance}
               disableUtxoTools={walletConfig.disableUtxoTools}
-              enableRefresh={isSidePanel}
+              enableRefresh
               address={currentAccount?.address}
             />
 
             <WalletActions address={currentAccount?.address} chain={chain} />
-          </Column>
-        </Row>
+          </div>
+
+          <Tabs
+            defaultActiveKey={finalAssetTabKey as unknown as string}
+            activeKey={finalAssetTabKey as unknown as string}
+            items={tabItems as unknown as any[]}
+            onTabClick={(key) => {
+              dispatch(uiActions.updateAssetTabScreen({ assetTabKey: key as unknown as AssetTabKey }));
+            }}
+          />
+        </div>
         {showSafeNotice && (
           <NoticePopover
             onClose={() => {
