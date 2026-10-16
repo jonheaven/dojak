@@ -60,6 +60,7 @@ const REQUIRED_EXPORTS = [
   'NetworkFeeControl',
   'NetworkFeeFuelButton',
   'resolveRequestedOrPreferredFeeRateKoinuPerByte',
+  'signInscriptionBatch',
 ];
 
 if (!fs.existsSync(distIndex)) {

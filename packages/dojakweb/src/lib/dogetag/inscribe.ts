@@ -424,6 +424,11 @@ export interface SignInscriptionParams {
    */
   extraRevealPayments?: RevealPaymentOutput[];
   /**
+   * UTF-8 nulldata on the reveal (value 0). Clipped to 80 bytes.
+   * Dogecoin indexes the inscription from scriptSig only — this memo is not a second name.
+   */
+  opReturn?: string;
+  /**
    * Parent inscription ids (`txid`i`vout`). When set, builds ordinals-style tag 3
    * fields so dogex records parent-child provenance (required for Ðclaims).
    */
@@ -477,6 +482,72 @@ function compactSigToDER(compact: Uint8Array): Buffer {
   return Buffer.concat([Buffer.from([0x30, r.length + s.length]), r, s]);
 }
 
+/** Value-0 `OP_RETURN` push. Empty or oversized input becomes null. */
+function opReturnScriptFromUtf8(raw: string | undefined): Buffer | null {
+  const text = (raw ?? '').replace(/\s+/g, ' ').trim();
+  if (!text) return null;
+  let s = text;
+  while (Buffer.from(s, 'utf8').length > 80) {
+    const chars = [...s];
+    chars.pop();
+    s = chars.join('');
+  }
+  const payload = Buffer.from(s, 'utf8');
+  if (!payload.length) return null;
+  return bitcoin.script.compile([bitcoin.opcodes.OP_RETURN, payload]);
+}
+
+/**
+ * Reveal spends one commit P2SH output. Inscription carrier is always vout 0 of the reveal
+ * (`txid`i0). Dogecoin's era-1 indexer reads `vin[0].scriptSig` only, so one reveal = one doginal.
+ */
+async function signP2shReveal(opts: {
+  commitTxid: string;
+  vout: number;
+  lockScript: Buffer;
+  partial: ScriptChunk[];
+  inscriptionScriptPubKey: Buffer;
+  paymentScripts: { script: Buffer; satoshis: number }[];
+  opReturnScript: Buffer | null;
+  privKeyBytes: Uint8Array;
+  pubKeyBytes: Buffer;
+}): Promise<{ revealTxHex: string; revealTxid: string; inscriptionId: string }> {
+  const revealTx = new bitcoin.Transaction();
+  revealTx.version = 1;
+  revealTx.addInput(
+    Buffer.from(opts.commitTxid, 'hex').reverse(),
+    opts.vout,
+    0xfffffffd,
+  );
+  revealTx.addOutput(Buffer.from(opts.inscriptionScriptPubKey), BigInt(INSCRIPTION_DEST_AMOUNT));
+  for (const pay of opts.paymentScripts) {
+    revealTx.addOutput(Buffer.from(pay.script), BigInt(pay.satoshis));
+  }
+  if (opts.opReturnScript) {
+    revealTx.addOutput(opts.opReturnScript, 0n);
+  }
+
+  const SIGHASH_ALL = 0x01;
+  const sigHash = revealTx.hashForSignature(0, opts.lockScript, SIGHASH_ALL);
+  const compact = await secp.signAsync(sigHash, opts.privKeyBytes, { lowS: true, prehash: false });
+  const derBytes = compactSigToDER(compact);
+  const txSig = Buffer.concat([derBytes, Buffer.from([SIGHASH_ALL])]);
+  const sigOk = await secp.verifyAsync(compact, sigHash, opts.pubKeyBytes, { prehash: false });
+  if (!sigOk) throw new Error('[inscribe] Signature verification failed — aborting reveal tx build.');
+
+  const scriptSigItems: (number | Buffer)[] = [];
+  for (const chunk of opts.partial) {
+    scriptSigItems.push(chunk.buf !== undefined ? chunk.buf : chunk.opcodenum);
+  }
+  scriptSigItems.push(txSig);
+  scriptSigItems.push(opts.lockScript);
+  revealTx.ins[0].script = bitcoin.script.compile(scriptSigItems);
+
+  const revealTxHex = revealTx.toHex();
+  const revealTxid = bitcoin.Transaction.fromHex(revealTxHex).getId();
+  return { revealTxHex, revealTxid, inscriptionId: `${revealTxid}i0` };
+}
+
 /**
  * Build and sign both the commit and reveal transactions for a plain-text
  * Doginals inscription.  Both transactions are signed with the local private
@@ -495,6 +566,7 @@ export async function signInscriptionTxs(
     inscriptionReceiveAddress: inscriptionReceiveRaw,
     contentType: contentTypeRaw,
     extraRevealPayments = [],
+    opReturn: opReturnRaw,
     parents: parentIds = [],
     delegates: delegateIds = [],
     metaprotocol,
@@ -539,6 +611,7 @@ export async function signInscriptionTxs(
     const { scriptPubKey } = parseDogecoinReceiveAddress(p.address);
     paymentScripts.push({ script: scriptPubKey, satoshis: p.satoshis, address: p.address });
   }
+  const opReturnScript = opReturnScriptFromUtf8(opReturnRaw);
 
   // ── Plan the inscription ─────────────────────────────────────────────────────
   const useTagged =
@@ -585,7 +658,7 @@ export async function signInscriptionTxs(
     inscriptionScriptPubKey,
     changeScriptPubKey,
     paymentSatoshis,
-    paymentScripts.length,
+    paymentScripts.length + (opReturnScript ? 1 : 0),
     payments.map((p) => p.satoshis),
   );
   const revealFee     = p2shAmount - INSCRIPTION_DEST_AMOUNT - paymentSatoshis;
@@ -679,56 +752,20 @@ export async function signInscriptionTxs(
   // ── Build and sign reveal tx ────────────────────────────────────────────────
   // One P2SH input with canonical Doginals scriptSig → inscription UTXO (+ optional payments).
   // All outputs MUST be present before signing (SIGHASH_ALL).
-  const revealTx = new bitcoin.Transaction();
-  revealTx.version = 1;
-
-  // Input 0: the P2SH output from commit tx (vout 0)
-  revealTx.addInput(
-    Buffer.from(commitTxid, 'hex').reverse(), // txid in LE (internal) byte order
-    0,
-    0xfffffffd, // BIP-125 opt-in RBF — matches RBF_SEQUENCE used in doginal-chain.ts
-  );
-
-  revealTx.addOutput(Buffer.from(inscriptionScriptPubKey), BigInt(INSCRIPTION_DEST_AMOUNT));
-  for (const pay of paymentScripts) {
-    revealTx.addOutput(Buffer.from(pay.script), BigInt(pay.satoshis));
-  }
-
-  // Sign input 0 — P2SH convention: sign against the redeemScript (lockScript)
-  const SIGHASH_ALL = 0x01;
-  const sigHash = revealTx.hashForSignature(0, lockScript, SIGHASH_ALL);
-  // @noble/secp256k1 v3 returns compact 64-byte Uint8Array by default; prehash must be false
-  // since sigHash is already a 32-byte hash from hashForSignature.
-  const compact = await secp.signAsync(sigHash, privKeyBytes, { lowS: true, prehash: false });
-  const derBytes = compactSigToDER(compact);
-  const txSig    = Buffer.concat([derBytes, Buffer.from([SIGHASH_ALL])]);
-
-  // Verify the signature locally before assembling — surfaces key/signing mismatches early.
-  const sigOk = await secp.verifyAsync(compact, sigHash, pubKeyBytes, { prehash: false });
-  console.log('[inscribe] sig verify', {
-    ok: sigOk,
-    sigHashHex:  Buffer.from(sigHash).toString('hex'),
-    pubKeyHex:   Buffer.from(pubKeyBytes).toString('hex'),
-    derHex:      Buffer.from(derBytes).toString('hex'),
-    lockScriptHex: Buffer.from(lockScript).toString('hex'),
-    p2shScriptHex: Buffer.from(p2shScript).toString('hex'),
+  const revealed = await signP2shReveal({
+    commitTxid,
+    vout: 0,
+    lockScript,
+    partial,
+    inscriptionScriptPubKey,
+    paymentScripts,
+    opReturnScript,
+    privKeyBytes,
+    pubKeyBytes,
   });
-  if (!sigOk) throw new Error('[inscribe] Signature verification failed — aborting reveal tx build.');
-
-  // Assemble scriptSig: [partial_chunks…] [sig] [lockScript]
-  // This is exactly what indexers (wonky-ord et al.) parse to extract inscription data.
-  const scriptSigItems: (number | Buffer)[] = [];
-  for (const chunk of partial) {
-    scriptSigItems.push(chunk.buf !== undefined ? chunk.buf : chunk.opcodenum);
-  }
-  scriptSigItems.push(txSig);
-  scriptSigItems.push(lockScript);
-
-  revealTx.ins[0].script = bitcoin.script.compile(scriptSigItems);
-
-  const revealTxHex    = revealTx.toHex();
-  const revealTxid     = bitcoin.Transaction.fromHex(revealTxHex).getId();
-  const inscriptionId  = `${revealTxid}i0`;
+  const revealTxHex = revealed.revealTxHex;
+  const revealTxid = revealed.revealTxid;
+  const inscriptionId = revealed.inscriptionId;
 
   console.log('[inscribe] reveal tx built', {
     revealTxid,
@@ -761,6 +798,241 @@ export async function signInscriptionTxs(
             value: commitChange,
           }
         : null,
+  };
+}
+
+export interface SignInscriptionBatchItem {
+  text: string;
+  contentType?: string;
+  inscriptionReceiveAddress?: string;
+  extraRevealPayments?: RevealPaymentOutput[];
+  /** UTF-8 nulldata on this item's reveal. Clipped to 80 bytes. */
+  opReturn?: string;
+}
+
+export interface SignedInscriptionBatchReveal {
+  revealTxHex: string;
+  revealTxid: string;
+  inscriptionId: string;
+  /** Commit output this reveal spends. */
+  vout: number;
+}
+
+export interface SignedInscriptionBatch {
+  commitTxHex: string;
+  commitTxid: string;
+  commitFeeSatoshis: number;
+  commitSpent: Array<{ txid: string; vout: number }>;
+  commitChange: { vout: number; value: number } | null;
+  reveals: SignedInscriptionBatchReveal[];
+}
+
+/** Hard cap. One commit can fund this many independent reveals. */
+export const INSCRIPTION_BATCH_MAX = 20;
+
+/**
+ * One wallet spend, many doginals.
+ *
+ * Dogecoin indexes an era-1 inscription from `vin[0].scriptSig` only, so N names
+ * cannot share one reveal. This builds one commit with N P2SH outputs (each commits
+ * to one payload) and N reveal transactions that spend those outputs. The reveals
+ * do not share inputs, so they cannot race the same UTXO.
+ *
+ * Nothing is broadcast here.
+ */
+export async function signInscriptionBatch(params: {
+  items: SignInscriptionBatchItem[];
+  fromAddress: string;
+  privateKeyWIF: string;
+  feeRate?: number;
+  excludedOutpoints?: string[];
+}): Promise<SignedInscriptionBatch> {
+  const items = params.items;
+  if (items.length === 0) throw new Error('Nothing to inscribe.');
+  if (items.length > INSCRIPTION_BATCH_MAX) {
+    throw new Error(`At most ${INSCRIPTION_BATCH_MAX} inscriptions per payment.`);
+  }
+  const feeRate = await enforceBroadcastFeeRateKoinuPerKb({
+    requestedKoinuPerKb: params.feeRate ?? 0,
+    context: 'signInscriptionBatch',
+  });
+  const fromAddress = params.fromAddress.trim();
+  const privKeyBytes = decodePrivateKeyFromWIF(params.privateKeyWIF);
+  const pubKeyBytes = Buffer.from(secp.getPublicKey(privKeyBytes, true));
+  const changeScriptPubKey = bitcoin.payments.p2pkh({
+    address: fromAddress,
+    network: DOGE_NETWORK,
+  }).output!;
+
+  type Plan = {
+    partial: ScriptChunk[];
+    lockScript: Buffer;
+    p2shScript: Buffer;
+    p2shHex: string;
+    p2shAmount: number;
+    inscriptionScriptPubKey: Buffer;
+    paymentScripts: { script: Buffer; satoshis: number }[];
+    opReturnScript: Buffer | null;
+  };
+  const plans: Plan[] = [];
+  const seenP2sh = new Set<string>();
+
+  for (const item of items) {
+    const contentBuf = Buffer.from(item.text ?? '', 'utf8');
+    if (!contentBuf.length) throw new Error('Inscription text cannot be empty.');
+    if (contentBuf.length > INSCRIPTION_MAX_CONTENT_BYTES) {
+      throw new Error(`Text too long: ${contentBuf.length} bytes (max ${INSCRIPTION_MAX_CONTENT_BYTES}).`);
+    }
+    const contentType = (item.contentType?.trim() || INSCRIPTION_CONTENT_TYPE).slice(0, 80);
+    const queue = [...buildInscriptionChunks(contentBuf, contentType)];
+    const partial = extractPartial(queue, true);
+    if (queue.length > 0) {
+      throw new Error('Content did not fit in a single inscription partial.');
+    }
+    const payments = (item.extraRevealPayments ?? [])
+      .map((p) => ({
+        address: p.address.trim(),
+        satoshis: Math.floor(Number(p.satoshis)),
+      }))
+      .filter((p) => p.address && p.satoshis >= HARD_DUST_KOINU);
+    const paymentSatoshis = payments.reduce((s, p) => s + p.satoshis, 0);
+    const receive = (item.inscriptionReceiveAddress?.trim() || fromAddress).trim();
+    const { scriptPubKey: inscriptionScriptPubKey } = parseDogecoinReceiveAddress(receive);
+    const paymentScripts: { script: Buffer; satoshis: number }[] = [];
+    for (const p of payments) {
+      const { scriptPubKey } = parseDogecoinReceiveAddress(p.address);
+      paymentScripts.push({ script: scriptPubKey, satoshis: p.satoshis });
+    }
+    const opReturnScript = opReturnScriptFromUtf8(item.opReturn);
+    const lockScript = buildLockScript(pubKeyBytes, partial);
+    const p2shScript = buildP2shOutputScript(lockScript);
+    const p2shHex = p2shScript.toString('hex');
+    if (seenP2sh.has(p2shHex)) {
+      throw new Error('Two items committed to the same inscription. Remove the duplicate.');
+    }
+    seenP2sh.add(p2shHex);
+    const p2shAmount = computeP2shAmount(
+      partial,
+      lockScript,
+      feeRate,
+      inscriptionScriptPubKey,
+      changeScriptPubKey,
+      paymentSatoshis,
+      paymentScripts.length + (opReturnScript ? 1 : 0),
+      payments.map((p) => p.satoshis),
+    );
+    plans.push({
+      partial,
+      lockScript,
+      p2shScript,
+      p2shHex,
+      p2shAmount,
+      inscriptionScriptPubKey,
+      paymentScripts,
+      opReturnScript,
+    });
+  }
+
+  const reserve = plans.reduce((s, p) => s + p.p2shAmount, 0);
+  const outputScripts = [...plans.map((p) => p.p2shScript), changeScriptPubKey];
+  const rawUtxos = await fetchUtxosWithRetry(fromAddress);
+  if (!rawUtxos.length) {
+    throw new Error('No confirmed UTXOs found. Send DOGE to your wallet before inscribing.');
+  }
+  const afterExcludes = filterExcluded(rawUtxos, params.excludedOutpoints);
+  const { safe: spendable } = await filterPaymentSpendableUtxos(fromAddress, afterExcludes as any);
+  if (!spendable.length) {
+    throw new Error('No spendable UTXOs remain after excluding protected and inscription-likely outputs.');
+  }
+  const selected = selectSmallestSufficient(spendable, (n) => {
+    const estimated =
+      10 +
+      Math.max(1, n) * COMMIT_VBYTES_PER_P2PKH_INPUT +
+      outputScripts.reduce((s, script) => s + legacyOutputVbytes(script), 0);
+    return commitFeeFromEstimate(estimated, feeRate) + reserve;
+  });
+  const totalSats = selected.reduce((sum, u) => sum + u.value, 0);
+  const commitFee = commitFeeFromEstimate(
+    10 +
+      selected.length * COMMIT_VBYTES_PER_P2PKH_INPUT +
+      outputScripts.reduce((s, script) => s + legacyOutputVbytes(script), 0),
+    feeRate,
+  );
+  if (totalSats < commitFee + reserve) {
+    throw new Error(
+      `Insufficient funds: need ≥ ${((commitFee + reserve) / 1e8).toFixed(4)} DOGE ` +
+        `for ${plans.length} inscriptions, have ${(totalSats / 1e8).toFixed(4)} DOGE.`,
+    );
+  }
+  let commitChange = discardSoftDustChangeKoinu(totalSats - commitFee - reserve);
+  const dogeSigner = DogeMemoryWallet.fromWIF(params.privateKeyWIF, 'doge');
+  const commitBuilder = createP2PKHTransaction(dogeSigner, {
+    address: fromAddress,
+    inputs: selected.map((u) => ({ txid: u.tx_hash, vout: u.tx_output_n, value: u.value })),
+    outputs: [
+      ...plans.map((p) => ({ script: p.p2shScript, value: p.p2shAmount })),
+      ...(commitChange >= SOFT_DUST_KOINU ? [{ address: fromAddress, value: commitChange }] : []),
+    ] as any,
+  });
+  const signedCommit = await commitBuilder.finalizeAndSign();
+  const commitTxHex = signedCommit.toHex();
+  const commitBtcTx = bitcoin.Transaction.fromHex(commitTxHex);
+  const commitTxid = commitBtcTx.getId();
+  const commitInputSats = selected.reduce((s, u) => s + u.value, 0);
+  const commitOutputSats = commitBtcTx.outs.reduce((s, o) => s + Number(o.value), 0);
+  const commitPaidFee = commitInputSats - commitOutputSats;
+  const commitVsize = commitBtcTx.virtualSize();
+  const commitMinForSize = Math.max(MIN_FEE_SATS, Math.ceil((commitVsize * feeRate) / 1000));
+  if (commitPaidFee < commitMinForSize) {
+    throw new Error(
+      `[inscribe] Commit pays ${commitPaidFee} koinu fee but ${commitVsize} vB at your rate needs ≥ ${commitMinForSize} koinu.`,
+    );
+  }
+
+  const usedVout = new Set<number>();
+  const reveals: SignedInscriptionBatchReveal[] = [];
+  for (const plan of plans) {
+    const vout = commitBtcTx.outs.findIndex((out, i) => {
+      if (usedVout.has(i)) return false;
+      return Buffer.from(out.script).toString('hex') === plan.p2shHex;
+    });
+    if (vout < 0) {
+      throw new Error('Commit did not include every inscription output. Nothing was broadcast.');
+    }
+    usedVout.add(vout);
+    const revealed = await signP2shReveal({
+      commitTxid,
+      vout,
+      lockScript: plan.lockScript,
+      partial: plan.partial,
+      inscriptionScriptPubKey: plan.inscriptionScriptPubKey,
+      paymentScripts: plan.paymentScripts,
+      opReturnScript: plan.opReturnScript,
+      privKeyBytes,
+      pubKeyBytes,
+    });
+    reveals.push({ ...revealed, vout });
+  }
+
+  let changeVout: number | null = null;
+  if (commitChange >= SOFT_DUST_KOINU) {
+    const want = changeScriptPubKey.toString('hex');
+    const idx = commitBtcTx.outs.findIndex(
+      (out, i) => !usedVout.has(i) && Buffer.from(out.script).toString('hex') === want,
+    );
+    changeVout = idx >= 0 ? idx : null;
+  }
+
+  return {
+    commitTxHex,
+    commitTxid,
+    commitFeeSatoshis: commitFee,
+    commitSpent: selected.map((u) => ({
+      txid: u.tx_hash.trim().toLowerCase(),
+      vout: u.tx_output_n,
+    })),
+    commitChange: changeVout != null ? { vout: changeVout, value: commitChange } : null,
+    reveals,
   };
 }
 

@@ -918,11 +918,16 @@ export {
 /** Doginals P2SH commit–reveal (text/JSON) — ÐLaunch pay+inscribe uses this. */
 export {
   signInscriptionTxs,
+  signInscriptionBatch,
   signAndBroadcastInscription,
   estimateInscriptionFees,
   INSCRIPTION_MAX_CONTENT_BYTES,
+  INSCRIPTION_BATCH_MAX,
   INSCRIPTION_CONTENT_TYPE,
   type SignInscriptionParams,
   type SignedInscriptionPair,
+  type SignInscriptionBatchItem,
+  type SignedInscriptionBatch,
+  type SignedInscriptionBatchReveal,
   type RevealPaymentOutput,
 } from './lib/dogetag/inscribe';
