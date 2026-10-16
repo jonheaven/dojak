@@ -236,6 +236,11 @@ export type {
 export * from './wallet/getConnectedWalletAddress';
 
 export { DojakwebWalletModal } from './components/DojakwebWalletModal';
+export {
+  WalletTransactionsPanel,
+  useWalletTransactionList,
+  type WalletTransactionList,
+} from './components/wallet/WalletTransactionsPanel';
 export { WalletIdentityPanel } from './components/identity/WalletIdentityPanel';
 
 export {

@@ -182,7 +182,6 @@ import type {
   DRC20Token,
   DuneHolding,
   WalletDataProviderType,
-  DogeTransaction,
 } from '../utils/api';
 import { DuneSendModal } from './DuneSendModal';
 import {
@@ -196,24 +195,15 @@ import { useDojakwebFiatOptional, type DojakwebFiatCurrency } from '../contexts/
 import {
   loadDogeTxExplorerPreference,
   saveDogeTxExplorerPreference,
-  dogeTxExplorerUrl,
-  dogeTxExplorerDisplayName,
-  useDogeTxExplorerPreference,
   type DogeTxExplorerId,
 } from '../utils/dogeTxExplorer';
 import { DogeTxTracker } from './DogeTxTracker';
 import { createPortal } from 'react-dom';
 import {
-  loadWalletTxJournal,
-  mergeWalletTxJournalIntoList,
-  subscribeWalletTxJournal,
   upsertWalletTxJournalEntry,
-  walletTxDisplayChips,
-  type DojakwebWalletTxEntry,
   type WalletTxListRow,
 } from '../lib/wallet-tx-journal';
-import { enrichWalletTransactionsForAddress, inscriptionFaceFromWalletTx } from '../lib/wallet-tx-enrichment';
-import { WalletTxInscriptionPreview } from './wallet/WalletTxInscriptionPreview';
+import { useWalletTransactionList, WalletTransactionsPanel } from './wallet/WalletTransactionsPanel';
 import { DogeCurrencyIcon } from './DogeCurrencyIcon';
 import { DOJAKWEB_DX_PM_PROTOCOL, DOJAKWEB_DX_RESPONSE, type DxPostMessageResponse } from '../lib/dx/postMessage';
 import { useDxHostStore } from '../stores/dxHostStore';
@@ -604,37 +594,6 @@ const MODAL_SURFACE =
   'bg-[#0A0A0A] text-text-primary rounded-3xl p-5 shadow-doge border border-white/10';
 const INPUT_CLASS = 'wallet-input';
 
-function compactTxTimeAgo(timestamp: string): string {
-  if (!timestamp) return '';
-  const iso = timestamp.includes('T') ? timestamp : `${timestamp.replace(' ', 'T')}Z`;
-  const ms = new Date(iso).getTime();
-  if (!Number.isFinite(ms)) return '';
-  const sec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
-  if (sec < 60) return 'now';
-  if (sec < 3600) return `${Math.floor(sec / 60)}m`;
-  if (sec < 86400) return `${Math.floor(sec / 3600)}h`;
-  if (sec < 86400 * 7) return `${Math.floor(sec / 86400)}d`;
-  return `${Math.floor(sec / 86400 / 7)}w`;
-}
-
-function formatCompactTxAmount(label: string): { value: string; ticker?: string } {
-  const trimmed = label.trim();
-  const m = trimmed.match(/^([+\-]?\d+(?:\.\d+)?)\s*(.*)$/);
-  if (!m) return { value: trimmed };
-  const sign = m[1].startsWith('+') ? '+' : m[1].startsWith('-') ? '-' : '';
-  const n = Number(m[1]);
-  const ticker = m[2]?.replace(/•/g, '').trim();
-  const abs = Math.abs(n);
-  let absStr: string;
-  if (!Number.isFinite(n)) absStr = m[1].replace(/^[+\-]/, '');
-  else if (abs >= 1_000_000) absStr = `${(abs / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
-  else if (abs >= 10_000) absStr = `${(abs / 1_000).toFixed(abs >= 100_000 ? 0 : 1)}k`;
-  else if (n % 1 === 0) absStr = abs.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  else absStr = abs.toLocaleString(undefined, { maximumFractionDigits: abs < 0.01 ? 6 : 3 });
-  const shortTicker = ticker ? (ticker.length > 8 ? `${ticker.slice(0, 7)}…` : ticker) : undefined;
-  return { value: `${sign}${absStr}`, ticker: shortTicker };
-}
-
 function Button({ className, type = 'button', ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
@@ -681,7 +640,6 @@ export function DojakwebWalletModal({
   const isDark = resolvedTheme === 'dark';
   const isMobileWallet = useIsMobileWallet();
   const [drawerLayout, setDrawerLayout] = useWalletDrawerLayout();
-  const txExplorerPref = useDogeTxExplorerPreference();
   const drawerSurfacePhoneRight = isDark
     ? 'bg-[#0c0c0e] text-text-primary border-l border-white/10 shadow-2xl'
     : 'bg-[#f7f5f0] text-zinc-950 border-l border-zinc-200 shadow-2xl';
@@ -1021,16 +979,9 @@ export function DojakwebWalletModal({
   const [activeListings, setActiveListings] = useState<ActiveListing[]>([]);
   const [qrListingId, setQrListingId] = useState<string | null>(null);
 
-  // ── Transactions state ──
-  const [transactions, setTransactions] = useState<DogeTransaction[]>([]);
-  const [txLoading, setTxLoading] = useState(false);
-  const [txError, setTxError] = useState<string | null>(null);
-  const [txPage, setTxPage] = useState(1);
-  const [txTotal, setTxTotal] = useState(0);
-  const [selectedTx, setSelectedTx] = useState<DisplayDogeTransaction | null>(null);
-  const [walletTxJournal, setWalletTxJournal] = useState<DojakwebWalletTxEntry[]>(() =>
-    typeof window !== 'undefined' ? loadWalletTxJournal() : [],
-  );
+  /** Once the Transactions tab has been opened, keep history live for the mempool badge. */
+  const [txTabSeen, setTxTabSeen] = useState(false);
+  const [txReload, setTxReload] = useState(0);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [trueCancelBusy, setTrueCancelBusy] = useState(false);
   const [trueCancelError, setTrueCancelError] = useState<string | null>(null);
@@ -1300,74 +1251,9 @@ export function DojakwebWalletModal({
   const hardwareWallets = availableWallets.filter(
     (wallet) => wallet.type === 'ledger' || wallet.type === 'dogewatch'
   );
-  const mergedTransactions: DisplayDogeTransaction[] = useMemo(() => {
-    const seen = new Set<string>();
-    const localFirst: typeof localRecentTransactions = [];
-    const owner = activeAddress?.trim() || '';
-    for (const tx of localRecentTransactions) {
-      if (owner && tx.walletAddress && tx.walletAddress !== owner) continue;
-      const id = tx.txid?.trim().toLowerCase();
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      localFirst.push(tx);
-    }
-    for (const tx of transactions) {
-      const id = tx.txid?.trim().toLowerCase();
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      localFirst.push(tx);
-    }
-    return mergeWalletTxJournalIntoList(localFirst, walletTxJournal, { address: activeAddress });
-  }, [localRecentTransactions, transactions, walletTxJournal, activeAddress]);
-
   useEffect(() => {
     setLocalRecentTransactions([]);
-    setSelectedTx(null);
   }, [activeAddress]);
-
-  useEffect(() => {
-    setWalletTxJournal(loadWalletTxJournal());
-    return subscribeWalletTxJournal(() => setWalletTxJournal(loadWalletTxJournal()));
-  }, []);
-
-  // When MyDoge (or other) history confirms a journaled tx, advance journal status.
-  useEffect(() => {
-    for (const tx of transactions) {
-      const txid = tx.txid?.trim().toLowerCase();
-      if (!txid) continue;
-      const entry = walletTxJournal.find((row) => row.txid === txid);
-      if (!entry) continue;
-      if (tx.confirmations > 0 && (entry.status === 'broadcasted' || entry.status === 'seen')) {
-        upsertWalletTxJournalEntry({
-          txid,
-          address: entry.address,
-          protocol: entry.protocol,
-          action: entry.action,
-          title: entry.title,
-          summary: entry.summary,
-          status: 'confirmed',
-          originHost: entry.originHost,
-          originPath: entry.originPath,
-          originLabel: entry.originLabel,
-          metadata: entry.metadata,
-        });
-      } else if (!tx.pending && entry.status === 'broadcasted') {
-        upsertWalletTxJournalEntry({
-          txid,
-          address: entry.address,
-          protocol: entry.protocol,
-          action: entry.action,
-          title: entry.title,
-          summary: entry.summary,
-          status: 'seen',
-          originHost: entry.originHost,
-          originPath: entry.originPath,
-          originLabel: entry.originLabel,
-          metadata: entry.metadata,
-        });
-      }
-    }
-  }, [transactions, walletTxJournal]);
 
   const refreshSavedLocalWallets = useCallback(async () => {
     const storage = new BrowserWallet();
@@ -2827,69 +2713,20 @@ export function DojakwebWalletModal({
     }
   }, [step, tab, activeAddress]);
 
-  // ── Load transactions when tab switches to 'transactions' ──
-  const fetchTransactions = useCallback(async (address: string, page: number, append = false) => {
-    setTxLoading(true);
-    if (!append) setTxError(null);
-    try {
-      const result = await walletDataApi.fetchTransactions(address, page);
-      setTransactions(prev => append ? [...prev, ...result.transactions] : result.transactions);
-      setTxTotal(result.total);
-    } catch {
-      setTxError(t('modal.tx.error'));
-    } finally {
-      setTxLoading(false);
+  useEffect(() => {
+    if (step === 'dashboard' && tab === 'transactions') {
+      setTxTabSeen(true);
+      setTxReload((n) => n + 1);
     }
-  }, [t]);
+  }, [step, tab]);
 
-  useEffect(() => {
-    if (step === 'dashboard' && tab === 'transactions' && activeAddress) {
-      setTxPage(1);
-      setTransactions([]);
-      void fetchTransactions(activeAddress, 1);
-    }
-  }, [step, tab, activeAddress, fetchTransactions]);
-
-  // Label ÐGames / ÐLotto / Ðalkanes / DNS (and friends) via dogex indexes.
-  useEffect(() => {
-    if (step !== 'dashboard' || tab !== 'transactions' || !activeAddress) return;
-    const visible = [
-      ...localRecentTransactions
-        .filter((t) => !activeAddress || !t.walletAddress || t.walletAddress === activeAddress)
-        .map((t) => t.txid),
-      ...transactions.map((t) => t.txid),
-    ].filter(Boolean);
-    let cancelled = false;
-    void enrichWalletTransactionsForAddress(activeAddress, visible)
-      .then(() => {
-        if (!cancelled) setWalletTxJournal(loadWalletTxJournal());
-      })
-      .catch((err) => {
-        console.warn('[dojakweb:tx] protocol enrichment failed', err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [step, tab, activeAddress, transactions, localRecentTransactions]);
-
-  const pendingTxCount = useMemo(
-    () => mergedTransactions.filter((tx) => tx.pending).length,
-    [mergedTransactions],
-  );
-
-  const detailTx = useMemo(() => {
-    if (!selectedTx) return null;
-    return mergedTransactions.find((tx) => tx.txid === selectedTx.txid) ?? selectedTx;
-  }, [selectedTx, mergedTransactions]);
-
-  // While anything is in mempool, refresh history so the yellow blink clears on confirm.
-  useEffect(() => {
-    if (step !== 'dashboard' || !activeAddress || pendingTxCount <= 0) return;
-    const id = window.setInterval(() => {
-      void fetchTransactions(activeAddress, 1);
-    }, 12_000);
-    return () => window.clearInterval(id);
-  }, [step, activeAddress, pendingTxCount, fetchTransactions]);
+  const walletTxList = useWalletTransactionList({
+    address: activeAddress,
+    enabled: step === 'dashboard' && txTabSeen,
+    reloadToken: txReload,
+    localTransactions: localRecentTransactions,
+  });
+  const pendingTxCount = walletTxList.pendingCount;
 
 
   useEffect(() => {
@@ -3170,7 +3007,6 @@ export function DojakwebWalletModal({
           })(),
         },
       });
-      setWalletTxJournal(loadWalletTxJournal());
       toast.success(t('modal.toast.inscriptionSent', { txShort: txid.slice(0, 12) }));
     } catch (e: any) {
       if (isInputsSpentBroadcastError(e) && inscriptionSendDraft) {
@@ -3641,7 +3477,6 @@ export function DojakwebWalletModal({
                       if (activeAddress) void fetchAssets(activeAddress);
                       const id = String(txid || '').trim().toLowerCase();
                       if (/^[0-9a-f]{64}$/.test(id)) {
-                        setWalletTxJournal(loadWalletTxJournal());
                         pushLocalTransaction({
                           txid: id,
                           type: 'sent',
@@ -3654,7 +3489,7 @@ export function DojakwebWalletModal({
                           protocol: 'dunes',
                           protocolLabel: 'Ðunes',
                           title: 'Send',
-                          summary: 'Broadcast — refresh Activity if the protocol chip is missing.',
+                          summary: 'Broadcast — open Transactions if the protocol chip is missing.',
                           walletAddress: activeAddress || undefined,
                         });
                         setTab('transactions');
@@ -5527,513 +5362,11 @@ export function DojakwebWalletModal({
                                 )}
                               </div>
                             ) : tab === 'transactions' ? (
-                              /* ── Transactions tab ── */
-                              <div>
-                                <div className="flex items-center justify-end border-b border-white/[0.06] px-3 py-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => activeAddress && void fetchTransactions(activeAddress, 1)}
-                                    className={cx(
-                                      'rounded-lg p-1.5 transition',
-                                      isDark
-                                        ? 'text-white/50 hover:bg-white/5 hover:text-white'
-                                        : 'text-zinc-500 hover:bg-black/5 hover:text-zinc-800',
-                                    )}
-                                    aria-label={t('modal.aria.refreshTransactions')}
-                                    title={t('modal.aria.refreshTransactions')}
-                                  >
-                                    <ArrowPathIcon className={cx('h-4 w-4', txLoading && 'animate-spin')} />
-                                  </button>
-                                </div>
-                                {/* Detail overlay */}
-                                {detailTx &&
-                                  typeof document !== 'undefined' &&
-                                  createPortal(
-                                  <div
-                                    className="fixed inset-0 z-[10060] flex items-center justify-center p-4"
-                                    onClick={() => setSelectedTx(null)}
-                                  >
-                                    <div className={cx('absolute inset-0', isDark ? 'bg-black/70' : 'bg-zinc-900/40')} />
-                                    <div
-                                      className={cx(
-                                        'relative w-full max-w-sm rounded-2xl p-6 shadow-2xl text-center',
-                                        isDark
-                                          ? 'bg-zinc-950 text-white border-2 border-white/35 ring-1 ring-white/20'
-                                          : 'bg-white text-zinc-900 border border-zinc-200 shadow-xl',
-                                      )}
-                                      onClick={e => e.stopPropagation()}
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() => setSelectedTx(null)}
-                                        className={cx(
-                                          'absolute right-4 top-4 transition',
-                                          isDark ? 'text-white/40 hover:text-white' : 'text-zinc-400 hover:text-zinc-700',
-                                        )}
-                                        aria-label="Close transaction details"
-                                      >
-                                        <XMarkIcon className="h-5 w-5" />
-                                      </button>
-                                      {detailTx.protocol === 'doginals' && detailTx.title ? (
-                                        <div className={cx(
-                                          'mb-1 text-lg font-bold tracking-tight',
-                                          isDark ? 'text-white' : 'text-zinc-900',
-                                        )}>
-                                          {detailTx.title}
-                                        </div>
-                                      ) : (
-                                      <div className={cx(
-                                        'mb-3 text-xs font-bold uppercase tracking-widest',
-                                        isDark ? 'text-white/40' : 'text-zinc-400',
-                                      )}>
-                                        {detailTx.title
-                                          ?.replace(/^Ðune\s*[·•.-]\s*/i, '')
-                                          || (detailTx.type === 'sent' ? t('modal.tx.to') : t('modal.tx.from'))}
-                                      </div>
-                                      )}
-                                      {(detailTx.protocolLabel || detailTx.originLabel || detailTx.actionLabel) && (() => {
-                                        const chips = walletTxDisplayChips(detailTx);
-                                        if (!chips.protocolLabel && !chips.actionLabel && !chips.originLabel) return null;
-                                        return (
-                                        <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
-                                          {chips.protocolLabel && (
-                                            <span className={cx(
-                                              'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
-                                              isDark ? 'bg-amber-400/15 text-amber-200' : 'bg-amber-100 text-amber-800',
-                                            )}>
-                                              {chips.protocolLabel}
-                                            </span>
-                                          )}
-                                          {chips.actionLabel && (
-                                            <span className={cx(
-                                              'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
-                                              chips.actionLabel === 'Payout' || chips.actionLabel === 'Win'
-                                                ? (isDark ? 'bg-green-400/15 text-green-200' : 'bg-green-100 text-green-800')
-                                                : (isDark ? 'bg-fuchsia-400/15 text-fuchsia-200' : 'bg-fuchsia-100 text-fuchsia-800'),
-                                            )}>
-                                              {chips.actionLabel}
-                                            </span>
-                                          )}
-                                          {chips.originLabel && (
-                                            <span className={cx(
-                                              'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
-                                              isDark ? 'bg-sky-400/15 text-sky-200' : 'bg-sky-100 text-sky-800',
-                                            )}>
-                                              {chips.originLabel}
-                                            </span>
-                                          )}
-                                        </div>
-                                        );
-                                      })()}
-                                      <div className="mb-3">
-                                        <span className={cx(
-                                          'text-xs font-medium',
-                                          detailTx.pending
-                                            ? (isDark ? 'text-yellow-200' : 'text-yellow-700')
-                                            : (isDark ? 'text-emerald-300/90' : 'text-emerald-700'),
-                                        )}>
-                                          {detailTx.pending
-                                            ? 'Mempool'
-                                            : detailTx.journal?.status === 'indexed'
-                                              ? 'Indexed'
-                                              : detailTx.confirmations > 0
-                                                ? `Confirmed · ${detailTx.confirmations}`
-                                                : 'Seen'}
-                                        </span>
-                                      </div>
-                                      {detailTx.summary && detailTx.protocol !== 'dunes' && detailTx.protocol !== 'marketplace' && (
-                                        <div className={cx(
-                                          'mb-3 text-xs leading-relaxed',
-                                          isDark ? 'text-white/55' : 'text-zinc-500',
-                                        )}>
-                                          {detailTx.summary}
-                                        </div>
-                                      )}
-                                      {detailTx.protocol === 'marketplace' &&
-                                      (typeof detailTx.journal?.metadata?.seller === 'string' ||
-                                        typeof detailTx.journal?.metadata?.buyer === 'string') ? (
-                                      <div className="mb-1 space-y-1 text-xs">
-                                        {typeof detailTx.journal?.metadata?.seller === 'string' ? (
-                                          <div className="flex items-center justify-center gap-2">
-                                            <span className={isDark ? 'text-white/40' : 'text-zinc-500'}>Seller</span>
-                                            <span className="font-mono font-semibold">
-                                              {String(detailTx.journal.metadata.seller).slice(0, 10)}…
-                                              {String(detailTx.journal.metadata.seller).slice(-4)}
-                                            </span>
-                                          </div>
-                                        ) : null}
-                                        {typeof detailTx.journal?.metadata?.buyer === 'string' ? (
-                                          <div className="flex items-center justify-center gap-2">
-                                            <span className={isDark ? 'text-white/40' : 'text-zinc-500'}>Buyer</span>
-                                            <span className="font-mono font-semibold">
-                                              {String(detailTx.journal.metadata.buyer).slice(0, 10)}…
-                                              {String(detailTx.journal.metadata.buyer).slice(-4)}
-                                            </span>
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                      ) : (
-                                      <div className="mb-1 flex items-center justify-center gap-2">
-                                        {inscriptionFaceFromWalletTx(detailTx) ? null : (
-                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-white">
-                                          {(detailTx.address || detailTx.protocolLabel || 'TX').slice(0, 2).toUpperCase()}
-                                        </div>
-                                        )}
-                                        <span className={cx(
-                                          'font-mono text-sm font-semibold truncate max-w-[200px]',
-                                          isDark ? 'text-white' : 'text-zinc-800',
-                                        )}>
-                                          {detailTx.address
-                                            ? `${detailTx.address.slice(0, 10)}…${detailTx.address.slice(-4)}`
-                                            : detailTx.localOnly
-                                              ? 'Local journal'
-                                              : '—'}
-                                        </span>
-                                        {detailTx.address && (
-                                          <button
-                                            type="button"
-                                            className={cx(
-                                              'transition',
-                                              isDark ? 'text-white/40 hover:text-white' : 'text-zinc-400 hover:text-zinc-600',
-                                            )}
-                                            onClick={() => { void navigator.clipboard.writeText(detailTx.address); }}
-                                            title="Copy address"
-                                          >
-                                            <ClipboardDocumentIcon className="h-4 w-4" />
-                                          </button>
-                                        )}
-                                      </div>
-                                      )}
-                                      {(() => {
-                                        const face = inscriptionFaceFromWalletTx(detailTx);
-                                        if (!face) return null;
-                                        return (
-                                          <div className="mx-auto mb-4 w-40">
-                                            <WalletTxInscriptionPreview face={face} />
-                                          </div>
-                                        );
-                                      })()}
-                                      <div className={cx(
-                                        'my-4 text-4xl font-bold',
-                                        isDark ? 'text-white' : 'text-zinc-900',
-                                      )}>
-                                        {detailTx.protocol === 'doginals' ? (
-                                          <div className="space-y-1">
-                                            {(() => {
-                                              const postage = inscriptionFaceFromWalletTx(detailTx)?.postageDoge;
-                                              if (postage == null) return null;
-                                              return (
-                                                <div className="text-2xl font-bold text-[#FCD34D]">
-                                                  Ð{postage.toLocaleString(undefined, { maximumFractionDigits: 8 })}
-                                                  <span className={cx(
-                                                    'ml-2 text-xs font-medium',
-                                                    isDark ? 'text-white/40' : 'text-zinc-400',
-                                                  )}>
-                                                    {t('modal.tx.postage')}
-                                                  </span>
-                                                </div>
-                                              );
-                                            })()}
-                                            {detailTx.amount > 0 ? (
-                                              <div className={cx(
-                                                'text-sm font-semibold',
-                                                isDark ? 'text-white/80' : 'text-zinc-700',
-                                              )}>
-                                                Ð{detailTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
-                                                <span className={cx(
-                                                  'ml-2 text-xs font-medium',
-                                                  isDark ? 'text-white/40' : 'text-zinc-400',
-                                                )}>
-                                                  {t('modal.tx.walletDelta')}
-                                                </span>
-                                              </div>
-                                            ) : null}
-                                          </div>
-                                        ) : detailTx.protocol === 'dunes' && detailTx.summary ? (
-                                          <div className="space-y-2">
-                                            {detailTx.tokenAmountLabel ? (
-                                              <div className="text-2xl font-bold leading-snug sm:text-3xl">
-                                                {detailTx.tokenAmountLabel}
-                                              </div>
-                                            ) : (
-                                              <div className="text-lg font-semibold leading-snug sm:text-xl">
-                                                {detailTx.summary}
-                                              </div>
-                                            )}
-                                            {detailTx.amount > 0 ? (
-                                              <div className="text-base font-semibold text-[#FCD34D]">
-                                                Ð{detailTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
-                                                <span className={cx(
-                                                  'ml-2 text-xs font-medium',
-                                                  isDark ? 'text-white/40' : 'text-zinc-400',
-                                                )}>
-                                                  DOGE postage / fee
-                                                </span>
-                                              </div>
-                                            ) : null}
-                                          </div>
-                                        ) : detailTx.protocol === 'marketplace' ? (
-                                          <div className="space-y-2">
-                                            <div className="text-lg font-semibold leading-snug sm:text-xl">
-                                              {detailTx.summary || detailTx.title || 'NFT sale'}
-                                            </div>
-                                            {detailTx.amount > 0 ? (
-                                              <div className="text-base font-semibold text-[#FCD34D]">
-                                                Ð{detailTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
-                                                <span className={cx(
-                                                  'ml-2 text-xs font-medium',
-                                                  isDark ? 'text-white/40' : 'text-zinc-400',
-                                                )}>
-                                                  DOGE in this tx
-                                                </span>
-                                              </div>
-                                            ) : null}
-                                          </div>
-                                        ) : (
-                                          <>
-                                            Ð{detailTx.amount % 1 === 0 ? detailTx.amount.toLocaleString() : detailTx.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })}
-                                          </>
-                                        )}
-                                      </div>
-                                      <div className={cx(
-                                        'mt-2 divide-y rounded-xl border text-left text-sm',
-                                        isDark ? 'divide-white/10 border-white/10' : 'divide-zinc-100 border-zinc-200',
-                                      )}>
-                                        <div className="flex items-center justify-between gap-3 px-4 py-2">
-                                          <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>TXID</span>
-                                          <div className="flex min-w-0 items-center gap-2">
-                                            <span className={cx(
-                                              'font-mono text-[11px] font-semibold truncate max-w-[11rem]',
-                                              isDark ? 'text-white' : 'text-zinc-800',
-                                            )}>
-                                              {detailTx.txid
-                                                ? `${detailTx.txid.slice(0, 10)}…${detailTx.txid.slice(-8)}`
-                                                : '—'}
-                                            </span>
-                                            {detailTx.txid && (
-                                              <button
-                                                type="button"
-                                                className={cx(
-                                                  'shrink-0 transition',
-                                                  isDark ? 'text-white/40 hover:text-white' : 'text-zinc-400 hover:text-zinc-600',
-                                                )}
-                                                onClick={() => { void navigator.clipboard.writeText(detailTx.txid); }}
-                                                title="Copy txid"
-                                              >
-                                                <ClipboardDocumentIcon className="h-4 w-4" />
-                                              </button>
-                                            )}
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center justify-between px-4 py-2">
-                                          <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>{t('modal.tx.confirmations')}</span>
-                                          <span className={cx('font-semibold', isDark ? 'text-white' : 'text-zinc-800')}>
-                                            {detailTx.confirmations}
-                                          </span>
-                                        </div>
-                                        {detailTx.timestamp && (
-                                          <div className="flex items-center justify-between px-4 py-2">
-                                            <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>{t('modal.tx.timestamp')}</span>
-                                            <span className={cx('font-semibold', isDark ? 'text-white' : 'text-zinc-800')}>
-                                              {detailTx.timestamp}
-                                            </span>
-                                          </div>
-                                        )}
-                                        {detailTx.journal?.status && (
-                                          <div className="flex items-center justify-between px-4 py-2">
-                                            <span className={isDark ? 'text-white/45' : 'text-zinc-500'}>Journal</span>
-                                            <span className={cx('font-semibold capitalize', isDark ? 'text-white' : 'text-zinc-800')}>
-                                              {detailTx.journal.status}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-                                      {detailTx.txid && (
-                                        <a
-                                          href={dogeTxExplorerUrl(detailTx.txid, txExplorerPref)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className={cx(
-                                            'mt-4 flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition',
-                                            isDark
-                                              ? 'bg-white text-zinc-900 hover:bg-zinc-100'
-                                              : 'bg-zinc-800 text-white hover:bg-zinc-700',
-                                          )}
-                                        >
-                                          {t('modal.tx.viewOnExplorer', {
-                                            name: dogeTxExplorerDisplayName(txExplorerPref),
-                                          })}
-                                          <ArrowDownTrayIcon className="h-4 w-4 rotate-[-90deg]" />
-                                        </a>
-                                      )}
-                                    </div>
-                                  </div>,
-                                  document.body,
-                                )}
-
-                                {/* List */}
-                                {txError ? (
-                                  <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
-                                    <div className={cx('text-sm', isDark ? 'text-red-300' : 'text-red-600')}>{txError}</div>
-                                    <button
-                                      type="button"
-                                      onClick={() => activeAddress && void fetchTransactions(activeAddress, 1)}
-                                      className={cx('text-xs underline', isDark ? 'text-yellow-400' : 'text-amber-700')}
-                                    >
-                                      {t('modal.tx.retry')}
-                                    </button>
-                                  </div>
-                                ) : txLoading && mergedTransactions.length === 0 ? (
-                                  <div className={cx('px-4 py-8 text-center text-sm', isDark ? 'text-white/50' : 'text-zinc-500')}>
-                                    {t('modal.tx.loading')}
-                                  </div>
-                                ) : mergedTransactions.length === 0 ? (
-                                  <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-                                    <ArrowPathIcon className={cx('h-8 w-8', isDark ? 'text-white/30' : 'text-zinc-300')} />
-                                    <div className={cx('text-sm font-semibold', isDark ? 'text-white' : 'text-zinc-900')}>
-                                      {t('modal.tx.emptyTitle')}
-                                    </div>
-                                    <div className={cx('text-xs', isDark ? 'text-white/45' : 'text-zinc-500')}>
-                                      {t('modal.tx.emptyHint')}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div>
-                                    <div className={cx('divide-y', isDark ? 'divide-zinc-800' : 'divide-zinc-200')}>
-                                      {mergedTransactions.map((tx, i) => {
-                                        const timeAgo = compactTxTimeAgo(tx.timestamp);
-                                        const rawPrimary =
-                                          tx.title ||
-                                          (tx.address
-                                            ? `${tx.address.slice(0, 8)}…${tx.address.slice(-4)}`
-                                            : tx.txid
-                                              ? `${tx.txid.slice(0, 8)}…`
-                                              : '—');
-                                        const primary = String(rawPrimary).replace(/^Ðune\s*[·•.-]\s*/i, '');
-                                        const initials =
-                                          tx.protocol === 'dunes'
-                                            ? 'ÐU'
-                                            : (tx.protocolLabel || tx.address || 'TX').slice(0, 2).toUpperCase();
-                                        const chips = walletTxDisplayChips(tx);
-                                        const inscriptionFace = inscriptionFaceFromWalletTx(tx);
-                                        const statusText = tx.pending
-                                          ? 'Mempool'
-                                          : tx.journal?.status === 'indexed'
-                                            ? 'Indexed'
-                                            : 'Confirmed';
-                                        const amountRaw = tx.tokenAmountLabel
-                                          ? tx.tokenAmountLabel
-                                          : inscriptionFace?.postageDoge != null
-                                            ? `${tx.type === 'received' ? '+' : '-'}${inscriptionFace.postageDoge} DOGE`
-                                          : tx.protocol === 'dunes'
-                                            ? 'Ðune'
-                                            : `${tx.type === 'received' ? '+' : '-'}${tx.amount % 1 === 0 ? tx.amount : tx.amount.toFixed(tx.amount < 0.01 ? 8 : 3)}`;
-                                        const amount = formatCompactTxAmount(amountRaw);
-                                        const metaBits = [
-                                          chips.protocolLabel,
-                                          chips.actionLabel,
-                                          statusText,
-                                          timeAgo,
-                                        ].filter(Boolean);
-                                        return (
-                                          <button
-                                            key={`${tx.txid}-${i}`}
-                                            type="button"
-                                            onClick={() => setSelectedTx(tx)}
-                                            className={cx(
-                                              'flex w-full items-center gap-2.5 px-3 py-1.5 text-left transition',
-                                              isDark
-                                                ? 'hover:bg-white/5'
-                                                : 'bg-zinc-50 hover:bg-white',
-                                              tx.pending && (isDark ? 'bg-amber-500/5' : 'bg-amber-50'),
-                                            )}
-                                          >
-                                            {inscriptionFace ? (
-                                              <div className={cx(tx.pending && 'rounded-lg ring-2 ring-amber-400 animate-pulse')}>
-                                                <WalletTxInscriptionPreview face={inscriptionFace} compact />
-                                              </div>
-                                            ) : (
-                                            <div
-                                              className={cx(
-                                                'relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C9A84C] text-[10px] font-bold text-[#161109]',
-                                                tx.pending && 'ring-2 ring-amber-400 animate-pulse',
-                                              )}
-                                            >
-                                              {initials}
-                                            </div>
-                                            )}
-                                            <div className="min-w-0 flex-1">
-                                              <div className={cx(
-                                                'truncate text-[13px] font-semibold leading-tight',
-                                                isDark ? 'text-white' : 'text-zinc-900',
-                                              )}>
-                                                {primary}
-                                              </div>
-                                              <div className={cx(
-                                                'mt-0.5 truncate text-[10px] leading-tight',
-                                                isDark ? 'text-white/45' : 'text-zinc-500',
-                                              )}>
-                                                {chips.protocolLabel ? (
-                                                  <span className={isDark ? 'text-[#C9A84C]' : 'text-[#7A5410]'}>
-                                                    {chips.protocolLabel}
-                                                  </span>
-                                                ) : null}
-                                                {metaBits.slice(chips.protocolLabel ? 1 : 0).map((bit, idx) => (
-                                                  <span
-                                                    key={`${bit}-${idx}`}
-                                                    className={bit === 'Mempool' ? 'text-amber-400 animate-pulse' : undefined}
-                                                  >
-                                                    {(chips.protocolLabel || idx > 0) ? ' · ' : null}
-                                                    {bit}
-                                                  </span>
-                                                ))}
-                                              </div>
-                                            </div>
-                                            <div className={cx(
-                                              'min-w-[4.25rem] max-w-[6.5rem] shrink-0 text-right leading-tight',
-                                              tx.type === 'received'
-                                                ? (isDark ? 'text-green-300' : 'text-green-700')
-                                                : (isDark ? 'text-zinc-200' : 'text-zinc-800'),
-                                            )}>
-                                              <div className="truncate text-[13px] font-semibold tabular-nums">
-                                                {amount.value}
-                                              </div>
-                                              {amount.ticker ? (
-                                                <div className={cx(
-                                                  'truncate text-[9px] font-medium uppercase tracking-wide',
-                                                  isDark ? 'text-white/40' : 'text-zinc-500',
-                                                )}>
-                                                  {amount.ticker}
-                                                </div>
-                                              ) : null}
-                                            </div>
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                    {transactions.length < txTotal && (
-                                      <div className={cx('border-t px-4 py-3', isDark ? 'border-zinc-800' : 'border-zinc-200')}>
-                                        <button
-                                          type="button"
-                                          disabled={txLoading}
-                                          onClick={() => {
-                                            if (!activeAddress) return;
-                                            const nextPage = txPage + 1;
-                                            setTxPage(nextPage);
-                                            void fetchTransactions(activeAddress, nextPage, true);
-                                          }}
-                                          className={cx(
-                                            'w-full text-center text-xs disabled:opacity-50 transition',
-                                            isDark ? 'text-yellow-400 hover:text-yellow-300' : 'text-amber-700 hover:text-amber-800',
-                                          )}
-                                        >
-                                          {txLoading ? t('modal.tx.loading') : t('modal.tx.loadMore')}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
+                              <WalletTransactionsPanel
+                                list={walletTxList}
+                                isDark={isDark}
+                                surface="modal"
+                              />
                             ) : (
                                 <div className={cx('divide-y px-2 py-2', isDark ? 'divide-zinc-800' : 'divide-zinc-200')}>
                                 {activeListings.length === 0 ? (

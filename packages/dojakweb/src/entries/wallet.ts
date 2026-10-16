@@ -17,6 +17,11 @@ export {
 export { default as WalletSelectionModal } from '../components/WalletSelectionModal';
 export { default as SimpleWalletConnect } from '../components/SimpleWalletConnect';
 export { default as DojakwebWalletModal } from '../components/DojakwebWalletModal';
+export {
+  WalletTransactionsPanel,
+  useWalletTransactionList,
+  type WalletTransactionList,
+} from '../components/wallet/WalletTransactionsPanel';
 
 export { useUnifiedWallet } from '../contexts/useUnifiedWallet';
 export { useMyDogeWallet } from '../contexts/useMyDogeWallet';
