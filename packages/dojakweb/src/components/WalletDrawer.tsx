@@ -315,7 +315,9 @@ export default function WalletDrawer({
     [onClose, persistPos],
   );
 
-  const showPaw = isOpen && !isMobile && !isModal;
+  // Paw is the floating-phone grip. Dock is a full-height side panel; the paw
+  // sticks out over the page and covers host UI. Close lives in the header.
+  const showPaw = isOpen && isPawLayout && !isModal;
   const [modalArmed, setModalArmed] = useState(isOpen);
   useEffect(() => {
     if (isOpen) setModalArmed(true);

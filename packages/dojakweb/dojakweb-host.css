@@ -2467,16 +2467,11 @@ body.wallet-drawer-dock-open [data-headlessui-portal] .ds-wallet-dashboard {
   z-index: 10050 !important;
 }
 
+/* Dock is a side column. The floating paw belongs on the pop-out phone only. */
 body.wallet-drawer-dock-open .wallet-paw-grip,
 .wallet-paw-grip--docked {
-  display: block;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-body.wallet-drawer-dock-open .wallet-paw-grip:active,
-body.wallet-drawer-dock-open.wallet-drawer-dragging .wallet-paw-grip {
-  cursor: pointer;
+  display: none !important;
+  pointer-events: none !important;
 }
 
 /* Chassis follows React `data-wallet-layout` immediately (paw ↔ dock without
