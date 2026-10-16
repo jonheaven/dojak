@@ -42,6 +42,7 @@ interface DojakState {
   address: string | null;
   balance: number;
   connecting: boolean;
+  balanceVerified: boolean;
 }
 
 interface SpookyState {
@@ -49,6 +50,7 @@ interface SpookyState {
   address: string | null;
   balance: number;
   connecting: boolean;
+  balanceVerified: boolean;
 }
 
 interface DogeSoftState {
@@ -56,6 +58,7 @@ interface DogeSoftState {
   address: string | null;
   balance: number;
   connecting: boolean;
+  balanceVerified: boolean;
 }
 
 interface LedgerState {
@@ -86,6 +89,7 @@ const DOJAK_INITIAL_STATE: DojakState = {
   address: null,
   balance: 0,
   connecting: false,
+  balanceVerified: false,
 };
 
 const SPOOKY_INITIAL_STATE: SpookyState = {
@@ -93,6 +97,7 @@ const SPOOKY_INITIAL_STATE: SpookyState = {
   address: null,
   balance: 0,
   connecting: false,
+  balanceVerified: false,
 };
 
 const DOGESOFT_INITIAL_STATE: DogeSoftState = {
@@ -100,6 +105,7 @@ const DOGESOFT_INITIAL_STATE: DogeSoftState = {
   address: null,
   balance: 0,
   connecting: false,
+  balanceVerified: false,
 };
 
 const LEDGER_INITIAL_STATE: LedgerState = {
@@ -250,7 +256,13 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     spookyListenersRef.current = true;
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts?.length) {
-        setSpookyState((prev) => ({ ...prev, connected: true, address: accounts[0] }));
+        setSpookyState((prev) => ({
+          ...prev,
+          connected: true,
+          address: accounts[0],
+          balance: prev.address === accounts[0] ? prev.balance : 0,
+          balanceVerified: prev.address === accounts[0] ? prev.balanceVerified : false,
+        }));
         return;
       }
 
@@ -298,7 +310,13 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     dogeSoftListenersRef.current = true;
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts?.length) {
-        setDogeSoftState((prev) => ({ ...prev, connected: true, address: accounts[0] }));
+        setDogeSoftState((prev) => ({
+          ...prev,
+          connected: true,
+          address: accounts[0],
+          balance: prev.address === accounts[0] ? prev.balance : 0,
+          balanceVerified: prev.address === accounts[0] ? prev.balanceVerified : false,
+        }));
         return;
       }
 
@@ -348,7 +366,13 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     dojakListenersRef.current = true;
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts?.length) {
-        setDojakState((prev) => ({ ...prev, connected: true, address: accounts[0] }));
+        setDojakState((prev) => ({
+          ...prev,
+          connected: true,
+          address: accounts[0],
+          balance: prev.address === accounts[0] ? prev.balance : 0,
+          balanceVerified: prev.address === accounts[0] ? prev.balanceVerified : false,
+        }));
         return;
       }
 
@@ -435,9 +459,9 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
     connected &&
     ((walletType === 'mydoge' && myDoge?.balance !== undefined) ||
       (walletType === 'browser' && browser?.balanceVerified) ||
-      (walletType === 'spookydoge' && spookyState.connected) ||
-      (walletType === 'dogesoft' && dogeSoftState.connected) ||
-      (walletType === 'dojak' && dojakState.connected) ||
+      (walletType === 'spookydoge' && spookyState.balanceVerified) ||
+      (walletType === 'dogesoft' && dogeSoftState.balanceVerified) ||
+      (walletType === 'dojak' && dojakState.balanceVerified) ||
       (walletType === 'ledger' && ledgerState.balanceVerified) ||
       (walletType === 'dogewatch' && dogewatchState.balanceVerified));
 
@@ -505,7 +529,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         connected: spookyConnected,
         address: spookyState.address,
         balance: spookyState.balance,
-        balanceVerified: spookyState.connected,
+        balanceVerified: spookyState.balanceVerified,
         balanceRefreshing: false,
         connecting: spookyState.connecting,
         accountIndex: null,
@@ -518,7 +542,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         connected: dogeSoftConnected,
         address: dogeSoftState.address,
         balance: dogeSoftState.balance,
-        balanceVerified: dogeSoftState.connected,
+        balanceVerified: dogeSoftState.balanceVerified,
         balanceRefreshing: false,
         connecting: dogeSoftState.connecting,
         accountIndex: null,
@@ -531,7 +555,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         connected: dojakConnected,
         address: dojakState.address,
         balance: dojakState.balance,
-        balanceVerified: dojakState.connected,
+        balanceVerified: dojakState.balanceVerified,
         balanceRefreshing: false,
         connecting: dojakState.connecting,
         accountIndex: null,
@@ -786,6 +810,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             address: accounts[0],
             balance: 0,
             connecting: false,
+            balanceVerified: false,
           });
           setWalletType(type);
           localStorage.setItem('wallet_type', type);
@@ -813,12 +838,14 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           }
 
           let bal = 0;
+          let verified = false;
           try {
             if (typeof provider.getBalance === 'function') {
               bal = normalizeDogeSoftBalance(await provider.getBalance());
+              verified = true;
             }
           } catch {
-            // Ignore balance fetch failures for Doge Soft.
+            // Leave unverified so the UI shows a dash until a later refresh succeeds.
           }
 
           setDogeSoftState({
@@ -826,6 +853,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             address: nextAddress,
             balance: bal,
             connecting: false,
+            balanceVerified: verified,
           });
           setWalletType(type);
           localStorage.setItem('wallet_type', type);
@@ -844,11 +872,13 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           }
 
           let bal = 0;
+          let verified = false;
           try {
             const result = await (window.dojak as any).getBalance();
             bal = (result?.total || result?.confirmed || 0) / 100000000;
+            verified = true;
           } catch {
-            // Ignore balance fetch failures for Dojak.
+            // Leave unverified so the UI shows a dash until a later refresh succeeds.
           }
 
           setDojakState({
@@ -856,6 +886,7 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
             address: accounts[0],
             balance: bal,
             connecting: false,
+            balanceVerified: verified,
           });
           setWalletType(type);
           localStorage.setItem('wallet_type', type);
@@ -1054,18 +1085,21 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
               return;
             }
             let bal = 0;
+            let verified = false;
             try {
               if (typeof provider.getBalance === 'function') {
                 bal = normalizeDogeSoftBalance(await provider.getBalance());
+                verified = true;
               }
             } catch {
-              // Ignore.
+              // Leave unverified until refresh succeeds.
             }
             setDogeSoftState({
               connected: true,
               address: nextAddress,
               balance: bal,
               connecting: false,
+              balanceVerified: verified,
             });
             setWalletType('dogesoft');
             return;
@@ -2037,7 +2071,11 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         const result = typeof provider?.getBalance === 'function'
           ? await provider.getBalance()
           : await provider?.request?.({ method: 'doge_getBalance' });
-        setSpookyState((prev) => ({ ...prev, balance: normalizeSpookyBalance(result) }));
+        setSpookyState((prev) => ({
+          ...prev,
+          balance: normalizeSpookyBalance(result),
+          balanceVerified: true,
+        }));
       } catch {
         // Ignore transient extension/API failures.
       }
@@ -2054,9 +2092,25 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
           typeof provider.getBalance === 'function'
             ? await provider.getBalance()
             : await dogeSoftRequest(provider, 'getBalance');
-        setDogeSoftState((prev) => ({ ...prev, balance: normalizeDogeSoftBalance(result) }));
+        setDogeSoftState((prev) => ({
+          ...prev,
+          balance: normalizeDogeSoftBalance(result),
+          balanceVerified: true,
+        }));
       } catch {
         // Ignore transient extension/API failures.
+      }
+      return;
+    }
+
+    if (walletType === 'dojak') {
+      try {
+        const result = await (window.dojak as any)?.getBalance?.();
+        if (result == null) return;
+        const bal = (result?.total || result?.confirmed || 0) / 100000000;
+        setDojakState((prev) => ({ ...prev, balance: bal, balanceVerified: true }));
+      } catch {
+        // Keep the last verified balance if a later poll fails.
       }
       return;
     }
@@ -2142,6 +2196,34 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
       window.clearInterval(interval);
     };
   }, [dogewatchState.address, dogewatchState.connected, refreshBalance, walletType]);
+
+  useEffect(() => {
+    const live =
+      (walletType === 'spookydoge' && spookyState.connected && spookyState.address) ||
+      (walletType === 'dogesoft' && dogeSoftState.connected && dogeSoftState.address) ||
+      (walletType === 'dojak' && dojakState.connected && dojakState.address);
+    if (!live || typeof window === 'undefined') return;
+
+    const timeout = window.setTimeout(() => {
+      void refreshBalance();
+    }, 0);
+    const interval = window.setInterval(() => {
+      void refreshBalance();
+    }, 60000);
+    return () => {
+      window.clearTimeout(timeout);
+      window.clearInterval(interval);
+    };
+  }, [
+    dojakState.address,
+    dojakState.connected,
+    dogeSoftState.address,
+    dogeSoftState.connected,
+    refreshBalance,
+    spookyState.address,
+    spookyState.connected,
+    walletType,
+  ]);
 
   const value: UnifiedWalletContextValue = {
     walletType,
