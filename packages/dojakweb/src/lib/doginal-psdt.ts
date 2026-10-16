@@ -13,6 +13,11 @@
  *
  * Seller flow  : buildListingPSDT → signListingPSDT → publishToNostr (or show QR)
  * Buyer flow   : (optionally) buildDummyUtxoPSDT → buildBuyPSDT → sign → broadcastTx
+ *
+ * Item offer   : buildItemOfferPSDT → buyer signs payment inputs with SIGHASH_ALL
+ *                (dog outpoint already in the tx, unsigned) → seller signs input 0
+ *                with SIGHASH_ALL and broadcasts. SIGHASH_ALL locks every input
+ *                and output, so the seller cannot swap the dog or redirect payment.
  */
 
 import * as bitcoin from 'bitcoinjs-lib';
@@ -1046,6 +1051,315 @@ export function validateSellerPSDT(
     const out0 = psbt.txOutputs[0];
     if (!out0) return null;
     return Number(out0.value);
+  } catch {
+    return null;
+  }
+}
+
+// ── Buyer item offer (seller countersigns and broadcasts) ────────────────────
+
+const OFFER_SIGHASH_ALL = bitcoin.Transaction.SIGHASH_ALL;
+const MAX_OFFER_PAYMENT_INPUTS = 12;
+
+export interface ItemOfferFeeSplit {
+  address: string;
+  valueKoinu: number;
+}
+
+export interface BuildItemOfferPSDTParams {
+  /** "txid:vout" of the dog the bid is for. */
+  inscriptionOutput: string;
+  buyerAddress: string;
+  sellerAddress: string;
+  /** Gross bid in koinu. Seller residual is this minus `splits`. Miner fee is extra. */
+  priceKoinu: number;
+  paymentUtxos: OrdUtxo[];
+  /**
+   * Royalty / venue outputs taken out of `priceKoinu`.
+   * Each must be at least soft dust (0.01 Ð). Seller residual must be too.
+   */
+  splits?: ItemOfferFeeSplit[];
+  feeRateKoinuPerByte?: number;
+}
+
+export interface ItemOfferSummary {
+  psbtBase64: string;
+  inscriptionOutpoint: string;
+  inscriptionValueKoinu: number;
+  sellerKoinu: number;
+  priceKoinu: number;
+  minerFeeKoinu: number;
+  splits: ItemOfferFeeSplit[];
+}
+
+export interface ValidatedItemOffer {
+  inscriptionOutpoint: string;
+  inscriptionValueKoinu: number;
+  buyerAddress: string;
+  sellerKoinu: number;
+  /** Outputs that are not the dog and not buyer change. Equals the gross bid. */
+  priceKoinu: number;
+  buyerSignedInputCount: number;
+  /** Royalty and venue outputs (not the seller residual, not the dog, not change). */
+  otherPayees: { address: string; valueKoinu: number }[];
+}
+
+function offerOutpointOf(psbt: bitcoin.Psbt, index: number): string | null {
+  const input = psbt.txInputs[index];
+  if (!input) return null;
+  const txid = Buffer.from(input.hash).reverse().toString('hex');
+  return `${txid}:${input.index}`;
+}
+
+function offerInputValue(psbt: bitcoin.Psbt, index: number): number | null {
+  const raw = psbt.data.inputs[index]?.nonWitnessUtxo;
+  const vin = psbt.txInputs[index];
+  if (!raw || !vin) return null;
+  try {
+    return prevoutValueShibesFromTxBuf(Buffer.from(raw), vin.index, 'item offer');
+  } catch {
+    return null;
+  }
+}
+
+function offerOutputAddress(out: bitcoin.PsbtTxOutput): string | null {
+  if (out.address) return out.address;
+  try {
+    return bitcoin.address.fromOutputScript(Buffer.from(out.script), DOGE_NETWORK);
+  } catch {
+    return null;
+  }
+}
+
+function offerSighashByte(psbt: bitcoin.Psbt, index: number): number | null {
+  const sigs = psbt.data.inputs[index]?.partialSig ?? [];
+  if (!sigs.length) return null;
+  const sig = sigs[0]?.signature;
+  if (!sig?.length) return null;
+  return sig[sig.length - 1] ?? null;
+}
+
+interface OfferFeePlan {
+  fee: number;
+  change: number;
+}
+
+function planItemOfferFee(params: {
+  paymentCount: number;
+  paymentTotal: number;
+  priceKoinu: number;
+  splitCount: number;
+  inscriptionValueKoinu: number;
+  feeRate: number;
+}): OfferFeePlan | null {
+  const nIn = 1 + params.paymentCount;
+  const baseOut = 2 + params.splitCount;
+  const dustPenalty = softDustFeePenaltyKoinu([params.inscriptionValueKoinu]);
+  const sizeWithChange = calculateFee(nIn, baseOut + 1, params.feeRate, false);
+  const feeWithChange = sizeWithChange + dustPenalty;
+  const change = params.paymentTotal - params.priceKoinu - feeWithChange;
+  if (change >= SOFT_DUST_KOINU) {
+    return { fee: feeWithChange, change };
+  }
+  const sizeNoChange = calculateFee(nIn, baseOut, params.feeRate, false);
+  const feeNoChange = sizeNoChange + dustPenalty;
+  const leftover = params.paymentTotal - params.priceKoinu - feeNoChange;
+  if (leftover < 0) return null;
+  // Under 0.01 Ð cannot be a change output. It joins the miner fee.
+  return { fee: feeNoChange + leftover, change: 0 };
+}
+
+/**
+ * Unsigned-dog, buyer-signed item bid.
+ * Input 0 is the dog (no signature). Later inputs are the buyer's coins, signed
+ * `SIGHASH_ALL` so every outpoint and output is frozen. The seller only signs input 0.
+ */
+export async function buildItemOfferPSDT(p: BuildItemOfferPSDTParams): Promise<ItemOfferSummary> {
+  const buyer = p.buyerAddress.trim();
+  const seller = p.sellerAddress.trim();
+  if (!buyer || !seller) throw new Error('Buyer and seller addresses are required');
+  if (buyer === seller) throw new Error('You cannot bid on a dog you already hold');
+  if (!Number.isSafeInteger(p.priceKoinu) || p.priceKoinu <= 0) {
+    throw new Error('Invalid bid amount');
+  }
+
+  const splits = (p.splits ?? []).map((s) => ({
+    address: s.address.trim(),
+    valueKoinu: Math.round(s.valueKoinu),
+  }));
+  let splitTotal = 0;
+  for (const split of splits) {
+    if (!split.address) throw new Error('Fee split is missing an address');
+    if (split.address === buyer) throw new Error('A fee split cannot pay the bidder');
+    if (!Number.isSafeInteger(split.valueKoinu) || split.valueKoinu < SOFT_DUST_KOINU) {
+      throw new Error('Each royalty or venue output must be at least 0.01 DOGE');
+    }
+    splitTotal += split.valueKoinu;
+  }
+  const sellerKoinu = p.priceKoinu - splitTotal;
+  if (sellerKoinu < SOFT_DUST_KOINU) {
+    throw new Error('After royalty and venue fee the seller would receive under 0.01 DOGE. Raise the bid.');
+  }
+
+  const [insTxid, insVoutStr] = p.inscriptionOutput.split(':');
+  const insVout = parseInt(insVoutStr ?? '', 10);
+  if (!/^[0-9a-fA-F]{64}$/.test(insTxid ?? '') || !Number.isInteger(insVout) || insVout < 0) {
+    throw new Error('Inscription location must look like txid:vout');
+  }
+  const inscriptionOutpoint = `${insTxid.toLowerCase()}:${insVout}`;
+  const insTxHex = await getTxHex(insTxid);
+  const insTxBuf = Buffer.from(insTxHex, 'hex');
+  assertPrevoutExists(insTxBuf, insVout, 'Inscription');
+  const inscriptionValueKoinu = prevoutValueShibesFromTxBuf(insTxBuf, insVout, 'Inscription');
+  if (inscriptionValueKoinu <= 0) throw new Error('Inscription output has no value');
+
+  const feeRate = p.feeRateKoinuPerByte ?? (await resolveBuyFeeRateKoinuPerByte());
+  const pool = p.paymentUtxos
+    .filter((u) => u.value > DUMMY_UTXO_VALUE && `${u.txid}:${u.vout}` !== inscriptionOutpoint)
+    .sort((a, b) => a.value - b.value);
+
+  const chosen: OrdUtxo[] = [];
+  let paymentTotal = 0;
+  let plan: OfferFeePlan | null = null;
+  for (const utxo of pool) {
+    if (chosen.length >= MAX_OFFER_PAYMENT_INPUTS) break;
+    chosen.push(utxo);
+    paymentTotal += utxo.value;
+    plan = planItemOfferFee({
+      paymentCount: chosen.length,
+      paymentTotal,
+      priceKoinu: p.priceKoinu,
+      splitCount: splits.length,
+      inscriptionValueKoinu,
+      feeRate,
+    });
+    if (plan) break;
+  }
+  if (!plan) {
+    throw new Error(
+      `Not enough spendable DOGE for this bid. Price ${shibesToDoge(p.priceKoinu)} Ð plus miner fee (including the 0.01 Ð soft-dust add-on on the dog).`,
+    );
+  }
+
+  const psbt = new bitcoin.Psbt(DOGE_PSBT_OPTS);
+  const inscriptionWU = witnessUtxoFromPrevTx(insTxBuf, insVout, 'Inscription');
+  psbt.addInput({
+    hash: insTxid,
+    index: insVout,
+    nonWitnessUtxo: insTxBuf,
+    witnessUtxo: inscriptionWU,
+    sighashType: OFFER_SIGHASH_ALL,
+  } as any);
+
+  for (const utxo of chosen) {
+    const txHex = await getTxHex(utxo.txid);
+    const buf = Buffer.from(txHex, 'hex');
+    assertPrevoutExists(buf, utxo.vout, `Payment ${utxo.txid}:${utxo.vout}`);
+    const wu = witnessUtxoFromPrevTx(buf, utxo.vout, `Payment ${utxo.txid}:${utxo.vout}`);
+    psbt.addInput({
+      hash: utxo.txid,
+      index: utxo.vout,
+      nonWitnessUtxo: buf,
+      witnessUtxo: wu,
+      sighashType: OFFER_SIGHASH_ALL,
+    } as any);
+  }
+
+  psbt.addOutput({ address: seller, value: BigInt(sellerKoinu) });
+  psbt.addOutput({ address: buyer, value: BigInt(inscriptionValueKoinu) });
+  for (const split of splits) {
+    psbt.addOutput({ address: split.address, value: BigInt(split.valueKoinu) });
+  }
+  if (plan.change > 0) {
+    psbt.addOutput({ address: buyer, value: BigInt(plan.change) });
+  }
+
+  return {
+    psbtBase64: psbt.toBase64(),
+    inscriptionOutpoint,
+    inscriptionValueKoinu,
+    sellerKoinu,
+    priceKoinu: p.priceKoinu,
+    minerFeeKoinu: plan.fee,
+    splits,
+  };
+}
+
+/**
+ * A settleable item bid: dog input unsigned, every other input signed `SIGHASH_ALL`
+ * (not ANYONECANPAY), dog output pays the bidder its postage, and the other
+ * non-change outputs sum to the bid.
+ */
+export function validateItemOfferPSDT(
+  psbtBase64: string,
+  expected?: {
+    inscriptionOutpoint?: string;
+    buyerAddress?: string;
+    sellerAddress?: string;
+    priceKoinu?: number;
+  },
+): ValidatedItemOffer | null {
+  try {
+    const psbt = bitcoin.Psbt.fromBase64(psbtBase64, DOGE_PSBT_OPTS);
+    if (psbt.txInputs.length < 2 || psbt.txOutputs.length < 2) return null;
+
+    const dogPoint = offerOutpointOf(psbt, 0);
+    const dogValue = offerInputValue(psbt, 0);
+    if (!dogPoint || dogValue == null || dogValue <= 0) return null;
+    if (expected?.inscriptionOutpoint && dogPoint !== expected.inscriptionOutpoint) return null;
+
+    const dogSighash = psbt.data.inputs[0]?.sighashType;
+    if (dogSighash != null && dogSighash !== OFFER_SIGHASH_ALL) return null;
+    if ((psbt.data.inputs[0]?.partialSig?.length ?? 0) > 0) return null;
+
+    let buyerSignedInputCount = 0;
+    for (let i = 1; i < psbt.txInputs.length; i++) {
+      const byte = offerSighashByte(psbt, i);
+      if (byte !== OFFER_SIGHASH_ALL) return null;
+      const declared = psbt.data.inputs[i]?.sighashType;
+      if (declared != null && declared !== OFFER_SIGHASH_ALL) return null;
+      buyerSignedInputCount += 1;
+    }
+    if (buyerSignedInputCount < 1) return null;
+
+    const outputs = psbt.txOutputs.map((out) => ({
+      address: offerOutputAddress(out),
+      value: Number(out.value),
+    }));
+    const dogOuts = outputs.filter((o) => o.address && o.value === dogValue);
+    if (dogOuts.length !== 1 || !dogOuts[0]?.address) return null;
+    const buyerAddress = dogOuts[0].address;
+    if (expected?.buyerAddress && buyerAddress !== expected.buyerAddress) return null;
+
+    let priceKoinu = 0;
+    let sellerKoinu = 0;
+    const otherPayees: { address: string; valueKoinu: number }[] = [];
+    const seller = expected?.sellerAddress?.trim();
+    for (const out of outputs) {
+      if (!out.address) return null;
+      if (out.address === buyerAddress && out.value === dogValue) continue;
+      if (out.address === buyerAddress) continue;
+      priceKoinu += out.value;
+      if (seller && out.address === seller) sellerKoinu += out.value;
+      else if (seller) otherPayees.push({ address: out.address, valueKoinu: out.value });
+    }
+    if (priceKoinu <= 0) return null;
+    if (expected?.priceKoinu != null && priceKoinu !== expected.priceKoinu) return null;
+    if (seller) {
+      if (sellerKoinu < SOFT_DUST_KOINU) return null;
+    } else {
+      sellerKoinu = priceKoinu;
+    }
+
+    return {
+      inscriptionOutpoint: dogPoint,
+      inscriptionValueKoinu: dogValue,
+      buyerAddress,
+      sellerKoinu,
+      priceKoinu,
+      buyerSignedInputCount,
+      otherPayees,
+    };
   } catch {
     return null;
   }

@@ -636,6 +636,8 @@ export {
   buildAndSignSendInscription,
   buildSendInscriptionDraft,
   validateSellerPSDT,
+  buildItemOfferPSDT,
+  validateItemOfferPSDT,
   getInscriptionValueFromPsdt,
   getInscriptionData,
   type InscriptionHint,
@@ -664,7 +666,13 @@ export {
   DUMMY_UTXO_VALUE,
   DOGE_NETWORK,
 } from './lib/doginal-psdt';
-export type { SendInscriptionPsbtDraft } from './lib/doginal-psdt';
+export type {
+  SendInscriptionPsbtDraft,
+  ItemOfferFeeSplit,
+  BuildItemOfferPSDTParams,
+  ItemOfferSummary,
+  ValidatedItemOffer,
+} from './lib/doginal-psdt';
 export {
   auditPsbtForWalletApproval,
   buildMarketplaceBuyClaims,
