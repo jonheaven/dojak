@@ -11,8 +11,10 @@ import {
 } from '../lib/dojakweb-biometric';
 import {
   msUntilUnlockExpiry,
+  readUnlockExpiresAt,
   stampUnlockExpiry,
   unlockExpiryElapsed,
+  UNLOCK_EXPIRED_EVENT,
   UNLOCK_WINDOW_CHANGED_EVENT,
 } from '../lib/unlock-window';
 
@@ -329,6 +331,15 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onExpired = () => {
+      void lockSession();
+    };
+    window.addEventListener(UNLOCK_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(UNLOCK_EXPIRED_EVENT, onExpired);
+  }, [lockSession]);
+
+  useEffect(() => {
     if (typeof window === 'undefined' || !connected || !unlocked) {
       return;
     }
@@ -341,6 +352,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
     // chosen in Display settings. Hiding the tab does not lock by itself.
     if (dojakwebUnlockUsesWindow()) {
       let timer: number | null = null;
+      let cancelled = false;
       const clearTimer = () => {
         if (timer !== null) {
           window.clearTimeout(timer);
@@ -348,7 +360,23 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
         }
       };
       const arm = () => {
+        if (cancelled) return;
         clearTimer();
+        if (readUnlockExpiresAt() == null) {
+          // The footer used to show a fresh 8h here with no stamp and no secret.
+          void (async () => {
+            const secret = await createDojakwebSessionSecretStore().getSecret();
+            if (cancelled || !unlockedRef.current) return;
+            if (!secret) {
+              void lockSession();
+              return;
+            }
+            if (readUnlockExpiresAt() == null) stampUnlockExpiry();
+            if (cancelled || readUnlockExpiresAt() == null) return;
+            arm();
+          })();
+          return;
+        }
         const ms = msUntilUnlockExpiry();
         if (ms === null) return;
         if (ms <= 0) {
@@ -356,6 +384,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
           return;
         }
         timer = window.setTimeout(() => {
+          if (cancelled) return;
           if (unlockExpiryElapsed()) void lockSession();
           else arm();
         }, ms);
@@ -377,6 +406,7 @@ export function BrowserWalletProvider({ children }: BrowserWalletProviderProps) 
       arm();
 
       return () => {
+        cancelled = true;
         clearTimer();
         document.removeEventListener('visibilitychange', onVisibility);
         window.removeEventListener('pointerdown', onActivity);

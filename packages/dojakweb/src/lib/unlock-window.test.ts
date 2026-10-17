@@ -75,6 +75,9 @@ describe('unlock window preference', () => {
     expect(unlockExpiryElapsed(1_000_000 + 15 * 60 * 1000)).toBe(true);
     expect(msUntilUnlockExpiry(1_000_000 + 1000)).toBe(15 * 60 * 1000 - 1000);
 
+    sessionStorage.removeItem(UNLOCK_EXPIRES_KEY);
+    expect(msUntilUnlockExpiry(1_000_000)).toBeNull();
+
     writeUnlockWindow('tab');
     expect(readUnlockWindow()).toBe('tab');
     expect(readUnlockExpiresAt()).toBeNull();

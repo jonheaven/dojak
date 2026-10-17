@@ -5,7 +5,12 @@ import {
   type BiometricFacade,
   type SessionSecretStore,
 } from '@dojak/biometrics';
-import { stampUnlockExpiry, unlockExpiryElapsed, writeUnlockExpiresAt } from './unlock-window';
+import {
+  noteUnlockExpired,
+  stampUnlockExpiry,
+  unlockExpiryElapsed,
+  writeUnlockExpiresAt,
+} from './unlock-window';
 
 const SESSION_SECRET_KEY = 'dojakweb.biometric.session-secret';
 const LEGACY_SESSION_KEYS = [
@@ -134,6 +139,7 @@ export function createDojakwebSessionSecretStore(): SessionSecretStore {
           if (fromChrome) {
             if (unlockPersistence === 'window' && unlockExpiryElapsed()) {
               await store.clearSecret();
+              noteUnlockExpired();
               return null;
             }
             return fromChrome;
@@ -146,6 +152,7 @@ export function createDojakwebSessionSecretStore(): SessionSecretStore {
       if (!secret) return null;
       if (unlockPersistence === 'window' && unlockExpiryElapsed()) {
         await store.clearSecret();
+        noteUnlockExpired();
         return null;
       }
       return secret;

@@ -49,6 +49,7 @@ import { WalletAccountSwitcherPanel } from './wallet/WalletAccountSwitcherPanel'
 import { WalletPinNumpad } from './wallet/WalletPinNumpad';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import { WalletApprovalPanel } from './wallet/WalletApprovalPanel';
+import { getWalletApprovalPending } from '../stores/walletApprovalStore';
 import { WalletSendFlow } from './wallet/WalletSendFlow';
 import {
   BatchInscriptionSendPanel,
@@ -1608,6 +1609,13 @@ export function DojakwebWalletModal({
         } catch {
           /* fall through to unlock UI */
         }
+        // A Buy / sign request is already waiting. Stay on the dashboard so the
+        // signature sheet (it has its own unlock) is what they see after the password.
+        // The full unlock wizard used to replace that sheet, and the request was gone.
+        if (getWalletApprovalPending()) {
+          if (!holdWizardStep) setStep('dashboard');
+          return;
+        }
         setStep('unlock');
         return;
       }
@@ -2688,8 +2696,16 @@ export function DojakwebWalletModal({
   useEffect(() => {
     if (isOpen) {
       // Prefer staying on dashboard when local browser session already holds the key.
+      // A pending signature stays on the dashboard too, so unlock does not swap the
+      // sheet out from under the Buy the user just clicked.
       const sessionOpen = Boolean(browser.unlocked && browser.address);
-      const targetStep = initialStep === 'verification' ? 'verification' : sessionOpen ? 'dashboard' : initialStep;
+      const approvalWaiting = Boolean(getWalletApprovalPending());
+      const targetStep =
+        initialStep === 'verification'
+          ? 'verification'
+          : sessionOpen || approvalWaiting
+            ? 'dashboard'
+            : initialStep;
       setStep(targetStep);
       setSettingsTab(initialSettingsTab);
       if (initialDashboardTab) setTab(initialDashboardTab);

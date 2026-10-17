@@ -13,6 +13,7 @@ import { DojakwebDxTrustedOriginsProvider } from '../contexts/DojakwebDxContext'
 import { DxHostBridge } from '../components/DxHostBridge';
 import { IncomingTxAlerts } from '../components/IncomingTxAlerts';
 import { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
+import { installWalletDrawerWindowEvents } from '../stores/walletDrawerStore';
 import {
   setDojakwebUnlockPersistence,
   type DojakwebUnlockPersistence,
@@ -45,6 +46,7 @@ export function DojakWalletProvider({
   unlockPersistence = 'window',
 }: DojakWalletProviderProps) {
   setDojakwebUnlockPersistence(unlockPersistence);
+  installWalletDrawerWindowEvents();
 
   useEffect(() => {
     ensureDojakwebEcosystemDefaults();

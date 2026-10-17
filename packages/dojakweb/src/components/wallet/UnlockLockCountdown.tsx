@@ -34,8 +34,9 @@ export function UnlockLockCountdown() {
         return;
       }
       const ms = msUntilUnlockExpiry();
+      // No stamp means the session clock is gone. Do not invent "locks in 8h".
       if (ms == null) {
-        setLabel(t('modal.dataLabel.locksOnClose'));
+        setLabel(null);
         return;
       }
       setLabel(t('modal.dataLabel.locksIn', { time: formatRemain(ms) }));

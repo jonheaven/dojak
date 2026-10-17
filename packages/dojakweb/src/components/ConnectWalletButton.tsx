@@ -17,8 +17,20 @@ import { useIsMobileWallet } from '../hooks/useMediaQuery';
 import {
   rejectWalletApproval,
   isWalletApprovalWorking,
+  getWalletApprovalPending,
   walletApprovalStore,
 } from '../stores/walletApprovalStore';
+import {
+  claimWalletDrawerHost,
+  dismissWalletDrawer,
+  getWalletDrawerServerSnapshot,
+  getWalletDrawerSnapshot,
+  isWalletDrawerHost,
+  presentWalletDrawer,
+  releaseWalletDrawerHost,
+  subscribeWalletDrawer,
+  type WalletDrawerStep,
+} from '../stores/walletDrawerStore';
 import { BrowserWallet } from '../lib/browser-wallet';
 
 export interface ConnectWalletButtonProps {
@@ -34,16 +46,25 @@ export function ConnectWalletButton({
   mode = 'drawer',
 }: ConnectWalletButtonProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [savedLocal, setSavedLocal] = useState(() => BrowserWallet.peekSaved());
-  const [openNonce, setOpenNonce] = useState(0);
-  const [openFocus, setOpenFocus] = useState<WalletOpenFocus | null>(null);
-  const [drawerStep, setDrawerStep] = useState<WalletDrawerOpenStep>('dashboard');
+  const drawer = useSyncExternalStore(
+    subscribeWalletDrawer,
+    getWalletDrawerSnapshot,
+    getWalletDrawerServerSnapshot,
+  );
+  const drawerOpen = drawer.open;
+  const hostIdRef = useRef(0);
+  if (hostIdRef.current === 0) hostIdRef.current = claimWalletDrawerHost();
+  const isDrawerHost = isWalletDrawerHost(hostIdRef.current);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { connected, address } = useUnifiedWallet();
+  const connectedRef = useRef(connected);
+  connectedRef.current = connected;
   const { t } = useDojakwebI18n();
   const dxOpenSignal = useDxHostStore((s) => s.openWalletSignal);
   const dxCloseSignal = useDxHostStore((s) => s.closeWalletSignal);
+  const seenOpenSignal = useRef(dxOpenSignal);
+  const seenCloseSignal = useRef(dxCloseSignal);
   const approvalPending = useSyncExternalStore(
     walletApprovalStore.subscribe,
     walletApprovalStore.getSnapshot,
@@ -51,46 +72,45 @@ export function ConnectWalletButton({
   );
   const isMobile = useIsMobileWallet();
 
-  const openDrawer = useCallback((step: WalletDrawerOpenStep, focus?: WalletOpenFocus | null) => {
-    setPickerOpen(false);
-    if (focus !== undefined) setOpenFocus(focus);
-    setDrawerStep(step);
-    setOpenNonce((n) => n + 1);
-    setDrawerOpen(true);
+  useEffect(() => {
+    const id = hostIdRef.current;
+    return () => releaseWalletDrawerHost(id);
   }, []);
+
+  const openDrawer = useCallback((step: WalletDrawerStep, focus?: WalletOpenFocus | null) => {
+    setPickerOpen(false);
+    presentWalletDrawer({
+      step,
+      focus: focus === undefined ? undefined : focus,
+      isDark,
+      mode,
+    });
+  }, [isDark, mode]);
 
   useEffect(() => {
     setSavedLocal(BrowserWallet.peekSaved());
   }, [connected, drawerOpen]);
 
+  // Open from hosts (Buy, Ð𝕏, `openWalletDrawer`). Only react to a new signal —
+  // a connect/unlock must not slide a second phone in over the one already open.
   useEffect(() => {
-    if (dxOpenSignal > 0) {
-      const focus = useDxHostStore.getState().consumeOpenFocus();
-      const approval = walletApprovalStore.getSnapshot();
-      const step = approval || connected ? 'dashboard' : savedLocal ? 'unlock' : 'chooser';
-      openDrawer(step, focus);
-    }
-  }, [connected, dxOpenSignal, openDrawer, savedLocal]);
+    if (!isDrawerHost || dxOpenSignal === 0 || dxOpenSignal === seenOpenSignal.current) return;
+    seenOpenSignal.current = dxOpenSignal;
+    const focus = useDxHostStore.getState().consumeOpenFocus();
+    const approval = getWalletApprovalPending();
+    const step: WalletDrawerOpenStep =
+      approval || connectedRef.current ? 'dashboard' : savedLocal ? 'unlock' : 'chooser';
+    openDrawer(step, focus);
+  }, [dxOpenSignal, isDrawerHost, openDrawer, savedLocal]);
 
   useEffect(() => {
-    if (dxCloseSignal > 0) {
-      setDrawerOpen(false);
-      setPickerOpen(false);
-    }
-  }, [dxCloseSignal]);
-
-  // Host signing requests always force the drawer open (extension popup pattern).
-  useEffect(() => {
-    if (approvalPending) {
-      setPickerOpen(false);
-      setDrawerOpen(true);
-      setDrawerStep('dashboard');
-      setOpenNonce((n) => n + 1);
-    }
-  }, [approvalPending?.id]);
+    if (!isDrawerHost || dxCloseSignal === 0 || dxCloseSignal === seenCloseSignal.current) return;
+    seenCloseSignal.current = dxCloseSignal;
+    dismissWalletDrawer();
+  }, [dxCloseSignal, isDrawerHost]);
 
   const handleCloseDrawer = useCallback(() => {
-    const pending = walletApprovalStore.getSnapshot();
+    const pending = getWalletApprovalPending();
     if (pending) {
       // Signing already in flight — closing would orphan a possibly-broadcast tx.
       if (isWalletApprovalWorking() || pending.status === 'working') {
@@ -98,7 +118,7 @@ export function ConnectWalletButton({
       }
       rejectWalletApproval('User closed the wallet');
     }
-    setDrawerOpen(false);
+    dismissWalletDrawer();
   }, []);
 
   const toggleDrawer = useCallback(() => {
@@ -128,10 +148,10 @@ export function ConnectWalletButton({
   const switchAriaLabel = t('wallet.quickPicker.switchAria');
 
   const focusProps = {
-    openNonce,
-    initialNftFilter: openFocus?.nftFilter ?? 'all',
-    initialDashboardTab: openFocus?.tab,
-    initialAssetType: openFocus?.assetType,
+    openNonce: drawer.nonce,
+    initialNftFilter: drawer.focus?.nftFilter ?? 'all',
+    initialDashboardTab: drawer.focus?.tab,
+    initialAssetType: drawer.focus?.assetType,
   } as const;
 
   return (
@@ -155,7 +175,7 @@ export function ConnectWalletButton({
               return;
             }
             if (drawerOpen) {
-              setDrawerOpen(false);
+              handleCloseDrawer();
             }
             togglePicker();
           }}
@@ -218,23 +238,23 @@ export function ConnectWalletButton({
         isDark={isDark}
       />
 
-      {mode === 'modal' && drawerOpen ? (
+      {isDrawerHost && drawer.mode === 'modal' && drawerOpen ? (
         <Suspense fallback={null}>
           <DojakwebWalletModal
             isOpen={drawerOpen}
             onClose={handleCloseDrawer}
-            isDark={isDark}
-            initialStep={drawerStep}
+            isDark={drawer.isDark ?? isDark}
+            initialStep={drawer.step}
             mode="modal"
             {...focusProps}
           />
         </Suspense>
-      ) : mode !== 'modal' ? (
+      ) : isDrawerHost ? (
         <WalletDrawer
           isOpen={drawerOpen}
           onClose={handleCloseDrawer}
-          initialStep={drawerStep}
-          isDark={isDark}
+          initialStep={drawer.step}
+          isDark={drawer.isDark ?? isDark}
           {...focusProps}
         />
       ) : null}

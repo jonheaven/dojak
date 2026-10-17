@@ -16,6 +16,7 @@ import { DojakwebDxTrustedOriginsProvider } from '../contexts/DojakwebDxContext'
 import { DxHostBridge } from '../components/DxHostBridge';
 import { IncomingTxAlerts } from '../components/IncomingTxAlerts';
 import { ensureDojakwebEcosystemDefaults } from '../lib/ecosystemDefaults';
+import { installWalletDrawerWindowEvents } from '../stores/walletDrawerStore';
 
 export interface DojakwebProviderProps {
   children: React.ReactNode;
@@ -43,6 +44,7 @@ export function DojakwebProvider({
   theme = 'dark',
   dxTrustedOrigins,
 }: DojakwebProviderProps) {
+  installWalletDrawerWindowEvents();
   // Featured defaults: MyDoge bag, command.dog broadcast, doge.watch — user can override in Settings.
   useEffect(() => {
     ensureDojakwebEcosystemDefaults();

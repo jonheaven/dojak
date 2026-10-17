@@ -88,12 +88,28 @@ export function unlockExpiryElapsed(now = Date.now()): boolean {
   return now >= at;
 }
 
-/** Milliseconds until lock. `null` means there is no clock. */
+export const UNLOCK_EXPIRED_EVENT = 'dojakweb:unlock-expired';
+
+/** Tell the wallet UI the quiet period ended, so it cannot keep saying "locks in 8h". */
+export function noteUnlockExpired(): void {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+  try {
+    window.dispatchEvent(new Event(UNLOCK_EXPIRED_EVENT));
+  } catch {
+    /* non-DOM test */
+  }
+}
+
+/**
+ * Milliseconds until lock.
+ * `null` means there is no live clock (until-tab-close, or the session stamp is gone).
+ * A missing stamp must not pretend the full window is still left.
+ */
 export function msUntilUnlockExpiry(now = Date.now()): number | null {
   const ms = unlockWindowDurationMs();
   if (ms == null) return null;
   const at = readUnlockExpiresAt();
-  if (at == null) return ms;
+  if (at == null) return null;
   return Math.max(0, at - now);
 }
 
