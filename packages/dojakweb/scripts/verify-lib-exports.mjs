@@ -61,6 +61,9 @@ const REQUIRED_EXPORTS = [
   'NetworkFeeFuelButton',
   'resolveRequestedOrPreferredFeeRateKoinuPerByte',
   'signInscriptionBatch',
+  'buildSendInscriptionsDraft',
+  'MAX_BATCH_INSCRIPTION_COINS',
+  'resolveSendRecipient',
 ];
 
 if (!fs.existsSync(distIndex)) {
