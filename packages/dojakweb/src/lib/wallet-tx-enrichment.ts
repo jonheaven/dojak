@@ -4,7 +4,8 @@
  * payouts, tickets, and contract calls — not just plain Dogecoin sends.
  */
 
-import { getIndexerFetchBases } from '../utils/api';
+import { getCommandDogApiBaseUrl, getIndexerFetchBases } from '../utils/api';
+import { classifyDnsInscription, revealHistoryFromHex } from './incoming-tx-alerts';
 import { dnsNameFromBody } from '../utils/inscription-text';
 import { gatedMydogeGetJson } from './mydoge/httpGate';
 import {
@@ -423,7 +424,7 @@ function enrichmentsFromDnsName(row: Record<string, unknown>): WalletTxEnrichmen
 export async function probeTxProtocolEnrichments(
   txids: string[],
   already: Map<string, WalletTxEnrichment>,
-  limit = 24,
+  limit = 48,
   address?: string,
 ): Promise<Map<string, WalletTxEnrichment>> {
   const out = new Map(already);
@@ -478,6 +479,11 @@ export async function probeTxProtocolEnrichments(
         const located = enrichmentFromInscriptionLocation(txid, mydogeRows);
         if (located) {
           out.set(txid, located);
+          return;
+        }
+        const revealed = await enrichmentFromRevealTx(txid);
+        if (revealed) {
+          out.set(txid, revealed);
           return;
         }
         const dune = await enrichmentFromDuneOutpoints(txid);
@@ -596,6 +602,112 @@ function postageDogeFromMarket(row: Record<string, unknown>): number | undefined
   return n / 1e8;
 }
 
+function hexFromRawBody(body: string): string {
+  let hex = body.trim().toLowerCase().replace(/^0x/, '').replace(/^"|"$/g, '');
+  try {
+    const json = JSON.parse(body) as { hex?: string; raw?: string; result?: string } | string;
+    if (typeof json === 'string') hex = json;
+    else hex = String(json.hex ?? json.raw ?? json.result ?? hex);
+  } catch {
+    /* plain hex */
+  }
+  hex = hex.trim().toLowerCase().replace(/^0x/, '');
+  return /^[0-9a-f]{100,}$/.test(hex) ? hex : '';
+}
+
+async function fetchRevealHex(txid: string): Promise<string | null> {
+  for (const base of indexerBases()) {
+    try {
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer =
+        ctrl && typeof window !== 'undefined' ? window.setTimeout(() => ctrl.abort(), 6_000) : null;
+      const res = await fetch(`${base}/api/tx/${encodeURIComponent(txid)}/raw`, {
+        cache: 'no-store',
+        headers: { Accept: 'application/json,text/plain' },
+        signal: ctrl?.signal,
+      });
+      if (timer != null) window.clearTimeout(timer);
+      if (!res.ok) continue;
+      const hex = hexFromRawBody(await res.text());
+      if (hex) return hex;
+    } catch {
+      /* try next base */
+    }
+  }
+  if (typeof window === 'undefined') return null;
+  const commandDog = getCommandDogApiBaseUrl().trim().replace(/\/+$/, '');
+  if (!commandDog) return null;
+  try {
+    const res = await fetch(`${commandDog}/rpc/getrawtransaction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ params: [txid, false] }),
+    });
+    if (!res.ok) return null;
+    const hex = hexFromRawBody(await res.text());
+    return hex || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Plain-name and JSON DNS bodies are a register, not a generic inscription send. */
+export function withDnsRegisterLabel(row: WalletTxEnrichment): WalletTxEnrichment {
+  const preview = String(row.metadata?.contentPreview ?? row.title ?? '');
+  const contentType = typeof row.metadata?.contentType === 'string' ? row.metadata.contentType : undefined;
+  const dns = classifyDnsInscription(preview, contentType);
+  if (!dns) return row;
+  const action = dns.kind === 'config' || dns.kind === 'primary' ? dns.kind : 'register';
+  const actionLabel = action === 'config' ? 'Config' : action === 'primary' ? 'Primary' : 'Register';
+  return {
+    ...row,
+    protocol: 'dns',
+    action,
+    actionLabel,
+    title: dns.name,
+    summary: 'Received doginal',
+    originLabel: row.originLabel || 'dogecoin.dog · DNS',
+    metadata: {
+      ...row.metadata,
+      name: dns.name,
+      contentType: contentType || 'text/plain',
+      contentPreview: dns.name,
+      actionLabel,
+    },
+  };
+}
+
+/** Doginals reveal (bulk cart or single mint) read from raw tx hex. */
+export function enrichmentFromRevealHex(txid: string, hex: string): WalletTxEnrichment | null {
+  const id = txid.trim().toLowerCase();
+  const label = revealHistoryFromHex(hex);
+  if (!label || !/^[0-9a-f]{64}$/.test(id)) return null;
+  return {
+    txid: id,
+    protocol: label.protocol,
+    action: label.action,
+    actionLabel: label.actionLabel,
+    title: label.title,
+    summary: label.summary,
+    originLabel: label.protocol === 'dns' ? 'dogecoin.dog · DNS' : undefined,
+    indexed: true,
+    metadata: {
+      name: label.name,
+      inscriptionId: `${id}i0`,
+      contentType: label.contentType,
+      contentPreview: label.contentPreview,
+      postageDoge: label.protocol === 'dns' ? 0.001 : undefined,
+      actionLabel: label.actionLabel,
+    },
+  };
+}
+
+async function enrichmentFromRevealTx(txid: string): Promise<WalletTxEnrichment | null> {
+  const hex = await fetchRevealHex(txid);
+  if (!hex) return null;
+  return enrichmentFromRevealHex(txid, hex);
+}
+
 function contentLabel(detail?: InscriptionMoveDetail): string {
   const preview = detail?.contentPreview?.trim() || '';
   if (!preview) return '';
@@ -682,7 +794,8 @@ async function enrichmentFromMarketplace(
   if (kind === 'transfer' || kind === 'self_move') {
     const inscriptionId = inscriptionIdFromMarket(txid, row, mydogeRows);
     const detail = inscriptionId ? await fetchInscriptionMoveDetail(inscriptionId) : undefined;
-    return inscriptionMoveEnrichment(txid, row, detail, mydogeRows);
+    const moved = inscriptionMoveEnrichment(txid, row, detail, mydogeRows);
+    return moved ? withDnsRegisterLabel(moved) : null;
   }
   if (kind !== 'marketplace_sale' && kind !== 'otc_sale') return null;
   const venue = String(row.venue ?? 'openordex').trim() || 'openordex';
@@ -836,6 +949,10 @@ export function enrichmentActionLabel(entry?: DojakwebWalletTxEntry | null): str
   if (a === 'lock') return 'Lock';
   if (a === 'unlock') return 'Unlock';
   if (a === 'send') return 'Send';
+  if (a === 'receive') return 'Receive';
+  if (a === 'register') return 'Register';
+  if (a === 'config') return 'Config';
+  if (a === 'primary') return 'Primary';
   if (a === 'mint') return 'Mint';
   return a.charAt(0).toUpperCase() + a.slice(1);
 }
@@ -851,13 +968,17 @@ export async function enrichWalletTransactionsForAddress(
   const byAddress = await fetchAddressProtocolEnrichments(address);
   applyEnrichmentsToJournal(address, byAddress.values());
 
+  const journal = loadWalletTxJournal();
+  const alreadyDns = new Set(
+    journal.filter((row) => row.txid && row.protocol === 'dns').map((row) => row.txid as string),
+  );
   const needProbe = visibleTxids.filter((t) => {
     const id = t.trim().toLowerCase();
-    return /^[0-9a-f]{64}$/.test(id) && !byAddress.has(id);
+    return /^[0-9a-f]{64}$/.test(id) && !byAddress.has(id) && !alreadyDns.has(id);
   });
   if (!needProbe.length) return byAddress;
 
-  const probed = await probeTxProtocolEnrichments(needProbe, byAddress, 24, address);
+  const probed = await probeTxProtocolEnrichments(needProbe, byAddress, 48, address);
   const fresh: WalletTxEnrichment[] = [];
   for (const [txid, e] of probed) {
     if (!byAddress.has(txid)) fresh.push(e);

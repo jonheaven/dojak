@@ -156,9 +156,46 @@ function pushesFrom(script: Uint8Array, start: number, maxPushes: number): Uint8
 
 export type InscriptionText = { contentType?: string; text: string };
 
+function looksLikeDerSig(push: Uint8Array): boolean {
+  return push.length >= 68 && push.length <= 74 && push[0] === 0x30;
+}
+
+function looksLikeP2shRedeem(push: Uint8Array): boolean {
+  if (push.length < 34 || push.length > 520) return false;
+  for (let i = 0; i < push.length; i++) {
+    const b = push[i];
+    if (b === 0xac || b === 0xad) return true;
+  }
+  return false;
+}
+
+function looksLikeCompressedPubkey(push: Uint8Array): boolean {
+  return push.length === 33 && (push[0] === 0x02 || push[0] === 0x03);
+}
+
+/**
+ * Bulk DNS reveals are P2SH: inscription pushes, then a DER sig, then the
+ * redeem script (`<pubkey> CHECKSIGVERIFY DROP×n OP_1`). Leaving those on the
+ * push list glues binary onto `joshwise.doge` and the name no longer classifies.
+ */
+function stripTrailingAuth(pushes: Uint8Array[]): Uint8Array[] {
+  if (pushes.length >= 2) {
+    const sig = pushes[pushes.length - 2]!;
+    const tail = pushes[pushes.length - 1]!;
+    if (looksLikeDerSig(sig) && (looksLikeP2shRedeem(tail) || looksLikeCompressedPubkey(tail))) {
+      return pushes.slice(0, -2);
+    }
+  }
+  if (pushes.length >= 1 && looksLikeDerSig(pushes[pushes.length - 1]!)) {
+    return pushes.slice(0, -1);
+  }
+  return pushes;
+}
+
 /**
  * Short text bodies from era-1 `ord` envelopes in a raw tx.
- * DNS mints use one chunk: ord, part count, MIME, countdown, body.
+ * Single mints and bulk-cart reveals share one chunk layout:
+ * ord, part count, MIME, countdown, body — then the P2SH signature.
  */
 export function extractInscriptionTexts(txHex: string): InscriptionText[] {
   const hex = txHex.trim().toLowerCase().replace(/^0x/, '');
@@ -169,11 +206,12 @@ export function extractInscriptionTexts(txHex: string): InscriptionText[] {
     if (bytes[i] !== 0x03 || bytes[i + 1] !== 0x6f || bytes[i + 2] !== 0x72 || bytes[i + 3] !== 0x64) {
       continue;
     }
-    const pushes = pushesFrom(bytes, i, 10);
+    const pushes = pushesFrom(bytes, i, 16);
     if (utf8Push(pushes[0] ?? new Uint8Array()) !== 'ord') continue;
     let contentType: string | undefined;
     const chunks: Uint8Array[] = [];
-    for (const p of pushes.slice(1)) {
+    for (const p of stripTrailingAuth(pushes.slice(1))) {
+      if (looksLikeDerSig(p) || looksLikeCompressedPubkey(p) || looksLikeP2shRedeem(p)) break;
       if (p.length === 0 || (p.length === 1 && p[0]! <= 16)) continue;
       const u = utf8Push(p);
       if (!contentType && /^[\w.+-]+\/[\w.+-]+/.test(u) && u.length < 80) {
@@ -188,6 +226,50 @@ export function extractInscriptionTexts(txHex: string): InscriptionText[] {
     i += 3;
   }
   return out;
+}
+
+export type RevealHistoryLabel = {
+  protocol: 'dns' | 'doginals';
+  action: string;
+  actionLabel: string;
+  title: string;
+  summary: string;
+  name?: string;
+  contentType?: string;
+  contentPreview: string;
+};
+
+/** Wallet history label for a Doginals reveal. Plain `label.namespace` is a DNS register. */
+export function revealHistoryFromHex(txHex: string): RevealHistoryLabel | null {
+  const bodies = extractInscriptionTexts(txHex);
+  for (const body of bodies) {
+    const dns = classifyDnsInscription(body.text, body.contentType);
+    if (!dns) continue;
+    const action = dns.kind === 'config' || dns.kind === 'primary' ? dns.kind : 'register';
+    const actionLabel = action === 'config' ? 'Config' : action === 'primary' ? 'Primary' : 'Register';
+    return {
+      protocol: 'dns',
+      action,
+      actionLabel,
+      title: dns.name,
+      summary: 'Received doginal',
+      name: dns.name,
+      contentType: body.contentType || 'text/plain',
+      contentPreview: dns.name,
+    };
+  }
+  const hit = bodies.find((body) => body.text.trim());
+  if (!hit) return null;
+  const preview = hit.text.trim().slice(0, 80);
+  return {
+    protocol: 'doginals',
+    action: 'receive',
+    actionLabel: 'Receive',
+    title: 'Received doginal',
+    summary: preview,
+    contentType: hit.contentType,
+    contentPreview: preview,
+  };
 }
 
 /** One dot, two sides, not a bitmap/dogemap carve-out. Emoji labels stay. */

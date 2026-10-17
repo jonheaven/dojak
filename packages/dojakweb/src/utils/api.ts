@@ -7,6 +7,7 @@ import {
   isMydogeApiUrl,
   memoizeMydogeWork,
 } from '../lib/mydoge/httpGate';
+import { revealHistoryFromHex } from '../lib/incoming-tx-alerts';
 import { getEnv, isViteDev } from './env';
 
 export type WalletDataProviderType = 'mydoge' | 'dogex' | 'commanddog' | 'electrs';
@@ -668,7 +669,7 @@ export interface DogeTransaction {
    * Best-effort protocol from provider tx shape (e.g. OP_RETURN 0xD0).
    * Journal merge can still upgrade this further.
    */
-  protocolHint?: 'dogecoin' | 'dunes' | 'doginals';
+  protocolHint?: 'dogecoin' | 'dunes' | 'doginals' | 'dns';
   title?: string;
   summary?: string;
 }
@@ -1207,6 +1208,56 @@ async function fetchInscriptionsFromMyDoge(address: string): Promise<MyDogeInscr
     return extractArray(data) as MyDogeInscription[];
   } catch {
     return [];
+  }
+}
+
+function hexFromRawTxBody(body: string): string {
+  let hex = body.trim().toLowerCase().replace(/^0x/, '').replace(/^"|"$/g, '');
+  try {
+    const json = JSON.parse(body) as { hex?: string; raw?: string; result?: string } | string;
+    if (typeof json === 'string') hex = json;
+    else hex = String(json.hex ?? json.raw ?? json.result ?? hex);
+  } catch {
+    /* plain hex */
+  }
+  hex = hex.trim().toLowerCase().replace(/^0x/, '');
+  return /^[0-9a-f]{100,}$/.test(hex) ? hex : '';
+}
+
+/** dogex raw first, then Core via command.dog. Bulk DNS reveals are not in the MyDoge tx row. */
+async function fetchWalletHistoryRawHex(txid: string): Promise<string | null> {
+  for (const base of getIndexerFetchBases()) {
+    try {
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer =
+        ctrl && typeof window !== 'undefined' ? window.setTimeout(() => ctrl.abort(), 6_000) : null;
+      const res = await fetch(`${base.replace(/\/+$/, '')}/api/tx/${encodeURIComponent(txid)}/raw`, {
+        cache: 'no-store',
+        headers: { Accept: 'application/json,text/plain' },
+        signal: ctrl?.signal,
+      });
+      if (timer != null) window.clearTimeout(timer);
+      if (!res.ok) continue;
+      const hex = hexFromRawTxBody(await res.text());
+      if (hex) return hex;
+    } catch {
+      /* try next base */
+    }
+  }
+  if (typeof window === 'undefined') return null;
+  const commandDog = getCommandDogApiBaseUrl().trim().replace(/\/+$/, '');
+  if (!commandDog) return null;
+  try {
+    const res = await fetch(`${commandDog}/rpc/getrawtransaction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ params: [txid, false] }),
+    });
+    if (!res.ok) return null;
+    const hex = hexFromRawTxBody(await res.text());
+    return hex || null;
+  } catch {
+    return null;
   }
 }
 
@@ -1808,54 +1859,33 @@ export const walletDataApi = {
       };
     });
 
-    // MyDoge often omits script hex — peek dogex raw for recent rows so Activity matches doge.watch.
+    // MyDoge often omits script hex — peek raw tx so Activity matches doge.watch.
+    // Doginals bulk reveals are P2SH scriptSigs, not an OP_RETURN the provider lists.
     if (page === 1) {
-      const bases = getIndexerFetchBases();
-      const candidates = transactions.filter((t) => t.txid && !t.protocolHint).slice(0, 12);
+      const candidates = transactions.filter((t) => t.txid && !t.protocolHint).slice(0, 24);
       await Promise.all(
         candidates.map(async (t) => {
           const tid = t.txid.trim().toLowerCase();
           if (!/^[0-9a-f]{64}$/.test(tid)) return;
-          for (const base of bases) {
-            try {
-              const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-              const timer =
-                ctrl && typeof window !== 'undefined'
-                  ? window.setTimeout(() => ctrl.abort(), 6_000)
-                  : null;
-              const res = await fetch(`${base}/api/tx/${encodeURIComponent(tid)}/raw`, {
-                cache: 'no-store',
-                headers: { Accept: 'application/json,text/plain' },
-                signal: ctrl?.signal,
-              });
-              if (timer != null) window.clearTimeout(timer);
-              if (!res.ok) continue;
-              const body = await res.text();
-              let hex = body.trim().toLowerCase().replace(/^0x/, '');
-              try {
-                const json = JSON.parse(body) as { hex?: string; raw?: string; result?: string };
-                hex = String(json.hex ?? json.raw ?? json.result ?? hex)
-                  .trim()
-                  .toLowerCase()
-                  .replace(/^0x/, '');
-              } catch {
-                /* plain hex body */
-              }
-              // 6a01d0… / 6a02d002… / OP_RETURN push then 0xD0 magic anywhere in first pushes
-              if (
-                hex.includes('6a01d0') ||
-                hex.includes('6a02d002') ||
-                /6a[0-9a-f]{0,4}d0/.test(hex)
-              ) {
-                t.protocolHint = 'dunes';
-                t.title = t.type === 'sent' ? 'Send' : 'Receive';
-                t.summary =
-                  'OP_RETURN Ðune · magic 0xD0 — DOGE amount is postage/fee, not the token.';
-              }
-              return;
-            } catch {
-              /* try next base */
-            }
+          const hex = await fetchWalletHistoryRawHex(tid);
+          if (!hex) return;
+          const reveal = revealHistoryFromHex(hex);
+          if (reveal) {
+            t.protocolHint = reveal.protocol;
+            t.title = reveal.title;
+            t.summary = reveal.summary;
+            return;
+          }
+          // 6a01d0… / 6a02d002… / OP_RETURN push then 0xD0 magic anywhere in first pushes
+          if (
+            hex.includes('6a01d0') ||
+            hex.includes('6a02d002') ||
+            /6a[0-9a-f]{0,4}d0/.test(hex)
+          ) {
+            t.protocolHint = 'dunes';
+            t.title = t.type === 'sent' ? 'Send' : 'Receive';
+            t.summary =
+              'OP_RETURN Ðune · magic 0xD0 — DOGE amount is postage/fee, not the token.';
           }
         }),
       );

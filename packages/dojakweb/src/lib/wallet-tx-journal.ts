@@ -584,6 +584,10 @@ export function walletTxActionLabel(entry?: DojakwebWalletTxEntry | null): strin
   if (a === 'lock') return 'Lock';
   if (a === 'unlock') return 'Unlock';
   if (a === 'send') return 'Send';
+  if (a === 'receive') return 'Receive';
+  if (a === 'register') return 'Register';
+  if (a === 'config') return 'Config';
+  if (a === 'primary') return 'Primary';
   if (a === 'mint') return 'Mint';
   if (a === 'etch' || a === 'dune-etch') return 'Etch';
   if (a === 'transfer') return undefined;
