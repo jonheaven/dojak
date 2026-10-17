@@ -640,6 +640,7 @@ export {
   signAndFinalizeBuyPSDT,
   buildAndSignSendInscription,
   buildSendInscriptionDraft,
+  buildSendInscriptionsDraft,
   validateSellerPSDT,
   buildItemOfferPSDT,
   validateItemOfferPSDT,
@@ -673,11 +674,35 @@ export {
 } from './lib/doginal-psdt';
 export type {
   SendInscriptionPsbtDraft,
+  SendInscriptionsPsbtDraft,
+  InscriptionBatchBuildInput,
   ItemOfferFeeSplit,
   BuildItemOfferPSDTParams,
   ItemOfferSummary,
   ValidatedItemOffer,
 } from './lib/doginal-psdt';
+export {
+  planBatchInscriptionTransfer,
+  selectFeeCoinsForInscriptionBatch,
+  batchTransferFeeShib,
+  MAX_BATCH_INSCRIPTION_COINS,
+  parseOutpoint,
+} from './lib/inscription-batch-send';
+export type {
+  BatchInscriptionLeg,
+  BatchInscriptionPlan,
+  BatchInscriptionCoin,
+} from './lib/inscription-batch-send';
+export {
+  classifySendRecipient,
+  resolveSendRecipient,
+  isDogeDomainName,
+} from './lib/resolveSendRecipient';
+export type {
+  ResolvedSendRecipient,
+  SendRecipientResolveOk,
+  SendRecipientResolveError,
+} from './lib/resolveSendRecipient';
 export {
   auditPsbtForWalletApproval,
   buildMarketplaceBuyClaims,
@@ -786,6 +811,7 @@ export {
   buildAndSignMergeTx,
   buildAndSignSplitTx,
   broadcastUtxoTx,
+  filterUtxosByRpcGetTxOutIfConfigured,
   DUST_LIMIT,
   INSCRIPTION_LIKELY_UTXO_KOINU,
 } from './lib/utxo-tools';

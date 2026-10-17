@@ -33,7 +33,18 @@ import {
 import { mergePaymentUtxos } from './mempoolSpendOverlay';
 import { dogeTxExplorerUrl } from '../utils/dogeTxExplorer';
 import { loadWalletTxJournal, upsertWalletTxJournalEntry } from './wallet-tx-journal';
-import { SOFT_DUST_KOINU, softDustFeePenaltyKoinu } from './dogecoin/softDust';
+import {
+  discardSoftDustChangeKoinu,
+  HARD_DUST_KOINU,
+  SOFT_DUST_KOINU,
+  softDustFeePenaltyKoinu,
+} from './dogecoin/softDust';
+import {
+  batchTransferFeeShib,
+  planBatchInscriptionTransfer,
+  selectFeeCoinsForInscriptionBatch,
+  type BatchInscriptionLeg,
+} from './inscription-batch-send';
 import { selectSmallestSufficient } from './fees/selectSmallestSufficient';
 
 // ── Dogecoin network params for bitcoinjs-lib ────────────────────────────────
@@ -1786,6 +1797,150 @@ export async function buildSendInscriptionDraft(
 export async function buildAndSignSendInscription(p: SendInscriptionParams): Promise<string> {
   const psbt = await buildSendInscriptionPsbtUnsigned(p);
   return signAndFinalizeSimplePSDT(psbt.toBase64(), p.privateKeyWif);
+}
+
+export interface SendInscriptionsPsbtDraft {
+  psbtBase64: string;
+  feeShib: number;
+  inscriptionCount: number;
+  /** Names that already shared a coin and therefore share one recipient output. */
+  sharedCoins: number;
+  inputs: { outpoint: string; valueShib: number; role: 'inscription' | 'fee_input' }[];
+  outputs: { address: string; valueShib: number; role: 'to_recipient' | 'change' }[];
+}
+
+export type InscriptionBatchBuildInput = {
+  outpoint: string;
+  satOffset?: number;
+  label?: string;
+};
+
+async function prevoutValueShib(txid: string, vout: number): Promise<number> {
+  const hex = await getTxHex(txid);
+  const tx = bitcoin.Transaction.fromBuffer(Buffer.from(hex, 'hex'));
+  const out = tx.outs[vout];
+  if (!out) throw new Error(`Missing output ${txid}:${vout}.`);
+  const value = Number(out.value);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`Could not read the DOGE on ${txid}:${vout}.`);
+  }
+  return value;
+}
+
+/**
+ * Unsigned PSBT: one recipient output per inscription coin, values unchanged,
+ * fee coins after the inscription inputs, change last.
+ * Soft-dust (0.01 Ð per output under 0.01 Ð) is included in the miner fee so
+ * Core will relay a batch of 0.001 Ð name coins.
+ */
+export async function buildSendInscriptionsDraft(p: {
+  inscriptions: InscriptionBatchBuildInput[];
+  recipientAddress: string;
+  senderAddress: string;
+  paymentUtxos: OrdUtxo[];
+  /** Other inscription coins that must not be used to pay the fee. */
+  lockedOutpoints?: string[];
+  feeRateKoinuPerByte?: number;
+}): Promise<SendInscriptionsPsbtDraft> {
+  const recipient = p.recipientAddress.trim();
+  const sender = p.senderAddress.trim();
+  if (!recipient || !sender) throw new Error('Sender and recipient are required.');
+
+  const { enforceBroadcastFeeRateKoinuPerByte } = await import('./fees/dogecoinFeePolicy');
+  const paidFeeRate = await enforceBroadcastFeeRateKoinuPerByte({
+    requestedKoinuPerByte:
+      p.feeRateKoinuPerByte != null && p.feeRateKoinuPerByte > 0
+        ? p.feeRateKoinuPerByte
+        : await resolveBuyFeeRateKoinuPerByte(2),
+    context: 'buildSendInscriptionsDraft',
+  });
+
+  const legs: BatchInscriptionLeg[] = [];
+  for (const row of p.inscriptions) {
+    const [txid, voutStr] = row.outpoint.split(':');
+    const vout = Number(voutStr);
+    const value = await prevoutValueShib(txid, vout);
+    if (value < HARD_DUST_KOINU) {
+      const who = row.label ? `${row.label} sits` : 'An inscription sits';
+      throw new Error(`${who} on less than 0.001 Ð. Dogecoin will not relay an output that small.`);
+    }
+    legs.push({
+      outpoint: row.outpoint,
+      value,
+      offset: row.satOffset ?? 0,
+      label: row.label,
+    });
+  }
+
+  const plan = planBatchInscriptionTransfer(legs);
+  const dustPenalty = softDustFeePenaltyKoinu(plan.coins.map((c) => c.value));
+  const locked = new Set<string>();
+  for (const coin of plan.coins) locked.add(coin.outpoint);
+  for (const raw of p.lockedOutpoints ?? []) {
+    const parts = raw.split(':');
+    if (parts.length < 2) continue;
+    const txid = parts[0]!.trim().toLowerCase();
+    const vout = Number(parts[1]);
+    if (/^[0-9a-f]{64}$/.test(txid) && Number.isInteger(vout) && vout >= 0) {
+      locked.add(`${txid}:${vout}`);
+    }
+  }
+  const feePool = p.paymentUtxos.filter((u) => !locked.has(`${u.txid.toLowerCase()}:${u.vout}`));
+  const feeUtxos = selectFeeCoinsForInscriptionBatch(
+    feePool,
+    plan.coins.length,
+    paidFeeRate,
+    dustPenalty,
+  );
+
+  const psbt = new bitcoin.Psbt(DOGE_PSBT_OPTS);
+  for (const coin of plan.coins) {
+    const { txid, vout } = coin.outpoint.split(':');
+    const hex = await getTxHex(txid);
+    psbt.addInput({
+      hash: txid,
+      index: Number(vout),
+      nonWitnessUtxo: Buffer.from(hex, 'hex'),
+    } as any);
+    psbt.addOutput({ address: recipient, value: BigInt(coin.value) });
+  }
+
+  let paymentTotal = 0;
+  for (const u of feeUtxos) {
+    const hex = await getTxHex(u.txid);
+    psbt.addInput({
+      hash: u.txid,
+      index: u.vout,
+      nonWitnessUtxo: Buffer.from(hex, 'hex'),
+    } as any);
+    paymentTotal += u.value;
+  }
+
+  const fee = batchTransferFeeShib(plan.coins.length, feeUtxos.length, paidFeeRate) + dustPenalty;
+  const change = discardSoftDustChangeKoinu(paymentTotal - fee);
+  if (paymentTotal - fee < 0) {
+    throw new Error(
+      `Insufficient DOGE for the miner fee at the current rate (about ${shibesToDoge(fee).toFixed(4)} Ð, including Dogecoin's soft-dust charge).`,
+    );
+  }
+  if (change > 0) psbt.addOutput({ address: sender, value: BigInt(change) });
+
+  const described = describeSendInscriptionPsbt(psbt, sender);
+  const inscriptionOutpoints = new Set(plan.coins.map((c) => c.outpoint));
+  return {
+    psbtBase64: psbt.toBase64(),
+    feeShib: described.feeShib,
+    inscriptionCount: plan.coins.length,
+    sharedCoins: plan.coins.filter((c) => c.labels.length > 1).length,
+    inputs: described.inputs.map((row) => ({
+      ...row,
+      role: inscriptionOutpoints.has(row.outpoint) ? 'inscription' : 'fee_input',
+    })),
+    outputs: described.outputs.map((row) => ({
+      ...row,
+      role: row.address === sender ? 'change' : 'to_recipient',
+    })),
+  };
 }
 
 /**

@@ -50,6 +50,12 @@ import { WalletPinNumpad } from './wallet/WalletPinNumpad';
 import { WalletProviderIcon } from './wallet/WalletProviderIcon';
 import { WalletApprovalPanel } from './wallet/WalletApprovalPanel';
 import { WalletSendFlow } from './wallet/WalletSendFlow';
+import {
+  BatchInscriptionSendPanel,
+  batchItemFromInscription,
+  MAX_BATCH_INSCRIPTION_COINS,
+  type BatchSendItem,
+} from './wallet/BatchInscriptionSendPanel';
 import { NetworkFeeControl } from './fees/NetworkFeeControl';
 import { NetworkFeeFuelButton } from './fees/NetworkFeeFuelButton';
 import { UtxoManagement } from './wallet/UtxoManagement';
@@ -258,6 +264,7 @@ type WalletStep =
   | 'address_book'
   | 'set_name'
   | 'send_inscription'
+  | 'send_inscriptions'
   | 'list_inscription'
   | 'utxos';
 
@@ -953,6 +960,10 @@ export function DojakwebWalletModal({
 
   // ── Inscription action state ──
   const [selectedInscription, setSelectedInscription] = useState<MyDogeInscription | null>(null);
+  const [dnsPickOn, setDnsPickOn] = useState(false);
+  const [dnsPicked, setDnsPicked] = useState<Record<string, MyDogeInscription>>({});
+  const [dnsNameQuery, setDnsNameQuery] = useState('');
+  const [batchItems, setBatchItems] = useState<BatchSendItem[]>([]);
   const [inscriptionSendRecipient, setInscriptionSendRecipient] = useState('');
   const [inscriptionSendResolved, setInscriptionSendResolved] = useState<ResolvedSendRecipient | null>(null);
   const [inscriptionSendLookup, setInscriptionSendLookup] = useState<
@@ -1198,6 +1209,20 @@ export function DojakwebWalletModal({
       return dnsClassifying;
     });
   }, [nftFilter, gridInscriptions, dnsFlags, dnsClassifying]);
+
+  const inscriptionCards = useMemo(() => {
+    if (nftFilter !== 'dns') return gridInscriptionsShown;
+    const q = dnsNameQuery.trim().toLowerCase();
+    if (!q) return gridInscriptionsShown;
+    return gridInscriptionsShown.filter((item) => {
+      const body = (item.contentBody || '').toLowerCase();
+      return body.includes(q) || item.inscriptionId.toLowerCase().includes(q);
+    });
+  }, [nftFilter, gridInscriptionsShown, dnsNameQuery]);
+
+  useEffect(() => {
+    if (nftFilter !== 'dns') setDnsPickOn(false);
+  }, [nftFilter]);
   const [settingsIndexerApiBase, setSettingsIndexerApiBase] = useState('');
   const [settingsDogexCdnBase, setSettingsDogexCdnBase] = useState('');
   type IndexerHealthRow = {
@@ -1478,6 +1503,7 @@ export function DojakwebWalletModal({
           'send',
           'receive',
           'send_inscription',
+          'send_inscriptions',
           'list_inscription',
           'utxos',
           'settings',
@@ -2843,6 +2869,31 @@ export function DojakwebWalletModal({
     };
   }, [inscriptionSendRecipient, step]);
 
+  const openBatchInscriptionSend = () => {
+    const picked = Object.values(dnsPicked);
+    const items: BatchSendItem[] = [];
+    const missing: string[] = [];
+    for (const item of picked) {
+      const row = batchItemFromInscription(item);
+      if (!row) missing.push(item.inscriptionId.slice(0, 8));
+      else items.push(row);
+    }
+    if (!items.length) {
+      toast.error('These names have no spendable location yet.');
+      return;
+    }
+    if (missing.length) {
+      toast.error(`${missing.length} selected names have no spendable location and were left out.`);
+    }
+    const coins = new Set(items.map((item) => item.outpoint));
+    if (coins.size > MAX_BATCH_INSCRIPTION_COINS) {
+      toast.error(`Send up to ${MAX_BATCH_INSCRIPTION_COINS} names at once. Unselect a few and try again.`);
+      return;
+    }
+    setBatchItems(items);
+    setStep('send_inscriptions');
+  };
+
   const openSendInscription = (inscription: MyDogeInscription) => {
     setSelectedInscription(inscription);
     setInscriptionSendRecipient('');
@@ -3630,6 +3681,8 @@ export function DojakwebWalletModal({
                                                 ? t('modal.title.sendInscription', {
                                                     num: String(selectedInscription?.inscriptionNumber ?? ''),
                                                   })
+                                                : step === 'send_inscriptions'
+                                                  ? 'Send names'
                                                 : step === 'list_inscription'
                                                   ? t('modal.title.listInscription', {
                                                       num: String(selectedInscription?.inscriptionNumber ?? ''),
@@ -5052,8 +5105,76 @@ export function DojakwebWalletModal({
                                         ) : null}
                                         </div>
                                       </div>
+                                    {nftFilter === 'dns' ? (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            value={dnsNameQuery}
+                                            onChange={(e) => setDnsNameQuery(e.target.value)}
+                                            placeholder="Filter names"
+                                            className="wallet-input min-w-0 flex-1 py-1.5 text-xs"
+                                            spellCheck={false}
+                                            autoCapitalize="off"
+                                            autoCorrect="off"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => setDnsPickOn((on) => !on)}
+                                            className={cx(
+                                              'shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition',
+                                              dnsPickOn
+                                                ? 'bg-[#D4A017]/25 text-[#FCD34D]'
+                                                : 'border border-white/10 text-white/70 hover:text-white',
+                                            )}
+                                          >
+                                            {dnsPickOn ? 'Done' : 'Select'}
+                                          </button>
+                                        </div>
+                                        {dnsPickOn ? (
+                                          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#D4A017]/30 bg-[#D4A017]/10 px-2.5 py-2">
+                                            <span className="text-[11px] font-semibold text-[#FCD34D]">
+                                              {Object.keys(dnsPicked).length} selected
+                                            </span>
+                                            <button
+                                              type="button"
+                                              className="text-[11px] font-semibold text-white/70 hover:text-white"
+                                              onClick={() => {
+                                                setDnsPicked((prev) => {
+                                                  const next = { ...prev };
+                                                  for (const item of inscriptionCards) {
+                                                    if (Object.keys(next).length >= MAX_BATCH_INSCRIPTION_COINS) break;
+                                                    next[item.inscriptionId] = item;
+                                                  }
+                                                  return next;
+                                                });
+                                              }}
+                                            >
+                                              All shown
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="text-[11px] font-semibold text-white/70 hover:text-white"
+                                              onClick={() => setDnsPicked({})}
+                                            >
+                                              Clear
+                                            </button>
+                                            <button
+                                              type="button"
+                                              disabled={Object.keys(dnsPicked).length === 0}
+                                              onClick={openBatchInscriptionSend}
+                                              className="ml-auto rounded-lg bg-[#FCD34D] px-2.5 py-1 text-[11px] font-bold text-[#161109] disabled:opacity-40"
+                                            >
+                                              Send
+                                            </button>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+                                    {nftFilter === 'dns' && dnsNameQuery.trim() && inscriptionCards.length === 0 ? (
+                                      <p className="px-1 text-xs text-white/45">No names match that filter.</p>
+                                    ) : null}
                                     <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
-                                      {gridInscriptionsShown.map((item) => {
+                                      {inscriptionCards.map((item) => {
                                         const out = String(item.output || item.location || '')
                                           .split(':')
                                           .slice(0, 2)
@@ -5062,11 +5183,51 @@ export function DojakwebWalletModal({
                                         const dlocked =
                                           dlockedInscriptionIds.has(String(item.inscriptionId || '').toLowerCase()) ||
                                           (out ? dlockedOutpoints.has(out) : false);
+                                        const dnsPickedOn = nftFilter === 'dns' && dnsPickOn;
+                                        const dnsIsPicked = Boolean(dnsPicked[item.inscriptionId]);
                                         return (
                                         <div
                                           key={item.inscriptionId}
-                                          className="ds-inscription-card group"
+                                          className={cx(
+                                            'ds-inscription-card group relative',
+                                            dnsPickedOn && dnsIsPicked && 'ring-2 ring-[#FCD34D]',
+                                          )}
                                         >
+                                          {dnsPickedOn ? (
+                                            <button
+                                              type="button"
+                                              aria-pressed={dnsIsPicked}
+                                              aria-label={dnsIsPicked ? 'Unselect name' : 'Select name'}
+                                              className="absolute inset-0 z-20"
+                                              onClick={() => {
+                                                setDnsPicked((prev) => {
+                                                  if (prev[item.inscriptionId]) {
+                                                    const next = { ...prev };
+                                                    delete next[item.inscriptionId];
+                                                    return next;
+                                                  }
+                                                  if (Object.keys(prev).length >= MAX_BATCH_INSCRIPTION_COINS) {
+                                                    toast.error(
+                                                      `One send carries ${MAX_BATCH_INSCRIPTION_COINS} names. Send this batch, then the rest.`,
+                                                    );
+                                                    return prev;
+                                                  }
+                                                  return { ...prev, [item.inscriptionId]: item };
+                                                });
+                                              }}
+                                            >
+                                              <span
+                                                className={cx(
+                                                  'absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md border',
+                                                  dnsIsPicked
+                                                    ? 'border-[#FCD34D] bg-[#FCD34D] text-[#161109]'
+                                                    : 'border-white/40 bg-black/55 text-transparent',
+                                                )}
+                                              >
+                                                <CheckIcon className="h-3.5 w-3.5" />
+                                              </span>
+                                            </button>
+                                          ) : null}
                                           <div className="ds-inscription-card__media">
                                             {dlocked ? (
                                               <div
@@ -5556,6 +5717,24 @@ export function DojakwebWalletModal({
                     )}
 
                     {/* ── Send inscription ─────────────────────────────── */}
+                    {step === 'send_inscriptions' && batchItems.length > 0 && activeAddress ? (
+                      <BatchInscriptionSendPanel
+                        items={batchItems}
+                        fromAddress={activeAddress}
+                        lockedOutpoints={extractProtectedOutpoints(uniqueInscriptions)}
+                        getPrivateKey={async () => {
+                          const w = await loadUnlockedBrowserWallet();
+                          if (!w.privateKey) throw new Error('Unlock Dojak in this browser first.');
+                          return w.privateKey;
+                        }}
+                        onBack={() => setStep('dashboard')}
+                        onSent={() => {
+                          setDnsPicked({});
+                          setDnsPickOn(false);
+                        }}
+                      />
+                    ) : null}
+
                     {step === 'send_inscription' && selectedInscription && (
                       <div className="space-y-4">
                         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-3">
