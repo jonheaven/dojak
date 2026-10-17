@@ -268,7 +268,7 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.sendInscription.roleChange': 'change',
   'modal.sendInscription.roleMemo': 'note',
   'modal.sendInscription.memoLabel': 'Note (optional)',
-  'modal.sendInscription.memoPlaceholder': 'enjoy these — from jontype',
+  'modal.sendInscription.memoPlaceholder': 'enjoy these',
   'modal.sendInscription.memoHint':
     'On-chain note on this transfer. It does not change the inscription. 80 bytes max.',
   'modal.sendInscription.memoHintDns':

@@ -12,7 +12,7 @@ export function SendMemoField(props: {
 }) {
   const compiled: CompiledSendMemo = compileSendMemo(props.value, { dnsGift: props.dnsGift });
   const label = props.label ?? 'Note (optional)';
-  const placeholder = props.placeholder ?? 'enjoy these — from jontype';
+  const placeholder = props.placeholder ?? 'enjoy these';
   const hint =
     props.hint ??
     (props.dnsGift

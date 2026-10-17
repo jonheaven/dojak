@@ -269,7 +269,7 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.sendInscription.roleChange': 'お釣り',
   'modal.sendInscription.roleMemo': 'メモ',
   'modal.sendInscription.memoLabel': 'メモ（任意）',
-  'modal.sendInscription.memoPlaceholder': 'enjoy these — from jontype',
+  'modal.sendInscription.memoPlaceholder': 'enjoy these',
   'modal.sendInscription.memoHint':
     'この送金に載るオンチェーンのメモです。inscription 自体は変わりません。最大 80 バイト。',
   'modal.sendInscription.memoHintDns':
