@@ -267,6 +267,14 @@ export const MODAL_JA_FLAT: Record<string, string> = {
   'modal.sendInscription.roleFee': '手数料用',
   'modal.sendInscription.roleToRecipient': '受取',
   'modal.sendInscription.roleChange': 'お釣り',
+  'modal.sendInscription.roleMemo': 'メモ',
+  'modal.sendInscription.memoLabel': 'メモ（任意）',
+  'modal.sendInscription.memoPlaceholder': 'enjoy these — from jontype',
+  'modal.sendInscription.memoHint':
+    'この送金に載るオンチェーンのメモです。inscription 自体は変わりません。最大 80 バイト。',
+  'modal.sendInscription.memoHintDns':
+    '名前の横に「dns gift …」として載ります。別のドメイン登録にはなりません。',
+  'modal.sendInscription.summaryMemo': 'メモ:',
   'modal.sendInscription.back': '戻る',
   'modal.sendInscription.review': '取引を確認',
   'modal.sendInscription.reviewBusy': 'プレビュー作成中…',

@@ -8,7 +8,9 @@
  *
  * Safe shape — the one Unisat / ord use, and the one dogex will index:
  *   inputs:  each inscription coin, then plain fee coins
- *   outputs: one output per inscription coin, same value, same recipient, then change
+ *   outputs: one output per inscription coin, same value, same recipient, then change.
+ *            An optional value-0 OP_RETURN note may follow change. Value 0
+ *            takes no koinu, so find_output still lands each name on its coin.
  * Equal value keeps every koinu of that coin (whatever offset the name sits on)
  * on its own output. Stacking every name into one output would glue them onto
  * a single coin the friend would have to split before sending one name onward.
@@ -124,9 +126,12 @@ export function batchTransferFeeShib(
   inscriptionCoins: number,
   feeInputs: number,
   feeRateKoinuPerByte: number,
+  /** Extra tx bytes (a trailing value-0 OP_RETURN note). */
+  extraBytes = 0,
 ): number {
   const vins = inscriptionCoins + feeInputs;
-  const bytes = 10 + vins * 148 + inscriptionCoins * 34 + 34 + vins;
+  const pad = Number.isFinite(extraBytes) && extraBytes > 0 ? Math.ceil(extraBytes) : 0;
+  const bytes = 10 + vins * 148 + inscriptionCoins * 34 + 34 + vins + pad;
   return Math.ceil(bytes * feeRateKoinuPerByte);
 }
 
@@ -136,9 +141,11 @@ export function selectFeeCoinsForInscriptionBatch<T extends { txid: string; vout
   feeRateKoinuPerByte: number,
   /** Dogecoin soft-dust: +0.01 Ð for every inscription output under 0.01 Ð. */
   extraFeeKoinu = 0,
+  extraBytes = 0,
 ): T[] {
   if (inscriptionCoins < 1) throw new Error('Pick at least one inscription.');
   const extra = Number.isFinite(extraFeeKoinu) && extraFeeKoinu > 0 ? Math.ceil(extraFeeKoinu) : 0;
+  const pad = Number.isFinite(extraBytes) && extraBytes > 0 ? Math.ceil(extraBytes) : 0;
   const candidates = utxos.filter((u) => u.value > POSTAGE_KOINU);
   if (candidates.length === 0) {
     throw new Error(
@@ -146,11 +153,11 @@ export function selectFeeCoinsForInscriptionBatch<T extends { txid: string; vout
     );
   }
   const selected = selectSmallestSufficient(candidates, (n) =>
-    batchTransferFeeShib(inscriptionCoins, Math.max(1, n), feeRateKoinuPerByte) + extra,
+    batchTransferFeeShib(inscriptionCoins, Math.max(1, n), feeRateKoinuPerByte, pad) + extra,
   );
   const total = selected.reduce((sum, u) => sum + u.value, 0);
   const need =
-    batchTransferFeeShib(inscriptionCoins, Math.max(selected.length, 1), feeRateKoinuPerByte) + extra;
+    batchTransferFeeShib(inscriptionCoins, Math.max(selected.length, 1), feeRateKoinuPerByte, pad) + extra;
   if (selected.length > 0 && total >= need) return selected;
   const have = (total / 1e8).toFixed(4);
   const required = (need / 1e8).toFixed(4);

@@ -24,6 +24,8 @@ import {
 } from '../../lib/mempoolSpendOverlay';
 import { filterUtxosByRpcGetTxOutIfConfigured, rpcGetTxOutSpendable } from '../../lib/utxo-tools';
 import { upsertWalletTxJournalEntry } from '../../lib/wallet-tx-journal';
+import { compileSendMemo } from '../../lib/tx/sendMemo';
+import { SendMemoField } from './SendMemoField';
 
 export type BatchSendItem = {
   id: string;
@@ -77,6 +79,7 @@ export function BatchInscriptionSendPanel(props: {
   onSent?: (txid: string) => void;
 }) {
   const [to, setTo] = useState('');
+  const [note, setNote] = useState('');
   const [resolved, setResolved] = useState<ResolvedSendRecipient | null>(null);
   const [lookup, setLookup] = useState<'off' | 'loading' | 'ok' | 'error'>('off');
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -86,6 +89,7 @@ export function BatchInscriptionSendPanel(props: {
   const [txid, setTxid] = useState<string | null>(null);
 
   const names = useMemo(() => props.items.map((item) => item.label), [props.items]);
+  const compiledNote = useMemo(() => compileSendMemo(note, { dnsGift: true }), [note]);
   const coinCount = useMemo(() => new Set(props.items.map((item) => item.outpoint)).size, [props.items]);
 
   useEffect(() => {
@@ -122,6 +126,11 @@ export function BatchInscriptionSendPanel(props: {
 
   async function review() {
     if (!resolved) return;
+    if (!compiledNote.ok) {
+      setError(compiledNote.error);
+      setDraft(null);
+      return;
+    }
     if (resolved.address === props.fromAddress) {
       setError('Choose the wallet that should receive these.');
       setDraft(null);
@@ -152,6 +161,8 @@ export function BatchInscriptionSendPanel(props: {
         paymentUtxos: live,
         lockedOutpoints: props.lockedOutpoints,
         feeRateKoinuPerByte: feeRate,
+        memo: compiledNote.payload ?? undefined,
+        dnsGift: true,
       });
       setDraft(next);
     } catch (e) {
@@ -188,12 +199,15 @@ export function BatchInscriptionSendPanel(props: {
         protocol: 'doginals',
         action: 'send',
         title,
-        summary: `${names.length} inscriptions → ${resolved.label || resolved.display}`,
+        summary: `${names.length} inscriptions → ${resolved.label || resolved.display}${
+          compiledNote.payload ? ` — ${compiledNote.payload}` : ''
+        }`,
         status: 'broadcasted',
         metadata: {
           recipientAddress: resolved.address,
           actionLabel: 'Send',
           contentPreview: names.slice(0, 8).join(', '),
+          memo: compiledNote.payload ?? undefined,
         },
       });
       setTxid(sent);
@@ -279,12 +293,28 @@ export function BatchInscriptionSendPanel(props: {
             ) : null}
           </label>
 
+          <SendMemoField
+            value={note}
+            dnsGift
+            disabled={busy}
+            onChange={(next) => {
+              setNote(next);
+              setDraft(null);
+              setError(null);
+            }}
+          />
+
           {draft ? (
             <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-50">
               <p>
                 {draft.inscriptionCount} {draft.inscriptionCount === 1 ? 'output' : 'outputs'} to{' '}
                 <span className="font-mono text-xs">{resolved?.address}</span>
               </p>
+              {compiledNote.payload ? (
+                <p className="mt-1 break-words">
+                  Note <span className="font-mono text-xs">{compiledNote.payload}</span>
+                </p>
+              ) : null}
               <p className="mt-1">
                 Miner fee <strong>{feeLabel(draft.feeShib)}</strong>
                 {draft.feeShib >= 1_000_000 ? ' — includes the extra Dogecoin charges for small name coins.' : '.'}
@@ -310,7 +340,7 @@ export function BatchInscriptionSendPanel(props: {
               <button
                 type="button"
                 onClick={() => void review()}
-                disabled={busy || lookup !== 'ok' || !resolved}
+                disabled={busy || lookup !== 'ok' || !resolved || !compiledNote.ok}
                 className={`flex-1 ${PRIMARY}`}
               >
                 {busy ? 'Preparing…' : 'Review send'}

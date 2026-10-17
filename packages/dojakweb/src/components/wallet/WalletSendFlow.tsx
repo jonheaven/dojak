@@ -36,6 +36,8 @@ import {
   resolveSendRecipient,
   type ResolvedSendRecipient,
 } from '../../lib/resolveSendRecipient';
+import { compileSendMemo } from '../../lib/tx/sendMemo';
+import { SendMemoField } from './SendMemoField';
 
 function isLikelyTxid(id: string): boolean {
   return /^[0-9a-fA-F]{64}$/.test(id.trim());
@@ -113,7 +115,7 @@ export type WalletSendFlowProps = {
   sendTransaction: (
     to: string,
     amountDoge: number,
-    opts?: { skipApprovalUi?: boolean },
+    opts?: { skipApprovalUi?: boolean; opReturnMessage?: string },
   ) => Promise<string>;
   refreshBalance: () => Promise<void> | void;
   /** Prefill from address book / deep link */
@@ -141,6 +143,7 @@ export function WalletSendFlow({
     initialRecipient ? normalizeDogeAddressInput(initialRecipient) : '',
   );
   const [amount, setAmount] = useState('');
+  const [memo, setMemo] = useState('');
   const [busy, setBusy] = useState(false);
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -291,6 +294,7 @@ export function WalletSendFlow({
 
   const amountNum = Number(amount);
   const amountOk = Number.isFinite(amountNum) && amountNum > 0;
+  const compiledMemo = useMemo(() => compileSendMemo(memo), [memo]);
 
   // Debounced live quote on form + review (fee tank can change either screen)
   useEffect(() => {
@@ -307,10 +311,18 @@ export function WalletSendFlow({
     let cancelled = false;
     const t = window.setTimeout(() => {
       setQuoteBusy(true);
+      if (!compiledMemo.ok) {
+        if (!cancelled) {
+          setQuote(null);
+          setQuoteBusy(false);
+        }
+        return;
+      }
       void estimatePaymentSend({
         fromAddress: activeAddress,
         recipientAddress: validation.address,
         amountDoge: amountNum,
+        opReturnMessage: compiledMemo.payload ?? undefined,
       })
         .then((q) => {
           if (!cancelled) {
@@ -332,7 +344,7 @@ export function WalletSendFlow({
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [phase, connected, activeAddress, validation, amountOk, amountNum, feeTick]);
+  }, [phase, connected, activeAddress, validation, amountOk, amountNum, feeTick, compiledMemo]);
 
   const handleMax = useCallback(async () => {
     if (!connected || !activeAddress) {
@@ -342,7 +354,11 @@ export function WalletSendFlow({
     setBusy(true);
     setError(null);
     try {
-      const max = await estimateMaxSendableDoge(activeAddress);
+      if (!compiledMemo.ok) {
+        setError(compiledMemo.error);
+        return;
+      }
+      const max = await estimateMaxSendableDoge(activeAddress, compiledMemo.payload ?? undefined);
       if (max <= 0) {
         setError('Nothing left to send after network fees.');
         setAmount('');
@@ -354,7 +370,7 @@ export function WalletSendFlow({
     } finally {
       setBusy(false);
     }
-  }, [activeAddress, connected]);
+  }, [activeAddress, compiledMemo, connected]);
 
   const goReview = useCallback(async () => {
     if (!connected || !activeAddress) {
@@ -369,6 +385,10 @@ export function WalletSendFlow({
       setError('Enter a valid DOGE amount.');
       return;
     }
+    if (!compiledMemo.ok) {
+      setError(compiledMemo.error);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -376,6 +396,7 @@ export function WalletSendFlow({
         fromAddress: activeAddress,
         recipientAddress: validation.address,
         amountDoge: amountNum,
+        opReturnMessage: compiledMemo.payload ?? undefined,
       });
       setQuote(q);
       setPhase('review');
@@ -384,7 +405,7 @@ export function WalletSendFlow({
     } finally {
       setBusy(false);
     }
-  }, [activeAddress, amountNum, amountOk, connected, validation]);
+  }, [activeAddress, amountNum, amountOk, compiledMemo, connected, validation]);
 
   const confirmSend = useCallback(async () => {
     if (!quote || !activeAddress) return;
@@ -396,6 +417,7 @@ export function WalletSendFlow({
       const idRaw = await sendTransaction(quote.recipient, quote.amountDoge, {
         // Review screen is the confirmation — don't open a second Approve sheet.
         skipApprovalUi: unlocked,
+        opReturnMessage: quote.memo,
       });
       const id = String(idRaw || '').trim();
       if (!isLikelyTxid(id)) {
@@ -468,6 +490,7 @@ export function WalletSendFlow({
     setPhase('form');
     setRecipient('');
     setAmount('');
+    setMemo('');
     setQuote(null);
     setTxid(null);
     setError(null);
@@ -546,6 +569,12 @@ export function WalletSendFlow({
               <span className="text-white/45">Amount</span>
               <span className="font-mono text-white">{formatDoge(quote.amountDoge)} Ð</span>
             </div>
+            {quote.memo ? (
+              <div className="flex justify-between gap-3">
+                <span className="text-white/45">Note</span>
+                <span className="max-w-[65%] break-words text-right text-white/80">{quote.memo}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-3">
               <span className="text-white/45">To</span>
               <span className="max-w-[60%] break-all text-right font-mono text-xs text-white/80">
@@ -653,6 +682,12 @@ export function WalletSendFlow({
                 {quote.recipient}
               </span>
             </div>
+            {quote.memo ? (
+              <div className="flex justify-between gap-3">
+                <span className="text-white/50">Note</span>
+                <span className="max-w-[65%] break-words text-right text-white">{quote.memo}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-3">
               <span className="text-white/50">Network fee</span>
               <span className="font-mono text-white">{formatDoge(quote.feeDoge)} Ð</span>
@@ -965,6 +1000,16 @@ export function WalletSendFlow({
         </p>
       </div>
 
+      <SendMemoField
+        value={memo}
+        onChange={(next) => {
+          setMemo(next);
+          setError(null);
+        }}
+        disabled={busy}
+        placeholder="payment for the leather wallet"
+      />
+
       <div className="rounded-xl border border-white/10 bg-[#0A0A0A] px-4 py-3">
         <NetworkFeeControl compact tone="wallet" className="mb-2 border-0 bg-transparent p-0" />
         <div className="mb-2 flex items-center justify-between">
@@ -1008,7 +1053,9 @@ export function WalletSendFlow({
       <Button
         type="button"
         className={cx('w-full', PRIMARY_BUTTON, (busy || quoteBusy) && 'cursor-wait')}
-        disabled={busy || quoteBusy || !validation.ok || !amountOk || recipientLookup === 'loading'}
+        disabled={
+          busy || quoteBusy || !validation.ok || !amountOk || !compiledMemo.ok || recipientLookup === 'loading'
+        }
         onClick={() => void goReview()}
       >
         {busy ? 'Preparing…' : 'Review send'}

@@ -14,6 +14,7 @@ import {
   saveSeenIncomingTxids,
 } from '../lib/incoming-tx-alerts';
 import { getIndexerFetchBases, walletDataApi, type DogeTransaction } from '../utils/api';
+import { displaySendMemo } from '../lib/tx/sendMemo';
 
 const POLL_MS = 25_000;
 
@@ -57,10 +58,17 @@ async function classifyIncoming(tx: DogeTransaction): Promise<{
 }> {
   const hex = await fetchRawTxHex(tx.txid);
   const pending = tx.pending ? ' · mempool' : '';
+  let humanNote: string | undefined;
+  let giftMemo = false;
   if (hex) {
     let giftNote: string | undefined;
     let dnsPing: string | undefined;
     for (const text of extractOpReturnTexts(hex)) {
+      const shown = displaySendMemo(text);
+      if (shown && !humanNote) {
+        humanNote = shown;
+        giftMemo = /^dns\s+gift\b/i.test(text);
+      }
       const offer = parseDnsOfferMemo(text);
       if (offer) {
         return {
@@ -95,8 +103,10 @@ async function classifyIncoming(tx: DogeTransaction): Promise<{
   const amt = Number.isFinite(tx.amount) ? tx.amount : 0;
   const from = tx.address ? `${tx.address.slice(0, 6)}…${tx.address.slice(-4)}` : 'unknown';
   return {
-    title: 'Incoming DOGE',
-    description: `+${amt} Ð from ${from}${tx.pending ? ' · mempool' : ''}`,
+    title: humanNote ? (giftMemo ? 'Gift note' : 'Incoming DOGE · note') : 'Incoming DOGE',
+    description: humanNote
+      ? `+${amt} Ð from ${from}${pending} — ${humanNote}`
+      : `+${amt} Ð from ${from}${pending}`,
   };
 }
 

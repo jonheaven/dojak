@@ -7,6 +7,8 @@ import { fixCoinSelectP2PKHFee } from './fixCoinSelectP2PKHFee';
 import { selectP2PKHPaymentInputs } from './fees/selectP2PKHPaymentInputs';
 import { getPaymentUtxosForSend } from './paymentUtxos';
 import { resolveRequestedOrPreferredFeeRateKoinuPerByte } from './fees/txFeePreference';
+import { applyNulldataFeeToChange, estimateOpReturnOutputsTxWeight } from './tx/opReturn';
+import { compileSendMemo } from './tx/sendMemo';
 
 export type PaymentSendQuote = {
   recipient: string;
@@ -22,6 +24,8 @@ export type PaymentSendQuote = {
   outputCount: number;
   spendableKoinu: number;
   spendableDoge: number;
+  /** Exact OP_RETURN text, when the send carries a note. */
+  memo?: string;
 };
 
 function toKoinu(doge: number): number {
@@ -36,6 +40,8 @@ export async function estimatePaymentSend(params: {
   fromAddress: string;
   recipientAddress: string;
   amountDoge: number;
+  /** Plain note. Blank omits the OP_RETURN. Protocol-looking text throws. */
+  opReturnMessage?: string;
 }): Promise<PaymentSendQuote> {
   const recipient = assertValidDogecoinAddress(params.recipientAddress);
   const amountDoge = Number(params.amountDoge);
@@ -69,6 +75,11 @@ export async function estimatePaymentSend(params: {
     amountKoinu,
     FEE_RATE,
   );
+  const compiled = compileSendMemo(params.opReturnMessage ?? '');
+  if (!compiled.ok) throw new Error(compiled.error);
+  const memoPayload = compiled.payload ? Buffer.from(compiled.payload, 'utf8') : null;
+  const memoWeight = memoPayload ? estimateOpReturnOutputsTxWeight([memoPayload]) : 0;
+
   let fixed: ReturnType<typeof fixCoinSelectP2PKHFee>;
   try {
     fixed = fixCoinSelectP2PKHFee({
@@ -77,6 +88,17 @@ export async function estimatePaymentSend(params: {
       inputs: paymentInputs,
       payments: [{ address: recipient, value: amountKoinu }],
     });
+    if (memoWeight > 0) {
+      const adjusted = applyNulldataFeeToChange({
+        outputs: fixed.outputs,
+        fee: fixed.fee,
+        change: fixed.change,
+        changeAddress: params.fromAddress,
+        extraFee: memoWeight * FEE_RATE,
+        softDustKoinu: SOFT_DUST_KOINU,
+      });
+      fixed = { ...fixed, ...adjusted };
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/insufficient/i.test(msg)) {
@@ -100,14 +122,15 @@ export async function estimatePaymentSend(params: {
     changeKoinu,
     changeDoge: toDoge(changeKoinu),
     inputCount: fixed.inputs.length,
-    outputCount: fixed.outputs.length,
+    outputCount: fixed.outputs.length + (memoPayload ? 1 : 0),
     spendableKoinu,
     spendableDoge: toDoge(spendableKoinu),
+    memo: compiled.payload ?? undefined,
   };
 }
 
 /** Largest sendable amount given current UTXOs (binary-search style refine). */
-export async function estimateMaxSendableDoge(fromAddress: string): Promise<number> {
+export async function estimateMaxSendableDoge(fromAddress: string, opReturnMessage?: string): Promise<number> {
   const utxos = await getPaymentUtxosForSend(fromAddress);
   const spendable = utxos.reduce((s, u) => s + u.value, 0);
   const feeRate = await resolveRequestedOrPreferredFeeRateKoinuPerByte(null, 'estimateMaxSendable');
@@ -122,6 +145,7 @@ export async function estimateMaxSendableDoge(fromAddress: string): Promise<numb
       fromAddress,
       recipientAddress: fromAddress, // self — valid for sizing only
       amountDoge: toDoge(hi),
+      opReturnMessage,
     });
     // Adjust down by actual fee delta if needed
     const maxKoinu = Math.max(0, spendable - q.feeKoinu);
@@ -136,6 +160,7 @@ export async function estimateMaxSendableDoge(fromAddress: string): Promise<numb
           fromAddress,
           recipientAddress: fromAddress,
           amountDoge: toDoge(hi),
+          opReturnMessage,
         });
         return toDoge(hi);
       } catch {

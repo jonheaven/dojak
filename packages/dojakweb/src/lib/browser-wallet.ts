@@ -1364,7 +1364,7 @@ export class BrowserWallet {
       { SOFT_DUST_KOINU, assertPlainPaymentKoinu },
       { selectP2PKHPaymentInputs },
       { fixCoinSelectP2PKHFee },
-      { buildOpReturnLockingScript, estimateOpReturnOutputsTxWeight },
+      { applyNulldataFeeToChange, buildOpReturnLockingScript, estimateOpReturnOutputsTxWeight },
       { DogeMemoryWallet, createP2PKHTransaction },
     ] = await Promise.all([
       import('./dogecoinAddressValidate'),
@@ -1449,30 +1449,15 @@ export class BrowserWallet {
 
     // P2PKH size helper ignores OP_RETURN — withhold those bytes from change.
     if (opReturnWeight > 0) {
-      const extraFee = opReturnWeight * feeRate;
-      const changeOut = fixed.change > 0 ? fixed.outputs[fixed.outputs.length - 1] : null;
-      if (changeOut && changeOut.address === wallet.address && changeOut.value - extraFee >= SOFT_DUST_KOINU) {
-        const newChange = changeOut.value - extraFee;
-        fixed = {
-          ...fixed,
-          outputs: [
-            ...fixed.outputs.slice(0, -1),
-            { address: wallet.address, value: newChange },
-          ],
-          fee: fixed.fee + extraFee,
-          change: newChange,
-        };
-      } else if (changeOut && changeOut.address === wallet.address) {
-        // Drop under-dust change; residual covers OP_RETURN byte fee.
-        fixed = {
-          ...fixed,
-          outputs: fixed.outputs.slice(0, -1),
-          fee: fixed.fee + changeOut.value,
-          change: 0,
-        };
-      } else {
-        throw new Error('Insufficient funds for amount plus network fee (OP_RETURN)');
-      }
+      const adjusted = applyNulldataFeeToChange({
+        outputs: fixed.outputs,
+        fee: fixed.fee,
+        change: fixed.change,
+        changeAddress: wallet.address,
+        extraFee: opReturnWeight * feeRate,
+        softDustKoinu: SOFT_DUST_KOINU,
+      });
+      fixed = { ...fixed, ...adjusted };
     }
 
     const signer = DogeMemoryWallet.fromWIF(wallet.privateKey, getNetworkId(wallet.network));

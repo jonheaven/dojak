@@ -46,6 +46,8 @@ import {
   type BatchInscriptionLeg,
 } from './inscription-batch-send';
 import { selectSmallestSufficient } from './fees/selectSmallestSufficient';
+import { buildOpReturnLockingScript } from './tx/opReturn';
+import { compileSendMemo, sendMemoOutputBytes } from './tx/sendMemo';
 
 // ── Dogecoin network params for bitcoinjs-lib ────────────────────────────────
 export const DOGE_NETWORK: bitcoin.Network = {
@@ -886,18 +888,21 @@ export function selectUtxos(
 export function selectFeeUtxosForInscriptionSend(
   utxos: OrdUtxo[],
   feeRate = DEFAULT_FEE_RATE,
+  /** Extra tx bytes for a trailing value-0 note. */
+  sizePaddingBytes = 0,
 ): OrdUtxo[] {
   const candidates = utxos.filter((u) => u.value > DUMMY_UTXO_VALUE);
   if (candidates.length === 0) {
     throw new Error('No spendable DOGE UTXOs available to pay the network fee.');
   }
+  const pad = Number.isFinite(sizePaddingBytes) && sizePaddingBytes > 0 ? Math.ceil(sizePaddingBytes) : 0;
 
   // 1 inscription + fee inputs; recipient counted in vouts, change via includeChange.
   const selected = selectSmallestSufficient(candidates, (n) =>
-    calculateFee(1 + Math.max(1, n), 1, feeRate, true),
+    calculateFee(1 + Math.max(1, n), 1, feeRate, true, pad),
   );
   const total = selected.reduce((sum, u) => sum + u.value, 0);
-  const need = calculateFee(1 + Math.max(selected.length, 1), 1, feeRate, true);
+  const need = calculateFee(1 + Math.max(selected.length, 1), 1, feeRate, true, pad);
   if (total >= need) return selected;
   throw new Error(
     `Not enough spendable DOGE for the network fee.\nHave: ${shibesToDoge(total)} DOGE\nNeed ~${shibesToDoge(need)} DOGE`,
@@ -1668,6 +1673,29 @@ export interface SendInscriptionParams {
   privateKeyWif: string;
   /** koinu/byte; defaults to live Command.dog inclusion estimate (not static 1000). */
   feeRateKoinuPerByte?: number;
+  /** Plain note. Blank omits the output. `dnsGift` stores `dns gift <words>`. */
+  memo?: string;
+  dnsGift?: boolean;
+}
+
+function preparedSendMemo(memo: string | undefined, dnsGift?: boolean): { payload: Buffer | null; bytes: number } {
+  const compiled = compileSendMemo(memo ?? '', { dnsGift });
+  if (!compiled.ok) throw new Error(compiled.error);
+  if (!compiled.payload) return { payload: null, bytes: 0 };
+  return {
+    payload: Buffer.from(compiled.payload, 'utf8'),
+    bytes: sendMemoOutputBytes(compiled.payload),
+  };
+}
+
+function pushSendMemoOutput(psbt: bitcoin.Psbt, payload: Buffer | null): void {
+  if (!payload || payload.length === 0) return;
+  // Last output, value 0. dogex find_output skips 0-value outs, so inscription
+  // coins that were written first stay on those outputs.
+  psbt.addOutput({
+    script: buildOpReturnLockingScript(payload, 80),
+    value: BigInt(0),
+  });
 }
 
 /** Unsigned send-inscription PSBT + human-readable plan (for review UI before signing). */
@@ -1675,7 +1703,7 @@ export interface SendInscriptionPsbtDraft {
   psbtBase64: string;
   feeShib: number;
   inputs: { outpoint: string; valueShib: number; role: 'inscription' | 'fee_input' }[];
-  outputs: { address: string; valueShib: number; role: 'to_recipient' | 'change' }[];
+  outputs: { address: string; valueShib: number; role: 'to_recipient' | 'change' | 'memo' }[];
 }
 
 function txInputHashLeHex(txin: { hash: Uint8Array }): string {
@@ -1718,7 +1746,8 @@ export async function buildSendInscriptionPsbtUnsigned(
     paymentTotal += u.value;
   }
 
-  const fee = calculateFee(psbt.txInputs.length, psbt.txOutputs.length, paidFeeRate);
+  const memo = preparedSendMemo(p.memo, p.dnsGift);
+  const fee = calculateFee(psbt.txInputs.length, psbt.txOutputs.length, paidFeeRate, true, memo.bytes);
   const change = paymentTotal - fee;
   if (change < 0) {
     throw new Error(
@@ -1726,6 +1755,7 @@ export async function buildSendInscriptionPsbtUnsigned(
     );
   }
   if (change > 546) psbt.addOutput({ address: p.senderAddress.trim(), value: BigInt(change) });
+  pushSendMemoOutput(psbt, memo.payload);
 
   return psbt;
 }
@@ -1768,9 +1798,20 @@ export function describeSendInscriptionPsbt(
       address = '(non-address output)';
     }
     const valueShib = Number(out.value);
-    const role: 'to_recipient' | 'change' =
-      o === 0 ? 'to_recipient' : address === sender ? 'change' : 'to_recipient';
-    outputs.push({ address, valueShib, role });
+    const script = Buffer.from(out.script);
+    const isMemo = valueShib === 0 && script.length > 0 && script[0] === 0x6a;
+    const role: 'to_recipient' | 'change' | 'memo' = isMemo
+      ? 'memo'
+      : o === 0
+        ? 'to_recipient'
+        : address === sender
+          ? 'change'
+          : 'to_recipient';
+    outputs.push({
+      address: isMemo ? 'OP_RETURN' : address,
+      valueShib,
+      role,
+    });
   }
 
   const feeShib = inputTotal - outputTotal;
@@ -1806,7 +1847,7 @@ export interface SendInscriptionsPsbtDraft {
   /** Names that already shared a coin and therefore share one recipient output. */
   sharedCoins: number;
   inputs: { outpoint: string; valueShib: number; role: 'inscription' | 'fee_input' }[];
-  outputs: { address: string; valueShib: number; role: 'to_recipient' | 'change' }[];
+  outputs: { address: string; valueShib: number; role: 'to_recipient' | 'change' | 'memo' }[];
 }
 
 export type InscriptionBatchBuildInput = {
@@ -1829,7 +1870,7 @@ async function prevoutValueShib(txid: string, vout: number): Promise<number> {
 
 /**
  * Unsigned PSBT: one recipient output per inscription coin, values unchanged,
- * fee coins after the inscription inputs, change last.
+ * fee coins after the inscription inputs, change, then an optional value-0 note.
  * Soft-dust (0.01 Ð per output under 0.01 Ð) is included in the miner fee so
  * Core will relay a batch of 0.001 Ð name coins.
  */
@@ -1841,6 +1882,9 @@ export async function buildSendInscriptionsDraft(p: {
   /** Other inscription coins that must not be used to pay the fee. */
   lockedOutpoints?: string[];
   feeRateKoinuPerByte?: number;
+  /** Plain note. `dnsGift` stores it as `dns gift <words>`. */
+  memo?: string;
+  dnsGift?: boolean;
 }): Promise<SendInscriptionsPsbtDraft> {
   const recipient = p.recipientAddress.trim();
   const sender = p.senderAddress.trim();
@@ -1873,6 +1917,7 @@ export async function buildSendInscriptionsDraft(p: {
   }
 
   const plan = planBatchInscriptionTransfer(legs);
+  const memo = preparedSendMemo(p.memo, p.dnsGift);
   const dustPenalty = softDustFeePenaltyKoinu(plan.coins.map((c) => c.value));
   const locked = new Set<string>();
   for (const coin of plan.coins) locked.add(coin.outpoint);
@@ -1891,6 +1936,7 @@ export async function buildSendInscriptionsDraft(p: {
     plan.coins.length,
     paidFeeRate,
     dustPenalty,
+    memo.bytes,
   );
 
   const psbt = new bitcoin.Psbt(DOGE_PSBT_OPTS);
@@ -1916,7 +1962,7 @@ export async function buildSendInscriptionsDraft(p: {
     paymentTotal += u.value;
   }
 
-  const fee = batchTransferFeeShib(plan.coins.length, feeUtxos.length, paidFeeRate) + dustPenalty;
+  const fee = batchTransferFeeShib(plan.coins.length, feeUtxos.length, paidFeeRate, memo.bytes) + dustPenalty;
   const change = discardSoftDustChangeKoinu(paymentTotal - fee);
   if (paymentTotal - fee < 0) {
     throw new Error(
@@ -1924,6 +1970,7 @@ export async function buildSendInscriptionsDraft(p: {
     );
   }
   if (change > 0) psbt.addOutput({ address: sender, value: BigInt(change) });
+  pushSendMemoOutput(psbt, memo.payload);
 
   const described = describeSendInscriptionPsbt(psbt, sender);
   const inscriptionOutpoints = new Set(plan.coins.map((c) => c.outpoint));
@@ -1938,7 +1985,7 @@ export async function buildSendInscriptionsDraft(p: {
     })),
     outputs: described.outputs.map((row) => ({
       ...row,
-      role: row.address === sender ? 'change' : 'to_recipient',
+      role: row.role === 'memo' ? 'memo' : row.address === sender ? 'change' : 'to_recipient',
     })),
   };
 }

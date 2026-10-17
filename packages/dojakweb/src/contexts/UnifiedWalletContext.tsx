@@ -1355,6 +1355,11 @@ export function UnifiedWalletProvider({ children }: { children: React.ReactNode 
         if (!window.dojak) {
           throw new Error('Dojak wallet not available');
         }
+        if (opReturnMessage || opReturnHex) {
+          throw new Error(
+            'The Dojak extension cannot attach a note yet. Send from Dojak in this browser to put the memo on-chain.',
+          );
+        }
         return (window.dojak as any).sendBitcoin(
           recipientAddress,
           Math.round(amount * 100000000)

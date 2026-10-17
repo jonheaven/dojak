@@ -266,6 +266,14 @@ export const MODAL_EN_FLAT: Record<string, string> = {
   'modal.sendInscription.roleFee': 'fee',
   'modal.sendInscription.roleToRecipient': 'to recipient',
   'modal.sendInscription.roleChange': 'change',
+  'modal.sendInscription.roleMemo': 'note',
+  'modal.sendInscription.memoLabel': 'Note (optional)',
+  'modal.sendInscription.memoPlaceholder': 'enjoy these — from jontype',
+  'modal.sendInscription.memoHint':
+    'On-chain note on this transfer. It does not change the inscription. 80 bytes max.',
+  'modal.sendInscription.memoHintDns':
+    'Stored as “dns gift …” beside the name. It is not a second domain.',
+  'modal.sendInscription.summaryMemo': 'Note:',
   'modal.sendInscription.back': 'Back',
   'modal.sendInscription.review': 'Review transaction',
   'modal.sendInscription.reviewBusy': 'Building preview…',

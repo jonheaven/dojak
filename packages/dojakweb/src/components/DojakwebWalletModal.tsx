@@ -56,6 +56,8 @@ import {
   MAX_BATCH_INSCRIPTION_COINS,
   type BatchSendItem,
 } from './wallet/BatchInscriptionSendPanel';
+import { SendMemoField } from './wallet/SendMemoField';
+import { compileSendMemo, sendMemoOutputBytes } from '../lib/tx/sendMemo';
 import { NetworkFeeControl } from './fees/NetworkFeeControl';
 import { NetworkFeeFuelButton } from './fees/NetworkFeeFuelButton';
 import { UtxoManagement } from './wallet/UtxoManagement';
@@ -965,6 +967,7 @@ export function DojakwebWalletModal({
   const [dnsNameQuery, setDnsNameQuery] = useState('');
   const [batchItems, setBatchItems] = useState<BatchSendItem[]>([]);
   const [inscriptionSendRecipient, setInscriptionSendRecipient] = useState('');
+  const [inscriptionSendMemo, setInscriptionSendMemo] = useState('');
   const [inscriptionSendResolved, setInscriptionSendResolved] = useState<ResolvedSendRecipient | null>(null);
   const [inscriptionSendLookup, setInscriptionSendLookup] = useState<
     'off' | 'loading' | 'ok' | 'error'
@@ -975,6 +978,11 @@ export function DojakwebWalletModal({
   const [inscriptionSendDraft, setInscriptionSendDraft] = useState<SendInscriptionPsbtDraft | null>(null);
   const [inscriptionSendTxid, setInscriptionSendTxid] = useState<string | null>(null);
   const [inscriptionSendError, setInscriptionSendError] = useState<string | null>(null);
+  const inscriptionSendDns = isDnsInscriptionText(selectedInscription?.contentBody);
+  const inscriptionSendMemoCompiled = useMemo(
+    () => compileSendMemo(inscriptionSendMemo, { dnsGift: inscriptionSendDns }),
+    [inscriptionSendMemo, inscriptionSendDns],
+  );
 
   // ── Listing state ──
   const [listingPriceDoge, setListingPriceDoge] = useState('');
@@ -2897,6 +2905,7 @@ export function DojakwebWalletModal({
   const openSendInscription = (inscription: MyDogeInscription) => {
     setSelectedInscription(inscription);
     setInscriptionSendRecipient('');
+    setInscriptionSendMemo('');
     setInscriptionSendResolved(null);
     setInscriptionSendLookup('off');
     setInscriptionSendLookupError(null);
@@ -2957,12 +2966,18 @@ export function DojakwebWalletModal({
         );
       }
 
+      if (!inscriptionSendMemoCompiled.ok) {
+        throw new Error(inscriptionSendMemoCompiled.error);
+      }
       const feeRate = await resolveBuyFeeRateKoinuPerByte(2);
       const payerUtxos = await getAddressUtxos(activeAddress);
       const liveFeeUtxos = await filterUtxosByRpcGetTxOutIfConfigured(
         payerUtxos.filter((u) => `${u.txid}:${u.vout}` !== `${insTxid}:${insVout}`),
       );
-      const paymentUtxos = selectFeeUtxosForInscriptionSend(liveFeeUtxos, feeRate);
+      const memoPad = inscriptionSendMemoCompiled.payload
+        ? sendMemoOutputBytes(inscriptionSendMemoCompiled.payload)
+        : 0;
+      const paymentUtxos = selectFeeUtxosForInscriptionSend(liveFeeUtxos, feeRate, memoPad);
 
       if (paymentUtxos.length === 0) throw new Error(t('modal.throws.noPaymentUtxos'));
 
@@ -2973,6 +2988,8 @@ export function DojakwebWalletModal({
         senderAddress: activeAddress,
         paymentUtxos,
         feeRateKoinuPerByte: feeRate,
+        memo: inscriptionSendMemoCompiled.payload ?? undefined,
+        dnsGift: inscriptionSendDns,
       });
       setInscriptionSendDraft(draft);
     } catch (e: any) {
@@ -3039,7 +3056,7 @@ export function DojakwebWalletModal({
           inscriptionSendResolved?.label ||
           inscriptionSendResolved?.display ||
           inscriptionSendRecipient.trim()
-        }`,
+        }${inscriptionSendMemoCompiled.ok && inscriptionSendMemoCompiled.payload ? ` — ${inscriptionSendMemoCompiled.payload}` : ''}`,
         status: 'broadcasted',
         metadata: {
           inscriptionId: selectedInscription.inscriptionId,
@@ -3050,6 +3067,10 @@ export function DojakwebWalletModal({
           recipientAddress:
             inscriptionSendResolved?.address || inscriptionSendRecipient.trim(),
           actionLabel: 'Send',
+          memo:
+            inscriptionSendMemoCompiled.ok && inscriptionSendMemoCompiled.payload
+              ? inscriptionSendMemoCompiled.payload
+              : undefined,
           postageDoge: (() => {
             const raw = Number(selectedInscription.outputValue || 0);
             if (raw >= 1) return raw / 1e8;
@@ -5851,6 +5872,14 @@ export function DojakwebWalletModal({
                                   }),
                                 })}
                               </p>
+                              {inscriptionSendMemoCompiled.ok && inscriptionSendMemoCompiled.payload ? (
+                                <p className="mt-2 break-words text-xs text-white/80">
+                                  {t('modal.sendInscription.summaryMemo')}{' '}
+                                  <span className="font-mono text-[11px] text-[#FCD34D]/90">
+                                    {inscriptionSendMemoCompiled.payload}
+                                  </span>
+                                </p>
+                              ) : null}
                               {inscriptionSendDraft.outputs.some((o) => o.role === 'change') ? (
                                 <p className="mt-1 text-xs text-white/60">
                                   {t('modal.sendInscription.summaryChange')}
@@ -5897,7 +5926,9 @@ export function DojakwebWalletModal({
                                             (
                                             {row.role === 'change'
                                               ? t('modal.sendInscription.roleChange')
-                                              : t('modal.sendInscription.roleToRecipient')}
+                                              : row.role === 'memo'
+                                                ? t('modal.sendInscription.roleMemo')
+                                                : t('modal.sendInscription.roleToRecipient')}
                                             )
                                           </span>
                                         </span>
@@ -5967,6 +5998,23 @@ export function DojakwebWalletModal({
                                 </div>
                               ) : null}
                             </label>
+                            <SendMemoField
+                              value={inscriptionSendMemo}
+                              dnsGift={inscriptionSendDns}
+                              disabled={inscriptionSendBusy || inscriptionSendReviewBusy}
+                              label={t('modal.sendInscription.memoLabel')}
+                              placeholder={t('modal.sendInscription.memoPlaceholder')}
+                              hint={
+                                inscriptionSendDns
+                                  ? t('modal.sendInscription.memoHintDns')
+                                  : t('modal.sendInscription.memoHint')
+                              }
+                              onChange={(next) => {
+                                setInscriptionSendMemo(next);
+                                setInscriptionSendDraft(null);
+                                setInscriptionSendError(null);
+                              }}
+                            />
                             <NetworkFeeControl
                               compact
                               tone="wallet"
@@ -6046,6 +6094,7 @@ export function DojakwebWalletModal({
                               disabled={
                                 inscriptionSendReviewBusy ||
                                 !inscriptionSendRecipient.trim() ||
+                                !inscriptionSendMemoCompiled.ok ||
                                 inscriptionSendLookup === 'loading' ||
                                 inscriptionSendLookup === 'error' ||
                                 !inscriptionSendResolved

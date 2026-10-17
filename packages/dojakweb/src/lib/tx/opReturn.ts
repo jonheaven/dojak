@@ -74,3 +74,41 @@ export function estimateOpReturnOutputsTxWeight(payloads: Buffer[]): number {
   }
   return w;
 }
+
+/**
+ * Take the nulldata byte-fee out of change. Matches a value-0 OP_RETURN that
+ * coin-select did not size. Drops change when the leftover would be soft dust.
+ */
+export function applyNulldataFeeToChange<T extends { address: string; value: number }>(args: {
+  outputs: T[];
+  fee: number;
+  change: number;
+  changeAddress: string;
+  extraFee: number;
+  softDustKoinu: number;
+}): { outputs: T[]; fee: number; change: number } {
+  if (args.extraFee <= 0) {
+    return { outputs: args.outputs, fee: args.fee, change: args.change };
+  }
+  const changeOut = args.change > 0 ? args.outputs[args.outputs.length - 1] : null;
+  if (
+    changeOut &&
+    changeOut.address === args.changeAddress &&
+    changeOut.value - args.extraFee >= args.softDustKoinu
+  ) {
+    const newChange = changeOut.value - args.extraFee;
+    return {
+      outputs: [...args.outputs.slice(0, -1), { ...changeOut, value: newChange }],
+      fee: args.fee + args.extraFee,
+      change: newChange,
+    };
+  }
+  if (changeOut && changeOut.address === args.changeAddress) {
+    return {
+      outputs: args.outputs.slice(0, -1),
+      fee: args.fee + changeOut.value,
+      change: 0,
+    };
+  }
+  throw new Error('Insufficient funds for amount plus network fee (OP_RETURN)');
+}
