@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { useUnifiedWallet } from '../contexts/useUnifiedWallet';
 import { useSoundEffects } from '../hooks/useSoundEffects';
 import {
+  classifyDnsInscription,
+  extractInscriptionTexts,
   extractOpReturnTexts,
   incomingTxAlertsEnabled,
   loadSeenIncomingTxids,
@@ -54,7 +56,10 @@ async function classifyIncoming(tx: DogeTransaction): Promise<{
   description: string;
 }> {
   const hex = await fetchRawTxHex(tx.txid);
+  const pending = tx.pending ? ' · mempool' : '';
   if (hex) {
+    let giftNote: string | undefined;
+    let dnsPing: string | undefined;
     for (const text of extractOpReturnTexts(hex)) {
       const offer = parseDnsOfferMemo(text);
       if (offer) {
@@ -65,12 +70,26 @@ async function classifyIncoming(tx: DogeTransaction): Promise<{
           }. Micro ping ${tx.amount} Ð received.`,
         };
       }
-      if (/^dns\s+/i.test(text)) {
-        return {
-          title: 'ÐNS on-chain ping',
-          description: text.slice(0, 120),
-        };
-      }
+      const gift = text.match(/^dns\s+gift\s+(.+)$/i);
+      if (gift?.[1]) giftNote = gift[1].trim().slice(0, 80);
+      else if (/^dns\s+/i.test(text)) dnsPing = text.slice(0, 120);
+    }
+    for (const body of extractInscriptionTexts(hex)) {
+      const dns = classifyDnsInscription(body.text, body.contentType);
+      if (!dns) continue;
+      const arriving =
+        dns.kind === 'config'
+          ? 'Records arriving'
+          : dns.kind === 'primary'
+            ? 'Wallet name arriving'
+            : 'Name arriving';
+      return {
+        title: `ÐNS · ${dns.name}`,
+        description: giftNote ? `Gift arriving${pending} — ${giftNote}` : `${arriving}${pending}`,
+      };
+    }
+    if (dnsPing) {
+      return { title: 'ÐNS on-chain ping', description: dnsPing };
     }
   }
   const amt = Number.isFinite(tx.amount) ? tx.amount : 0;
